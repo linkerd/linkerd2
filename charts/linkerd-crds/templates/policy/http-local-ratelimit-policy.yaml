@@ -125,6 +125,75 @@ spec:
                               maxLength: 253
                               minLength: 1
                               type: string
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      lastTransitionTime:
+                        description: lastTransitionTime is the last time the
+                          condition transitioned from one status to another.
+                        format: date-time
+                        type: string
+                      status:
+                        description: status of the condition (one of True, False, Unknown)
+                        enum:
+                        - "True"
+                        - "False"
+                        - Unknown
+                        type: string
+                      type:
+                        description: type of the condition in CamelCase or in
+                          foo.example.com/CamelCase.
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                      reason:
+                        description: reason contains a programmatic identifier
+                          indicating the reason for the condition's last
+                          transition. Producers of specific condition types may
+                          define expected values and meanings for this field, and
+                          whether the values are considered a guaranteed API. The
+                          value should be a CamelCase string. This field may not
+                          be empty.
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      message:
+                        description: message is a human readable message
+                          indicating details about the transition. This may be an
+                          empty string.
+                        maxLength: 32768
+                        type: string
+                  required:
+                  - status
+                  - type
+                targetRef:
+                  properties:
+                    group:
+                      default: policy.linkerd.io
+                      maxLength: 253
+                      pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                    kind:
+                      default: Server
+                      maxLength: 63
+                      minLength: 1
+                      pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                      type: string
+                    name:
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                  required:
+                  - name
+                  type: object
+              required:
+              - targetRef
       additionalPrinterColumns:
       - name: Target_kind
         description: The resource kind to which the rate-limit applies

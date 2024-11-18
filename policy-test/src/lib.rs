@@ -217,6 +217,49 @@ pub async fn await_route_status(
     route_status
 }
 
+// Waits until an HttpRoute with the given namespace and name has a status set
+// on it, then returns the generic route status representation.
+pub async fn await_gateway_route_status(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> k8s::policy::httproute::RouteStatus {
+    use k8s::gateway as api;
+    let route_status = await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
+        obj.and_then(|route| route.status.as_ref()).is_some()
+    })
+    .await
+    .expect("must fetch route")
+    .status
+    .expect("route must contain a status representation")
+    .inner;
+    tracing::trace!(?route_status, name, ns, "got route status");
+    route_status
+}
+
+// Waits until an GrpcRoute with the given namespace and name has a status set
+// on it, then returns the generic route status representation.
+pub async fn await_grpc_route_status(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> k8s::gateway::GrpcRouteStatus {
+    let route_status = await_condition(
+        client,
+        ns,
+        name,
+        |obj: Option<&k8s::gateway::GrpcRoute>| -> bool {
+            obj.and_then(|route| route.status.as_ref()).is_some()
+        },
+    )
+    .await
+    .expect("must fetch route")
+    .status
+    .expect("route must contain a status representation");
+    tracing::trace!(?route_status, name, ns, "got route status");
+    route_status
+}
+
 // Wait for the endpoints controller to populate the Endpoints resource.
 pub fn endpoints_ready(obj: Option<&k8s::Endpoints>) -> bool {
     if let Some(ep) = obj {
@@ -490,7 +533,7 @@ where
     }
 }
 
-async fn await_service_account(client: &kube::Client, ns: &str, name: &str) {
+pub async fn await_service_account(client: &kube::Client, ns: &str, name: &str) {
     use futures::StreamExt;
 
     tracing::trace!(%name, %ns, "Waiting for serviceaccount");

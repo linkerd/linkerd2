@@ -36,3 +36,4 @@ features = ["inbound", "outbound"]
 
 [dev-dependencies]
 tokio-test = "0.4"
+regex = "1"

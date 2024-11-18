@@ -1,12 +1,12 @@
 use super::validation;
 use crate::k8s::policy::{
     httproute, server::Selector, AuthorizationPolicy, AuthorizationPolicySpec, EgressNetwork,
-    EgressNetworkSpec, HTTPLocalRateLimitPolicy, HttpRoute, HttpRouteSpec, LocalTargetRef,
+    EgressNetworkSpec, HttpLocalRateLimitPolicy, HttpRoute, HttpRouteSpec, LocalTargetRef,
     MeshTLSAuthentication, MeshTLSAuthenticationSpec, NamespacedTargetRef, Network,
     NetworkAuthentication, NetworkAuthenticationSpec, RateLimitPolicySpec, Server,
     ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
 };
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Context, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
@@ -149,7 +149,7 @@ impl Admission {
             return self.admit_spec::<k8s_gateway_api::TcpRouteSpec>(req).await;
         }
 
-        if is_kind::<HTTPLocalRateLimitPolicy>(&req) {
+        if is_kind::<HttpLocalRateLimitPolicy>(&req) {
             return self.admit_spec::<RateLimitPolicySpec>(req).await;
         }
 
@@ -650,6 +650,20 @@ impl Validate<HttpRouteSpec> for Admission {
     }
 }
 
+fn validate_backend_if_service(br: &k8s_gateway_api::BackendObjectReference) -> Result<()> {
+    let is_service = matches!(br.group.as_deref(), Some("core") | Some("") | None)
+        && matches!(br.kind.as_deref(), Some("Service") | None);
+
+    // If the backend reference is a Service, it must have a port. If it is not
+    // a Service, then we have to admit it for interoperability with other
+    // controllers.
+    if is_service && matches!(br.port, None | Some(0)) {
+        bail!("cannot reference a Service without a port");
+    }
+
+    Ok(())
+}
+
 #[async_trait::async_trait]
 impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
     async fn validate(
@@ -697,7 +711,9 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
         // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
         // actually allocate stuff in order to return an `InboundRouteBinding`.
         for k8s_gateway_api::HttpRouteRule {
-            filters, matches, ..
+            filters,
+            matches,
+            backend_refs,
         } in spec.rules.into_iter().flatten()
         {
             for m in matches.into_iter().flatten() {
@@ -706,6 +722,14 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
 
             for f in filters.into_iter().flatten() {
                 validate_filter(f)?;
+            }
+
+            for br in backend_refs
+                .iter()
+                .flatten()
+                .filter_map(|br| br.backend_ref.as_ref())
+            {
+                validate_backend_if_service(&br.inner).context("invalid backendRef")?;
             }
         }
 
@@ -784,7 +808,9 @@ impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
         // a `GrpcMethodMatch` rule where neither `method.method`
         // nor `method.service` actually contain a value)
         for k8s_gateway_api::GrpcRouteRule {
-            filters, matches, ..
+            filters,
+            matches,
+            backend_refs,
         } in spec.rules.into_iter().flatten()
         {
             for rule in matches.into_iter().flatten() {
@@ -793,6 +819,10 @@ impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
 
             for filter in filters.into_iter().flatten() {
                 validate_filter(filter)?;
+            }
+
+            for br in backend_refs.iter().flatten() {
+                validate_backend_if_service(&br.inner).context("invalid backendRef")?;
             }
         }
 
