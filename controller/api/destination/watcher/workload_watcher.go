@@ -656,26 +656,26 @@ func (wp *workloadPublisher) unsubscribe(listener WorkloadUpdateListener) {
 }
 
 // updatePod creates an Address instance for the given pod, that is passed to
-// the listener's Update() method, only if the pod's readiness state has
+// the listener's Update() method, only if the pod's running state has
 // changed. If the passed pod is nil, it means the pod (still referred to in
 // wp.pod) has been deleted.
 func (wp *workloadPublisher) updatePod(pod *corev1.Pod) {
 	wp.mu.Lock()
 	defer wp.mu.Unlock()
 
-	// pod wasn't ready or there was no backing pod - check if passed pod is ready
+	// pod wasn't running or there was no backing pod - check if passed pod is running
 	if wp.addr.Pod == nil {
 		if pod == nil {
 			wp.log.Trace("Pod deletion event already consumed - ignore")
 			return
 		}
 
-		if !isRunningAndReady(pod) {
-			wp.log.Tracef("Pod %s.%s not ready - ignore", pod.Name, pod.Namespace)
+		if !isRunning(pod) {
+			wp.log.Tracef("Pod %s.%s not running - ignore", pod.Name, pod.Namespace)
 			return
 		}
 
-		wp.log.Debugf("Pod %s.%s became ready", pod.Name, pod.Namespace)
+		wp.log.Debugf("Pod %s.%s started running", pod.Name, pod.Namespace)
 		wp.addr.Pod = pod
 
 		// Fill in ownership.
@@ -705,9 +705,9 @@ func (wp *workloadPublisher) updatePod(pod *corev1.Pod) {
 		return
 	}
 
-	// backing pod becoming unready or getting deleted
-	if pod == nil || !isRunningAndReady(pod) {
-		wp.log.Debugf("Pod %s.%s deleted or it became unready - remove", wp.addr.Pod.Name, wp.addr.Pod.Namespace)
+	// backing pod stopped running or getting deleted
+	if pod == nil || !isRunning(pod) {
+		wp.log.Debugf("Pod %s.%s deleted or it stopped running - remove", wp.addr.Pod.Name, wp.addr.Pod.Namespace)
 		wp.addr.Pod = nil
 		wp.addr.OwnerKind = ""
 		wp.addr.OwnerName = ""
@@ -828,15 +828,6 @@ func isNamedInExternalWorkload(pr string, ew *ext.ExternalWorkload) (int32, bool
 	return 0, false
 }
 
-func isRunningAndReady(pod *corev1.Pod) bool {
-	if pod == nil || pod.Status.Phase != corev1.PodRunning {
-		return false
-	}
-	for _, condition := range pod.Status.Conditions {
-		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
-			return true
-		}
-	}
-
-	return false
+func isRunning(pod *corev1.Pod) bool {
+	return pod != nil && pod.Status.Phase == corev1.PodRunning
 }
