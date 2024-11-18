@@ -670,7 +670,6 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 		asYaml(headlessMirrorEndpoints(
 			"service-two-remote",
 			"eptest",
-			"",
 			"gateway-identity",
 			[]corev1.EndpointPort{
 				{
@@ -740,7 +739,7 @@ var gcTriggered = &testEnvironment{
 		asYaml(endpoints("test-service-2-remote", "test-namespace", "", "", nil)),
 		asYaml(headlessMirrorService("test-headless-service-remote", "test-namespace", "", nil)),
 		asYaml(endpointMirrorService("pod-0", "test-headless-service-remote", "test-namespace", "", nil)),
-		asYaml(headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", "", "", nil)),
+		asYaml(headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", "", nil)),
 		asYaml(endpointMirrorEndpoints("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil)),
 	},
 	remoteResources: []string{
@@ -1315,7 +1314,7 @@ func endpointMirrorEndpoints(rootName, namespace, hostname, gatewayIP, gatewayId
 	return ep
 }
 
-func headlessMirrorEndpoints(name, namespace, hostIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+func headlessMirrorEndpoints(name, namespace, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	endpoints := &corev1.Endpoints{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Endpoints",
@@ -1337,7 +1336,7 @@ func headlessMirrorEndpoints(name, namespace, hostIP, gatewayIdentity string, po
 				Addresses: []corev1.EndpointAddress{
 					{
 						Hostname: "pod-0",
-						IP:       hostIP,
+						IP:       "",
 					},
 				},
 				Ports: ports,

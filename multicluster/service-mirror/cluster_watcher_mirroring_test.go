@@ -167,7 +167,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 				),
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{
-				headlessMirrorEndpoints("service-one-remote", "ns2", "", "gateway-identity", []corev1.EndpointPort{
+				headlessMirrorEndpoints("service-one-remote", "ns2", "gateway-identity", []corev1.EndpointPort{
 					{
 						Name:     "port1",
 						Port:     555,
@@ -963,7 +963,7 @@ func TestGcOrphanedServicesMirroring(t *testing.T) {
 
 			expectedLocalEndpoints: []*corev1.Endpoints{
 				endpoints("test-service-1-remote", "test-namespace", "", "", nil),
-				headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", "", "", nil),
+				headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", "", nil),
 				endpointMirrorEndpoints("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil),
 			},
 		},
