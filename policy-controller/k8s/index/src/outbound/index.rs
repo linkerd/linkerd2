@@ -363,16 +363,17 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
             traffic_policy,
         };
 
+        let ns = Arc::new(ns);
         self.namespaces
             .by_ns
-            .entry(ns.clone())
+            .entry(ns.to_string())
             .or_insert_with(|| Namespace {
                 service_http_routes: Default::default(),
                 service_grpc_routes: Default::default(),
                 service_tls_routes: Default::default(),
                 service_tcp_routes: Default::default(),
                 resource_port_routes: Default::default(),
-                namespace: Arc::new(ns.clone()),
+                namespace: ns.clone(),
             })
             .update_resource(
                 egress_network.name_unchecked(),
@@ -383,7 +384,8 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         self.resource_info
             .insert(egress_net_ref, egress_network_info);
 
-        self.reinitialize_egress_watches(self.egress_net_target_ns(Arc::new(ns)));
+        self.reindex_resources();
+        self.reinitialize_egress_watches(ns.clone());
         self.reinitialize_fallback_watches()
     }
 
@@ -397,9 +399,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         self.egress_networks_by_ref.remove(&egress_net_ref);
 
         self.reindex_resources();
-        self.reinitialize_egress_watches(
-            self.egress_net_target_ns(Arc::new(egress_net_ref.namespace.clone())),
-        );
+        self.reinitialize_egress_watches(Arc::new(egress_net_ref.namespace.clone()));
         self.reinitialize_fallback_watches()
     }
 }
@@ -437,14 +437,6 @@ impl Index {
     fn reinitialize_fallback_watches(&mut self) {
         let (new_fallback_tx, _) = watch::channel(());
         self.fallback_polcy_tx = new_fallback_tx;
-    }
-
-    fn egress_net_target_ns(&self, ns: Arc<String>) -> Option<Arc<String>> {
-        if ns == self.global_egress_network_namespace {
-            None
-        } else {
-            Some(ns)
-        }
     }
 
     pub fn outbound_policy_rx(
@@ -660,15 +652,10 @@ impl Index {
         }
     }
 
-    fn reinitialize_egress_watches(&mut self, namespace: Option<Arc<String>>) {
+    fn reinitialize_egress_watches(&mut self, namespace: Arc<String>) {
         for ns in self.namespaces.by_ns.values_mut() {
-            match namespace.as_ref() {
-                Some(namespace) => {
-                    if ns.namespace == *namespace {
-                        ns.reinitialize_egress_watches()
-                    }
-                }
-                None => ns.reinitialize_egress_watches(),
+            if namespace == self.global_egress_network_namespace || namespace == ns.namespace {
+                ns.reinitialize_egress_watches()
             }
         }
     }
