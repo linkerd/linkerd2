@@ -80,7 +80,6 @@ func CreateMulticlusterDecoder(configs map[string][]string) configDecoder {
 
 		return remoteAPI, metadataAPI, nil
 	}
-
 }
 
 // Update stores the update in the internal buffer.

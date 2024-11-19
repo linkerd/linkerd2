@@ -28,7 +28,7 @@ type federatedServiceWatcher struct {
 
 	log *logging.Entry
 
-	sync.Mutex
+	sync.RWMutex
 }
 
 type remoteDiscoveryID struct {
@@ -111,14 +111,14 @@ func (fsw *federatedServiceWatcher) Subscribe(
 	endStream chan struct{},
 ) error {
 	id := watcher.ServiceID{Namespace: namespace, Name: service}
-	fsw.Lock()
+	fsw.RLock()
 	if federatedService, ok := fsw.services[id]; ok {
-		fsw.Unlock()
+		fsw.RUnlock()
 		fsw.log.Debugf("Subscribing to federated service %s/%s", namespace, service)
 		federatedService.subscribe(port, nodeName, instanceID, stream, endStream)
 		return nil
 	} else {
-		fsw.Unlock()
+		fsw.RUnlock()
 	}
 	return fmt.Errorf("service %s/%s is not a federated service", namespace, service)
 }
@@ -195,10 +195,15 @@ func (fsw *federatedServiceWatcher) deleteService(obj interface{}) {
 		Namespace: service.Namespace,
 		Name:      service.Name,
 	}
+	fsw.Lock()
 	if federatedService, ok := fsw.services[id]; ok {
-		federatedService.delete()
 		delete(fsw.services, id)
+		fsw.Unlock()
+		federatedService.delete()
+	} else {
+		fsw.Unlock()
 	}
+
 }
 
 func (fsw *federatedServiceWatcher) newFederatedService(service *corev1.Service) *federatedService {

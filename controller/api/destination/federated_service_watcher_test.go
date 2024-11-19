@@ -221,7 +221,7 @@ metadata:
     multicluster.linkerd.io/trust-domain: cluster.local
     multicluster.linkerd.io/cluster-domain: cluster.local
 data:
-  kubeconfig: bm9ydGgK # east
+  kubeconfig: bm9ydGgK # north
 `,
 		`
 apiVersion: v1
