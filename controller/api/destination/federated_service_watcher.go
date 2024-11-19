@@ -129,13 +129,13 @@ func (fsw *federatedServiceWatcher) Unsubscribe(
 	stream pb.Destination_GetServer,
 ) {
 	id := watcher.ServiceID{Namespace: namespace, Name: service}
-	fsw.Lock()
+	fsw.RLock()
 	if federatedService, ok := fsw.services[id]; ok {
-		fsw.Unlock()
+		fsw.RUnlock()
 		fsw.log.Debugf("Unsubscribing from federated service %s/%s", namespace, service)
 		federatedService.unsubscribe(stream)
 	} else {
-		fsw.Unlock()
+		fsw.RUnlock()
 	}
 }
 
