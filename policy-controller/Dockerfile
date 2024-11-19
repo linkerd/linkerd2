@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v43-rust-musl as controller
+FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v43-rust-musl AS controller
 ARG BUILD_TYPE="release"
 WORKDIR /build
 RUN mkdir -p target/bin
@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=target \
     just-cargo profile=$BUILD_TYPE target=$target build --package=linkerd-policy-controller && \
     mv "target/$target/$BUILD_TYPE/linkerd-policy-controller" /tmp/
 
-FROM scratch as runtime
+FROM scratch AS runtime
 LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY --from=controller /tmp/linkerd-policy-controller /bin/
 ENTRYPOINT ["/bin/linkerd-policy-controller"]
