@@ -12,7 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/inject"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,8 +24,6 @@ const (
 	eventTypeSkipped  = "InjectionSkipped"
 	eventTypeInjected = "Injected"
 )
-
-var log = logrus.New()
 
 // Inject returns the function that produces an AdmissionResponse containing
 // the patch, if any, to apply to the pod (proxy sidecar and eventually the
