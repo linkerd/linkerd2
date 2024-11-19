@@ -27,6 +27,8 @@ type federatedServiceWatcher struct {
 	localEndpoints *watcher.EndpointsWatcher
 
 	log *logging.Entry
+
+	sync.RWMutex
 }
 
 type remoteDiscoveryID struct {
@@ -109,10 +111,14 @@ func (fsw *federatedServiceWatcher) Subscribe(
 	endStream chan struct{},
 ) error {
 	id := watcher.ServiceID{Namespace: namespace, Name: service}
+	fsw.RLock()
 	if federatedService, ok := fsw.services[id]; ok {
+		fsw.RUnlock()
 		fsw.log.Debugf("Subscribing to federated service %s/%s", namespace, service)
 		federatedService.subscribe(port, nodeName, instanceID, stream, endStream)
 		return nil
+	} else {
+		fsw.RUnlock()
 	}
 	return fmt.Errorf("service %s/%s is not a federated service", namespace, service)
 }
@@ -123,9 +129,13 @@ func (fsw *federatedServiceWatcher) Unsubscribe(
 	stream pb.Destination_GetServer,
 ) {
 	id := watcher.ServiceID{Namespace: namespace, Name: service}
+	fsw.RLock()
 	if federatedService, ok := fsw.services[id]; ok {
+		fsw.RUnlock()
 		fsw.log.Debugf("Unsubscribing from federated service %s/%s", namespace, service)
 		federatedService.unsubscribe(stream)
+	} else {
+		fsw.RUnlock()
 	}
 }
 
@@ -137,20 +147,27 @@ func (fsw *federatedServiceWatcher) addService(obj interface{}) {
 	}
 
 	if isFederatedService(service) {
+		fsw.Lock()
 		if federatedService, ok := fsw.services[id]; ok {
+			fsw.Unlock()
 			fsw.log.Debugf("Updating federated service %s/%s", service.Namespace, service.Name)
 			federatedService.update(service)
 		} else {
 			fsw.log.Debugf("Adding federated service %s/%s", service.Namespace, service.Name)
 			federatedService = fsw.newFederatedService(service)
 			fsw.services[id] = federatedService
+			fsw.Unlock()
 			federatedService.update(service)
 		}
 	} else {
+		fsw.Lock()
 		if federatedService, ok := fsw.services[id]; ok {
+			delete(fsw.services, id)
+			fsw.Unlock()
 			fsw.log.Debugf("Service %s/%s is no longer a federated service", service.Namespace, service.Name)
 			federatedService.delete()
-			delete(fsw.services, id)
+		} else {
+			fsw.Unlock()
 		}
 	}
 }
@@ -178,10 +195,15 @@ func (fsw *federatedServiceWatcher) deleteService(obj interface{}) {
 		Namespace: service.Namespace,
 		Name:      service.Name,
 	}
+	fsw.Lock()
 	if federatedService, ok := fsw.services[id]; ok {
-		federatedService.delete()
 		delete(fsw.services, id)
+		fsw.Unlock()
+		federatedService.delete()
+	} else {
+		fsw.Unlock()
 	}
+
 }
 
 func (fsw *federatedServiceWatcher) newFederatedService(service *corev1.Service) *federatedService {
@@ -268,6 +290,9 @@ func (fs *federatedService) subscribe(
 	stream pb.Destination_GetServer,
 	endStream chan struct{},
 ) {
+	fs.Lock()
+	defer fs.Unlock()
+
 	syncStream := newSyncronizedGetStream(stream, fs.log)
 	syncStream.Start()
 
@@ -287,8 +312,6 @@ func (fs *federatedService) subscribe(
 		fs.localDiscoverySubscribe(&subscriber, fs.localDiscovery)
 	}
 
-	fs.Lock()
-	defer fs.Unlock()
 	fs.subscribers = append(fs.subscribers, subscriber)
 }
 
@@ -322,6 +345,7 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 	remoteWatcher, remoteConfig, found := fs.clusterStore.Get(id.cluster)
 	if !found {
 		fs.log.Errorf("Failed to get remote cluster %s", id.cluster)
+		return
 	}
 
 	translator := newEndpointTranslator(
