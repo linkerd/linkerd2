@@ -1215,11 +1215,7 @@ async fn parent_with_http_route_without_rules(parent: Resource, client: &kube::C
         assert_route_is_default(route, &parent, 4191);
     });
 
-    let _route = create(
-        client,
-        mk_empty_http_route(ns, "foo-route", &parent, 4191),
-    )
-    .await;
+    let _route = create(client, mk_empty_http_route(ns, "foo-route", &parent, 4191)).await;
     await_route_status(client, ns, "foo-route").await;
 
     let config = rx
@@ -1941,11 +1937,7 @@ async fn retries_and_timeouts(parent: Resource, client: &kube::Client, ns: &str)
 }
 
 async fn http_route_reattachment(parent: Resource, client: &kube::Client, ns: &str) {
-    let mut route = create(
-        client,
-        mk_empty_http_route(ns, "foo-route", &parent, 4191),
-    )
-    .await;
+    let mut route = create(client, mk_empty_http_route(ns, "foo-route", &parent, 4191)).await;
     await_route_status(client, ns, "foo-route").await;
 
     let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
