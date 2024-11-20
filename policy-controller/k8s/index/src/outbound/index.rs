@@ -363,16 +363,17 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
             traffic_policy,
         };
 
+        let ns = Arc::new(ns);
         self.namespaces
             .by_ns
-            .entry(ns.clone())
+            .entry(ns.to_string())
             .or_insert_with(|| Namespace {
                 service_http_routes: Default::default(),
                 service_grpc_routes: Default::default(),
                 service_tls_routes: Default::default(),
                 service_tcp_routes: Default::default(),
                 resource_port_routes: Default::default(),
-                namespace: Arc::new(ns),
+                namespace: ns.clone(),
             })
             .update_resource(
                 egress_network.name_unchecked(),
@@ -384,7 +385,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
             .insert(egress_net_ref, egress_network_info);
 
         self.reindex_resources();
-        self.reinitialize_egress_watches();
+        self.reinitialize_egress_watches(&ns);
         self.reinitialize_fallback_watches()
     }
 
@@ -398,7 +399,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         self.egress_networks_by_ref.remove(&egress_net_ref);
 
         self.reindex_resources();
-        self.reinitialize_egress_watches();
+        self.reinitialize_egress_watches(&egress_net_ref.namespace);
         self.reinitialize_fallback_watches()
     }
 }
@@ -651,9 +652,11 @@ impl Index {
         }
     }
 
-    fn reinitialize_egress_watches(&mut self) {
+    fn reinitialize_egress_watches(&mut self, namespace: &str) {
         for ns in self.namespaces.by_ns.values_mut() {
-            ns.reinitialize_egress_watches();
+            if namespace == *self.global_egress_network_namespace || namespace == *ns.namespace {
+                ns.reinitialize_egress_watches()
+            }
         }
     }
 }
