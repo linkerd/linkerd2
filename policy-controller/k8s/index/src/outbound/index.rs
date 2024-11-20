@@ -654,7 +654,7 @@ impl Index {
 
     fn reinitialize_egress_watches(&mut self, namespace: &str) {
         for ns in self.namespaces.by_ns.values_mut() {
-            if namespace == &*self.global_egress_network_namespace || namespace == &*ns.namespace {
+            if namespace == *self.global_egress_network_namespace || namespace == *ns.namespace {
                 ns.reinitialize_egress_watches()
             }
         }

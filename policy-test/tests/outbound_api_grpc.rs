@@ -140,13 +140,13 @@ impl GrpcRouteBuilder {
 
 async fn grpc_route_reattachment(parent: Resource, client: &kube::Client, ns: &str) {
     let mut route = create(
-        &client,
-        mk_grpc_route(&ns, "foo-route", &parent, Some(4191)).build(),
+        client,
+        mk_grpc_route(ns, "foo-route", &parent, Some(4191)).build(),
     )
     .await;
-    await_grpc_route_status(&client, &ns, "foo-route").await;
+    await_grpc_route_status(client, ns, "foo-route").await;
 
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -172,7 +172,7 @@ async fn grpc_route_reattachment(parent: Resource, client: &kube::Client, ns: &s
         .first_mut()
         .unwrap()
         .name = "other".to_string();
-    update(&client, route.clone()).await;
+    update(client, route.clone()).await;
 
     let config = rx
         .next()
@@ -199,7 +199,7 @@ async fn grpc_route_reattachment(parent: Resource, client: &kube::Client, ns: &s
         .first_mut()
         .unwrap()
         .name = parent.name();
-    update(&client, route).await;
+    update(client, route).await;
 
     let config = rx
         .next()
@@ -221,8 +221,8 @@ async fn grpc_route_reattachment(parent: Resource, client: &kube::Client, ns: &s
 
 async fn grpc_route_retries_and_timeouts(parent: Resource, client: &kube::Client, ns: &str) {
     let _route = create(
-        &client,
-        mk_grpc_route(&ns, "foo-route", &parent, Some(4191))
+        client,
+        mk_grpc_route(ns, "foo-route", &parent, Some(4191))
             .with_annotations(
                 vec![
                     ("retry.linkerd.io/grpc".to_string(), "internal".to_string()),
@@ -234,9 +234,9 @@ async fn grpc_route_retries_and_timeouts(parent: Resource, client: &kube::Client
             .build(),
     )
     .await;
-    await_grpc_route_status(&client, &ns, "foo-route").await;
+    await_grpc_route_status(client, ns, "foo-route").await;
 
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -267,8 +267,8 @@ async fn grpc_route_retries_and_timeouts(parent: Resource, client: &kube::Client
 
 async fn parent_retries_and_timeouts(parent: Resource, client: &kube::Client, ns: &str) {
     let _route = create(
-        &client,
-        mk_grpc_route(&ns, "foo-route", &parent, Some(4191))
+        client,
+        mk_grpc_route(ns, "foo-route", &parent, Some(4191))
             .with_annotations(
                 vec![
                     // Route annotations override the timeout config specified
@@ -281,9 +281,9 @@ async fn parent_retries_and_timeouts(parent: Resource, client: &kube::Client, ns
             .build(),
     )
     .await;
-    await_grpc_route_status(&client, &ns, "foo-route").await;
+    await_grpc_route_status(client, ns, "foo-route").await;
 
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await

@@ -1181,7 +1181,7 @@ fn mk_empty_http_route(
 }
 
 async fn parent_with_no_http_routes(parent: Resource, client: &kube::Client, ns: &str) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1199,7 +1199,7 @@ async fn parent_with_no_http_routes(parent: Resource, client: &kube::Client, ns:
 }
 
 async fn parent_with_http_route_without_rules(parent: Resource, client: &kube::Client, ns: &str) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1216,11 +1216,11 @@ async fn parent_with_http_route_without_rules(parent: Resource, client: &kube::C
     });
 
     let _route = create(
-        &client,
-        mk_empty_http_route(&ns, "foo-route", &parent, 4191),
+        client,
+        mk_empty_http_route(ns, "foo-route", &parent, 4191),
     )
     .await;
-    await_route_status(&client, &ns, "foo-route").await;
+    await_route_status(client, ns, "foo-route").await;
 
     let config = rx
         .next()
@@ -1243,7 +1243,7 @@ async fn parent_with_http_routes_without_backends(
     client: &kube::Client,
     ns: &str,
 ) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1260,11 +1260,11 @@ async fn parent_with_http_routes_without_backends(
     });
 
     let _route = create(
-        &client,
-        mk_http_route(&ns, "foo-route", &parent, Some(4191)).build(),
+        client,
+        mk_http_route(ns, "foo-route", &parent, Some(4191)).build(),
     )
     .await;
-    await_route_status(&client, &ns, "foo-route").await;
+    await_route_status(client, ns, "foo-route").await;
 
     let config = rx
         .next()
@@ -1290,7 +1290,7 @@ async fn parent_with_http_routes_with_backend(
     client: &kube::Client,
     ns: &str,
 ) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1307,13 +1307,13 @@ async fn parent_with_http_routes_with_backend(
     });
 
     let backends = [rule_backend.clone()];
-    let route = mk_http_route(&ns, "foo-route", &parent, Some(4191)).with_backends(
+    let route = mk_http_route(ns, "foo-route", &parent, Some(4191)).with_backends(
         Some(&backends),
         None,
         None,
     );
-    let _route = create(&client, route.build()).await;
-    await_route_status(&client, &ns, "foo-route").await;
+    let _route = create(client, route.build()).await;
+    await_route_status(client, ns, "foo-route").await;
 
     let config = rx
         .next()
@@ -1341,7 +1341,7 @@ async fn parent_with_http_routes_with_invalid_backend(
     client: &kube::Client,
     ns: &str,
 ) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1358,13 +1358,13 @@ async fn parent_with_http_routes_with_invalid_backend(
     });
 
     let backends = [backend];
-    let route = mk_http_route(&ns, "foo-route", &parent, Some(4191)).with_backends(
+    let route = mk_http_route(ns, "foo-route", &parent, Some(4191)).with_backends(
         Some(&backends),
         None,
         None,
     );
-    let _route = create(&client, route.build()).await;
-    await_route_status(&client, &ns, "foo-route").await;
+    let _route = create(client, route.build()).await;
+    await_route_status(client, ns, "foo-route").await;
 
     let config = rx
         .next()
@@ -1385,7 +1385,7 @@ async fn parent_with_http_routes_with_invalid_backend(
 }
 
 async fn parent_with_multiple_http_routes(parent: Resource, client: &kube::Client, ns: &str) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1405,11 +1405,11 @@ async fn parent_with_multiple_http_routes(parent: Resource, client: &kube::Clien
     // name. To ensure that this test isn't timing dependant, routes should
     // be created in alphabetical order.
     let _a_route = create(
-        &client,
-        mk_http_route(&ns, "a-route", &parent, Some(4191)).build(),
+        client,
+        mk_http_route(ns, "a-route", &parent, Some(4191)).build(),
     )
     .await;
-    await_route_status(&client, &ns, "a-route").await;
+    await_route_status(client, ns, "a-route").await;
 
     // First route update.
     let config = rx
@@ -1422,11 +1422,11 @@ async fn parent_with_multiple_http_routes(parent: Resource, client: &kube::Clien
     assert_resource_meta(&config.metadata, &parent, 4191);
 
     let _b_route = create(
-        &client,
-        mk_http_route(&ns, "b-route", &parent, Some(4191)).build(),
+        client,
+        mk_http_route(ns, "b-route", &parent, Some(4191)).build(),
     )
     .await;
-    await_route_status(&client, &ns, "b-route").await;
+    await_route_status(client, ns, "b-route").await;
 
     // Second route update.
     let config = rx
@@ -1454,7 +1454,7 @@ async fn parent_with_consecutive_failure_accrual(
     client: &kube::Client,
     ns: &str,
 ) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1484,7 +1484,7 @@ async fn parent_with_consecutive_failure_accrual_defaults_no_config(
     client: &kube::Client,
     ns: &str,
 ) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1508,7 +1508,7 @@ async fn parent_with_consecutive_failure_accrual_defaults_max_fails(
     client: &kube::Client,
     ns: &str,
 ) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1532,7 +1532,7 @@ async fn parent_with_consecutive_failure_accrual_defaults_max_jitter(
     client: &kube::Client,
     ns: &str,
 ) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1564,7 +1564,7 @@ async fn parent_with_default_failure_accrual(
     client: &kube::Client,
     ns: &str,
 ) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent_default_config, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent_default_config, 4191).await;
     let config = rx
         .next()
         .await
@@ -1580,7 +1580,7 @@ async fn parent_with_default_failure_accrual(
         );
     });
 
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent_max_failures, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent_max_failures, 4191).await;
     let config = rx
         .next()
         .await
@@ -1598,7 +1598,7 @@ async fn parent_with_default_failure_accrual(
 }
 
 async fn opaque_parent(parent: Resource, client: &kube::Client, ns: &str) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1614,7 +1614,7 @@ async fn opaque_parent(parent: Resource, client: &kube::Client, ns: &str) {
 }
 
 async fn route_with_filters(parent: Resource, backend: Resource, client: &kube::Client, ns: &str) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1629,7 +1629,7 @@ async fn route_with_filters(parent: Resource, backend: Resource, client: &kube::
     });
 
     let backends = [backend.clone()];
-    let route = mk_http_route(&ns, "foo-route", &parent, Some(4191))
+    let route = mk_http_route(ns, "foo-route", &parent, Some(4191))
         .with_backends(Some(&backends), None, None)
         .with_filters(Some(vec![
             k8s::policy::httproute::HttpRouteFilter::RequestHeaderModifier {
@@ -1657,8 +1657,8 @@ async fn route_with_filters(parent: Resource, backend: Resource, client: &kube::
                 },
             },
         ]));
-    let _route = create(&client, route.build()).await;
-    await_route_status(&client, &ns, "foo-route").await;
+    let _route = create(client, route.build()).await;
+    await_route_status(client, ns, "foo-route").await;
 
     let config = rx
         .next()
@@ -1728,7 +1728,7 @@ async fn backend_with_filters(
     client: &kube::Client,
     ns: &str,
 ) {
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1743,7 +1743,7 @@ async fn backend_with_filters(
     });
 
     let backends = [backend_for_parent.clone()];
-    let route = mk_http_route(&ns, "foo-route", &parent, Some(4191)).with_backends(
+    let route = mk_http_route(ns, "foo-route", &parent, Some(4191)).with_backends(
         Some(&backends),
         None,
         Some(vec![
@@ -1773,8 +1773,8 @@ async fn backend_with_filters(
             },
         ]),
     );
-    let _route = create(&client, route.build()).await;
-    await_route_status(&client, &ns, "foo-route").await;
+    let _route = create(client, route.build()).await;
+    await_route_status(client, ns, "foo-route").await;
 
     let config = rx
         .next()
@@ -1844,8 +1844,8 @@ async fn backend_with_filters(
 
 async fn http_route_retries_and_timeouts(parent: Resource, client: &kube::Client, ns: &str) {
     let _route = create(
-        &client,
-        mk_http_route(&ns, "foo-route", &parent, Some(4191))
+        client,
+        mk_http_route(ns, "foo-route", &parent, Some(4191))
             .with_annotations(
                 vec![
                     ("retry.linkerd.io/http".to_string(), "5xx".to_string()),
@@ -1858,9 +1858,9 @@ async fn http_route_retries_and_timeouts(parent: Resource, client: &kube::Client
     )
     .await;
 
-    await_route_status(&client, &ns, "foo-route").await;
+    await_route_status(client, ns, "foo-route").await;
 
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1894,8 +1894,8 @@ async fn http_route_retries_and_timeouts(parent: Resource, client: &kube::Client
 
 async fn retries_and_timeouts(parent: Resource, client: &kube::Client, ns: &str) {
     let _route = create(
-        &client,
-        mk_http_route(&ns, "foo-route", &parent, Some(4191))
+        client,
+        mk_http_route(ns, "foo-route", &parent, Some(4191))
             .with_annotations(
                 vec![
                     // Route annotations override the timeout config specified
@@ -1908,9 +1908,9 @@ async fn retries_and_timeouts(parent: Resource, client: &kube::Client, ns: &str)
             .build(),
     )
     .await;
-    await_route_status(&client, &ns, "foo-route").await;
+    await_route_status(client, ns, "foo-route").await;
 
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1942,13 +1942,13 @@ async fn retries_and_timeouts(parent: Resource, client: &kube::Client, ns: &str)
 
 async fn http_route_reattachment(parent: Resource, client: &kube::Client, ns: &str) {
     let mut route = create(
-        &client,
-        mk_empty_http_route(&ns, "foo-route", &parent, 4191),
+        client,
+        mk_empty_http_route(ns, "foo-route", &parent, 4191),
     )
     .await;
-    await_route_status(&client, &ns, "foo-route").await;
+    await_route_status(client, ns, "foo-route").await;
 
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -1973,7 +1973,7 @@ async fn http_route_reattachment(parent: Resource, client: &kube::Client, ns: &s
         .first_mut()
         .unwrap()
         .name = "other".to_string();
-    update(&client, route.clone()).await;
+    update(client, route.clone()).await;
 
     let config = rx
         .next()
@@ -1999,7 +1999,7 @@ async fn http_route_reattachment(parent: Resource, client: &kube::Client, ns: &s
         .first_mut()
         .unwrap()
         .name = parent.name();
-    update(&client, route).await;
+    update(client, route).await;
 
     let config = rx
         .next()
