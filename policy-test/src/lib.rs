@@ -349,6 +349,11 @@ impl Resource {
 
     pub fn ip(&self) -> String {
         match self {
+            // For EgressNetwork, we can just return a non-private
+            // IP address as our default cluster setup dictates that
+            // all non-private networks are considered egress. Since
+            // we do not modify this setting in tests for the time being,
+            // returning 1.1.1.1 is fine.
             Self::EgressNetwork(_) => "1.1.1.1".to_string(),
             Self::Service(s) => s
                 .spec

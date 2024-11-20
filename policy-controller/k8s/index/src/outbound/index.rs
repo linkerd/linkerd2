@@ -385,7 +385,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
             .insert(egress_net_ref, egress_network_info);
 
         self.reindex_resources();
-        self.reinitialize_egress_watches(ns.clone());
+        self.reinitialize_egress_watches(&ns);
         self.reinitialize_fallback_watches()
     }
 
@@ -399,7 +399,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         self.egress_networks_by_ref.remove(&egress_net_ref);
 
         self.reindex_resources();
-        self.reinitialize_egress_watches(Arc::new(egress_net_ref.namespace.clone()));
+        self.reinitialize_egress_watches(&egress_net_ref.namespace);
         self.reinitialize_fallback_watches()
     }
 }
@@ -652,9 +652,9 @@ impl Index {
         }
     }
 
-    fn reinitialize_egress_watches(&mut self, namespace: Arc<String>) {
+    fn reinitialize_egress_watches(&mut self, namespace: &str) {
         for ns in self.namespaces.by_ns.values_mut() {
-            if namespace == self.global_egress_network_namespace || namespace == ns.namespace {
+            if namespace == &*self.global_egress_network_namespace || namespace == &*ns.namespace {
                 ns.reinitialize_egress_watches()
             }
         }
