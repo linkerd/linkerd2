@@ -463,11 +463,11 @@ async fn parent_with_tcp_routes_with_backend(
     ns: &str,
 ) {
     let backends = [rule_backend.clone()];
-    let route = mk_tcp_route(&ns, "foo-route", &parent, Some(4191)).with_backends(&backends);
-    let _route = create(&client, route.build()).await;
-    await_tcp_route_status(&client, &ns, "foo-route").await;
+    let route = mk_tcp_route(ns, "foo-route", &parent, Some(4191)).with_backends(&backends);
+    let _route = create(client, route.build()).await;
+    await_tcp_route_status(client, ns, "foo-route").await;
 
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -491,11 +491,11 @@ async fn parent_with_tcp_routes_with_invalid_backend(
     ns: &str,
 ) {
     let backends = [backend];
-    let route = mk_tcp_route(&ns, "foo-route", &parent, Some(4191)).with_backends(&backends);
-    let _route = create(&client, route.build()).await;
-    await_tcp_route_status(&client, &ns, "foo-route").await;
+    let route = mk_tcp_route(ns, "foo-route", &parent, Some(4191)).with_backends(&backends);
+    let _route = create(client, route.build()).await;
+    await_tcp_route_status(client, ns, "foo-route").await;
 
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
 
     let config = rx
         .next()
@@ -517,15 +517,15 @@ async fn parent_with_multiple_tcp_routes(parent: Resource, client: &kube::Client
     // name. To ensure that this test isn't timing dependant, routes should
     // be created in alphabetical order.
     let _a_route = create(
-        &client,
-        mk_tcp_route(&ns, "a-route", &parent, Some(4191))
+        client,
+        mk_tcp_route(ns, "a-route", &parent, Some(4191))
             .with_backends(&[parent.clone()])
             .build(),
     )
     .await;
-    await_tcp_route_status(&client, &ns, "a-route").await;
+    await_tcp_route_status(client, ns, "a-route").await;
 
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
 
     // First route update.
     let config = rx
@@ -538,13 +538,13 @@ async fn parent_with_multiple_tcp_routes(parent: Resource, client: &kube::Client
     assert_resource_meta(&config.metadata, &parent, 4191);
 
     let _b_route = create(
-        &client,
-        mk_tcp_route(&ns, "b-route", &parent, Some(4191))
+        client,
+        mk_tcp_route(ns, "b-route", &parent, Some(4191))
             .with_backends(&[parent.clone()])
             .build(),
     )
     .await;
-    await_tcp_route_status(&client, &ns, "b-route").await;
+    await_tcp_route_status(client, ns, "b-route").await;
 
     // Second route update.
     let config = rx
@@ -563,15 +563,15 @@ async fn parent_with_multiple_tcp_routes(parent: Resource, client: &kube::Client
 
 async fn tcp_route_reattachment(parent: Resource, client: &kube::Client, ns: &str) {
     let mut route = create(
-        &client,
-        mk_tcp_route(&ns, "foo-route", &parent, Some(4191))
+        client,
+        mk_tcp_route(ns, "foo-route", &parent, Some(4191))
             .with_backends(&[parent.clone()])
             .build(),
     )
     .await;
-    await_tcp_route_status(&client, &ns, "foo-route").await;
+    await_tcp_route_status(client, ns, "foo-route").await;
 
-    let mut rx = retry_watch_outbound_policy(&client, &ns, &parent, 4191).await;
+    let mut rx = retry_watch_outbound_policy(client, ns, &parent, 4191).await;
     let config = rx
         .next()
         .await
@@ -595,7 +595,7 @@ async fn tcp_route_reattachment(parent: Resource, client: &kube::Client, ns: &st
         .first_mut()
         .unwrap()
         .name = "other".to_string();
-    update(&client, route.clone()).await;
+    update(client, route.clone()).await;
 
     let config = rx
         .next()
@@ -621,7 +621,7 @@ async fn tcp_route_reattachment(parent: Resource, client: &kube::Client, ns: &st
         .first_mut()
         .unwrap()
         .name = parent.name();
-    update(&client, route).await;
+    update(client, route).await;
 
     let config = rx
         .next()
