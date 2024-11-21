@@ -225,8 +225,8 @@ fn invalid_backend(
             }),
 
             filters: vec![outbound::opaque_route::Filter {
-                kind: Some(outbound::opaque_route::filter::Kind::InvalidBackendError(
-                    linkerd2_proxy_api::opaque_route::InvalidBackendError { message },
+                kind: Some(outbound::opaque_route::filter::Kind::Invalid(
+                    linkerd2_proxy_api::opaque_route::Invalid { message },
                 )),
             }],
         }),
@@ -241,10 +241,8 @@ pub(crate) fn default_outbound_egress_route(
         TrafficPolicy::Allow => (Vec::default(), "tcp-egress-allow"),
         TrafficPolicy::Deny => (
             vec![outbound::opaque_route::Filter {
-                kind: Some(outbound::opaque_route::filter::Kind::RouteError(
-                    linkerd2_proxy_api::opaque_route::RouteError {
-                        kind: linkerd2_proxy_api::opaque_route::route_error::Kind::Forbidden as i32,
-                    },
+                kind: Some(outbound::opaque_route::filter::Kind::Forbidden(
+                    linkerd2_proxy_api::opaque_route::Forbidden {},
                 )),
             }],
             "tcp-egress-deny",

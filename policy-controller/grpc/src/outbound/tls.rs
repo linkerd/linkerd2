@@ -226,8 +226,8 @@ fn invalid_backend(
                 kind: None,
             }),
             filters: vec![outbound::tls_route::Filter {
-                kind: Some(outbound::tls_route::filter::Kind::InvalidBackendError(
-                    linkerd2_proxy_api::tls_route::InvalidBackendError { message },
+                kind: Some(outbound::tls_route::filter::Kind::Invalid(
+                    linkerd2_proxy_api::opaque_route::Invalid { message },
                 )),
             }],
         }),
@@ -242,10 +242,8 @@ pub(crate) fn default_outbound_egress_route(
         TrafficPolicy::Allow => (Vec::default(), "tls-egress-allow"),
         TrafficPolicy::Deny => (
             vec![outbound::tls_route::Filter {
-                kind: Some(outbound::tls_route::filter::Kind::RouteError(
-                    linkerd2_proxy_api::tls_route::RouteError {
-                        kind: linkerd2_proxy_api::tls_route::route_error::Kind::Forbidden as i32,
-                    },
+                kind: Some(outbound::tls_route::filter::Kind::Forbidden(
+                    linkerd2_proxy_api::opaque_route::Forbidden {},
                 )),
             }],
             "tls-egress-deny",
