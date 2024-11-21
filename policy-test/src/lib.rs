@@ -290,6 +290,52 @@ pub async fn await_grpc_route_status(
     route_status
 }
 
+// Waits until an TlsRoute with the given namespace and name has a status set
+// on it, then returns the generic route status representation.
+pub async fn await_tls_route_status(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> k8s::gateway::TlsRouteStatus {
+    let route_status = await_condition(
+        client,
+        ns,
+        name,
+        |obj: Option<&k8s::gateway::TlsRoute>| -> bool {
+            obj.and_then(|route| route.status.as_ref()).is_some()
+        },
+    )
+    .await
+    .expect("must fetch route")
+    .status
+    .expect("route must contain a status representation");
+    tracing::trace!(?route_status, name, ns, "got route status");
+    route_status
+}
+
+// Waits until an TcpRoute with the given namespace and name has a status set
+// on it, then returns the generic route status representation.
+pub async fn await_tcp_route_status(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> k8s::gateway::TcpRouteStatus {
+    let route_status = await_condition(
+        client,
+        ns,
+        name,
+        |obj: Option<&k8s::gateway::TcpRoute>| -> bool {
+            obj.and_then(|route| route.status.as_ref()).is_some()
+        },
+    )
+    .await
+    .expect("must fetch route")
+    .status
+    .expect("route must contain a status representation");
+    tracing::trace!(?route_status, name, ns, "got route status");
+    route_status
+}
+
 // Wait for the endpoints controller to populate the Endpoints resource.
 pub fn endpoints_ready(obj: Option<&k8s::Endpoints>) -> bool {
     if let Some(ep) = obj {
