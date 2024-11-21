@@ -69,7 +69,7 @@ fn convert_outbound_route(
             outbound::tls_route::distribution::FirstAvailable {
                 backends: vec![outbound::tls_route::RouteBackend {
                     backend: Some(backend.clone()),
-                    invalid: None,
+                    filters: Vec::new(),
                 }],
             },
         )
@@ -81,13 +81,13 @@ fn convert_outbound_route(
 
     let rules = vec![outbound::tls_route::Rule {
         backends: Some(outbound::tls_route::Distribution { kind: Some(dist) }),
+        filters: Vec::new(),
     }];
 
     outbound::TlsRoute {
         metadata,
         snis,
         rules,
-        error: None,
     }
 }
 
@@ -115,7 +115,7 @@ fn convert_backend(
                             },
                         )),
                     }),
-                    invalid: None,
+                    filters: Vec::new(),
                 }),
             }
         }
@@ -138,7 +138,7 @@ fn convert_backend(
                         },
                     )),
                 }),
-                invalid: None,
+                filters: Vec::new(),
             }),
         },
         Backend::Service(svc) => invalid_backend(
@@ -172,7 +172,7 @@ fn convert_backend(
                                         },
                                     )),
                                 }),
-                                invalid: None,
+                                filters: Vec::new(),
                             }),
                         }
                     } else {
@@ -225,7 +225,11 @@ fn invalid_backend(
                 queue: Some(default_queue_config()),
                 kind: None,
             }),
-            invalid: Some(outbound::tls_route::route_backend::Invalid { message }),
+            filters: vec![outbound::tls_route::Filter {
+                kind: Some(outbound::tls_route::filter::Kind::InvalidBackendError(
+                    linkerd2_proxy_api::tls_route::InvalidBackendError { message },
+                )),
+            }],
         }),
     }
 }
@@ -234,12 +238,16 @@ pub(crate) fn default_outbound_egress_route(
     backend: outbound::Backend,
     traffic_policy: &TrafficPolicy,
 ) -> outbound::TlsRoute {
-    let (error, name) = match traffic_policy {
-        TrafficPolicy::Allow => (None, "tls-egress-allow"),
+    let (filters, name) = match traffic_policy {
+        TrafficPolicy::Allow => (Vec::default(), "tls-egress-allow"),
         TrafficPolicy::Deny => (
-            Some(outbound::tls_route::RouteError {
-                kind: outbound::tls_route::route_error::Kind::Forbidden as i32,
-            }),
+            vec![outbound::tls_route::Filter {
+                kind: Some(outbound::tls_route::filter::Kind::RouteError(
+                    linkerd2_proxy_api::tls_route::RouteError {
+                        kind: linkerd2_proxy_api::tls_route::route_error::Kind::Forbidden as i32,
+                    },
+                )),
+            }],
             "tls-egress-deny",
         ),
     };
@@ -253,16 +261,16 @@ pub(crate) fn default_outbound_egress_route(
                 outbound::tls_route::distribution::FirstAvailable {
                     backends: vec![outbound::tls_route::RouteBackend {
                         backend: Some(backend),
-                        invalid: None,
+                        filters: Vec::new(),
                     }],
                 },
             )),
         }),
+        filters,
     }];
     outbound::TlsRoute {
         metadata,
         rules,
-        error,
         ..Default::default()
     }
 }
