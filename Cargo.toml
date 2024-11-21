@@ -12,7 +12,3 @@ members = [
 
 [profile.release]
 lto = "thin"
-
-[patch.crates-io]
-# TODO(Zahari): switch released version once TLS protocol support is out.
-linkerd2-proxy-api = { git = 'https://github.com/linkerd/linkerd2-proxy-api', branch = 'zd/errors-to-filters' }
