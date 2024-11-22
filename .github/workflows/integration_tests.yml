@@ -64,8 +64,8 @@ jobs:
     #
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
-      # actions/upload-artifact@v1
-      uses: actions/upload-artifact@3446296
+      # actions/upload-artifact@v4
+      uses: actions/upload-artifact@v4
       with:
         name: image-archives
         path: /home/runner/archives
@@ -88,8 +88,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Download image archives
-      # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f59
+      # actions/download-artifact@v4
+      uses: actions/download-artifact@v4
       with:
         name: image-archives
     - name: Run CLI Integration tests
@@ -133,8 +133,8 @@ jobs:
         . bin/_docker.sh
         echo "DOCKER_REGISTRY=$DOCKER_REGISTRY" >> $GITHUB_ENV
     - name: Download image archives
-      # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f59
+      # actions/download-artifact@v4
+      uses: actions/download-artifact@v4
       with:
         name: image-archives
     - name: Load cli-bin image into local docker images
