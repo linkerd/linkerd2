@@ -39,6 +39,7 @@ type (
 	Link struct {
 		Name                          string
 		Namespace                     string
+		CreatedBy                     string
 		TargetClusterName             string
 		TargetClusterDomain           string
 		TargetClusterLinkerdNamespace string
@@ -177,6 +178,7 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 	return Link{
 		Name:                          u.GetName(),
 		Namespace:                     u.GetNamespace(),
+		CreatedBy:                     u.GetAnnotations()[k8s.CreatedByAnnotation],
 		TargetClusterName:             targetClusterName,
 		TargetClusterDomain:           targetClusterDomain,
 		TargetClusterLinkerdNamespace: targetClusterLinkerdNamespace,
@@ -260,6 +262,9 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 			"metadata": map[string]interface{}{
 				"name":      l.Name,
 				"namespace": l.Namespace,
+				"annotations": map[string]string{
+					k8s.CreatedByAnnotation: k8s.CreatedByAnnotationValue(),
+				},
 			},
 			"spec":   spec,
 			"status": map[string]interface{}{},
