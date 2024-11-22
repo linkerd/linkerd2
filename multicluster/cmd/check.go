@@ -177,6 +177,11 @@ func multiclusterCategory(hc *healthChecker, wait time.Duration) *healthcheck.Ca
 			Fatal().
 			WithCheck(func(ctx context.Context) error { return hc.checkLinks(ctx) }))
 	checkers = append(checkers,
+		*healthcheck.NewChecker("Link and CLI versions match").
+			WithHintAnchor("l5d-multicluster-links-version").
+			Warning().
+			WithCheck(func(ctx context.Context) error { return hc.checkLinkVersions() }))
+	checkers = append(checkers,
 		*healthcheck.NewChecker("remote cluster access credentials are valid").
 			WithHintAnchor("l5d-smc-target-clusters-access").
 			WithCheck(func(ctx context.Context) error { return hc.checkRemoteClusterConnectivity(ctx) }))
@@ -330,6 +335,30 @@ func (hc *healthChecker) checkLinks(ctx context.Context) error {
 	}
 	hc.links = links
 	return healthcheck.VerboseSuccess{Message: strings.Join(linkNames, "\n")}
+}
+
+func (hc *healthChecker) checkLinkVersions() error {
+	errors := []error{}
+	links := []string{}
+	for _, link := range hc.links {
+		parts := strings.Split(link.CreatedBy, " ")
+		if len(parts) == 2 && parts[0] == "linkerd/cli" {
+			if parts[1] == version.Version {
+				links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
+			} else {
+				errors = append(errors, fmt.Errorf("* %s: CLI version is %s but Link version is %s", link.TargetClusterName, version.Version, parts[1]))
+			}
+		} else {
+			errors = append(errors, fmt.Errorf("* %s: unable to determine version", link.TargetClusterName))
+		}
+	}
+	if len(errors) > 0 {
+		return joinErrors(errors, 2)
+	}
+	if len(links) == 0 {
+		return healthcheck.SkipError{Reason: "no links"}
+	}
+	return healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
 }
 
 func (hc *healthChecker) checkRemoteClusterConnectivity(ctx context.Context) error {
@@ -668,7 +697,7 @@ func (hc *healthChecker) checkIfMirrorServicesHaveEndpoints(ctx context.Context)
 
 func (hc *healthChecker) checkForOrphanedServices(ctx context.Context) error {
 	errors := []error{}
-	selector := fmt.Sprintf("%s, !%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
+	selector := fmt.Sprintf("%s, !%s, %s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel, k8s.RemoteClusterNameLabel)
 	mirrorServices, err := hc.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return err
