@@ -17,19 +17,11 @@ import (
 // in both clusters join a federated service. It creates a vote-bot in the
 // source cluster which sends traffic to the federated service and then checks
 // the logs of the web-svc in both clusters. If it has successfully issued
-// requests, then we'll see log messages indicating that the web-svc can't
-// reach the voting-svc (because it's not running).
+// requests, then we'll see log messages.
 //
 // We verify that the federated service exists and has no endpoints in the
 // source cluster.
 func TestFederatedService(t *testing.T) {
-	if err := TestHelper.SwitchContext(contexts[testutil.TargetContextKey]); err != nil {
-		testutil.AnnotatedFatalf(t,
-			"failed to rebuild helper clientset with new context",
-			"failed to rebuild helper clientset with new context [%s]: %v",
-			contexts[testutil.TargetContextKey], err)
-	}
-
 	ctx := context.Background()
 	// Create emojivoto in target cluster, to be deleted at the end of the test.
 	annotations := map[string]string{

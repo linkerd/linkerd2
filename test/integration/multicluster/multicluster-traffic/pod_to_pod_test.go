@@ -14,8 +14,7 @@ import (
 
 // TestPodToPodTraffic inspects the target cluster's web-svc pod to see if the
 // source cluster's vote-bot has been able to hit it with requests. If it has
-// successfully issued requests, then we'll see log messages indicating that the
-// web-svc can't reach the voting-svc (because it's not running).
+// successfully issued requests, then we'll see log messages.
 //
 // We verify that the service has been mirrored in remote discovery mode by
 // checking that it had no endpoints in the source cluster.
