@@ -1607,6 +1607,9 @@ func SetToServerProtocolExternalWorkload(k8sAPI *k8s.API, address *Address) erro
 func latestUpdated(managedFields []metav1.ManagedFieldsEntry) time.Time {
 	var latest time.Time
 	for _, field := range managedFields {
+		if field.Time == nil {
+			continue
+		}
 		if field.Operation == metav1.ManagedFieldsOperationUpdate {
 			if latest.IsZero() || field.Time.After(latest) {
 				latest = field.Time.Time
