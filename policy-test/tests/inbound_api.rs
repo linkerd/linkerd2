@@ -610,7 +610,7 @@ async fn http_routes_ordered_by_creation() {
         // Creation timestamps in Kubernetes only have second precision, so we
         // must wait a whole second between creating each of these routes in
         // order for them to have different creation timestamps.
-        tokio::time::sleep(time::Duration::from_secs(1)).await;
+        time::sleep(time::Duration::from_secs(1)).await;
         create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "a", "/ready"),
@@ -618,7 +618,7 @@ async fn http_routes_ordered_by_creation() {
         .await;
         next_config(&mut rx).await;
 
-        tokio::time::sleep(time::Duration::from_secs(1)).await;
+        time::sleep(time::Duration::from_secs(1)).await;
         create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "c", "/shutdown"),
@@ -626,7 +626,7 @@ async fn http_routes_ordered_by_creation() {
         .await;
         next_config(&mut rx).await;
 
-        tokio::time::sleep(time::Duration::from_secs(1)).await;
+        time::sleep(time::Duration::from_secs(1)).await;
         create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "b", "/proxy-log-level"),
