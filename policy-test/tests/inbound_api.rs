@@ -1,7 +1,4 @@
-use std::time::Duration;
-
 use futures::prelude::*;
-use k8s_openapi::chrono;
 use kube::ResourceExt;
 use linkerd_policy_controller_core::{Ipv4Net, Ipv6Net};
 use linkerd_policy_controller_k8s_api as k8s;
@@ -613,7 +610,7 @@ async fn http_routes_ordered_by_creation() {
         // Creation timestamps in Kubernetes only have second precision, so we
         // must wait a whole second between creating each of these routes in
         // order for them to have different creation timestamps.
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        tokio::time::sleep(time::Duration::from_secs(1)).await;
         create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "a", "/ready"),
@@ -621,7 +618,7 @@ async fn http_routes_ordered_by_creation() {
         .await;
         next_config(&mut rx).await;
 
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        tokio::time::sleep(time::Duration::from_secs(1)).await;
         create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "c", "/shutdown"),
@@ -629,7 +626,7 @@ async fn http_routes_ordered_by_creation() {
         .await;
         next_config(&mut rx).await;
 
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        tokio::time::sleep(time::Duration::from_secs(1)).await;
         create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "b", "/proxy-log-level"),
@@ -819,7 +816,7 @@ async fn retry_watch_server(
             Ok(rx) => return rx,
             Err(error) => {
                 tracing::error!(?error, ns, pod_name, "failed to watch policy for port 4191");
-                time::sleep(Duration::from_secs(1)).await;
+                time::sleep(time::Duration::from_secs(1)).await;
             }
         }
     }
