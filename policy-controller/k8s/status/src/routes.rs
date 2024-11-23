@@ -18,7 +18,7 @@ pub(crate) mod tls;
 /// namespace. This is something that should be relaxed in the future in the
 /// policy controller's index, and we could then consider consolidating these
 /// types into a single shared lib.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum ParentReference {
     Server(ResourceId),
     Service(ResourceId, Option<u16>),
@@ -26,7 +26,7 @@ pub enum ParentReference {
     UnknownKind,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum BackendReference {
     Service(ResourceId),
     EgressNetwork(ResourceId),

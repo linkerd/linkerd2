@@ -103,7 +103,7 @@ fn container_http_probe_paths(
             match http::Uri::try_from(path) {
                 Ok(uri) => Some((port, uri.path().to_string())),
                 Err(error) => {
-                    tracing::warn!(%error, path, "invalid probe path");
+                    tracing::warn!(%error, path, "Invalid probe path");
                     None
                 }
             }
@@ -161,7 +161,7 @@ impl Settings {
         };
 
         let default_policy = default_policy(anns).unwrap_or_else(|error| {
-            tracing::warn!(%error, "invalid default policy annotation value");
+            tracing::warn!(%error, "Invalid default policy annotation value");
             None
         });
 

@@ -137,7 +137,7 @@ impl Status {
                 let type_ = match condition.type_.as_ref() {
                     "Accepted" => ConditionType::Accepted,
                     condition_type => {
-                        tracing::error!(%status.parent_ref.name, %condition_type, "Unexpected condition type found in parent status");
+                        tracing::warn!(%status.parent_ref.name, %condition_type, "Unexpected condition type found in parent status");
                         return None;
                     }
                 };
@@ -145,7 +145,7 @@ impl Status {
                     "True" => true,
                     "False" => false,
                     condition_status => {
-                        tracing::error!(%status.parent_ref.name, %type_, %condition_status, "Unexpected condition status found in parent status");
+                        tracing::warn!(%status.parent_ref.name, %type_, %condition_status, "Unexpected condition status found in parent status");
                         return None
                     },
                 };

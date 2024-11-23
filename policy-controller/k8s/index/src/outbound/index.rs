@@ -216,21 +216,21 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         let ns = service.namespace().expect("Service must have a namespace");
         tracing::debug!(name, ns, "indexing service");
         let accrual = parse_accrual_config(service.annotations())
-            .map_err(|error| tracing::error!(%error, service=name, namespace=ns, "failed to parse accrual config"))
+            .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse accrual config"))
             .unwrap_or_default();
         let opaque_ports =
             ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
                 .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
 
         let timeouts = parse_timeouts(service.annotations())
-            .map_err(|error| tracing::error!(%error, service=name, namespace=ns, "failed to parse timeouts"))
+            .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse timeouts"))
             .unwrap_or_default();
 
         let http_retry = http::parse_http_retry(service.annotations()).map_err(|error| {
-            tracing::error!(%error, service=name, namespace=ns, "failed to parse http retry")
+            tracing::warn!(%error, service=name, namespace=ns, "Failed to parse http retry")
         }).unwrap_or_default();
         let grpc_retry = grpc::parse_grpc_retry(service.annotations()).map_err(|error| {
-            tracing::error!(%error, service=name, namespace=ns, "failed to parse grpc retry")
+            tracing::warn!(%error, service=name, namespace=ns, "Failed to parse grpc retry")
         }).unwrap_or_default();
 
         if let Some(cluster_ips) = service
@@ -252,7 +252,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                         self.services_by_ip.insert(addr, service_ref);
                     }
                     Err(error) => {
-                        tracing::error!(%error, service=name, cluster_ip, "invalid cluster ip");
+                        tracing::warn!(%error, service=name, cluster_ip, "Invalid cluster ip");
                     }
                 }
             }
@@ -318,7 +318,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
             .expect("EgressNetwork must have a namespace");
         tracing::debug!(name, ns, "indexing EgressNetwork");
         let accrual = parse_accrual_config(egress_network.annotations())
-            .map_err(|error| tracing::error!(%error, service=name, namespace=ns, "failed to parse accrual config"))
+            .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse accrual config"))
             .unwrap_or_default();
         let opaque_ports = ports_annotation(
             egress_network.annotations(),
@@ -327,14 +327,14 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
 
         let timeouts = parse_timeouts(egress_network.annotations())
-            .map_err(|error| tracing::error!(%error, service=name, namespace=ns, "failed to parse timeouts"))
+            .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse timeouts"))
             .unwrap_or_default();
 
         let http_retry = http::parse_http_retry(egress_network.annotations()).map_err(|error| {
-            tracing::error!(%error, service=name, namespace=ns, "failed to parse http retry")
+            tracing::warn!(%error, service=name, namespace=ns, "Failed to parse http retry")
         }).unwrap_or_default();
         let grpc_retry = grpc::parse_grpc_retry(egress_network.annotations()).map_err(|error| {
-            tracing::error!(%error, service=name, namespace=ns, "failed to parse grpc retry")
+            tracing::warn!(%error, service=name, namespace=ns, "Failed to parse grpc retry")
         }).unwrap_or_default();
 
         let egress_net_ref = ResourceRef {
@@ -678,7 +678,7 @@ impl Namespace {
         ) {
             Ok(route) => route,
             Err(error) => {
-                tracing::error!(%error, "failed to convert route");
+                tracing::warn!(%error, "Failed to convert route");
                 return;
             }
         };
@@ -773,7 +773,7 @@ impl Namespace {
         ) {
             Ok(route) => route,
             Err(error) => {
-                tracing::error!(%error, "failed to convert route");
+                tracing::warn!(%error, "Failed to convert route");
                 return;
             }
         };
@@ -868,7 +868,7 @@ impl Namespace {
             match tls::convert_route(&self.namespace, route.clone(), cluster_info, resource_info) {
                 Ok(route) => route,
                 Err(error) => {
-                    tracing::error!(%error, "failed to convert route");
+                    tracing::warn!(%error, "Failed to convert route");
                     return;
                 }
             };
@@ -964,7 +964,7 @@ impl Namespace {
             match tcp::convert_route(&self.namespace, route.clone(), cluster_info, resource_info) {
                 Ok(route) => route,
                 Err(error) => {
-                    tracing::error!(%error, "failed to convert route");
+                    tracing::warn!(%error, "Failed to convert route");
                     return;
                 }
             };

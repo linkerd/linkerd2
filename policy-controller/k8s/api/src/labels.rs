@@ -182,7 +182,7 @@ impl Expression {
             (Operator::Exists, key, None) => labels.contains_key(key),
             (Operator::DoesNotExist, key, None) => !labels.contains_key(key),
             (operator, key, values) => {
-                tracing::warn!(?operator, %key, ?values, "illegal match expression");
+                tracing::warn!(?operator, %key, ?values, "Illegal match expression");
                 false
             }
         }
