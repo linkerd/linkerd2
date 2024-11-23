@@ -22,6 +22,12 @@ import (
 // We verify that the federated service exists and has no endpoints in the
 // source cluster.
 func TestFederatedService(t *testing.T) {
+	if err := TestHelper.SwitchContext(contexts[testutil.TargetContextKey]); err != nil {
+		testutil.AnnotatedFatalf(t,
+			"failed to rebuild helper clientset with new context",
+			"failed to rebuild helper clientset with new context [%s]: %v",
+			contexts[testutil.TargetContextKey], err)
+	}
 	ctx := context.Background()
 	// Create emojivoto in target cluster, to be deleted at the end of the test.
 	annotations := map[string]string{
