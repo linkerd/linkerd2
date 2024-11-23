@@ -9,7 +9,9 @@ pub mod outbound_api;
 pub mod web;
 
 use linkerd_policy_controller_k8s_api::{
-    self as k8s, policy::httproute::ParentReference, ResourceExt,
+    self as k8s,
+    policy::{httproute::ParentReference, EgressNetwork},
+    ResourceExt,
 };
 use maplit::{btreemap, convert_args};
 use tokio::time;
@@ -19,6 +21,12 @@ use tracing::Instrument;
 pub enum LinkerdInject {
     Enabled,
     Disabled,
+}
+
+#[derive(Clone, Debug)]
+pub enum Resource {
+    Service(k8s::Service),
+    EgressNetwork(k8s::policy::EgressNetwork),
 }
 
 /// Creates a cluster-scoped resource.
@@ -237,6 +245,28 @@ pub async fn await_gateway_route_status(
     route_status
 }
 
+// Waits until an EgressNet with the given namespace and name has a status set.
+pub async fn await_egress_net_status(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> k8s::policy::egress_network::EgressNetworkStatus {
+    let egress_net_status = await_condition(
+        client,
+        ns,
+        name,
+        |obj: Option<&k8s::policy::EgressNetwork>| -> bool {
+            obj.and_then(|en| en.status.as_ref()).is_some()
+        },
+    )
+    .await
+    .expect("must fetch route")
+    .status
+    .expect("Egress net must contain a status representation");
+    tracing::trace!(?egress_net_status, name, ns, "got egress net status");
+    egress_net_status
+}
+
 // Waits until an GrpcRoute with the given namespace and name has a status set
 // on it, then returns the generic route status representation.
 pub async fn await_grpc_route_status(
@@ -249,6 +279,52 @@ pub async fn await_grpc_route_status(
         ns,
         name,
         |obj: Option<&k8s::gateway::GrpcRoute>| -> bool {
+            obj.and_then(|route| route.status.as_ref()).is_some()
+        },
+    )
+    .await
+    .expect("must fetch route")
+    .status
+    .expect("route must contain a status representation");
+    tracing::trace!(?route_status, name, ns, "got route status");
+    route_status
+}
+
+// Waits until an TlsRoute with the given namespace and name has a status set
+// on it, then returns the generic route status representation.
+pub async fn await_tls_route_status(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> k8s::gateway::TlsRouteStatus {
+    let route_status = await_condition(
+        client,
+        ns,
+        name,
+        |obj: Option<&k8s::gateway::TlsRoute>| -> bool {
+            obj.and_then(|route| route.status.as_ref()).is_some()
+        },
+    )
+    .await
+    .expect("must fetch route")
+    .status
+    .expect("route must contain a status representation");
+    tracing::trace!(?route_status, name, ns, "got route status");
+    route_status
+}
+
+// Waits until an TcpRoute with the given namespace and name has a status set
+// on it, then returns the generic route status representation.
+pub async fn await_tcp_route_status(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> k8s::gateway::TcpRouteStatus {
+    let route_status = await_condition(
+        client,
+        ns,
+        name,
+        |obj: Option<&k8s::gateway::TcpRoute>| -> bool {
             obj.and_then(|route| route.status.as_ref()).is_some()
         },
     )
@@ -288,6 +364,63 @@ pub async fn logs(client: &kube::Client, ns: &str, pod: &str, container: &str) {
     }
 }
 
+impl Resource {
+    pub fn group(&self) -> String {
+        match self {
+            Self::EgressNetwork(_) => "policy.linkerd.io".to_string(),
+            Self::Service(_) => "core".to_string(),
+        }
+    }
+
+    pub fn kind(&self) -> String {
+        match self {
+            Self::EgressNetwork(_) => "EgressNetwork".to_string(),
+            Self::Service(_) => "Service".to_string(),
+        }
+    }
+
+    pub fn name(&self) -> String {
+        match self {
+            Self::EgressNetwork(e) => e.name_unchecked(),
+            Self::Service(s) => s.name_unchecked(),
+        }
+    }
+
+    pub fn namespace(&self) -> String {
+        match self {
+            Self::EgressNetwork(e) => e.namespace().unwrap(),
+            Self::Service(s) => s.namespace().unwrap(),
+        }
+    }
+
+    pub fn ip(&self) -> String {
+        match self {
+            // For EgressNetwork, we can just return a non-private
+            // IP address as our default cluster setup dictates that
+            // all non-private networks are considered egress. Since
+            // we do not modify this setting in tests for the time being,
+            // returning 1.1.1.1 is fine.
+            Self::EgressNetwork(_) => "1.1.1.1".to_string(),
+            Self::Service(s) => s
+                .spec
+                .as_ref()
+                .expect("Service must have a spec")
+                .cluster_ip
+                .as_ref()
+                .expect("Service must have a cluster ip")
+                .clone(),
+        }
+    }
+}
+
+/// Creates a service resource.
+pub async fn create_parent(client: &kube::Client, parent: Resource) -> Resource {
+    match parent {
+        Resource::Service(svc) => Resource::Service(create(client, svc).await),
+        Resource::EgressNetwork(enet) => Resource::EgressNetwork(create(client, enet).await),
+    }
+}
+
 /// Creates a service resource.
 pub async fn create_service(
     client: &kube::Client,
@@ -301,11 +434,7 @@ pub async fn create_service(
 }
 
 /// Creates an egress network resource.
-pub async fn create_egress_network(
-    client: &kube::Client,
-    ns: &str,
-    name: &str,
-) -> k8s::policy::EgressNetwork {
+pub async fn create_egress_network(client: &kube::Client, ns: &str, name: &str) -> EgressNetwork {
     let en = mk_egress_net(ns, name);
     create(client, en).await
 }
@@ -326,6 +455,22 @@ pub async fn create_opaque_service(
     create(client, svc).await
 }
 
+/// Creates an egress network resource.
+pub async fn create_opaque_egress_network(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+    port: i32,
+) -> k8s::policy::EgressNetwork {
+    let egress = mk_egress_net(ns, name);
+    let egress = annotate_egress_net(
+        egress,
+        std::iter::once(("config.linkerd.io/opaque-ports", port)),
+    );
+
+    create(client, egress).await
+}
+
 /// Creates a service resource with given annotations.
 pub async fn create_annotated_service(
     client: &kube::Client,
@@ -336,6 +481,17 @@ pub async fn create_annotated_service(
 ) -> k8s::Service {
     let svc = annotate_service(mk_service(ns, name, port), annotations);
     create(client, svc).await
+}
+
+/// Creates an egress network resource with given annotations.
+pub async fn create_annotated_egress_network(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+    annotations: std::collections::BTreeMap<String, String>,
+) -> k8s::policy::EgressNetwork {
+    let enet = annotate_egress_net(mk_egress_net(ns, name), annotations);
+    create(client, enet).await
 }
 
 pub fn annotate_service<K, V>(
@@ -352,6 +508,22 @@ where
             .map(|(k, v)| (k.to_string(), v.to_string())),
     );
     svc
+}
+
+pub fn annotate_egress_net<K, V>(
+    mut egress_net: k8s::policy::EgressNetwork,
+    annotations: impl IntoIterator<Item = (K, V)>,
+) -> k8s::policy::EgressNetwork
+where
+    K: ToString,
+    V: ToString,
+{
+    egress_net.annotations_mut().extend(
+        annotations
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+    );
+    egress_net
 }
 
 pub fn mk_service(ns: &str, name: &str, port: i32) -> k8s::Service {
@@ -388,16 +560,17 @@ pub fn mk_egress_net(ns: &str, name: &str) -> k8s::policy::EgressNetwork {
 }
 
 #[track_caller]
-pub fn assert_svc_meta(meta: &Option<grpc::meta::Metadata>, svc: &k8s::Service, port: u16) {
-    tracing::debug!(?meta, ?svc, port, "Asserting service metadata");
+pub fn assert_resource_meta(meta: &Option<grpc::meta::Metadata>, resource: &Resource, port: u16) {
+    println!("meta: {:?}", meta);
+    tracing::debug!(?meta, ?resource, port, "Asserting service metadata");
     assert_eq!(
         meta,
         &Some(grpc::meta::Metadata {
             kind: Some(grpc::meta::metadata::Kind::Resource(grpc::meta::Resource {
-                group: "core".to_string(),
-                kind: "Service".to_string(),
-                name: svc.name_unchecked(),
-                namespace: svc.namespace().unwrap(),
+                group: resource.group(),
+                kind: resource.kind(),
+                name: resource.name(),
+                namespace: resource.namespace(),
                 section: "".to_string(),
                 port: port.into()
             })),

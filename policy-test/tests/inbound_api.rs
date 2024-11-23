@@ -1,13 +1,10 @@
-use std::time::Duration;
-
 use futures::prelude::*;
-use k8s_openapi::chrono;
 use kube::ResourceExt;
 use linkerd_policy_controller_core::{Ipv4Net, Ipv6Net};
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
     assert_default_all_unauthenticated_labels, assert_is_default_all_unauthenticated,
-    assert_protocol_detect, create, create_ready_pod, grpc, with_temp_ns,
+    assert_protocol_detect, await_condition, create, create_ready_pod, grpc, with_temp_ns,
 };
 use maplit::{btreemap, convert_args, hashmap};
 use tokio::time;
@@ -332,7 +329,7 @@ async fn http_local_rate_limit_policy() {
         .await;
 
         // Create a rate-limit policy associated to the server
-        create(
+        let rate_limit = create(
             &client,
             k8s::policy::ratelimit_policy::HttpLocalRateLimitPolicy {
                 metadata: k8s::ObjectMeta {
@@ -356,24 +353,28 @@ async fn http_local_rate_limit_policy() {
                         }],
                     }]),
                 },
-                status: Some(k8s::policy::HttpLocalRateLimitPolicyStatus {
-                    conditions: vec![k8s::Condition {
-                        last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
-                        message: "".to_string(),
-                        observed_generation: None,
-                        reason: "".to_string(),
-                        status: "True".to_string(),
-                        type_: "Accepted".to_string(),
-                    }],
-                    target_ref: k8s::policy::LocalTargetRef {
-                        group: Some("policy.linkerd.io".to_string()),
-                        kind: "Server".to_string(),
-                        name: "linkerd-admin".to_string(),
-                    },
-                }),
+                status: None,
             },
         )
         .await;
+
+        await_condition(
+            &client,
+            &ns,
+            &rate_limit.name_unchecked(),
+            |obj: Option<&k8s::policy::ratelimit_policy::HttpLocalRateLimitPolicy>| {
+                obj.as_ref().map_or(false, |obj| {
+                    obj.status.as_ref().map_or(false, |status| {
+                        status
+                            .conditions
+                            .iter()
+                            .any(|c| c.type_ == "Accepted" && c.status == "True")
+                    })
+                })
+            },
+        )
+        .await
+        .expect("rate limit must get a status");
 
         let client_id = format!("sa-0.{}.serviceaccount.identity.linkerd.cluster.local", ns);
         let ratelimit_overrides = vec![(200, vec![client_id])];
@@ -609,7 +610,7 @@ async fn http_routes_ordered_by_creation() {
         // Creation timestamps in Kubernetes only have second precision, so we
         // must wait a whole second between creating each of these routes in
         // order for them to have different creation timestamps.
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        time::sleep(time::Duration::from_secs(1)).await;
         create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "a", "/ready"),
@@ -617,7 +618,7 @@ async fn http_routes_ordered_by_creation() {
         .await;
         next_config(&mut rx).await;
 
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        time::sleep(time::Duration::from_secs(1)).await;
         create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "c", "/shutdown"),
@@ -625,7 +626,7 @@ async fn http_routes_ordered_by_creation() {
         .await;
         next_config(&mut rx).await;
 
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        time::sleep(time::Duration::from_secs(1)).await;
         create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "b", "/proxy-log-level"),
@@ -815,7 +816,7 @@ async fn retry_watch_server(
             Ok(rx) => return rx,
             Err(error) => {
                 tracing::error!(?error, ns, pod_name, "failed to watch policy for port 4191");
-                time::sleep(Duration::from_secs(1)).await;
+                time::sleep(time::Duration::from_secs(1)).await;
             }
         }
     }

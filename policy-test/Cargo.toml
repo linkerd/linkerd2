@@ -31,7 +31,7 @@ default-features = false
 features = ["client", "openssl-tls", "runtime", "ws"]
 
 [dependencies.linkerd2-proxy-api]
-version = "0.14"
+version = "0.15"
 features = ["inbound", "outbound"]
 
 [dev-dependencies]

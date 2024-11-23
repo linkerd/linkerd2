@@ -1,26 +1,25 @@
-use crate::{assert_svc_meta, grpc};
+use crate::{assert_resource_meta, grpc, Resource};
 use kube::ResourceExt;
-use linkerd_policy_controller_k8s_api as k8s;
 use std::time::Duration;
 use tokio::time;
 
 pub async fn retry_watch_outbound_policy(
     client: &kube::Client,
     ns: &str,
-    svc: &k8s::Service,
+    resource: &Resource,
     port: u16,
 ) -> tonic::Streaming<grpc::outbound::OutboundPolicy> {
     // Port-forward to the control plane and start watching the service's
     // outbound policy.
     let mut policy_api = grpc::OutboundPolicyClient::port_forwarded(client).await;
     loop {
-        match policy_api.watch(ns, svc, port).await {
+        match policy_api.watch_ip(ns, &resource.ip(), port).await {
             Ok(rx) => return rx,
             Err(error) => {
                 tracing::error!(
                     ?error,
                     ns,
-                    svc = svc.name_unchecked(),
+                    resource = resource.name(),
                     "failed to watch outbound policy for port 4191"
                 );
                 time::sleep(Duration::from_secs(1)).await;
@@ -81,6 +80,44 @@ pub fn grpc_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound:
         routes
     } else {
         panic!("proxy protocol must be Grpc; actually got:\n{kind:#?}")
+    }
+}
+
+#[track_caller]
+pub fn tls_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound::TlsRoute] {
+    let kind = config
+        .protocol
+        .as_ref()
+        .expect("must have proxy protocol")
+        .kind
+        .as_ref()
+        .expect("must have kind");
+    if let grpc::outbound::proxy_protocol::Kind::Tls(grpc::outbound::proxy_protocol::Tls {
+        routes,
+    }) = kind
+    {
+        routes
+    } else {
+        panic!("proxy protocol must be Tls; actually got:\n{kind:#?}")
+    }
+}
+
+#[track_caller]
+pub fn tcp_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound::OpaqueRoute] {
+    let kind = config
+        .protocol
+        .as_ref()
+        .expect("must have proxy protocol")
+        .kind
+        .as_ref()
+        .expect("must have kind");
+    if let grpc::outbound::proxy_protocol::Kind::Opaque(grpc::outbound::proxy_protocol::Opaque {
+        routes,
+    }) = kind
+    {
+        routes
+    } else {
+        panic!("proxy protocol must be Opaque; actually got:\n{kind:#?}")
     }
 }
 
@@ -151,6 +188,23 @@ pub fn route_backends_first_available(
 }
 
 #[track_caller]
+pub fn tls_route_backends_first_available(
+    route: &grpc::outbound::TlsRoute,
+) -> &[grpc::outbound::tls_route::RouteBackend] {
+    let kind = assert_singleton(&route.rules)
+        .backends
+        .as_ref()
+        .expect("Rule must have backends")
+        .kind
+        .as_ref()
+        .expect("Backend must have kind");
+    match kind {
+        grpc::outbound::tls_route::distribution::Kind::FirstAvailable(fa) => &fa.backends,
+        _ => panic!("Distribution must be FirstAvailable"),
+    }
+}
+
+#[track_caller]
 pub fn route_backends_random_available(
     route: &grpc::outbound::HttpRoute,
 ) -> &[grpc::outbound::http_route::WeightedRouteBackend] {
@@ -168,7 +222,57 @@ pub fn route_backends_random_available(
 }
 
 #[track_caller]
+pub fn tls_route_backends_random_available(
+    route: &grpc::outbound::TlsRoute,
+) -> &[grpc::outbound::tls_route::WeightedRouteBackend] {
+    let kind = assert_singleton(&route.rules)
+        .backends
+        .as_ref()
+        .expect("Rule must have backends")
+        .kind
+        .as_ref()
+        .expect("Backend must have kind");
+    match kind {
+        grpc::outbound::tls_route::distribution::Kind::RandomAvailable(dist) => &dist.backends,
+        _ => panic!("Distribution must be RandomAvailable"),
+    }
+}
+
+#[track_caller]
+pub fn tcp_route_backends_random_available(
+    route: &grpc::outbound::OpaqueRoute,
+) -> &[grpc::outbound::opaque_route::WeightedRouteBackend] {
+    let kind = assert_singleton(&route.rules)
+        .backends
+        .as_ref()
+        .expect("Rule must have backends")
+        .kind
+        .as_ref()
+        .expect("Backend must have kind");
+    match kind {
+        grpc::outbound::opaque_route::distribution::Kind::RandomAvailable(dist) => &dist.backends,
+        _ => panic!("Distribution must be RandomAvailable"),
+    }
+}
+
+#[track_caller]
 pub fn route_name(route: &grpc::outbound::HttpRoute) -> &str {
+    match route.metadata.as_ref().unwrap().kind.as_ref().unwrap() {
+        grpc::meta::metadata::Kind::Resource(grpc::meta::Resource { ref name, .. }) => name,
+        _ => panic!("route must be a resource kind"),
+    }
+}
+
+#[track_caller]
+pub fn tls_route_name(route: &grpc::outbound::TlsRoute) -> &str {
+    match route.metadata.as_ref().unwrap().kind.as_ref().unwrap() {
+        grpc::meta::metadata::Kind::Resource(grpc::meta::Resource { ref name, .. }) => name,
+        _ => panic!("route must be a resource kind"),
+    }
+}
+
+#[track_caller]
+pub fn tcp_route_name(route: &grpc::outbound::OpaqueRoute) -> &str {
     match route.metadata.as_ref().unwrap().kind.as_ref().unwrap() {
         grpc::meta::metadata::Kind::Resource(grpc::meta::Resource { ref name, .. }) => name,
         _ => panic!("route must be a resource kind"),
@@ -187,7 +291,7 @@ pub fn assert_backend_has_failure_filter(
 }
 
 #[track_caller]
-pub fn assert_route_is_default(route: &grpc::outbound::HttpRoute, svc: &k8s::Service, port: u16) {
+pub fn assert_route_is_default(route: &grpc::outbound::HttpRoute, parent: &Resource, port: u16) {
     let kind = route.metadata.as_ref().unwrap().kind.as_ref().unwrap();
     match kind {
         grpc::meta::metadata::Kind::Default(_) => {}
@@ -198,7 +302,7 @@ pub fn assert_route_is_default(route: &grpc::outbound::HttpRoute, svc: &k8s::Ser
 
     let backends = route_backends_first_available(route);
     let backend = assert_singleton(backends);
-    assert_backend_matches_service(backend, svc, port);
+    assert_backend_matches_parent(backend, parent, port);
 
     let rule = assert_singleton(&route.rules);
     let route_match = assert_singleton(&rule.matches);
@@ -210,35 +314,157 @@ pub fn assert_route_is_default(route: &grpc::outbound::HttpRoute, svc: &k8s::Ser
 }
 
 #[track_caller]
-pub fn assert_backend_matches_service(
+pub fn assert_tls_route_is_default(route: &grpc::outbound::TlsRoute, parent: &Resource, port: u16) {
+    let kind = route.metadata.as_ref().unwrap().kind.as_ref().unwrap();
+    match kind {
+        grpc::meta::metadata::Kind::Default(_) => {}
+        grpc::meta::metadata::Kind::Resource(r) => {
+            panic!("route expected to be default but got resource {r:?}")
+        }
+    }
+
+    let backends = tls_route_backends_first_available(route);
+    let backend = assert_singleton(backends);
+    assert_tls_backend_matches_parent(backend, parent, port);
+    assert_singleton(&route.rules);
+}
+
+#[track_caller]
+pub fn assert_backend_matches_parent(
     backend: &grpc::outbound::http_route::RouteBackend,
-    svc: &k8s::Service,
+    parent: &Resource,
     port: u16,
 ) {
     let backend = backend.backend.as_ref().unwrap();
-    let dst = match backend.kind.as_ref().unwrap() {
-        grpc::outbound::backend::Kind::Balancer(balance) => {
-            let kind = balance.discovery.as_ref().unwrap().kind.as_ref().unwrap();
-            match kind {
-                grpc::outbound::backend::endpoint_discovery::Kind::Dst(dst) => &dst.path,
-            }
-        }
-        grpc::outbound::backend::Kind::Forward(_) => {
-            panic!("default route backend must be Balancer")
-        }
-    };
-    assert_eq!(
-        *dst,
-        format!(
-            "{}.{}.svc.{}:{}",
-            svc.name_unchecked(),
-            svc.namespace().unwrap(),
-            "cluster.local",
-            port
-        )
-    );
 
-    assert_svc_meta(&backend.metadata, svc, port)
+    match parent {
+        Resource::Service(svc) => {
+            let dst = match backend.kind.as_ref().unwrap() {
+                grpc::outbound::backend::Kind::Balancer(balance) => {
+                    let kind = balance.discovery.as_ref().unwrap().kind.as_ref().unwrap();
+                    match kind {
+                        grpc::outbound::backend::endpoint_discovery::Kind::Dst(dst) => &dst.path,
+                    }
+                }
+                grpc::outbound::backend::Kind::Forward(_) => {
+                    panic!("service default route backend must be Balancer")
+                }
+            };
+            assert_eq!(
+                *dst,
+                format!(
+                    "{}.{}.svc.{}:{}",
+                    svc.name_unchecked(),
+                    svc.namespace().unwrap(),
+                    "cluster.local",
+                    port
+                )
+            );
+        }
+
+        Resource::EgressNetwork(_) => {
+            match backend.kind.as_ref().unwrap() {
+                grpc::outbound::backend::Kind::Forward(_) => {}
+                grpc::outbound::backend::Kind::Balancer(_) => {
+                    panic!("egress net default route backend must be Forward")
+                }
+            };
+        }
+    }
+
+    assert_resource_meta(&backend.metadata, parent, port)
+}
+
+#[track_caller]
+pub fn assert_tls_backend_matches_parent(
+    backend: &grpc::outbound::tls_route::RouteBackend,
+    parent: &Resource,
+    port: u16,
+) {
+    let backend = backend.backend.as_ref().unwrap();
+
+    match parent {
+        Resource::Service(svc) => {
+            let dst = match backend.kind.as_ref().unwrap() {
+                grpc::outbound::backend::Kind::Balancer(balance) => {
+                    let kind = balance.discovery.as_ref().unwrap().kind.as_ref().unwrap();
+                    match kind {
+                        grpc::outbound::backend::endpoint_discovery::Kind::Dst(dst) => &dst.path,
+                    }
+                }
+                grpc::outbound::backend::Kind::Forward(_) => {
+                    panic!("service default route backend must be Balancer")
+                }
+            };
+            assert_eq!(
+                *dst,
+                format!(
+                    "{}.{}.svc.{}:{}",
+                    svc.name_unchecked(),
+                    svc.namespace().unwrap(),
+                    "cluster.local",
+                    port
+                )
+            );
+        }
+
+        Resource::EgressNetwork(_) => {
+            match backend.kind.as_ref().unwrap() {
+                grpc::outbound::backend::Kind::Forward(_) => {}
+                grpc::outbound::backend::Kind::Balancer(_) => {
+                    panic!("egress net default route backend must be Forward")
+                }
+            };
+        }
+    }
+
+    assert_resource_meta(&backend.metadata, parent, port)
+}
+
+#[track_caller]
+pub fn assert_tcp_backend_matches_parent(
+    backend: &grpc::outbound::opaque_route::RouteBackend,
+    parent: &Resource,
+    port: u16,
+) {
+    let backend = backend.backend.as_ref().unwrap();
+
+    match parent {
+        Resource::Service(svc) => {
+            let dst = match backend.kind.as_ref().unwrap() {
+                grpc::outbound::backend::Kind::Balancer(balance) => {
+                    let kind = balance.discovery.as_ref().unwrap().kind.as_ref().unwrap();
+                    match kind {
+                        grpc::outbound::backend::endpoint_discovery::Kind::Dst(dst) => &dst.path,
+                    }
+                }
+                grpc::outbound::backend::Kind::Forward(_) => {
+                    panic!("service default route backend must be Balancer")
+                }
+            };
+            assert_eq!(
+                *dst,
+                format!(
+                    "{}.{}.svc.{}:{}",
+                    svc.name_unchecked(),
+                    svc.namespace().unwrap(),
+                    "cluster.local",
+                    port
+                )
+            );
+        }
+
+        Resource::EgressNetwork(_) => {
+            match backend.kind.as_ref().unwrap() {
+                grpc::outbound::backend::Kind::Forward(_) => {}
+                grpc::outbound::backend::Kind::Balancer(_) => {
+                    panic!("egress net default route backend must be Forward")
+                }
+            };
+        }
+    }
+
+    assert_resource_meta(&backend.metadata, parent, port)
 }
 
 #[track_caller]
@@ -248,7 +474,28 @@ pub fn assert_singleton<T>(ts: &[T]) -> &T {
 }
 
 #[track_caller]
+pub fn assert_route_attached<'a, T>(routes: &'a [T], parent: &Resource) -> &'a T {
+    match parent {
+        Resource::EgressNetwork(_) => {
+            assert_eq!(routes.len(), 2);
+            routes.first().unwrap()
+        }
+        Resource::Service(_) => assert_singleton(routes),
+    }
+}
+
+#[track_caller]
 pub fn assert_route_name_eq(route: &grpc::outbound::HttpRoute, name: &str) {
+    assert_name_eq(route.metadata.as_ref().unwrap(), name)
+}
+
+#[track_caller]
+pub fn assert_tls_route_name_eq(route: &grpc::outbound::TlsRoute, name: &str) {
+    assert_name_eq(route.metadata.as_ref().unwrap(), name)
+}
+
+#[track_caller]
+pub fn assert_tcp_route_name_eq(route: &grpc::outbound::OpaqueRoute, name: &str) {
     assert_name_eq(route.metadata.as_ref().unwrap(), name)
 }
 

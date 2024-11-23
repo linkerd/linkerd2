@@ -1,5 +1,5 @@
 use super::{default_balancer_config, default_queue_config};
-use linkerd2_proxy_api::{destination, meta, outbound};
+use linkerd2_proxy_api::{self, destination, meta, outbound};
 use linkerd_policy_controller_core::{
     outbound::{Backend, ParentInfo, TcpRoute, TrafficPolicy},
     routes::GroupKindNamespaceName,
@@ -71,7 +71,7 @@ fn convert_outbound_route(
             outbound::opaque_route::distribution::FirstAvailable {
                 backends: vec![outbound::opaque_route::RouteBackend {
                     backend: Some(backend.clone()),
-                    invalid: None,
+                    filters: Vec::new(),
                 }],
             },
         )
@@ -83,13 +83,10 @@ fn convert_outbound_route(
 
     let rules = vec![outbound::opaque_route::Rule {
         backends: Some(outbound::opaque_route::Distribution { kind: Some(dist) }),
+        filters: Vec::new(),
     }];
 
-    outbound::OpaqueRoute {
-        metadata,
-        rules,
-        error: None,
-    }
+    outbound::OpaqueRoute { metadata, rules }
 }
 
 fn convert_backend(
@@ -116,7 +113,7 @@ fn convert_backend(
                             },
                         )),
                     }),
-                    invalid: None,
+                    filters: Vec::new(),
                 }),
             }
         }
@@ -139,7 +136,7 @@ fn convert_backend(
                         },
                     )),
                 }),
-                invalid: None,
+                filters: Vec::new(),
             }),
         },
         Backend::Service(svc) => invalid_backend(
@@ -173,7 +170,7 @@ fn convert_backend(
                                         },
                                     )),
                                 }),
-                                invalid: None,
+                                filters: Vec::new(),
                             }),
                         }
                     } else {
@@ -226,7 +223,12 @@ fn invalid_backend(
                 queue: Some(default_queue_config()),
                 kind: None,
             }),
-            invalid: Some(outbound::opaque_route::route_backend::Invalid { message }),
+
+            filters: vec![outbound::opaque_route::Filter {
+                kind: Some(outbound::opaque_route::filter::Kind::Invalid(
+                    linkerd2_proxy_api::opaque_route::Invalid { message },
+                )),
+            }],
         }),
     }
 }
@@ -235,12 +237,14 @@ pub(crate) fn default_outbound_egress_route(
     backend: outbound::Backend,
     traffic_policy: &TrafficPolicy,
 ) -> outbound::OpaqueRoute {
-    let (error, name) = match traffic_policy {
-        TrafficPolicy::Allow => (None, "tcp-egress-allow"),
+    let (filters, name) = match traffic_policy {
+        TrafficPolicy::Allow => (Vec::default(), "tcp-egress-allow"),
         TrafficPolicy::Deny => (
-            Some(outbound::opaque_route::RouteError {
-                kind: outbound::opaque_route::route_error::Kind::Forbidden as i32,
-            }),
+            vec![outbound::opaque_route::Filter {
+                kind: Some(outbound::opaque_route::filter::Kind::Forbidden(
+                    linkerd2_proxy_api::opaque_route::Forbidden {},
+                )),
+            }],
             "tcp-egress-deny",
         ),
     };
@@ -254,15 +258,12 @@ pub(crate) fn default_outbound_egress_route(
                 outbound::opaque_route::distribution::FirstAvailable {
                     backends: vec![outbound::opaque_route::RouteBackend {
                         backend: Some(backend),
-                        invalid: None,
+                        filters: Vec::new(),
                     }],
                 },
             )),
         }),
+        filters,
     }];
-    outbound::OpaqueRoute {
-        metadata,
-        rules,
-        error,
-    }
+    outbound::OpaqueRoute { metadata, rules }
 }
