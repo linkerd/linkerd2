@@ -1751,6 +1751,7 @@ spec:
           httpGet:
             path: /live
             port: admin-http
+          initialDelaySeconds: 10
         name: policy
         ports:
         - containerPort: 8090
@@ -1764,7 +1765,6 @@ spec:
           httpGet:
             path: /ready
             port: admin-http
-          initialDelaySeconds: 10
         resources:
         securityContext:
           capabilities:
