@@ -677,6 +677,10 @@ func (hc *healthChecker) checkIfMirrorServicesHaveEndpoints(ctx context.Context)
 		return err
 	}
 	for _, svc := range mirrorServices.Items {
+		if svc.Annotations[k8s.RemoteDiscoveryAnnotation] != "" || svc.Annotations[k8s.LocalDiscoveryAnnotation] != "" {
+			// This is a federated service and does not need to have endpoints.
+			continue
+		}
 		// have to use a new ctx for each call, otherwise we risk reaching the original context deadline
 		ctx, cancel := context.WithTimeout(context.Background(), healthcheck.RequestTimeout)
 		defer cancel()

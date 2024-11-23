@@ -233,6 +233,10 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 		return nil, err
 	}
 
+	if reg := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
+		defaults.LocalServiceMirror.Image.Name = pkgcmd.RegistryOverride(defaults.LocalServiceMirror.Image.Name, reg)
+	}
+
 	defaults.LocalServiceMirror.Image.Version = version.Version
 	defaults.Gateway.Enabled = opts.gateway.Enabled
 	defaults.Gateway.Port = opts.gateway.Port
