@@ -60,7 +60,7 @@ type (
 		LinkerdVersion               string                 `json:"linkerdVersion"`
 		RevisionHistoryLimit         uint                   `json:"revisionHistoryLimit"`
 
-		DestinationController map[string]interface{} `json:"destinationController"`
+		DestinationController *DestinationController `json:"destinationController"`
 		Heartbeat             map[string]interface{} `json:"heartbeat"`
 		SPValidator           map[string]interface{} `json:"spValidator"`
 
@@ -100,6 +100,11 @@ type (
 	// Controller contains the fields to set the controller container
 	Controller struct {
 		PodDisruptionBudget *PodDisruptionBudget `json:"podDisruptionBudget"`
+	}
+
+	DestinationController struct {
+		MeshedHttp2ClientProtobuf map[string]interface{} `json:"meshedHttp2ClientProtobuf"`
+		PodAnnotations            map[string]string      `json:"podAnnotations"`
 	}
 
 	// PodDisruptionBudget contains the fields to set the PDB
@@ -295,10 +300,11 @@ type (
 	// Identity contains the fields to set the identity variables in the proxy
 	// sidecar container
 	Identity struct {
-		ExternalCA                    bool     `json:"externalCA"`
-		ServiceAccountTokenProjection bool     `json:"serviceAccountTokenProjection"`
-		Issuer                        *Issuer  `json:"issuer"`
-		KubeAPI                       *KubeAPI `json:"kubeAPI"`
+		ExternalCA                    bool              `json:"externalCA"`
+		ServiceAccountTokenProjection bool              `json:"serviceAccountTokenProjection"`
+		Issuer                        *Issuer           `json:"issuer"`
+		KubeAPI                       *KubeAPI          `json:"kubeAPI"`
+		PodAnnotations                map[string]string `json:"podAnnotations"`
 
 		AdditionalEnv   []corev1.EnvVar `json:"additionalEnv"`
 		ExperimentalEnv []corev1.EnvVar `json:"experimentalEnv"`
@@ -321,8 +327,9 @@ type (
 	// ProxyInjector configures the proxy-injector webhook
 	ProxyInjector struct {
 		Webhook
-		AdditionalEnv   []corev1.EnvVar `json:"additionalEnv"`
-		ExperimentalEnv []corev1.EnvVar `json:"experimentalEnv"`
+		PodAnnotations  map[string]string `json:"podAnnotations"`
+		AdditionalEnv   []corev1.EnvVar   `json:"additionalEnv"`
+		ExperimentalEnv []corev1.EnvVar   `json:"experimentalEnv"`
 	}
 
 	// Webhook Helm variables for a webhook
