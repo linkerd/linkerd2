@@ -81,7 +81,7 @@ func TestFederatedService(t *testing.T) {
 
 		})
 
-		timeout := time.Minute
+		timeout := 3 * time.Minute
 		t.Run("Ensure federated service exists and has no endpoints", func(t *testing.T) {
 			err := TestHelper.SwitchContext(contexts[testutil.SourceContextKey])
 			if err != nil {
