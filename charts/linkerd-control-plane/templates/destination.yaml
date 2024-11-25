@@ -163,7 +163,7 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/destination-rbac.yaml") . | sha256sum }}
         {{ include "partials.annotations.created-by" . }}
         {{- include "partials.proxy.annotations" . | nindent 8}}
-        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{- with (mergeOverwrite (deepCopy .Values.podAnnotations) .Values.destinationController.podAnnotations) }}{{ toYaml . | trim | nindent 8 }}{{- end }}
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination
