@@ -312,7 +312,7 @@ impl Controller {
     {
         tracing::trace!(?patch);
         let api = k8s_core_api::Api::<K>::namespaced(self.client.clone(), namespace);
-        let patch_params = k8s_core_api::PatchParams::apply(&K::group(&Default::default()));
+        let patch_params = k8s_core_api::PatchParams::apply(POLICY_CONTROLLER_NAME);
         let start = time::Instant::now();
         let result = time::timeout(
             self.patch_timeout,
