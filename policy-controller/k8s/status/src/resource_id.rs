@@ -42,4 +42,11 @@ impl NamespaceGroupKindName {
             }
         }
     }
+
+    pub fn is_a<K>(&self) -> bool
+    where
+        K: Resource<DynamicType = ()>,
+    {
+        self.gkn.group == K::group(&()) && self.gkn.kind == K::kind(&())
+    }
 }
