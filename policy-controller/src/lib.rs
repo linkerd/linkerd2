@@ -94,7 +94,7 @@ impl DiscoverOutboundPolicy<ResourceTarget, OutboundDiscoverTarget> for Outbound
         let rx = match self.0.write().outbound_policy_rx(resource.clone()) {
             Ok(rx) => rx,
             Err(error) => {
-                tracing::error!(%error, "failed to get outbound policy rx");
+                tracing::error!(%error, "Failed to get outbound policy rx");
                 return Ok(None);
             }
         };

@@ -531,40 +531,49 @@ fn default_backend(policy: &OutboundPolicy, original_dst: Option<SocketAddr>) ->
                 },
             )),
         },
+
         ParentInfo::EgressNetwork {
             namespace, name, ..
-        } => match original_dst {
-            Some(original_dst) => outbound::Backend {
-                metadata: Some(Metadata {
-                    kind: Some(metadata::Kind::Resource(api::meta::Resource {
-                        group: "policy.linkerd.io".to_string(),
-                        kind: "EgressNetwork".to_string(),
-                        name,
-                        namespace,
-                        section: Default::default(),
-                        port: u16::from(policy.port).into(),
-                    })),
-                }),
+        } => {
+            debug_assert!(
+                original_dst.is_some(),
+                "Must not serve EgressNetwork for named lookups; IP:PORT required"
+            );
+            let metadata = Some(Metadata {
+                kind: Some(metadata::Kind::Resource(api::meta::Resource {
+                    group: "policy.linkerd.io".to_string(),
+                    kind: "EgressNetwork".to_string(),
+                    name,
+                    namespace,
+                    section: Default::default(),
+                    port: u16::from(policy.port).into(),
+                })),
+            });
+
+            let Some(addr) = original_dst else {
+                tracing::error!(
+                    ?metadata,
+                    "Unexpected state: EgressNetworks should only be returned when lookup is by IP:PORT; synthesizing invalid backend"
+                );
+                return outbound::Backend {
+                    metadata,
+                    queue: None,
+                    kind: None,
+                };
+            };
+
+            outbound::Backend {
+                metadata,
                 queue: Some(default_queue_config()),
                 kind: Some(outbound::backend::Kind::Forward(
                     destination::WeightedAddr {
-                        addr: Some(original_dst.into()),
+                        addr: Some(addr.into()),
                         weight: 1,
                         ..Default::default()
                     },
                 )),
-            },
-            None => {
-                tracing::error!("no original_dst for Egresspolicy");
-                outbound::Backend {
-                    metadata: Some(Metadata {
-                        kind: Some(metadata::Kind::Default("invalid".to_string())),
-                    }),
-                    queue: None,
-                    kind: None,
-                }
             }
-        },
+        }
     }
 }
 
@@ -632,7 +641,7 @@ pub(crate) fn convert_duration(
     duration
         .try_into()
         .map_err(|error| {
-            tracing::error!(%error, "Invalid {name} duration");
+            tracing::warn!(%error, "Invalid {name} duration");
         })
         .ok()
 }

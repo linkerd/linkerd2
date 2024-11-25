@@ -393,7 +393,7 @@ impl Execable {
         let mut stderr_buf = String::new();
         match stderr.read_to_string(&mut stderr_buf).await {
             Ok(_) => tracing::debug!("curl stderr:\n{stderr_buf}"),
-            Err(error) => tracing::warn!("failed to read curl stderr: {error}"),
+            Err(error) => tracing::warn!("Failed to read curl stderr: {error}"),
         }
         Ok(stdout_buf)
     }

@@ -454,11 +454,11 @@ fn convert_to_filter(filter: Filter) -> outbound::grpc_route::Filter {
                 convert_request_header_modifier_filter(filter),
             )),
             Filter::RequestRedirect(filter) => {
-                tracing::warn!(filter = ?filter, "declining to convert invalid filter type for GrpcRoute");
+                tracing::warn!(filter = ?filter, "Declining to convert invalid filter type for GrpcRoute");
                 None
             }
             Filter::ResponseHeaderModifier(filter) => {
-                tracing::warn!(filter = ?filter, "declining to convert invalid filter type for GrpcRoute");
+                tracing::warn!(filter = ?filter, "Declining to convert invalid filter type for GrpcRoute");
                 None
             }
         },

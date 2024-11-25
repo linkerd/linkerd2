@@ -360,7 +360,7 @@ async fn main() -> Result<()> {
     // Spawn the status Controller reconciliation.
     tokio::spawn(
         status::Index::run(status_index.clone(), RECONCILIATION_PERIOD)
-            .instrument(info_span!("status::Index")),
+            .instrument(info_span!("status_index")),
     );
 
     // Run the gRPC server, serving results by looking up against the index handle.
@@ -386,7 +386,7 @@ async fn main() -> Result<()> {
     tokio::spawn(
         status_controller
             .run()
-            .instrument(info_span!("status::Controller")),
+            .instrument(info_span!("status_controller")),
     );
 
     let client = runtime.client();
@@ -495,10 +495,10 @@ async fn init_lease(client: Client, ns: &str, deployment_name: &str) -> Result<L
         )
         .await
     {
-        Ok(lease) => tracing::info!(?lease, "created Lease resource"),
-        Err(k8s::Error::Api(_)) => tracing::info!("Lease already exists, no need to create it"),
+        Ok(lease) => tracing::info!(?lease, "Created Lease resource"),
+        Err(k8s::Error::Api(_)) => tracing::debug!("Lease already exists, no need to create it"),
         Err(error) => {
-            tracing::error!(%error, "error creating Lease resource");
+            tracing::error!(%error, "Failed to create Lease resource");
             return Err(error.into());
         }
     };

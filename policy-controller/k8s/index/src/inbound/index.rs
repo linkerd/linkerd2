@@ -478,7 +478,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
             Ok(None) => {}
             Ok(Some(pod)) => pod.reindex_servers(&ns.policy, &self.authentications),
             Err(error) => {
-                tracing::error!(%error, "Illegal pod update");
+                tracing::warn!(%error, "Illegal pod update");
             }
         }
     }
@@ -523,7 +523,7 @@ impl kubert::index::IndexNamespacedResource<k8s::external_workload::ExternalWork
             // Update, so re-index
             Ok(Some(workload)) => workload.reindex_servers(&ns.policy, &self.authentications),
             Err(error) => {
-                tracing::error!(%error, "Illegal external workload update");
+                tracing::warn!(%error, "Illegal external workload update");
             }
         }
     }
@@ -626,7 +626,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
             Ok(meta) => self.ns_or_default_with_reindex(ns, move |ns| {
                 ns.policy.update_server_authz(name, meta)
             }),
-            Err(error) => tracing::error!(%error, "Illegal server authorization update"),
+            Err(error) => tracing::warn!(%error, "Illegal server authorization update"),
         }
     }
 
@@ -660,7 +660,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
                     .added
                     .push((name, saz)),
                 Err(error) => {
-                    tracing::error!(ns = %namespace, %name, %error, "Illegal server authorization update")
+                    tracing::warn!(ns = %namespace, %name, %error, "Illegal server authorization update")
                 }
             }
         }
@@ -746,7 +746,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> fo
                     .added
                     .push((name, spec)),
                 Err(error) => {
-                    tracing::error!(ns = %namespace, %name, %error, "Illegal server authorization update")
+                    tracing::warn!(ns = %namespace, %name, %error, "Illegal server authorization update")
                 }
             }
         }
@@ -985,7 +985,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpLocalRateLimitPolic
                     .added
                     .push((name, spec)),
                 Err(error) => {
-                    tracing::error!(ns = %namespace, %name, %error, "Illegal server ratelimit update")
+                    tracing::warn!(ns = %namespace, %name, %error, "Illegal server ratelimit update")
                 }
             }
         }
