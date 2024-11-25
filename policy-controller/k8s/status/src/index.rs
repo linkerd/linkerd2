@@ -60,9 +60,6 @@ pub struct Controller {
     updates: mpsc::Receiver<Update>,
     patch_timeout: Duration,
 
-    /// True if this policy controller is the leader — false otherwise.
-    leader: bool,
-
     metrics: ControllerMetrics,
 }
 
@@ -236,7 +233,6 @@ impl Controller {
             name,
             updates,
             patch_timeout,
-            leader: false,
             metrics,
         }
     }
@@ -250,17 +246,20 @@ impl Controller {
         // now the leader. If so, we should apply the patches received;
         // otherwise, we should drain the updates queue but not apply any
         // patches since another policy controller is responsible for that.
+        let mut was_leader = false;
         loop {
+            // Refresh the state of the lease on each iteration to ensure we're
+            // checking expiration.
+            let is_leader = self.claims.borrow_and_update().is_current_for(&self.name);
+            if was_leader != is_leader {
+                tracing::info!(leader=%is_leader, "Status controller leadership change");
+            }
+            was_leader = is_leader;
+
             tokio::select! {
                 biased;
                 res = self.claims.changed() => {
                     res.expect("Claims watch must not be dropped");
-                    let claim = self.claims.borrow_and_update();
-                    let was_leader = self.leader;
-                    self.leader = claim.is_current_for(&self.name);
-                    if was_leader != self.leader {
-                        tracing::info!(leader=%self.leader, "Status controller");
-                    }
                 }
 
                 Some(Update { id, patch}) = self.updates.recv() => {
@@ -268,7 +267,7 @@ impl Controller {
                     // If this policy controller is not the leader, it should
                     // process through the updates queue but not actually patch
                     // any resources.
-                    if self.leader {
+                    if is_leader {
                         if id.gkn.group == linkerd_k8s_api::HttpRoute::group(&()) && id.gkn.kind == linkerd_k8s_api::HttpRoute::kind(&()){
                             self.patch::<linkerd_k8s_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.gkn.group == k8s_gateway_api::HttpRoute::group(&()) && id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&()) {
