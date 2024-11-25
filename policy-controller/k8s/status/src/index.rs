@@ -268,19 +268,19 @@ impl Controller {
                     // process through the updates queue but not actually patch
                     // any resources.
                     if is_leader {
-                        if id.gkn.group == linkerd_k8s_api::HttpRoute::group(&()) && id.gkn.kind == linkerd_k8s_api::HttpRoute::kind(&()){
+                        if id.is_a::<linkerd_k8s_api::HttpRoute>() {
                             self.patch::<linkerd_k8s_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == k8s_gateway_api::HttpRoute::group(&()) && id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&()) {
+                        } else if id.is_a::<k8s_gateway_api::HttpRoute>() {
                             self.patch::<k8s_gateway_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == k8s_gateway_api::GrpcRoute::group(&()) && id.gkn.kind == k8s_gateway_api::GrpcRoute::kind(&()) {
+                        } else if id.is_a::<k8s_gateway_api::GrpcRoute>() {
                             self.patch::<k8s_gateway_api::GrpcRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == k8s_gateway_api::TcpRoute::group(&()) && id.gkn.kind == k8s_gateway_api::TcpRoute::kind(&()) {
+                        } else if id.is_a::<k8s_gateway_api::TcpRoute>() {
                             self.patch::<k8s_gateway_api::TcpRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == k8s_gateway_api::TlsRoute::group(&()) && id.gkn.kind == k8s_gateway_api::TlsRoute::kind(&()) {
+                        } else if id.is_a::<k8s_gateway_api::TlsRoute>() {
                             self.patch::<k8s_gateway_api::TlsRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == linkerd_k8s_api::HttpLocalRateLimitPolicy::group(&()) && id.gkn.kind == linkerd_k8s_api::HttpLocalRateLimitPolicy::kind(&()) {
+                        } else if id.is_a::<linkerd_k8s_api::HttpLocalRateLimitPolicy>() {
                             self.patch::<linkerd_k8s_api::HttpLocalRateLimitPolicy>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == linkerd_k8s_api::EgressNetwork::group(&()) && id.gkn.kind == linkerd_k8s_api::EgressNetwork::kind(&()) {
+                        } else if id.is_a::<linkerd_k8s_api::EgressNetwork>() {
                             self.patch::<linkerd_k8s_api::EgressNetwork>(&id.gkn.name, &id.namespace, patch).await;
                         }
                     } else {
