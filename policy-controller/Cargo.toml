@@ -17,7 +17,7 @@ anyhow = "1"
 async-trait = "0.1"
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
-k8s-openapi = { version = "0.20", features = ["v1_22"] }
+k8s-openapi = { workspace = true }
 hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
 ipnet = { version = "2", default-features = false }
 linkerd-policy-controller-core = { path = "./core" }
@@ -41,12 +41,12 @@ default-features = false
 features = ["derive", "env", "std"]
 
 [dependencies.kube]
-version = "0.87.1"
+workspace = true
 default-features = false
 features = ["admission", "derive"]
 
 [dependencies.kubert]
-version = "0.21.2"
+workspace = true
 default-features = false
 features = [
     "clap",

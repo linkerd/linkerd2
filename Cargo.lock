@@ -1080,9 +1080,9 @@ dependencies = [
 
 [[package]]
 name = "kubert"
-version = "0.21.2"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "023388cc940f58816aa0d758a3fd4c4b837474ccd356803b7ac738b8a2f26a66"
+checksum = "3ff4135c85607c3733cd52e3098df704994980a91cb14afabd967a60cb167433"
 dependencies = [
  "ahash",
  "backoff",
