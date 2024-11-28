@@ -4,11 +4,11 @@ use futures::prelude::*;
 use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
-    assert_default_accrual_backoff, assert_resource_meta, await_egress_net_status,
-    await_route_status, create, create_annotated_egress_network, create_annotated_service,
-    create_cluster_scoped, create_egress_network, create_opaque_egress_network,
-    create_opaque_service, create_service, delete_cluster_scoped, grpc, mk_egress_net, mk_service,
-    outbound_api::*, update, with_temp_ns, Resource,
+    assert_default_accrual_backoff, assert_resource_meta, assert_status_accepted,
+    await_egress_net_status, await_route_status, create, create_annotated_egress_network,
+    create_annotated_service, create_cluster_scoped, create_egress_network,
+    create_opaque_egress_network, create_opaque_service, create_service, delete_cluster_scoped,
+    grpc, mk_egress_net, mk_service, outbound_api::*, update, with_temp_ns, Resource,
 };
 use maplit::{btreemap, convert_args};
 
@@ -49,7 +49,8 @@ async fn egress_net_with_no_http_routes() {
     with_temp_ns(|client, ns| async move {
         // Create an egress net
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_with_no_http_routes(Resource::EgressNetwork(egress), &client, &ns).await;
     })
@@ -71,7 +72,8 @@ async fn egress_net_with_http_route_without_rules() {
     with_temp_ns(|client, ns| async move {
         // Create an egress net
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_with_http_route_without_rules(Resource::EgressNetwork(egress), &client, &ns).await;
     })
@@ -93,7 +95,8 @@ async fn egress_net_with_http_routes_without_backends() {
     with_temp_ns(|client, ns| async move {
         // Create an egress net
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_with_http_routes_without_backends(Resource::EgressNetwork(egress), &client, &ns)
             .await;
@@ -123,7 +126,8 @@ async fn egress_net_with_http_routes_with_backend() {
     with_temp_ns(|client, ns| async move {
         // Create a service
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_with_http_routes_with_backend(
             Resource::EgressNetwork(egress.clone()),
@@ -234,7 +238,8 @@ async fn egress_net_with_http_routes_with_invalid_backend() {
     with_temp_ns(|client, ns| async move {
         // Create an egress network
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         let backend = mk_egress_net(&ns, "invalid");
 
@@ -268,7 +273,8 @@ async fn egress_net_with_multiple_http_routes() {
     with_temp_ns(|client, ns| async move {
         // Create an egress net
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_with_multiple_http_routes(Resource::EgressNetwork(egress), &client, &ns).await;
     })
@@ -343,7 +349,8 @@ async fn egress_net_with_consecutive_failure_accrual() {
             ]),
         )
         .await;
-        await_egress_net_status(&client, &ns, "consecutive-accrual-egress").await;
+        let status = await_egress_net_status(&client, &ns, "consecutive-accrual-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_with_consecutive_failure_accrual(Resource::EgressNetwork(egress), &client, &ns)
             .await;
@@ -459,7 +466,8 @@ async fn egress_net_with_consecutive_failure_accrual_defaults_no_config() {
             )]),
         )
         .await;
-        await_egress_net_status(&client, &ns, "default-accrual-egress").await;
+        let status = await_egress_net_status(&client, &ns, "default-accrual-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_with_consecutive_failure_accrual_defaults_no_config(
             Resource::EgressNetwork(egress_no_config),
@@ -492,7 +500,8 @@ async fn egress_net_with_consecutive_failure_accrual_defaults_max_fails() {
             ]),
         )
         .await;
-        await_egress_net_status(&client, &ns, "no-backoff-egress").await;
+        let status = await_egress_net_status(&client, &ns, "no-backoff-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_with_consecutive_failure_accrual_defaults_max_fails(
             Resource::EgressNetwork(egress_max_fails),
@@ -525,7 +534,8 @@ async fn egress_net_with_consecutive_failure_accrual_defaults_jitter() {
             ]),
         )
         .await;
-        await_egress_net_status(&client, &ns, "only-jitter-egress").await;
+        let status = await_egress_net_status(&client, &ns, "only-jitter-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_with_consecutive_failure_accrual_defaults_max_jitter(
             Resource::EgressNetwork(egress_jitter),
@@ -573,7 +583,8 @@ async fn egress_net_with_default_failure_accrual() {
     with_temp_ns(|client, ns| async move {
         // Default config for EgressNetwork, no failure accrual
         let egress_default = create_egress_network(&client, &ns, "default-failure-accrual").await;
-        await_egress_net_status(&client, &ns, "default-failure-accrual").await;
+        let status = await_egress_net_status(&client, &ns, "default-failure-accrual").await;
+        assert_status_accepted(status.conditions);
 
         // Create EgressNetwork with consecutive failure accrual config for
         // max_failures but no mode
@@ -587,7 +598,8 @@ async fn egress_net_with_default_failure_accrual() {
             )]),
         )
         .await;
-        await_egress_net_status(&client, &ns, "default-max-failure-egress").await;
+        let status = await_egress_net_status(&client, &ns, "default-max-failure-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_with_default_failure_accrual(
             Resource::EgressNetwork(egress_default),
@@ -643,7 +655,8 @@ async fn route_with_filters_egress_net() {
     with_temp_ns(|client, ns| async move {
         // Create an egress net
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         route_with_filters(
             Resource::EgressNetwork(egress.clone()),
@@ -678,7 +691,8 @@ async fn backend_with_filters_egress_net() {
     with_temp_ns(|client, ns| async move {
         // Create an egress net
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         backend_with_filters(
             Resource::EgressNetwork(egress.clone()),
@@ -988,7 +1002,8 @@ async fn http_route_retries_and_timeouts_egress_net() {
     with_temp_ns(|client, ns| async move {
         // Create an egress network
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         http_route_retries_and_timeouts(Resource::EgressNetwork(egress), &client, &ns).await;
     })
@@ -1023,7 +1038,8 @@ async fn egress_net_retries_and_timeouts() {
             .annotations_mut()
             .insert("timeout.linkerd.io/response".to_string(), "10s".to_string());
         let egress = Resource::EgressNetwork(create(&client, egress).await);
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         retries_and_timeouts(egress, &client, &ns).await;
     })
@@ -1045,7 +1061,8 @@ async fn egress_net_http_route_reattachment() {
     with_temp_ns(|client, ns| async move {
         // Create a egress net
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         http_route_reattachment(Resource::EgressNetwork(egress), &client, &ns).await;
     })

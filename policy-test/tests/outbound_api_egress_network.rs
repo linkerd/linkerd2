@@ -1,14 +1,16 @@
 use futures::prelude::*;
 use linkerd2_proxy_api::meta;
 use linkerd_policy_test::{
-    await_egress_net_status, create_egress_network, delete, grpc, with_temp_ns,
+    assert_status_accepted, await_egress_net_status, create_egress_network, delete, grpc,
+    with_temp_ns,
 };
 
 #[tokio::test(flavor = "current_thread")]
 async fn egress_switches_to_fallback() {
     with_temp_ns(|client, ns| async move {
         let egress_net = create_egress_network(&client, &ns, "egress-net").await;
-        await_egress_net_status(&client, &ns, "egress-net").await;
+        let status = await_egress_net_status(&client, &ns, "egress-net").await;
+        assert_status_accepted(status.conditions);
 
         let mut policy_api = grpc::OutboundPolicyClient::port_forwarded(&client).await;
         let mut rsp = policy_api.watch_ip(&ns, "1.1.1.1", 80).await.unwrap();
@@ -58,7 +60,8 @@ async fn fallback_switches_to_egress() {
         assert_eq!(meta, expected_meta);
 
         let _egress_net = create_egress_network(&client, &ns, "egress-net").await;
-        await_egress_net_status(&client, &ns, "egress-net").await;
+        let status = await_egress_net_status(&client, &ns, "egress-net").await;
+        assert_status_accepted(status.conditions);
 
         // stream should fall apart now
         assert!(rsp.next().await.is_none());

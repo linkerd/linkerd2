@@ -1,9 +1,9 @@
 use k8s::policy::TrafficPolicy;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
-    await_condition, await_egress_net_status, await_gateway_route_status, await_tcp_route_status,
-    await_tls_route_status, create, create_ready_pod, curl, egress_network_traffic_policy_is,
-    endpoints_ready, update, web, with_temp_ns, LinkerdInject,
+    assert_status_accepted, await_condition, await_egress_net_status, await_gateway_route_status,
+    await_tcp_route_status, await_tls_route_status, create, create_ready_pod, curl,
+    egress_network_traffic_policy_is, endpoints_ready, update, web, with_temp_ns, LinkerdInject,
 };
 
 #[tokio::test(flavor = "current_thread")]
@@ -25,7 +25,8 @@ async fn default_traffic_policy_http() {
             },
         )
         .await;
-        await_egress_net_status(&client, &ns, "egress").await;
+        let status = await_egress_net_status(&client, &ns, "egress").await;
+        assert_status_accepted(status.conditions);
 
         let curl = curl::Runner::init(&client, &ns).await;
         let allowed = curl
@@ -83,7 +84,8 @@ async fn default_traffic_policy_opaque() {
             },
         )
         .await;
-        await_egress_net_status(&client, &ns, "egress").await;
+        let status = await_egress_net_status(&client, &ns, "egress").await;
+        assert_status_accepted(status.conditions);
 
         let curl = curl::Runner::init(&client, &ns).await;
         let allowed = curl
@@ -141,7 +143,8 @@ async fn explicit_allow_http_route() {
             },
         )
         .await;
-        await_egress_net_status(&client, &ns, "egress").await;
+        let status = await_egress_net_status(&client, &ns, "egress").await;
+        assert_status_accepted(status.conditions);
 
         let curl = curl::Runner::init(&client, &ns).await;
         let not_allowed_get = curl
@@ -239,7 +242,8 @@ async fn explicit_allow_tls_route() {
             },
         )
         .await;
-        await_egress_net_status(&client, &ns, "egress").await;
+        let status = await_egress_net_status(&client, &ns, "egress").await;
+        assert_status_accepted(status.conditions);
 
         let curl = curl::Runner::init(&client, &ns).await;
         let not_allowed_httpbin = curl
@@ -345,7 +349,8 @@ async fn explicit_allow_tcp_route() {
             },
         )
         .await;
-        await_egress_net_status(&client, &ns, "egress").await;
+        let status = await_egress_net_status(&client, &ns, "egress").await;
+        assert_status_accepted(status.conditions);
 
         let curl = curl::Runner::init(&client, &ns).await;
         let not_allowed_httpbin = curl
@@ -450,7 +455,8 @@ async fn routing_back_to_cluster_http_route() {
             },
         )
         .await;
-        await_egress_net_status(&client, &ns, "egress").await;
+        let status = await_egress_net_status(&client, &ns, "egress").await;
+        assert_status_accepted(status.conditions);
 
         // Create the web pod and wait for it to be ready.
         tokio::join!(
@@ -556,7 +562,8 @@ async fn routing_back_to_cluster_tls_route() {
             },
         )
         .await;
-        await_egress_net_status(&client, &ns, "egress").await;
+        let status = await_egress_net_status(&client, &ns, "egress").await;
+        assert_status_accepted(status.conditions);
 
         // Create the web pod and wait for it to be ready.
         tokio::join!(
@@ -649,7 +656,8 @@ async fn routing_back_to_cluster_tcp_route() {
             },
         )
         .await;
-        await_egress_net_status(&client, &ns, "egress").await;
+        let status = await_egress_net_status(&client, &ns, "egress").await;
+        assert_status_accepted(status.conditions);
 
         // Create the web pod and wait for it to be ready.
         tokio::join!(
