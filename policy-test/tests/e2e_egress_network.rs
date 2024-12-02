@@ -1,15 +1,14 @@
-use k8s::policy::TrafficPolicy;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
     assert_status_accepted, await_condition, await_egress_net_status, await_gateway_route_status,
     await_tcp_route_status, await_tls_route_status, create, create_ready_pod, curl,
-    egress_network_traffic_policy_is, endpoints_ready, update, web, with_temp_ns, LinkerdInject,
+    endpoints_ready, web, with_temp_ns, LinkerdInject,
 };
 
 #[tokio::test(flavor = "current_thread")]
-async fn default_traffic_policy_http() {
+async fn default_traffic_policy_http_allow() {
     with_temp_ns(|client, ns| async move {
-        let mut egress = create(
+        create(
             &client,
             k8s::policy::EgressNetwork {
                 metadata: k8s::ObjectMeta {
@@ -32,29 +31,44 @@ async fn default_traffic_policy_http() {
         let allowed = curl
             .run(
                 "curl-allowed",
-                "http://httpbin.org/get",
+                "http://postman-echo.com/get",
                 LinkerdInject::Enabled,
             )
             .await;
 
         let allowed_status = allowed.http_status_code().await;
         assert_eq!(allowed_status, 200, "traffic should be allowed");
+    })
+    .await;
+}
 
-        // now modify the default traffic policy
-        egress.spec.traffic_policy = k8s::policy::TrafficPolicy::Deny;
-        update(&client, egress).await;
-        await_condition(
+#[tokio::test(flavor = "current_thread")]
+async fn default_traffic_policy_http_deny() {
+    with_temp_ns(|client, ns| async move {
+        create(
             &client,
-            &ns,
-            "egress",
-            egress_network_traffic_policy_is(TrafficPolicy::Deny),
+            k8s::policy::EgressNetwork {
+                metadata: k8s::ObjectMeta {
+                    namespace: Some(ns.clone()),
+                    name: Some("egress".to_string()),
+                    ..Default::default()
+                },
+                spec: k8s::policy::EgressNetworkSpec {
+                    traffic_policy: k8s::policy::TrafficPolicy::Deny,
+                    networks: None,
+                },
+                status: None,
+            },
         )
         .await;
+        let status = await_egress_net_status(&client, &ns, "egress").await;
+        assert_status_accepted(status.conditions);
 
+        let curl = curl::Runner::init(&client, &ns).await;
         let not_allowed = curl
             .run(
                 "curl-not-allowed",
-                "http://httpbin.org/get",
+                "http://postman-echo.com/get",
                 LinkerdInject::Enabled,
             )
             .await;
@@ -66,9 +80,9 @@ async fn default_traffic_policy_http() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn default_traffic_policy_opaque() {
+async fn default_traffic_policy_opaque_allow() {
     with_temp_ns(|client, ns| async move {
-        let mut egress = create(
+        create(
             &client,
             k8s::policy::EgressNetwork {
                 metadata: k8s::ObjectMeta {
@@ -91,29 +105,44 @@ async fn default_traffic_policy_opaque() {
         let allowed = curl
             .run(
                 "curl-allowed",
-                "https://httpbin.org/get",
+                "https://postman-echo.com/get",
                 LinkerdInject::Enabled,
             )
             .await;
 
         let allowed_status = allowed.http_status_code().await;
         assert_eq!(allowed_status, 200, "traffic should be allowed");
+    })
+    .await;
+}
 
-        // now modify the default traffic policy
-        egress.spec.traffic_policy = k8s::policy::TrafficPolicy::Deny;
-        update(&client, egress).await;
-        await_condition(
+#[tokio::test(flavor = "current_thread")]
+async fn default_traffic_policy_opaque_deny() {
+    with_temp_ns(|client, ns| async move {
+        create(
             &client,
-            &ns,
-            "egress",
-            egress_network_traffic_policy_is(TrafficPolicy::Deny),
+            k8s::policy::EgressNetwork {
+                metadata: k8s::ObjectMeta {
+                    namespace: Some(ns.clone()),
+                    name: Some("egress".to_string()),
+                    ..Default::default()
+                },
+                spec: k8s::policy::EgressNetworkSpec {
+                    traffic_policy: k8s::policy::TrafficPolicy::Deny,
+                    networks: None,
+                },
+                status: None,
+            },
         )
         .await;
+        let status = await_egress_net_status(&client, &ns, "egress").await;
+        assert_status_accepted(status.conditions);
 
+        let curl = curl::Runner::init(&client, &ns).await;
         let not_allowed = curl
             .run(
                 "curl-not-allowed",
-                "https://httpbin.org/get",
+                "https://postman-echo.com/get",
                 LinkerdInject::Enabled,
             )
             .await;
@@ -150,7 +179,7 @@ async fn explicit_allow_http_route() {
         let not_allowed_get = curl
             .run(
                 "curl-not-allowed-get",
-                "http://httpbin.org/get",
+                "http://postman-echo.com/get",
                 LinkerdInject::Enabled,
             )
             .await;
@@ -200,7 +229,7 @@ async fn explicit_allow_http_route() {
         let allowed_get = curl
             .run(
                 "curl-allowed-get",
-                "http://httpbin.org/get",
+                "http://postman-echo.com/get",
                 LinkerdInject::Enabled,
             )
             .await;
@@ -212,7 +241,7 @@ async fn explicit_allow_http_route() {
         let not_allowed_ip = curl
             .run(
                 "curl-not-allowed-ip",
-                "http://httpbin.org/ip",
+                "http://postman-echo.com/ip",
                 LinkerdInject::Enabled,
             )
             .await;
@@ -246,17 +275,17 @@ async fn explicit_allow_tls_route() {
         assert_status_accepted(status.conditions);
 
         let curl = curl::Runner::init(&client, &ns).await;
-        let not_allowed_httpbin = curl
+        let not_allowed_external = curl
             .run(
-                "not-allowed-httpbin",
-                "https://httpbin.org/get",
+                "not-allowed-external",
+                "https://postman-echo.com/get",
                 LinkerdInject::Enabled,
             )
             .await;
 
-        let not_allowed_httpbin_exit_code = not_allowed_httpbin.exit_code().await;
+        let not_allowed_external_exit_code = not_allowed_external.exit_code().await;
         assert_ne!(
-            not_allowed_httpbin_exit_code, 0,
+            not_allowed_external_exit_code, 0,
             "traffic should be blocked"
         );
 
@@ -280,7 +309,7 @@ async fn explicit_allow_tls_route() {
                             section_name: None,
                         }]),
                     },
-                    hostnames: Some(vec!["httpbin.org".to_string()]),
+                    hostnames: Some(vec!["postman-echo.com".to_string()]),
                     rules: vec![k8s_gateway_api::TlsRouteRule {
                         backend_refs: vec![k8s_gateway_api::BackendRef {
                             weight: None,
@@ -300,17 +329,17 @@ async fn explicit_allow_tls_route() {
         .await;
         await_tls_route_status(&client, &ns, "tls-route").await;
 
-        // traffic should be allowed for httpbin
-        let allowed_httpbin = curl
+        // External traffic should be allowed.
+        let allowed_external = curl
             .run(
-                "allowed-httpbin",
-                "https://httpbin.org/get",
+                "allowed-external",
+                "https://postman-echo.com/get",
                 LinkerdInject::Enabled,
             )
             .await;
 
-        let allowed_httpbin_status = allowed_httpbin.http_status_code().await;
-        assert_eq!(allowed_httpbin_status, 200, "traffic should be allowed");
+        let allowed_external_status = allowed_external.http_status_code().await;
+        assert_eq!(allowed_external_status, 200, "traffic should be allowed");
 
         // traffic should not be allowed for google.com
         let not_allowed_google = curl
@@ -353,17 +382,17 @@ async fn explicit_allow_tcp_route() {
         assert_status_accepted(status.conditions);
 
         let curl = curl::Runner::init(&client, &ns).await;
-        let not_allowed_httpbin = curl
+        let not_allowed_external = curl
             .run(
-                "not-allowed-httpbin",
-                "https://httpbin.org/get",
+                "not-allowed-external",
+                "https://postman-echo.com/get",
                 LinkerdInject::Enabled,
             )
             .await;
 
-        let not_allowed_httpbin_exit_code = not_allowed_httpbin.exit_code().await;
+        let not_allowed_external_exit_code = not_allowed_external.exit_code().await;
         assert_ne!(
-            not_allowed_httpbin_exit_code, 0,
+            not_allowed_external_exit_code, 0,
             "traffic should be blocked"
         );
 
@@ -406,23 +435,23 @@ async fn explicit_allow_tcp_route() {
         .await;
         await_tcp_route_status(&client, &ns, "tcp-route").await;
 
-        // traffic should be allowed for httpbin on 443
-        let allowed_httpbin = curl
+        // External traffic should be allowed on 443.
+        let allowed_external = curl
             .run(
-                "allowed-httpbin",
-                "https://httpbin.org/get",
+                "allowed-external",
+                "https://postman-echo.com/get",
                 LinkerdInject::Enabled,
             )
             .await;
 
-        let allowed_httpbin_status = allowed_httpbin.http_status_code().await;
-        assert_eq!(allowed_httpbin_status, 200, "traffic should be allowed");
+        let allowed_external_status = allowed_external.http_status_code().await;
+        assert_eq!(allowed_external_status, 200, "traffic should be allowed");
 
-        // traffic should not be allowed for httpbin on 80
+        // External traffic should not be allowed on 80.
         let not_allowed_google = curl
             .run(
                 "curl-not-allowed-google",
-                "http://google.com:80/",
+                "http://postman-echo.com/get",
                 LinkerdInject::Enabled,
             )
             .await;
@@ -488,7 +517,7 @@ async fn routing_back_to_cluster_http_route() {
                             section_name: None,
                         }]),
                     },
-                    hostnames: Some(vec!["httpbin.org".to_string()]),
+                    hostnames: Some(vec!["postman-echo.com".to_string()]),
                     rules: Some(vec![k8s::gateway::HttpRouteRule {
                         matches: Some(vec![k8s_gateway_api::HttpRouteMatch {
                             path: Some(k8s_gateway_api::HttpPathMatch::Exact {
@@ -522,12 +551,12 @@ async fn routing_back_to_cluster_http_route() {
         let (in_cluster, out_of_cluster) = tokio::join!(
             curl.run(
                 "curl-in-cluster",
-                "http://httpbin.org/get",
+                "http://postman-echo.com/get",
                 LinkerdInject::Enabled
             ),
             curl.run(
                 "curl-out-of-cluster",
-                "http://httpbin.org/ip",
+                "http://postman-echo.com/ip",
                 LinkerdInject::Enabled
             ),
         );
@@ -594,7 +623,7 @@ async fn routing_back_to_cluster_tls_route() {
                             section_name: None,
                         }]),
                     },
-                    hostnames: Some(vec!["httpbin.org".to_string()]),
+                    hostnames: Some(vec!["postman-echo.com".to_string()]),
                     rules: vec![k8s_gateway_api::TlsRouteRule {
                         backend_refs: vec![k8s::gateway::BackendRef {
                             weight: None,
@@ -618,7 +647,7 @@ async fn routing_back_to_cluster_tls_route() {
         let (in_cluster, out_of_cluster) = tokio::join!(
             curl.run(
                 "curl-in-cluster",
-                "https://httpbin.org/get",
+                "https://postman-echo.com/get",
                 LinkerdInject::Enabled
             ),
             curl.run(
@@ -711,7 +740,7 @@ async fn routing_back_to_cluster_tcp_route() {
         let in_cluster = curl
             .run(
                 "curl-in-cluster",
-                "http://httpbin.org/get",
+                "http://postman-echo.com/get",
                 LinkerdInject::Enabled,
             )
             .await;
