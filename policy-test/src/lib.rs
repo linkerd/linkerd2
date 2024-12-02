@@ -355,19 +355,29 @@ pub fn egress_network_traffic_policy_is(
 ) -> impl Condition<EgressNetwork> + 'static {
     move |egress_net: Option<&EgressNetwork>| {
         if let Some(egress_net) = &egress_net {
-            let status = egress_net.status.clone();
-            assert_status_accepted(status.map(|s| s.conditions).unwrap_or_default());
-
-            return egress_net.spec.traffic_policy == policy;
+            return egress_net
+                .status
+                .as_ref()
+                .map_or(false, |s| is_status_accepted(&s.conditions))
+                && egress_net.spec.traffic_policy == policy;
         }
         false
     }
 }
 
-pub fn assert_status_accepted(conditions: Vec<k8s::Condition>) {
+fn is_status_accepted(conditions: &[k8s::Condition]) -> bool {
     conditions
         .iter()
-        .any(|c| c.type_ == "Accepted" && c.status == "True");
+        .any(|c| c.type_ == "Accepted" && c.status == "True")
+}
+
+#[track_caller]
+pub fn assert_status_accepted(conditions: Vec<k8s::Condition>) {
+    assert!(
+        is_status_accepted(&conditions),
+        "status must be accepted: {:?}",
+        conditions
+    );
 }
 
 #[tracing::instrument(skip_all, fields(%pod, %container))]
