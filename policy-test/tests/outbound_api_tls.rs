@@ -1,9 +1,9 @@
 use futures::prelude::*;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
-    assert_resource_meta, await_egress_net_status, await_tls_route_status, create,
-    create_cluster_scoped, create_egress_network, create_service, delete_cluster_scoped, grpc,
-    mk_egress_net, mk_service, outbound_api::*, update, with_temp_ns, Resource,
+    assert_resource_meta, assert_status_accepted, await_egress_net_status, await_tls_route_status,
+    create, create_cluster_scoped, create_egress_network, create_service, delete_cluster_scoped,
+    grpc, mk_egress_net, mk_service, outbound_api::*, update, with_temp_ns, Resource,
 };
 use maplit::{btreemap, convert_args};
 
@@ -29,7 +29,8 @@ async fn egress_net_with_tls_routes_with_backend() {
     with_temp_ns(|client, ns| async move {
         // Create a service
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_with_tls_routes_with_backend(
             Resource::EgressNetwork(egress.clone()),
@@ -115,7 +116,8 @@ async fn egress_net_with_tls_routes_with_invalid_backend() {
     with_temp_ns(|client, ns| async move {
         // Create an egress network
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         let backend = mk_egress_net(&ns, "invalid");
 
@@ -145,7 +147,8 @@ async fn egress_net_with_multiple_http_routes() {
     with_temp_ns(|client, ns| async move {
         // Create an egress net
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_with_multiple_tls_routes(Resource::EgressNetwork(egress), &client, &ns).await;
     })
@@ -390,7 +393,8 @@ async fn egress_net_tls_route_reattachment() {
     with_temp_ns(|client, ns| async move {
         // Create a egress net
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         tls_route_reattachment(Resource::EgressNetwork(egress), &client, &ns).await;
     })

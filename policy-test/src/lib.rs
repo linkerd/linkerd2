@@ -8,9 +8,10 @@ pub mod grpc;
 pub mod outbound_api;
 pub mod web;
 
+use kube::runtime::wait::Condition;
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
-    policy::{httproute::ParentReference, EgressNetwork},
+    policy::{httproute::ParentReference, EgressNetwork, TrafficPolicy},
     ResourceExt,
 };
 use maplit::{btreemap, convert_args};
@@ -347,6 +348,26 @@ pub fn endpoints_ready(obj: Option<&k8s::Endpoints>) -> bool {
             .any(|a| !a.is_empty());
     }
     false
+}
+
+pub fn egress_network_traffic_policy_is(
+    policy: TrafficPolicy,
+) -> impl Condition<EgressNetwork> + 'static {
+    move |egress_net: Option<&EgressNetwork>| {
+        if let Some(egress_net) = &egress_net {
+            let status = egress_net.status.clone();
+            assert_status_accepted(status.map(|s| s.conditions).unwrap_or_default());
+
+            return egress_net.spec.traffic_policy == policy;
+        }
+        false
+    }
+}
+
+pub fn assert_status_accepted(conditions: Vec<k8s::Condition>) {
+    conditions
+        .iter()
+        .any(|c| c.type_ == "Accepted" && c.status == "True");
 }
 
 #[tracing::instrument(skip_all, fields(%pod, %container))]
