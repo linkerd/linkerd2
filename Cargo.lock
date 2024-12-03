@@ -1165,32 +1165,9 @@ name = "linkerd-policy-controller"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-trait",
- "clap",
- "drain",
- "futures",
- "hyper",
- "ipnet",
  "jemallocator",
- "k8s-openapi",
- "kube",
- "kubert",
- "linkerd-policy-controller-core",
- "linkerd-policy-controller-grpc",
- "linkerd-policy-controller-k8s-api",
- "linkerd-policy-controller-k8s-index",
- "linkerd-policy-controller-k8s-status",
- "openssl",
- "parking_lot",
- "prometheus-client",
- "regex",
- "serde",
- "serde_json",
- "thiserror",
+ "linkerd-policy-controller-runtime",
  "tokio",
- "tokio-stream",
- "tonic",
- "tracing",
 ]
 
 [[package]]
@@ -1286,6 +1263,38 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "linkerd-policy-controller-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "clap",
+ "drain",
+ "futures",
+ "hyper",
+ "ipnet",
+ "k8s-openapi",
+ "kube",
+ "kubert",
+ "linkerd-policy-controller-core",
+ "linkerd-policy-controller-grpc",
+ "linkerd-policy-controller-k8s-api",
+ "linkerd-policy-controller-k8s-index",
+ "linkerd-policy-controller-k8s-status",
+ "openssl",
+ "parking_lot",
+ "prometheus-client",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tonic",
  "tracing",
 ]
 

@@ -7,6 +7,7 @@ members = [
     "policy-controller/k8s/api",
     "policy-controller/k8s/index",
     "policy-controller/k8s/status",
+    "policy-controller/runtime",
     "policy-test",
 ]
 

@@ -1,48 +1,44 @@
-#![deny(warnings, rust_2018_idioms)]
-#![forbid(unsafe_code)]
-mod admission;
-pub mod index_list;
-mod validation;
-pub use self::admission::Admission;
-use anyhow::Result;
-use linkerd_policy_controller_core::inbound::{
-    DiscoverInboundServer, InboundServer, InboundServerStream,
-};
-use linkerd_policy_controller_core::outbound::{
-    DiscoverOutboundPolicy, ExternalPolicyStream, Kind, OutboundDiscoverTarget, OutboundPolicy,
-    OutboundPolicyStream, ResourceTarget,
-};
-pub use linkerd_policy_controller_core::IpNet;
+pub use linkerd_policy_controller_core as core;
 pub use linkerd_policy_controller_grpc as grpc;
 pub use linkerd_policy_controller_k8s_api as k8s;
-pub use linkerd_policy_controller_k8s_index::{inbound, outbound, ClusterInfo, DefaultPolicy};
-use std::net::SocketAddr;
-use std::{net::IpAddr, num::NonZeroU16};
+pub use linkerd_policy_controller_k8s_index as index;
+pub use linkerd_policy_controller_k8s_status as status;
+
+mod admission;
+mod args;
+mod index_list;
+mod validation;
+
+pub use self::args::Args;
+
+use std::num::NonZeroU16;
 
 #[derive(Clone, Debug)]
-pub struct InboundDiscover(inbound::SharedIndex);
+struct InboundDiscover(index::inbound::SharedIndex);
 
 #[derive(Clone, Debug)]
-pub struct OutboundDiscover(outbound::SharedIndex);
+struct OutboundDiscover(index::outbound::SharedIndex);
 
 impl InboundDiscover {
-    pub fn new(index: inbound::SharedIndex) -> Self {
+    pub fn new(index: index::inbound::SharedIndex) -> Self {
         Self(index)
     }
 }
 
 impl OutboundDiscover {
-    pub fn new(index: outbound::SharedIndex) -> Self {
+    pub fn new(index: index::outbound::SharedIndex) -> Self {
         Self(index)
     }
 }
 
 #[async_trait::async_trait]
-impl DiscoverInboundServer<(grpc::workload::Workload, NonZeroU16)> for InboundDiscover {
+impl core::inbound::DiscoverInboundServer<(grpc::workload::Workload, NonZeroU16)>
+    for InboundDiscover
+{
     async fn get_inbound_server(
         &self,
         (workload, port): (grpc::workload::Workload, NonZeroU16),
-    ) -> Result<Option<InboundServer>> {
+    ) -> anyhow::Result<Option<core::inbound::InboundServer>> {
         let grpc::workload::Workload { namespace, kind } = workload;
         let rx = match kind {
             grpc::workload::Kind::External(name) => self
@@ -65,7 +61,7 @@ impl DiscoverInboundServer<(grpc::workload::Workload, NonZeroU16)> for InboundDi
     async fn watch_inbound_server(
         &self,
         (workload, port): (grpc::workload::Workload, NonZeroU16),
-    ) -> Result<Option<InboundServerStream>> {
+    ) -> anyhow::Result<Option<core::inbound::InboundServerStream>> {
         let grpc::workload::Workload { namespace, kind } = workload;
         let rx = match kind {
             grpc::workload::Kind::External(name) => self
@@ -86,11 +82,16 @@ impl DiscoverInboundServer<(grpc::workload::Workload, NonZeroU16)> for InboundDi
 }
 
 #[async_trait::async_trait]
-impl DiscoverOutboundPolicy<ResourceTarget, OutboundDiscoverTarget> for OutboundDiscover {
+impl
+    core::outbound::DiscoverOutboundPolicy<
+        core::outbound::ResourceTarget,
+        core::outbound::OutboundDiscoverTarget,
+    > for OutboundDiscover
+{
     async fn get_outbound_policy(
         &self,
-        resource: ResourceTarget,
-    ) -> Result<Option<OutboundPolicy>> {
+        resource: core::outbound::ResourceTarget,
+    ) -> anyhow::Result<Option<core::outbound::OutboundPolicy>> {
         let rx = match self.0.write().outbound_policy_rx(resource.clone()) {
             Ok(rx) => rx,
             Err(error) => {
@@ -105,15 +106,15 @@ impl DiscoverOutboundPolicy<ResourceTarget, OutboundDiscoverTarget> for Outbound
 
     async fn watch_outbound_policy(
         &self,
-        target: ResourceTarget,
-    ) -> Result<Option<OutboundPolicyStream>> {
+        target: core::outbound::ResourceTarget,
+    ) -> anyhow::Result<Option<core::outbound::OutboundPolicyStream>> {
         match self.0.write().outbound_policy_rx(target) {
             Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
             Err(_) => Ok(None),
         }
     }
 
-    async fn watch_external_policy(&self) -> ExternalPolicyStream {
+    async fn watch_external_policy(&self) -> core::outbound::ExternalPolicyStream {
         Box::pin(tokio_stream::wrappers::WatchStream::new(
             self.0.read().fallback_policy_rx(),
         ))
@@ -121,36 +122,43 @@ impl DiscoverOutboundPolicy<ResourceTarget, OutboundDiscoverTarget> for Outbound
 
     fn lookup_ip(
         &self,
-        addr: IpAddr,
+        addr: std::net::IpAddr,
         port: NonZeroU16,
         source_namespace: String,
-    ) -> Option<OutboundDiscoverTarget> {
+    ) -> Option<core::outbound::OutboundDiscoverTarget> {
         let index = self.0.read();
         if let Some((namespace, name)) = index.lookup_service(addr) {
-            return Some(OutboundDiscoverTarget::Resource(ResourceTarget {
-                name,
-                namespace,
-                port,
-                source_namespace,
-                kind: Kind::Service,
-            }));
+            return Some(core::outbound::OutboundDiscoverTarget::Resource(
+                core::outbound::ResourceTarget {
+                    name,
+                    namespace,
+                    port,
+                    source_namespace,
+                    kind: core::outbound::Kind::Service,
+                },
+            ));
         }
 
         if let Some((namespace, name)) = index.lookup_egress_network(addr, source_namespace.clone())
         {
-            let original_dst = SocketAddr::new(addr, port.into());
-            return Some(OutboundDiscoverTarget::Resource(ResourceTarget {
-                name,
-                namespace,
-                port,
-                source_namespace,
-                kind: Kind::EgressNetwork(original_dst),
-            }));
+            return Some(core::outbound::OutboundDiscoverTarget::Resource(
+                core::outbound::ResourceTarget {
+                    name,
+                    namespace,
+                    port,
+                    source_namespace,
+                    kind: core::outbound::Kind::EgressNetwork(std::net::SocketAddr::new(
+                        addr,
+                        port.into(),
+                    )),
+                },
+            ));
         }
 
         if !index.is_address_in_cluster(addr) {
-            let original_dst = SocketAddr::new(addr, port.into());
-            return Some(OutboundDiscoverTarget::External(original_dst));
+            return Some(core::outbound::OutboundDiscoverTarget::External(
+                std::net::SocketAddr::new(addr, port.into()),
+            ));
         }
 
         None
