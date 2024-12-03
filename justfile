@@ -161,7 +161,7 @@ policy-test-deps-load: _k3d-init policy-test-deps-pull
         bitnami/kubectl:latest \
         curlimages/curl:latest \
         fortio/fortio:latest \
-        ghcr.io/olix0r/hokay:latest && exit ; sleep 1 ; done
+        ghcr.io/olix0r/hokay:latest && exit || sleep 1 ; done
 
 ##
 ## Test cluster
@@ -273,7 +273,7 @@ _pause-load: _k3d-init
     if [ -z "$(docker image ls -q "$img")" ]; then
        docker pull -q "$img"
     fi
-    k3d image import --mode=direct --cluster='{{ k3d-name }}' "$img"
+    for i in {1..3} ; do {{ _k3d-load }} "$img" && exit || sleep 1 ; done
 
 ##
 ## Linkerd CLI
@@ -331,7 +331,7 @@ linkerd-load: _linkerd-images _k3d-init
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}' \
-        $({{ _proxy-init-image-cmd }}) && exit ; sleep 1 ; done
+        $({{ _proxy-init-image-cmd }}) && exit || sleep 1 ; done
 
 linkerd-load-cni:
     docker pull -q $({{ _cni-plugin-image-cmd }})
@@ -437,7 +437,7 @@ linkerd-viz-load: _linkerd-viz-images _k3d-init
         {{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }} \
         {{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }} \
         {{ DOCKER_REGISTRY }}/web:{{ linkerd-tag }} \
-        $({{ _prometheus-image-cmd }}) && exit ; sleep 1 ; done
+        $({{ _prometheus-image-cmd }}) && exit || sleep 1 ; done
 
 linkerd-viz-build:
     TAG={{ linkerd-tag }} bin/docker-build-metrics-api
