@@ -244,6 +244,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			}
 
 			link := v1alpha2.Link{
+				TypeMeta: metav1.TypeMeta{Kind: "Link", APIVersion: "multicluster.linkerd.io/v1alpha2"},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      opts.clusterName,
 					Namespace: opts.namespace,

@@ -375,7 +375,7 @@ func (rcsw *RemoteClusterServiceWatcher) mirrorNamespaceIfNecessary(ctx context.
 // (same name, etc) but send traffic to the gateway port. This way we do not need to do any remapping
 // on the service side of things. It all happens in the endpoints.
 func (rcsw *RemoteClusterServiceWatcher) getEndpointsPorts(service *corev1.Service) ([]corev1.EndpointPort, error) {
-	gatewayPort, err := strconv.ParseUint(rcsw.link.Spec.GatewayPort, 10, 32)
+	gatewayPort, err := strconv.ParseInt(rcsw.link.Spec.GatewayPort, 10, 32)
 	if err != nil {
 		return nil, err
 	}
@@ -1539,7 +1539,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 // never in a not ready state.
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGatewayEndpoints(ctx context.Context, addressses []corev1.EndpointAddress) error {
 	gatewayMirrorName := fmt.Sprintf("probe-gateway-%s", rcsw.link.Spec.TargetClusterName)
-	probePort, err := strconv.ParseUint(rcsw.link.Spec.ProbeSpec.Port, 10, 32)
+	probePort, err := strconv.ParseInt(rcsw.link.Spec.ProbeSpec.Port, 10, 32)
 	if err != nil {
 		return fmt.Errorf("failed to parse probe port: %w", err)
 	}
