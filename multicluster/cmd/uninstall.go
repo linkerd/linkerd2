@@ -8,10 +8,10 @@ import (
 
 	pkgCmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	mc "github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/spf13/cobra"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -41,15 +41,15 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 				return err
 			}
 
-			links, err := mc.GetLinks(cmd.Context(), k8sAPI.DynamicClient)
+			links, err := k8sAPI.L5dCrdClient.LinkV1alpha2().Links("").List(cmd.Context(), metav1.ListOptions{})
 			if err != nil && !kerrors.IsNotFound(err) {
 				return err
 			}
 
-			if len(links) > 0 {
+			if len(links.Items) > 0 {
 				err := []string{"Please unlink the following clusters before uninstalling multicluster:"}
-				for _, link := range links {
-					err = append(err, fmt.Sprintf("  * %s", link.TargetClusterName))
+				for _, link := range links.Items {
+					err = append(err, fmt.Sprintf("  * %s", link.Spec.TargetClusterName))
 				}
 				return errors.New(strings.Join(err, "\n"))
 			}

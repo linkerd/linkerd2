@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/multicluster"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -393,10 +393,11 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	localAPI, err := k8s.NewFakeAPI()
+	localAPI, l5dAPI, err := k8s.NewFakeAPIWithL5dClient()
 	if err != nil {
 		t.Fatal(err)
 	}
+	k8s.NewFakeAPIWithL5dClient()
 	remoteAPI.Sync(nil)
 	localAPI.Sync(nil)
 
@@ -404,18 +405,21 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	eventRecorder := record.NewFakeRecorder(100)
 
 	watcher := RemoteClusterServiceWatcher{
-		link: &multicluster.Link{
-			TargetClusterName:       clusterName,
-			TargetClusterDomain:     clusterDomain,
-			GatewayIdentity:         "gateway-identity",
-			GatewayAddress:          "192.0.2.127",
-			GatewayPort:             888,
-			ProbeSpec:               defaultProbeSpec,
-			Selector:                defaultSelector,
-			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		link: &v1alpha2.Link{
+			Spec: v1alpha2.LinkSpec{
+				TargetClusterName:       clusterName,
+				TargetClusterDomain:     clusterDomain,
+				GatewayIdentity:         "gateway-identity",
+				GatewayAddress:          "192.0.2.127",
+				GatewayPort:             "888",
+				ProbeSpec:               defaultProbeSpec,
+				Selector:                defaultSelector,
+				RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+			},
 		},
 		remoteAPIClient:         remoteAPI,
 		localAPIClient:          localAPI,
+		linkClient:              l5dAPI,
 		stopper:                 nil,
 		recorder:                eventRecorder,
 		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
@@ -482,7 +486,7 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	localAPI, err := k8s.NewFakeAPI(
+	localAPI, l5dAPI, err := k8s.NewFakeAPIWithL5dClient(
 		asYaml(namespace("ns")),
 	)
 	if err != nil {
@@ -493,18 +497,21 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 
 	events := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]())
 	watcher := RemoteClusterServiceWatcher{
-		link: &multicluster.Link{
-			TargetClusterName:       clusterName,
-			TargetClusterDomain:     clusterDomain,
-			GatewayIdentity:         "gateway-identity",
-			GatewayAddress:          "192.0.0.1",
-			GatewayPort:             888,
-			ProbeSpec:               defaultProbeSpec,
-			Selector:                defaultSelector,
-			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		link: &v1alpha2.Link{
+			Spec: v1alpha2.LinkSpec{
+				TargetClusterName:       clusterName,
+				TargetClusterDomain:     clusterDomain,
+				GatewayIdentity:         "gateway-identity",
+				GatewayAddress:          "192.0.0.1",
+				GatewayPort:             "888",
+				ProbeSpec:               defaultProbeSpec,
+				Selector:                defaultSelector,
+				RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+			},
 		},
 		remoteAPIClient: remoteAPI,
 		localAPIClient:  localAPI,
+		linkClient:      l5dAPI,
 		log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:     events,
 		requeueLimit:    0,
@@ -630,7 +637,7 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	localAPI, err := k8s.NewFakeAPI(
+	localAPI, l5dAPI, err := k8s.NewFakeAPIWithL5dClient(
 		asYaml(namespace("ns")),
 	)
 	if err != nil {
@@ -641,18 +648,21 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 
 	events := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]())
 	watcher := RemoteClusterServiceWatcher{
-		link: &multicluster.Link{
-			TargetClusterName:       clusterName,
-			TargetClusterDomain:     clusterDomain,
-			GatewayIdentity:         "gateway-identity",
-			GatewayAddress:          "192.0.0.1",
-			GatewayPort:             888,
-			ProbeSpec:               defaultProbeSpec,
-			Selector:                defaultSelector,
-			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		link: &v1alpha2.Link{
+			Spec: v1alpha2.LinkSpec{
+				TargetClusterName:       clusterName,
+				TargetClusterDomain:     clusterDomain,
+				GatewayIdentity:         "gateway-identity",
+				GatewayAddress:          "192.0.0.1",
+				GatewayPort:             "888",
+				ProbeSpec:               defaultProbeSpec,
+				Selector:                defaultSelector,
+				RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+			},
 		},
 		remoteAPIClient: remoteAPI,
 		localAPIClient:  localAPI,
+		linkClient:      l5dAPI,
 		log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:     events,
 		requeueLimit:    0,

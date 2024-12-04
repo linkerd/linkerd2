@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/multicluster"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 )
@@ -19,14 +19,14 @@ type ProbeWorker struct {
 	alive            bool
 	Liveness         chan bool
 	*sync.RWMutex
-	probeSpec *multicluster.ProbeSpec
+	probeSpec *v1alpha2.ProbeSpec
 	stopCh    chan struct{}
 	metrics   *ProbeMetrics
 	log       *logging.Entry
 }
 
 // NewProbeWorker creates a new probe worker associated with a particular gateway
-func NewProbeWorker(localGatewayName string, spec *multicluster.ProbeSpec, metrics *ProbeMetrics, probekey string) *ProbeWorker {
+func NewProbeWorker(localGatewayName string, spec *v1alpha2.ProbeSpec, metrics *ProbeMetrics, probekey string) *ProbeWorker {
 	metrics.gatewayEnabled.Set(1)
 	return &ProbeWorker{
 		localGatewayName: localGatewayName,
@@ -42,7 +42,7 @@ func NewProbeWorker(localGatewayName string, spec *multicluster.ProbeSpec, metri
 }
 
 // UpdateProbeSpec is used to update the probe specification when something about the gateway changes
-func (pw *ProbeWorker) UpdateProbeSpec(spec *multicluster.ProbeSpec) {
+func (pw *ProbeWorker) UpdateProbeSpec(spec *v1alpha2.ProbeSpec) {
 	pw.Lock()
 	pw.probeSpec = spec
 	pw.Unlock()
@@ -66,12 +66,25 @@ func (pw *ProbeWorker) run() {
 	successLabel := prometheus.Labels{probeSuccessfulLabel: "true"}
 	notSuccessLabel := prometheus.Labels{probeSuccessfulLabel: "false"}
 
-	probeTickerPeriod := pw.probeSpec.Period
-	maxJitter := pw.probeSpec.Period / 10 // max jitter is 10% of period
+	if pw.probeSpec == nil {
+		pw.log.Error("Probe spec is nil")
+		return
+	}
+	probeTickerPeriod, err := time.ParseDuration(pw.probeSpec.Period)
+	if err != nil {
+		pw.log.Errorf("could not parse probe period: %s", err)
+		return
+	}
+	maxJitter := probeTickerPeriod / 10 // max jitter is 10% of period
 	probeTicker := NewTicker(probeTickerPeriod, maxJitter)
 	defer probeTicker.Stop()
 
-	var failures uint32 = 0
+	failureThreshold, err := strconv.ParseUint(pw.probeSpec.FailureThreshold, 10, 32)
+	if err != nil {
+		pw.log.Errorf("could not parse failure threshold: %s", err)
+		return
+	}
+	var failures uint64 = 0
 
 probeLoop:
 	for {
@@ -83,11 +96,11 @@ probeLoop:
 			if err := pw.doProbe(); err != nil {
 				pw.log.Warn(err)
 				failures++
-				if failures < pw.probeSpec.FailureThreshold {
+				if failures < failureThreshold {
 					continue probeLoop
 				}
 
-				pw.log.Warnf("Failure threshold (%d) reached - Marking as unhealthy", pw.probeSpec.FailureThreshold)
+				pw.log.Warnf("Failure threshold (%s) reached - Marking as unhealthy", pw.probeSpec.FailureThreshold)
 				pw.metrics.alive.Set(0)
 				pw.metrics.probes.With(notSuccessLabel).Inc()
 				if pw.alive {
@@ -116,12 +129,15 @@ func (pw *ProbeWorker) doProbe() error {
 	pw.RLock()
 	defer pw.RUnlock()
 
+	timeout, err := time.ParseDuration(pw.probeSpec.Timeout)
+	if err != nil {
+		return fmt.Errorf("could not parse timeout: %w", err)
+	}
 	client := http.Client{
-		Timeout: pw.probeSpec.Timeout,
+		Timeout: timeout,
 	}
 
-	strPort := strconv.Itoa(int(pw.probeSpec.Port))
-	urlAddress := net.JoinHostPort(pw.localGatewayName, strPort)
+	urlAddress := net.JoinHostPort(pw.localGatewayName, pw.probeSpec.Port)
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s%s", urlAddress, pw.probeSpec.Path), nil)
 	if err != nil {
 		return fmt.Errorf("could not create a GET request to gateway: %w", err)

@@ -23,13 +23,14 @@ import (
 
 	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
+	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	v1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1beta3"
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	v1beta2 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	serverv1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta3"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
-	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
+	serviceprofilev1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -68,8 +69,12 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	case v1alpha1.SchemeGroupVersion.WithResource("links"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Link().V1alpha1().Links().Informer()}, nil
 
+		// Group=link, Version=v1alpha2
+	case v1alpha2.SchemeGroupVersion.WithResource("links"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Link().V1alpha2().Links().Informer()}, nil
+
 		// Group=linkerd.io, Version=v1alpha2
-	case v1alpha2.SchemeGroupVersion.WithResource("serviceprofiles"):
+	case serviceprofilev1alpha2.SchemeGroupVersion.WithResource("serviceprofiles"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Linkerd().V1alpha2().ServiceProfiles().Informer()}, nil
 
 		// Group=policy, Version=v1alpha1
