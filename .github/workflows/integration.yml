@@ -10,10 +10,10 @@ env:
   CARGO_NET_RETRY: 10
   DOCKER_REGISTRY: ghcr.io/linkerd
   GH_ANNOTATION: true
-  K3D_VERSION: v5.4.4
+  K3D_VERSION: v5.7.5
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
-  YQ_VERSION: v4.25.1
+  YQ_VERSION: v4.44.5
   LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO || 'linkerd/linkerd2-proxy' }}
   LINKERD2_PROXY_RELEASE_PREFIX: ${{ vars.LINKERD2_PROXY_RELEASE_PREFIX || 'release/' }}
 
@@ -138,7 +138,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed
         with:
-          go-version: "1.22"
+          go-version: "1.23"
       - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           pattern: image-archives-*
@@ -265,7 +265,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed
         with:
-          go-version: "1.22"
+          go-version: "1.23"
       - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           pattern: image-archives-*
@@ -290,7 +290,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed
         with:
-          go-version: "1.22"
+          go-version: "1.23"
       - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           pattern: image-archives-*
@@ -324,7 +324,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed
         with:
-          go-version: "1.22"
+          go-version: "1.23"
       - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           pattern: image-archives-*

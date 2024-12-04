@@ -140,7 +140,7 @@ impl<'de> Deserialize<'de> for K8sDuration {
         D: Deserializer<'de>,
     {
         struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
+        impl de::Visitor<'_> for Visitor {
             type Value = K8sDuration;
 
             fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

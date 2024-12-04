@@ -134,7 +134,7 @@ mod test {
     #[test]
     fn test_picks_smallest_cidr() {
         let ip_addr = "192.168.0.4".parse().unwrap();
-        let networks = vec![
+        let networks = [
             EgressNetwork {
                 networks: vec![Network {
                     cidr: "192.168.0.1/16".parse().unwrap(),
@@ -165,7 +165,7 @@ mod test {
     #[test]
     fn test_picks_local_ns() {
         let ip_addr = "192.168.0.4".parse().unwrap();
-        let networks = vec![
+        let networks = [
             EgressNetwork {
                 networks: vec![Network {
                     cidr: "192.168.0.1/16".parse().unwrap(),
@@ -196,7 +196,7 @@ mod test {
     #[test]
     fn does_not_pick_network_in_unralated_ns() {
         let ip_addr = "192.168.0.4".parse().unwrap();
-        let networks = vec![EgressNetwork {
+        let networks = [EgressNetwork {
             networks: vec![Network {
                 cidr: "192.168.0.1/16".parse().unwrap(),
                 except: None,
@@ -215,7 +215,7 @@ mod test {
     #[test]
     fn test_picks_older_resource() {
         let ip_addr = "192.168.0.4".parse().unwrap();
-        let networks = vec![
+        let networks = [
             EgressNetwork {
                 networks: vec![Network {
                     cidr: "192.168.0.1/16".parse().unwrap(),
@@ -246,7 +246,7 @@ mod test {
     #[test]
     fn test_picks_alphabetical_order() {
         let ip_addr = "192.168.0.4".parse().unwrap();
-        let networks = vec![
+        let networks = [
             EgressNetwork {
                 networks: vec![Network {
                     cidr: "192.168.0.1/16".parse().unwrap(),
@@ -277,7 +277,7 @@ mod test {
     #[test]
     fn test_respects_exception() {
         let ip_addr = "192.168.0.4".parse().unwrap();
-        let networks = vec![
+        let networks = [
             EgressNetwork {
                 networks: vec![Network {
                     cidr: "192.168.0.1/16".parse().unwrap(),
