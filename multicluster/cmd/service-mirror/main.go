@@ -84,8 +84,8 @@ func Main(args []string) {
 	}()
 
 	// We create two different kubernetes API clients for the local cluster:
-	// informer is used as a dynamic client for unstructured access to Link custom
-	// resources.
+	// l5dClient is used for watching Link resources and updating their
+	// statuses.
 	//
 	// controllerK8sAPI is used by the cluster watcher to manage
 	// mirror resources such as services, namespaces, and endpoints.
