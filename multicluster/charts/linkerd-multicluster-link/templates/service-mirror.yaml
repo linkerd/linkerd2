@@ -58,7 +58,7 @@ rules:
     verbs: ["list", "get", "watch"]
   - apiGroups: ["multicluster.linkerd.io"]
     resources: ["links/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     verbs: ["create", "get", "update", "patch"]

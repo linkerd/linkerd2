@@ -2,6 +2,7 @@ package servicemirror
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -1746,18 +1747,7 @@ func (rcsw *RemoteClusterServiceWatcher) updateLinkMirrorStatus(remoteName, name
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
 	link.Status.MirrorServices = updateServiceStatus(remoteName, namespace, condition, link.Status.MirrorServices)
-	rcsw.log.Infof("patching link status %s/%s", rcsw.link.Namespace, rcsw.link.Name)
-	_, err = rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Patch(
-		context.Background(),
-		link.Name,
-		types.MergePatchType,
-		[]byte(fmt.Sprintf(`{"status": %s}`, link.Status)),
-		metav1.PatchOptions{},
-		"status",
-	)
-	if err != nil {
-		rcsw.log.Errorf("Failed to patch link status %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
-	}
+	rcsw.patchLinkStatus(link.Status)
 }
 
 func (rcsw *RemoteClusterServiceWatcher) updateLinkFederatedStatus(remoteName, namespace string, condition v1alpha2.LinkCondition) {
@@ -1770,18 +1760,7 @@ func (rcsw *RemoteClusterServiceWatcher) updateLinkFederatedStatus(remoteName, n
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
 	link.Status.FederatedServices = updateServiceStatus(remoteName, namespace, condition, link.Status.FederatedServices)
-	rcsw.log.Infof("patching link status %s/%s", rcsw.link.Namespace, rcsw.link.Name)
-	_, err = rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Patch(
-		context.Background(),
-		link.Name,
-		types.MergePatchType,
-		[]byte(fmt.Sprintf(`{"status": %s}`, link.Status)),
-		metav1.PatchOptions{},
-		"status",
-	)
-	if err != nil {
-		rcsw.log.Errorf("Failed to patch link status %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
-	}
+	rcsw.patchLinkStatus(link.Status)
 }
 
 func (rcsw *RemoteClusterServiceWatcher) deleteLinkMirrorStatus(remoteName, namespace string) {
@@ -1794,18 +1773,7 @@ func (rcsw *RemoteClusterServiceWatcher) deleteLinkMirrorStatus(remoteName, name
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
 	link.Status.MirrorServices = deleteServiceStatus(remoteName, namespace, link.Status.MirrorServices)
-	rcsw.log.Infof("patching link status %s/%s", rcsw.link.Namespace, rcsw.link.Name)
-	_, err = rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Patch(
-		context.Background(),
-		link.Name,
-		types.MergePatchType,
-		[]byte(fmt.Sprintf(`{"status": %s}`, link.Status)),
-		metav1.PatchOptions{},
-		"status",
-	)
-	if err != nil {
-		rcsw.log.Errorf("Failed to patch link status %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
-	}
+	rcsw.patchLinkStatus(link.Status)
 }
 
 func (rcsw *RemoteClusterServiceWatcher) deleteLinkFederatedStatus(remoteName, namespace string) {
@@ -1818,12 +1786,20 @@ func (rcsw *RemoteClusterServiceWatcher) deleteLinkFederatedStatus(remoteName, n
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
 	link.Status.FederatedServices = deleteServiceStatus(remoteName, namespace, link.Status.FederatedServices)
+	rcsw.patchLinkStatus(link.Status)
+}
+
+func (rcsw *RemoteClusterServiceWatcher) patchLinkStatus(status v1alpha2.LinkStatus) {
 	rcsw.log.Infof("patching link status %s/%s", rcsw.link.Namespace, rcsw.link.Name)
+	statusBytes, err := json.Marshal(status)
+	if err != nil {
+		rcsw.log.Errorf("Failed to marshal link status: %s", err)
+	}
 	_, err = rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Patch(
 		context.Background(),
-		link.Name,
+		rcsw.link.Name,
 		types.MergePatchType,
-		[]byte(fmt.Sprintf(`{"status": %s}`, link.Status)),
+		[]byte(fmt.Sprintf(`{"status": %s}`, string(statusBytes))),
 		metav1.PatchOptions{},
 		"status",
 	)

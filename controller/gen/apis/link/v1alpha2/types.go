@@ -87,7 +87,7 @@ type LinkCondition struct {
 	Reason string `json:"reason,omitempty"`
 	// Human readable message that describes details about last transition.
 	// +optional
-	Message string `json:"message,omitempty"`
+	Message string `json:"message"`
 	// LocalRef is a reference to the local mirror or federated service.
 	LocalRef ObjectRef `json:"localRef,omitempty"`
 }

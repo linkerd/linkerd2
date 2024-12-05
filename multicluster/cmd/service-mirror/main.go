@@ -20,6 +20,7 @@ import (
 	sm "github.com/linkerd/linkerd2/pkg/servicemirror"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/leaderelection"
@@ -139,9 +140,16 @@ func Main(args []string) {
 			// Use a small buffered channel for Link updates to avoid dropping
 			// updates if there is an update burst.
 			results := make(chan *v1alpha2.Link, 100)
-			informer := l5dcrdinformer.NewSharedInformerFactory(l5dClient, controllerK8s.ResyncTime)
+			informerFactory := l5dcrdinformer.NewSharedInformerFactoryWithOptions(
+				l5dClient,
+				controllerK8s.ResyncTime,
+				l5dcrdinformer.WithNamespace(*namespace),
+			)
+			informer := informerFactory.Link().V1alpha2().Links().Informer()
+			log.Infof("Starting Link informer")
+			informerFactory.Start(ctx.Done())
 
-			_, err := informer.Link().V1alpha2().Links().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 				AddFunc: func(obj interface{}) {
 					link, ok := obj.(*v1alpha2.Link)
 					if !ok {
@@ -213,16 +221,17 @@ func Main(args []string) {
 				case link := <-results:
 					if link != nil {
 						log.Infof("Got updated link %s: %+v", linkName, link)
-						creds, err := loadCredentials(link, *namespace, controllerK8sAPI)
+						creds, err := loadCredentials(ctx, link, *namespace, controllerK8sAPI.Client)
 						if err != nil {
 							log.Errorf("Failed to load remote cluster credentials: %s", err)
 						}
 						err = restartClusterWatcher(ctx, link, *namespace, creds, controllerK8sAPI, l5dClient, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *enableNamespaceCreation)
 						if err != nil {
 							// failed to restart cluster watcher; give a bit of slack
-							// and restart the link watch to give it another try
+							// and requeue the link to give it another try
 							log.Error(err)
 							time.Sleep(linkWatchRestartAfter)
+							results <- link
 						}
 					} else {
 						log.Infof("Link %s deleted", linkName)
@@ -323,9 +332,9 @@ func cleanupWorkers() {
 	}
 }
 
-func loadCredentials(link *v1alpha2.Link, namespace string, k8sAPI *controllerK8s.API) ([]byte, error) {
+func loadCredentials(ctx context.Context, link *v1alpha2.Link, namespace string, k8sAPI kubernetes.Interface) ([]byte, error) {
 	// Load the credentials secret
-	secret, err := k8sAPI.Secret().Lister().Secrets(namespace).Get(link.Spec.ClusterCredentialsSecret)
+	secret, err := k8sAPI.CoreV1().Secrets(namespace).Get(ctx, link.Spec.ClusterCredentialsSecret, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to load credentials secret %s: %w", link.Spec.ClusterCredentialsSecret, err)
 	}
