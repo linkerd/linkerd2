@@ -1,0 +1,70 @@
+[package]
+name = "linkerd-policy-controller-runtime"
+version = "0.1.0"
+edition = "2021"
+
+license = "Apache-2.0"
+publish = false
+
+[features]
+default = ["openssl-tls", "openssl-vendored"]
+openssl-tls = ["kube/openssl-tls"]
+# Vendor openssl to statically link lib
+openssl-vendored = ["openssl/vendored"]
+rustls-tls = ["kube/rustls-tls"]
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+drain = "0.1"
+futures = { version = "0.3", default-features = false }
+k8s-openapi = { workspace = true }
+hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
+ipnet = { version = "2", default-features = false }
+openssl = { version = "0.10.68", optional = true }
+parking_lot = "0.12"
+prometheus-client = { version = "0.22.3", default-features = false }
+serde = "1"
+serde_json = "1"
+thiserror = "1"
+tokio-stream = { version = "0.1", features = ["sync"] }
+tracing = "0.1"
+regex = "1"
+
+linkerd-policy-controller-core = { path = "../core" }
+linkerd-policy-controller-grpc = { path = "../grpc" }
+linkerd-policy-controller-k8s-api = { path = "../k8s/api" }
+linkerd-policy-controller-k8s-index = { path = "../k8s/index" }
+linkerd-policy-controller-k8s-status = { path = "../k8s/status" }
+
+[dependencies.clap]
+version = "4"
+default-features = false
+features = ["derive", "env", "std"]
+
+[dependencies.kube]
+workspace = true
+default-features = false
+features = ["admission", "derive"]
+
+[dependencies.kubert]
+workspace = true
+default-features = false
+features = [
+    "clap",
+    "index",
+    "lease",
+    "prometheus-client",
+    "runtime",
+    "server",
+    "rustls-tls",
+]
+
+[dependencies.tokio]
+version = "1"
+features = ["macros", "parking_lot", "rt", "rt-multi-thread", "signal"]
+
+[dependencies.tonic]
+version = "0.10"
+default-features = false
+features = ["transport"]
