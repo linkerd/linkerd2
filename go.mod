@@ -8,7 +8,7 @@ require (
 	github.com/bombsimon/logrusr/v4 v4.1.0
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.15.7
-	github.com/emicklei/proto v1.13.2
+	github.com/emicklei/proto v1.13.3
 	github.com/evanphx/json-patch v5.9.0+incompatible
 	github.com/fatih/color v1.18.0
 	github.com/fsnotify/fsnotify v1.8.0
