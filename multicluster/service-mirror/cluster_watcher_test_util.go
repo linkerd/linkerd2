@@ -22,7 +22,7 @@ const (
 	clusterDomain      = "cluster.local"
 	defaultProbePath   = "/probe"
 	defaultProbePort   = 12345
-	defaultProbePeriod = "60s"
+	defaultProbePeriod = "60"
 )
 
 var (
@@ -500,7 +500,7 @@ var createExportedHeadlessService = &testEnvironment{
 			ProbeSpec: v1alpha2.ProbeSpec{
 				Port:   "123456",
 				Path:   "/probe1",
-				Period: "120s",
+				Period: "120",
 			},
 			Selector:                defaultSelector,
 			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
