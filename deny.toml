@@ -62,6 +62,8 @@ skip-tree = [
     # `serde_json` and `h2` depend on diverged versions of `indexmap` (2.0.x and
     # 1.9.x, respectively)
     { name = "indexmap" },
+    # thiserror v2 is still making its way through the ecosystem
+    { name = "thiserror", version = "1" },
 ]
 
 [sources]
