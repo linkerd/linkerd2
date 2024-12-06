@@ -405,6 +405,8 @@ dashboard:
   service:
     # -- Additional annotations to add to dashboard service
     annotations: {}
+    # -- Additional labels to add to dashboard service
+    labels: {}
 
 namespaceMetadata:
   image:
