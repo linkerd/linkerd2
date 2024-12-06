@@ -750,12 +750,7 @@ impl Index {
         id: &NamespaceGroupKindName,
         ratelimit: &HttpLocalRateLimitPolicyRef,
     ) -> Option<k8s_core_api::Patch<serde_json::Value>> {
-        let status = self.target_ref_status(id, &ratelimit.target_ref);
-
-        let Some(status) = status else {
-            return None;
-        };
-
+        let status = self.target_ref_status(id, &ratelimit.target_ref)?;
         if eq_time_insensitive_conditions(&status.conditions, &ratelimit.status_conditions) {
             return None;
         }

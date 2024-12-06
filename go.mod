@@ -1,6 +1,6 @@
 module github.com/linkerd/linkerd2
 
-go 1.22.0
+go 1.23.0
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0

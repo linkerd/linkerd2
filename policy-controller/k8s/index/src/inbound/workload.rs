@@ -267,14 +267,14 @@ mod tests {
         let mut expected_5432 = BTreeSet::new();
         expected_5432.insert("/liveness-container-1".to_string());
         expected_5432.insert("/ready-container-1".to_string());
-        assert!(probes.get(&port_5432).is_some());
+        assert!(probes.contains_key(&port_5432));
         assert_eq!(*probes.get(&port_5432).unwrap(), expected_5432);
 
         let port_6543 = u16::try_from(6543).and_then(NonZeroU16::try_from).unwrap();
         let mut expected_6543 = BTreeSet::new();
         expected_6543.insert("/liveness-container-2".to_string());
         expected_6543.insert("/ready-container-2".to_string());
-        assert!(probes.get(&port_6543).is_some());
+        assert!(probes.contains_key(&port_6543));
         assert_eq!(*probes.get(&port_6543).unwrap(), expected_6543);
     }
 
