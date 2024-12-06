@@ -15,7 +15,7 @@ permissions:
 jobs:
   rust-version:
     runs-on: ubuntu-22.04
-    container: ghcr.io/linkerd/dev:v43-rust
+    container: ghcr.io/linkerd/dev:v44-rust
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - shell: bash
@@ -39,6 +39,6 @@ jobs:
   devcontainer-image:
     runs-on: ubuntu-22.04
     steps:
-      - uses: linkerd/dev/actions/setup-tools@v43
+      - uses: linkerd/dev/actions/setup-tools@v44
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: just-dev pull-dev-image

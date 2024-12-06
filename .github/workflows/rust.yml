@@ -36,14 +36,14 @@ jobs:
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: EmbarkStudios/cargo-deny-action@3f4a782664881cf5725d0ffd23969fcce89fd868
+      - uses: EmbarkStudios/cargo-deny-action@e2f4ede4a4e60ea15ff31bc0647485d80c66cfba
         with:
           command: check ${{ matrix.checks }}
 
   fmt:
     timeout-minutes: 5
     runs-on: ubuntu-22.04
-    container: ghcr.io/linkerd/dev:v43-rust
+    container: ghcr.io/linkerd/dev:v44-rust
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -52,7 +52,7 @@ jobs:
   clippy:
     timeout-minutes: 20
     runs-on: ubuntu-22.04
-    container: ghcr.io/linkerd/dev:v43-rust
+    container: ghcr.io/linkerd/dev:v44-rust
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -63,7 +63,7 @@ jobs:
   check:
     timeout-minutes: 20
     runs-on: ubuntu-22.04
-    container: ghcr.io/linkerd/dev:v43-rust
+    container: ghcr.io/linkerd/dev:v44-rust
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -74,7 +74,7 @@ jobs:
     name: test
     runs-on: ubuntu-22.04
     timeout-minutes: 15
-    container: ghcr.io/linkerd/dev:v43-rust
+    container: ghcr.io/linkerd/dev:v44-rust
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033

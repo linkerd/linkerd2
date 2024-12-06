@@ -183,11 +183,11 @@ func TestInjectAutoParams(t *testing.T) {
 		})
 
 		if err != nil {
-			testutil.AnnotatedFatalf(t, "failed to find autoinjected pod: ", err.Error())
+			testutil.AnnotatedFatal(t, "failed to find autoinjected pod: ", err.Error())
 		}
 
 		if err := injectionValidator.ValidatePod(&pod.Spec); err != nil {
-			testutil.AnnotatedFatalf(t, "failed to validate auto injection", err.Error())
+			testutil.AnnotatedFatal(t, "failed to validate auto injection", err.Error())
 		}
 	})
 }

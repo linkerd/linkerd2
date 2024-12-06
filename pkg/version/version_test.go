@@ -2,7 +2,6 @@ package version
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 )
 
@@ -78,7 +77,7 @@ func TestMatch(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc := tc // pin
-		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			err := match(tc.expected, tc.actual)
 			if (err == nil && tc.err != nil) ||
 				(err != nil && tc.err == nil) ||

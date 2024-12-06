@@ -2403,7 +2403,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	}
 
 	if len(errStrings) >= 1 {
-		return fmt.Errorf(strings.Join(errStrings, "\n    "))
+		return errors.New(strings.Join(errStrings, "\n    "))
 	}
 
 	return nil
@@ -2906,7 +2906,7 @@ func CheckPodsRunning(pods []corev1.Pod, namespace string) error {
 		if namespace != "" {
 			msg += fmt.Sprintf(" in the \"%s\" namespace", namespace)
 		}
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 	for _, pod := range pods {
 		status := k8s.GetPodStatus(pod)

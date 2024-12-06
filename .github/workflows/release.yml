@@ -11,7 +11,7 @@ permissions:
 env:
   GH_ANNOTATION: true
   DOCKER_REGISTRY: ghcr.io/linkerd
-  K3D_VERSION: v5.4.4
+  K3D_VERSION: v5.7.5
   LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO }}
 
 jobs:
@@ -98,7 +98,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed
         with:
-          go-version: "1.22"
+          go-version: "1.23"
       - name: Download image archives
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
@@ -130,7 +130,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed
         with:
-          go-version: "1.22"
+          go-version: "1.23"
       - name: Set environment variables from scripts
         run: |
           TAG='${{ needs.tag.outputs.tag }}'

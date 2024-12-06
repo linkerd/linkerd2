@@ -23,7 +23,7 @@ impl FromStr for Workload {
     fn from_str(s: &str) -> Result<Self, tonic::Status> {
         if s.starts_with('{') {
             return serde_json::from_str(s).map_err(|error| {
-                tracing::error!(%error, "Invalid {s} workload string");
+                tracing::warn!(%error, "Invalid {s} workload string");
                 tonic::Status::invalid_argument(format!("Invalid workload: {}", s))
             });
         }

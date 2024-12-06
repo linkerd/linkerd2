@@ -1,9 +1,9 @@
 use futures::prelude::*;
 use kube::ResourceExt;
 use linkerd_policy_test::{
-    assert_resource_meta, await_egress_net_status, await_grpc_route_status, create,
-    create_egress_network, create_service, mk_egress_net, mk_service, outbound_api::*, update,
-    with_temp_ns, Resource,
+    assert_resource_meta, assert_status_accepted, await_egress_net_status, await_grpc_route_status,
+    create, create_egress_network, create_service, mk_egress_net, mk_service, outbound_api::*,
+    update, with_temp_ns, Resource,
 };
 use std::collections::BTreeMap;
 
@@ -23,7 +23,8 @@ async fn egress_net_grpc_route_retries_and_timeouts() {
         // Create a egress net
         let egress =
             Resource::EgressNetwork(create_egress_network(&client, &ns, "my-egress").await);
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         grpc_route_retries_and_timeouts(egress, &client, &ns).await;
     })
@@ -58,7 +59,8 @@ async fn egress_net_retries_and_timeouts() {
             .annotations_mut()
             .insert("timeout.linkerd.io/response".to_string(), "10s".to_string());
         let egress = Resource::EgressNetwork(create(&client, egress).await);
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         parent_retries_and_timeouts(egress, &client, &ns).await;
     })
@@ -80,7 +82,8 @@ async fn egress_net_grpc_route_reattachment() {
     with_temp_ns(|client, ns| async move {
         // Create a egress network
         let egress = create_egress_network(&client, &ns, "my-egress").await;
-        await_egress_net_status(&client, &ns, "my-egress").await;
+        let status = await_egress_net_status(&client, &ns, "my-egress").await;
+        assert_status_accepted(status.conditions);
 
         grpc_route_reattachment(Resource::EgressNetwork(egress), &client, &ns).await;
     })

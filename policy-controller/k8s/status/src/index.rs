@@ -60,9 +60,6 @@ pub struct Controller {
     updates: mpsc::Receiver<Update>,
     patch_timeout: Duration,
 
-    /// True if this policy controller is the leader — false otherwise.
-    leader: bool,
-
     metrics: ControllerMetrics,
 }
 
@@ -107,21 +104,21 @@ pub struct IndexMetrics {
     patch_channel_full: Counter,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 struct RouteRef {
     parents: Vec<routes::ParentReference>,
     backends: Vec<routes::BackendReference>,
     statuses: Vec<k8s_gateway_api::RouteParentStatus>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 struct HttpLocalRateLimitPolicyRef {
     creation_timestamp: Option<DateTime<Utc>>,
     target_ref: ratelimit::TargetReference,
     status_conditions: Vec<k8s_core_api::Condition>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 struct EgressNetworkRef {
     networks: Vec<Network>,
     status_conditions: Vec<k8s_core_api::Condition>,
@@ -236,7 +233,6 @@ impl Controller {
             name,
             updates,
             patch_timeout,
-            leader: false,
             metrics,
         }
     }
@@ -250,17 +246,20 @@ impl Controller {
         // now the leader. If so, we should apply the patches received;
         // otherwise, we should drain the updates queue but not apply any
         // patches since another policy controller is responsible for that.
+        let mut was_leader = false;
         loop {
+            // Refresh the state of the lease on each iteration to ensure we're
+            // checking expiration.
+            let is_leader = self.claims.borrow_and_update().is_current_for(&self.name);
+            if was_leader != is_leader {
+                tracing::info!(leader=%is_leader, "Status controller leadership change");
+            }
+            was_leader = is_leader;
+
             tokio::select! {
                 biased;
                 res = self.claims.changed() => {
                     res.expect("Claims watch must not be dropped");
-                    let claim = self.claims.borrow_and_update();
-                    let was_leader = self.leader;
-                    self.leader = claim.is_current_for(&self.name);
-                    if was_leader != self.leader {
-                        tracing::debug!(leader = %self.leader, "Leadership changed");
-                    }
                 }
 
                 Some(Update { id, patch}) = self.updates.recv() => {
@@ -268,23 +267,24 @@ impl Controller {
                     // If this policy controller is not the leader, it should
                     // process through the updates queue but not actually patch
                     // any resources.
-                    if self.leader {
-                        if id.gkn.group == linkerd_k8s_api::HttpRoute::group(&()) && id.gkn.kind == linkerd_k8s_api::HttpRoute::kind(&()){
-                            self.patch_status::<linkerd_k8s_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == k8s_gateway_api::HttpRoute::group(&()) && id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&()) {
-                            self.patch_status::<k8s_gateway_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == k8s_gateway_api::GrpcRoute::group(&()) && id.gkn.kind == k8s_gateway_api::GrpcRoute::kind(&()) {
-                            self.patch_status::<k8s_gateway_api::GrpcRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == k8s_gateway_api::TcpRoute::group(&()) && id.gkn.kind == k8s_gateway_api::TcpRoute::kind(&()) {
-                            self.patch_status::<k8s_gateway_api::TcpRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == k8s_gateway_api::TlsRoute::group(&()) && id.gkn.kind == k8s_gateway_api::TlsRoute::kind(&()) {
-                            self.patch_status::<k8s_gateway_api::TlsRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == linkerd_k8s_api::HttpLocalRateLimitPolicy::group(&()) && id.gkn.kind == linkerd_k8s_api::HttpLocalRateLimitPolicy::kind(&()) {
-                            self.patch_status::<linkerd_k8s_api::HttpLocalRateLimitPolicy>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == linkerd_k8s_api::EgressNetwork::group(&()) && id.gkn.kind == linkerd_k8s_api::EgressNetwork::kind(&()) {
-                            self.patch_status::<linkerd_k8s_api::EgressNetwork>(&id.gkn.name, &id.namespace, patch).await;
+                    if is_leader {
+                        if id.is_a::<linkerd_k8s_api::HttpRoute>() {
+                            self.patch::<linkerd_k8s_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.is_a::<k8s_gateway_api::HttpRoute>() {
+                            self.patch::<k8s_gateway_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.is_a::<k8s_gateway_api::GrpcRoute>() {
+                            self.patch::<k8s_gateway_api::GrpcRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.is_a::<k8s_gateway_api::TcpRoute>() {
+                            self.patch::<k8s_gateway_api::TcpRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.is_a::<k8s_gateway_api::TlsRoute>() {
+                            self.patch::<k8s_gateway_api::TlsRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.is_a::<linkerd_k8s_api::HttpLocalRateLimitPolicy>() {
+                            self.patch::<linkerd_k8s_api::HttpLocalRateLimitPolicy>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.is_a::<linkerd_k8s_api::EgressNetwork>() {
+                            self.patch::<linkerd_k8s_api::EgressNetwork>(&id.gkn.name, &id.namespace, patch).await;
                         }
                     } else {
+                        tracing::debug!(?id, "Dropping patch because we are not the leader");
                         self.metrics.patch_drops.inc();
                     }
                 }
@@ -292,7 +292,15 @@ impl Controller {
         }
     }
 
-    async fn patch_status<K>(
+    #[tracing::instrument(
+        level = tracing::Level::ERROR,
+        skip(self, patch),
+        fields(
+            group=%K::group(&Default::default()),
+            kind=%K::kind(&Default::default()),
+        ),
+    )]
+    async fn patch<K>(
         &self,
         name: &str,
         namespace: &str,
@@ -302,32 +310,31 @@ impl Controller {
         <K as Resource>::DynamicType: Default,
         K: DeserializeOwned,
     {
-        let patch_params = k8s_core_api::PatchParams::apply(K::group(&Default::default()).as_ref());
+        tracing::trace!(?patch);
         let api = k8s_core_api::Api::<K>::namespaced(self.client.clone(), namespace);
+        let patch_params = k8s_core_api::PatchParams::apply(POLICY_CONTROLLER_NAME);
         let start = time::Instant::now();
-
-        match time::timeout(
+        let result = time::timeout(
             self.patch_timeout,
             api.patch_status(name, &patch_params, &patch),
         )
-        .await
-        {
+        .await;
+        let elapsed = start.elapsed();
+        tracing::trace!(?elapsed);
+        match result {
             Ok(Ok(_)) => {
                 self.metrics.patch_succeeded.inc();
-                self.metrics
-                    .patch_duration
-                    .observe(start.elapsed().as_secs_f64());
+                self.metrics.patch_duration.observe(elapsed.as_secs_f64());
+                tracing::info!("Patched status");
             }
             Ok(Err(error)) => {
                 self.metrics.patch_failed.inc();
-                self.metrics
-                    .patch_duration
-                    .observe(start.elapsed().as_secs_f64());
-                tracing::error!(%namespace, %name, kind = %K::kind(&Default::default()), %error, "Patch failed");
+                self.metrics.patch_duration.observe(elapsed.as_secs_f64());
+                tracing::error!(%error);
             }
             Err(_) => {
                 self.metrics.patch_timeout.inc();
-                tracing::error!(%namespace, %name, kind = %K::kind(&Default::default()), "Patch timed out");
+                tracing::error!("Timed out");
             }
         }
     }
@@ -363,31 +370,48 @@ impl Index {
     /// Controller applies patches or the write leaseholder changes, all
     /// routes have an up-to-date status.
     pub async fn run(index: Arc<RwLock<Self>>, reconciliation_period: Duration) {
-        // Clone the claims watch out of the index. This will immediately
-        // drop the read lock on the index so that it is not held for the
-        // lifetime of this function.
-        let mut claims = index.read().claims.clone();
+        // Extract what we need from the index so we don't need to lock it for
+        // housekeeping.
+        let (instance, mut claims) = {
+            let idx = index.read();
+            (idx.name.clone(), idx.claims.clone())
+        };
 
+        // The timer is reset when this instance becomes the leader and it is
+        // polled as long as it is the leader. The timer ensures that
+        // reconciliation happens at consistent intervals after leadership is
+        // acquired.
+        let mut timer = time::interval(reconciliation_period);
+        timer.set_missed_tick_behavior(time::MissedTickBehavior::Delay);
+
+        let mut was_leader = false;
         loop {
+            // Refresh the state of the lease on each iteration to ensure we're
+            // checking expiration.
+            let is_leader = claims.borrow_and_update().is_current_for(&instance);
+            if is_leader && !was_leader {
+                tracing::debug!("Became leader; resetting timer");
+                timer.reset_immediately();
+            }
+            was_leader = is_leader;
+
             tokio::select! {
+                // Eagerly process claim updates to track leadership changes. If
+                // the claim changes, refesh the leadership status.
+                biased;
                 res = claims.changed() => {
                     res.expect("Claims watch must not be dropped");
-                    tracing::debug!("Lease holder has changed");
+                    if tracing::enabled!(tracing::Level::TRACE) {
+                        let c = claims.borrow();
+                        tracing::trace!(claim=?*c, "Changed");
+                    }
                 }
-                _ = time::sleep(reconciliation_period) => {}
-            }
 
-            // The claimant has changed, or we should attempt to reconcile all
-            //routes to account for any errors. In either case, we should
-            // only proceed if we are the current leader.
-            let claims = claims.borrow_and_update();
-            let index = index.read();
-
-            if !claims.is_current_for(&index.name) {
-                continue;
+                // Only wait for the timer if this instance is the leader.
+                _ = timer.tick(), if is_leader => {
+                    index.read().reconcile_if_leader();
+                }
             }
-            tracing::debug!(%index.name, "Lease holder reconciling cluster");
-            index.reconcile();
         }
     }
 
@@ -726,12 +750,7 @@ impl Index {
         id: &NamespaceGroupKindName,
         ratelimit: &HttpLocalRateLimitPolicyRef,
     ) -> Option<k8s_core_api::Patch<serde_json::Value>> {
-        let status = self.target_ref_status(id, &ratelimit.target_ref);
-
-        let Some(status) = status else {
-            return None;
-        };
-
+        let status = self.target_ref_status(id, &ratelimit.target_ref)?;
         if eq_time_insensitive_conditions(&status.conditions, &ratelimit.status_conditions) {
             return None;
         }
@@ -777,8 +796,33 @@ impl Index {
         make_patch(id, status)
     }
 
-    fn reconcile(&self) {
-        // first update all egress networks and their statuses
+    /// If this instance is the leader, reconcile the statuses for all resources
+    /// for which we control the status.
+    fn reconcile_if_leader(&self) {
+        let lease = self.claims.borrow();
+        if !lease.is_current_for(&self.name) {
+            tracing::trace!(%lease.holder, ?lease.expiry, "Reconcilation skipped");
+            return;
+        }
+        drop(lease);
+
+        tracing::trace!(
+            egressnetworks = self.egress_networks.len(),
+            routes = self.route_refs.len(),
+            httplocalratelimits = self.ratelimits.len(),
+            "Reconciling"
+        );
+        let egressnetworks = self.reconcile_egress_networks();
+        let routes = self.reconcile_routes();
+        let ratelimits = self.reconcile_ratelimits();
+
+        if egressnetworks + routes + ratelimits > 0 {
+            tracing::debug!(egressnetworks, routes, ratelimits, "Reconciled");
+        }
+    }
+
+    fn reconcile_egress_networks(&self) -> usize {
+        let mut patches = 0;
         for (id, net) in self.egress_networks.iter() {
             let id = NamespaceGroupKindName {
                 namespace: id.namespace.clone(),
@@ -795,6 +839,7 @@ impl Index {
                     patch,
                 }) {
                     Ok(()) => {
+                        patches += 1;
                         self.metrics.patch_enqueues.inc();
                     }
                     Err(error) => {
@@ -804,8 +849,11 @@ impl Index {
                 }
             }
         }
+        patches
+    }
 
-        // then update all route refs
+    fn reconcile_routes(&self) -> usize {
+        let mut patches = 0;
         for (id, route) in self.route_refs.iter() {
             if let Some(patch) = self.make_route_patch(id, route) {
                 match self.updates.try_send(Update {
@@ -813,6 +861,7 @@ impl Index {
                     patch,
                 }) {
                     Ok(()) => {
+                        patches += 1;
                         self.metrics.patch_enqueues.inc();
                     }
                     Err(error) => {
@@ -822,8 +871,11 @@ impl Index {
                 }
             }
         }
+        patches
+    }
 
-        // then update all ratelimit policies and their statuses
+    fn reconcile_ratelimits(&self) -> usize {
+        let mut patches = 0;
         for (id, rl) in self.ratelimits.iter() {
             let id = NamespaceGroupKindName {
                 namespace: id.namespace.clone(),
@@ -840,6 +892,7 @@ impl Index {
                     patch,
                 }) {
                     Ok(()) => {
+                        patches += 1;
                         self.metrics.patch_enqueues.inc();
                     }
                     Err(error) => {
@@ -849,6 +902,43 @@ impl Index {
                 }
             }
         }
+        patches
+    }
+
+    #[tracing::instrument(level = "debug", skip(self, net))]
+    fn index_egress_network(&mut self, id: ResourceId, net: EgressNetworkRef) {
+        tracing::trace!(?net);
+        // Insert into the index; if the network is already in the index, and it hasn't
+        // changed, skip creating a patch.
+        if !self.update_egress_net(id, &net) {
+            return;
+        }
+
+        self.reconcile_if_leader();
+    }
+
+    #[tracing::instrument(level = "debug", skip(self, route))]
+    fn index_route(&mut self, id: NamespaceGroupKindName, route: RouteRef) {
+        tracing::trace!(?route);
+        // Insert into the index; if the route is already in the index, and it hasn't
+        // changed, skip creating a patch.
+        if !self.update_route(id.clone(), &route) {
+            return;
+        }
+
+        self.reconcile_if_leader();
+    }
+
+    #[tracing::instrument(level = "debug", skip(self, ratelimit))]
+    fn index_ratelimit(&mut self, id: ResourceId, ratelimit: HttpLocalRateLimitPolicyRef) {
+        tracing::trace!(?ratelimit);
+        // Insert into the index; if the route is already in the index, and it hasn't
+        // changed, skip creating a patch.
+        if !self.update_ratelimit(id.clone(), &ratelimit) {
+            return;
+        }
+
+        self.reconcile_if_leader();
     }
 }
 
@@ -1158,29 +1248,13 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::Server> for Index {
     fn apply(&mut self, resource: linkerd_k8s_api::Server) {
         let namespace = resource.namespace().expect("Server must have a namespace");
         let name = resource.name_unchecked();
-        let id = ResourceId::new(namespace, name);
-
-        self.servers.insert(id);
-
-        // If we're not the leader, skip reconciling the cluster.
-        if !self.claims.borrow().is_current_for(&self.name) {
-            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
-            return;
-        }
-        self.reconcile();
+        self.servers.insert(ResourceId::new(namespace, name));
+        self.reconcile_if_leader();
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let id = ResourceId::new(namespace, name);
-
-        self.servers.remove(&id);
-
-        // If we're not the leader, skip reconciling the cluster.
-        if !self.claims.borrow().is_current_for(&self.name) {
-            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
-            return;
-        }
-        self.reconcile();
+        self.servers.remove(&ResourceId::new(namespace, name));
+        self.reconcile_if_leader();
     }
 
     // Since apply only reindexes a single Server at a time, there's no need
@@ -1191,29 +1265,14 @@ impl kubert::index::IndexNamespacedResource<k8s_core_api::Service> for Index {
     fn apply(&mut self, resource: k8s_core_api::Service) {
         let namespace = resource.namespace().expect("Service must have a namespace");
         let name = resource.name_unchecked();
-        let id = ResourceId::new(namespace, name);
-
-        self.services.insert(id, resource.into());
-
-        // If we're not the leader, skip reconciling the cluster.
-        if !self.claims.borrow().is_current_for(&self.name) {
-            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
-            return;
-        }
-        self.reconcile();
+        self.services
+            .insert(ResourceId::new(namespace, name), resource.into());
+        self.reconcile_if_leader();
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let id = ResourceId::new(namespace, name);
-
-        self.services.remove(&id);
-
-        // If we're not the leader, skip reconciling the cluster.
-        if !self.claims.borrow().is_current_for(&self.name) {
-            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
-            return;
-        }
-        self.reconcile();
+        self.services.remove(&ResourceId::new(namespace, name));
+        self.reconcile_if_leader();
     }
 
     // Since apply only reindexes a single Service at a time, there's no need
@@ -1249,13 +1308,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HttpLocalRateLimitP
     fn delete(&mut self, namespace: String, name: String) {
         let id = ResourceId::new(namespace, name);
         self.ratelimits.remove(&id);
-
-        // If we're not the leader, skip reconciling the cluster.
-        if !self.claims.borrow().is_current_for(&self.name) {
-            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
-            return;
-        }
-        self.reconcile();
+        self.reconcile_if_leader();
     }
 }
 
@@ -1304,66 +1357,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
     fn delete(&mut self, namespace: String, name: String) {
         let id = ResourceId::new(namespace, name);
         self.egress_networks.remove(&id);
-
-        // If we're not the leader, skip reconciling the cluster.
-        if !self.claims.borrow().is_current_for(&self.name) {
-            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
-            return;
-        }
-        self.reconcile();
-    }
-}
-
-impl Index {
-    fn index_egress_network(&mut self, id: ResourceId, net: EgressNetworkRef) {
-        // Insert into the index; if the network is already in the index, and it hasn't
-        // changed, skip creating a patch.
-        if !self.update_egress_net(id, &net) {
-            return;
-        }
-
-        // If we're not the leader, skip creating a patch and sending an
-        // update to the Controller.
-        if !self.claims.borrow().is_current_for(&self.name) {
-            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
-            return;
-        }
-
-        self.reconcile()
-    }
-
-    fn index_route(&mut self, id: NamespaceGroupKindName, route: RouteRef) {
-        // Insert into the index; if the route is already in the index, and it hasn't
-        // changed, skip creating a patch.
-        if !self.update_route(id.clone(), &route) {
-            return;
-        }
-
-        // If we're not the leader, skip creating a patch and sending an
-        // update to the Controller.
-        if !self.claims.borrow().is_current_for(&self.name) {
-            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
-            return;
-        }
-
-        self.reconcile()
-    }
-
-    fn index_ratelimit(&mut self, id: ResourceId, ratelimit: HttpLocalRateLimitPolicyRef) {
-        // Insert into the index; if the route is already in the index, and it hasn't
-        // changed, skip creating a patch.
-        if !self.update_ratelimit(id.clone(), &ratelimit) {
-            return;
-        }
-
-        // If we're not the leader, skip creating a patch and sending an
-        // update to the Controller.
-        if !self.claims.borrow().is_current_for(&self.name) {
-            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
-            return;
-        }
-
-        self.reconcile()
+        self.reconcile_if_leader();
     }
 }
 
@@ -1376,7 +1370,7 @@ where
 {
     match resource_id.api_version() {
         Err(error) => {
-            tracing::error!(error = %error, "failed to create patch for resource");
+            tracing::error!(error = %error, "Failed to create patch for resource");
             None
         }
         Ok(api_version) => {

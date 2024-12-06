@@ -1,9 +1,6 @@
 module github.com/linkerd/linkerd2
 
-go 1.22.0
-
-// Use the unreleased version of the proxy API to validate changes end-to-end.
-replace github.com/linkerd/linkerd2-proxy-api => github.com/linkerd/linkerd2-proxy-api v0.14.1-0.20241106205231-6c316cc41a3a
+go 1.23.0
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
@@ -23,7 +20,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/imdario/mergo v0.3.16
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/linkerd/linkerd2-proxy-api v0.14.0
+	github.com/linkerd/linkerd2-proxy-api v0.15.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-runewidth v0.0.16
 	github.com/nsf/termbox-go v1.1.1
@@ -46,11 +43,11 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	helm.sh/helm/v3 v3.16.3
 	k8s.io/api v0.31.3
-	k8s.io/apiextensions-apiserver v0.31.2
+	k8s.io/apiextensions-apiserver v0.31.3
 	k8s.io/apimachinery v0.31.3
 	k8s.io/client-go v0.31.3
 	k8s.io/code-generator v0.31.3
-	k8s.io/endpointslice v0.31.2
+	k8s.io/endpointslice v0.31.3
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-aggregator v0.31.3
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8

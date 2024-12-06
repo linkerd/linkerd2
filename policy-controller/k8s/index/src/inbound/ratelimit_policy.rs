@@ -82,7 +82,7 @@ impl TryFrom<k8s::policy::HttpLocalRateLimitPolicy> for Spec {
                 let type_ = match condition.type_.as_ref() {
                     "Accepted" => ConditionType::Accepted,
                     condition_type => {
-                        tracing::error!(%status.target_ref.name, %condition_type, "Unexpected condition type found in status");
+                        tracing::warn!(%status.target_ref.name, %condition_type, "Unexpected condition type found in status");
                         return None;
                     }
                 };
@@ -90,7 +90,7 @@ impl TryFrom<k8s::policy::HttpLocalRateLimitPolicy> for Spec {
                     "True" => true,
                     "False" => false,
                     condition_status => {
-                        tracing::error!(%status.target_ref.name, %type_, %condition_status, "Unexpected condition status found in status");
+                        tracing::warn!(%status.target_ref.name, %type_, %condition_status, "Unexpected condition status found in status");
                         return None
                     },
                 };

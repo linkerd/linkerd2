@@ -103,7 +103,7 @@ fn container_http_probe_paths(
             match http::Uri::try_from(path) {
                 Ok(uri) => Some((port, uri.path().to_string())),
                 Err(error) => {
-                    tracing::warn!(%error, path, "invalid probe path");
+                    tracing::warn!(%error, path, "Invalid probe path");
                     None
                 }
             }
@@ -161,7 +161,7 @@ impl Settings {
         };
 
         let default_policy = default_policy(anns).unwrap_or_else(|error| {
-            tracing::warn!(%error, "invalid default policy annotation value");
+            tracing::warn!(%error, "Invalid default policy annotation value");
             None
         });
 
@@ -267,14 +267,14 @@ mod tests {
         let mut expected_5432 = BTreeSet::new();
         expected_5432.insert("/liveness-container-1".to_string());
         expected_5432.insert("/ready-container-1".to_string());
-        assert!(probes.get(&port_5432).is_some());
+        assert!(probes.contains_key(&port_5432));
         assert_eq!(*probes.get(&port_5432).unwrap(), expected_5432);
 
         let port_6543 = u16::try_from(6543).and_then(NonZeroU16::try_from).unwrap();
         let mut expected_6543 = BTreeSet::new();
         expected_6543.insert("/liveness-container-2".to_string());
         expected_6543.insert("/ready-container-2".to_string());
-        assert!(probes.get(&port_6543).is_some());
+        assert!(probes.contains_key(&port_6543));
         assert_eq!(*probes.get(&port_6543).unwrap(), expected_6543);
     }
 

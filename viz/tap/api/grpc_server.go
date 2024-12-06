@@ -125,7 +125,7 @@ func (s *GRPCTapServer) TapByResource(req *tapPb.TapByResourceRequest, stream ta
 			}
 			fmt.Fprintln(&errs, "restart these pods to enable tap and make them valid tap targets")
 		}
-		return status.Errorf(codes.NotFound, errs.String())
+		return status.Error(codes.NotFound, errs.String())
 	}
 
 	log.Infof("Tapping %d pods for target: %q", len(pods), res.String())

@@ -77,7 +77,7 @@ impl hyper::service::Service<Request<Body>> for Admission {
             let review: Review = match serde_json::from_reader(bytes.reader()) {
                 Ok(review) => review,
                 Err(error) => {
-                    warn!(%error, "failed to parse request body");
+                    warn!(%error, "Failed to parse request body");
                     return json_response(AdmissionResponse::invalid(error).into_review());
                 }
             };
@@ -89,7 +89,7 @@ impl hyper::service::Service<Request<Body>> for Admission {
                     admission.admit(req).await
                 }
                 Err(error) => {
-                    warn!(%error, "invalid admission request");
+                    warn!(%error, "Invalid admission request");
                     AdmissionResponse::invalid(error)
                 }
             };

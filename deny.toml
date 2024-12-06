@@ -1,3 +1,4 @@
+[graph]
 targets = [
     { triple = "x86_64-unknown-linux-gnu" },
     { triple = "aarch64-unknown-linux-gnu" },
@@ -7,14 +8,13 @@ targets = [
 [advisories]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained = "warn"
-yanked = "deny"
-notice = "warn"
-ignore = []
+ignore = [
+    # Pending kube update
+    "RUSTSEC-2024-0384",
+    "RUSTSEC-2024-0388",
+]
 
 [licenses]
-unlicensed = "deny"
 allow = [
     "Apache-2.0",
     "BSD-2-Clause",
@@ -23,10 +23,6 @@ allow = [
     "MIT",
     "Unicode-DFS-2016",
 ]
-deny = []
-copyleft = "deny"
-allow-osi-fsf-free = "neither"
-default = "deny"
 confidence-threshold = 0.8
 exceptions = [
     { allow = [
@@ -51,33 +47,30 @@ multiple-versions = "deny"
 # Wildcard dependencies are used for all workspace-local crates.
 wildcards = "allow"
 highlight = "all"
-deny = []
 skip = [
     # `rustls-pemfile` and `k8s-openapi` depend on versions of `base64` that
     # have diverged significantly.
     { name = "base64" },
-    # syn v2 has been released and some libraries are slower to adopt it
-    { name = "syn", version = "1.0" },
     # `tower-http` (a transitive dep via `kubert`) depends on v2.x of `bitflags`,
     # while pretty much the entire rest of the world is still on v1.x
     { name = "bitflags", version = "1.0" },
     # https://github.com/hawkw/matchers/pull/4
     { name = "regex-automata", version = "0.1" },
     { name = "regex-syntax", version = "0.6" },
-    # Pending hyper upgrade to 1.0
-    { name = "socket2" },
 ]
 skip-tree = [
     # `serde_json` and `h2` depend on diverged versions of `indexmap` (2.0.x and
     # 1.9.x, respectively)
     { name = "indexmap" },
+    # thiserror v2 is still making its way through the ecosystem
+    { name = "thiserror", version = "1" },
 ]
 
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = ["https://github.com/linkerd/linkerd2-proxy-api"]
+allow-git = []
 
 [sources.allow-org]
 github = []

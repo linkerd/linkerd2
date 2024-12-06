@@ -72,9 +72,6 @@ fn convert_outbound_route(
     parent_info: &ParentInfo,
     original_dst: Option<SocketAddr>,
 ) -> outbound::GrpcRoute {
-    // This encoder sets deprecated timeouts for older proxies.
-    #![allow(deprecated)]
-
     let metadata = Some(meta::Metadata {
         kind: Some(meta::metadata::Kind::Resource(meta::Resource {
             group: gknn.group.to_string(),
@@ -122,6 +119,7 @@ fn convert_outbound_route(
                 if retry.is_none() {
                     retry = service_retry.clone();
                 }
+                #[allow(deprecated)]
                 outbound::grpc_route::Rule {
                     matches: matches.into_iter().map(convert_match).collect(),
                     backends: Some(outbound::grpc_route::Distribution { kind: Some(dist) }),
@@ -454,11 +452,11 @@ fn convert_to_filter(filter: Filter) -> outbound::grpc_route::Filter {
                 convert_request_header_modifier_filter(filter),
             )),
             Filter::RequestRedirect(filter) => {
-                tracing::warn!(filter = ?filter, "declining to convert invalid filter type for GrpcRoute");
+                tracing::warn!(filter = ?filter, "Declining to convert invalid filter type for GrpcRoute");
                 None
             }
             Filter::ResponseHeaderModifier(filter) => {
-                tracing::warn!(filter = ?filter, "declining to convert invalid filter type for GrpcRoute");
+                tracing::warn!(filter = ?filter, "Declining to convert invalid filter type for GrpcRoute");
                 None
             }
         },

@@ -99,8 +99,6 @@ fn convert_outbound_route(
     parent_info: &ParentInfo,
     original_dst: Option<SocketAddr>,
 ) -> outbound::HttpRoute {
-    // This encoder sets deprecated timeouts for older proxies.
-    #![allow(deprecated)]
     let metadata = Some(meta::Metadata {
         kind: Some(meta::metadata::Kind::Resource(meta::Resource {
             group: gknn.group.to_string(),
@@ -148,6 +146,8 @@ fn convert_outbound_route(
                 if retry.is_none() {
                     retry = service_retry.clone();
                 }
+                // This encoder sets deprecated timeouts for older proxies.
+                #[allow(deprecated)]
                 outbound::http_route::Rule {
                     matches: matches.into_iter().map(convert_match).collect(),
                     backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),

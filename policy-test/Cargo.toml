@@ -11,7 +11,7 @@ hyper = { version = "0.14", features = ["client", "http2"] }
 futures = { version = "0.3", default-features = false }
 ipnet = "2"
 k8s-gateway-api = "0.16"
-k8s-openapi = { version = "0.20", features = ["v1_22"] }
+k8s-openapi = { workspace = true }
 linkerd-policy-controller-core = { path = "../policy-controller/core" }
 linkerd-policy-controller-k8s-api = { path = "../policy-controller/k8s/api" }
 linkerd-policy-controller-grpc = { path = "../policy-controller/grpc" }
@@ -26,7 +26,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dependencies.kube]
-version = "0.87.1"
+workspace = true
 default-features = false
 features = ["client", "openssl-tls", "runtime", "ws"]
 

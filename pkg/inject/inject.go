@@ -1058,7 +1058,7 @@ func (conf *ResourceConfig) injectPodSpec(values *podPatch) {
 
 	// use the primary container's capabilities to ensure psp compliance, if
 	// enabled
-	if conf.pod.spec.Containers != nil && len(conf.pod.spec.Containers) > 0 {
+	if len(conf.pod.spec.Containers) > 0 {
 		if sc := conf.pod.spec.Containers[0].SecurityContext; sc != nil && sc.Capabilities != nil {
 			values.Proxy.Capabilities = &l5dcharts.Capabilities{
 				Add:  []string{},

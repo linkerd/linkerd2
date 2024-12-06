@@ -7,15 +7,15 @@
 
 run:
   deadline: 5m
-  skip-dirs:
+  exclude-dirs:
   - controller/gen
 
 linters:
   enable:
   - bodyclose
+  #TODO - copyloopvar
   - errcheck
   - errorlint
-  - exportloopref
   - gocritic
   - gosec
   - gosimple
@@ -41,9 +41,7 @@ linters:
   # - maligned
   # - prealloc
 
-  disable:
-  # https://github.com/golangci/golangci-lint/issues/2649
-  - structcheck
+  disable: []
 
 linters-settings:
   revive:
@@ -52,6 +50,14 @@ linters-settings:
       disabled: true
   stylecheck:
     checks: ["ST1019"]
+  errcheck:
+    exclude-functions:
+      - fmt.Fprint
+      - fmt.Fprintf
+      - fmt.Fprintln
+  gosec:
+    excludes:
+      - G115 # Potential integer overflow when converting between integer types
 
 issues:
   exclude-use-default: false

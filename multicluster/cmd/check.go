@@ -177,6 +177,11 @@ func multiclusterCategory(hc *healthChecker, wait time.Duration) *healthcheck.Ca
 			Fatal().
 			WithCheck(func(ctx context.Context) error { return hc.checkLinks(ctx) }))
 	checkers = append(checkers,
+		*healthcheck.NewChecker("Link and CLI versions match").
+			WithHintAnchor("l5d-multicluster-links-version").
+			Warning().
+			WithCheck(func(ctx context.Context) error { return hc.checkLinkVersions() }))
+	checkers = append(checkers,
 		*healthcheck.NewChecker("remote cluster access credentials are valid").
 			WithHintAnchor("l5d-smc-target-clusters-access").
 			WithCheck(func(ctx context.Context) error { return hc.checkRemoteClusterConnectivity(ctx) }))
@@ -332,6 +337,30 @@ func (hc *healthChecker) checkLinks(ctx context.Context) error {
 	return healthcheck.VerboseSuccess{Message: strings.Join(linkNames, "\n")}
 }
 
+func (hc *healthChecker) checkLinkVersions() error {
+	errors := []error{}
+	links := []string{}
+	for _, link := range hc.links {
+		parts := strings.Split(link.CreatedBy, " ")
+		if len(parts) == 2 && parts[0] == "linkerd/cli" {
+			if parts[1] == version.Version {
+				links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
+			} else {
+				errors = append(errors, fmt.Errorf("* %s: CLI version is %s but Link version is %s", link.TargetClusterName, version.Version, parts[1]))
+			}
+		} else {
+			errors = append(errors, fmt.Errorf("* %s: unable to determine version", link.TargetClusterName))
+		}
+	}
+	if len(errors) > 0 {
+		return joinErrors(errors, 2)
+	}
+	if len(links) == 0 {
+		return healthcheck.SkipError{Reason: "no links"}
+	}
+	return healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
+}
+
 func (hc *healthChecker) checkRemoteClusterConnectivity(ctx context.Context) error {
 	errors := []error{}
 	links := []string{}
@@ -446,7 +475,7 @@ func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnc
 
 func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error {
 	links := []string{}
-	errors := []string{}
+	messages := []string{}
 	for _, link := range hc.links {
 		err := healthcheck.CheckServiceAccounts(
 			ctx,
@@ -456,7 +485,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			serviceMirrorComponentsSelector(link.TargetClusterName),
 		)
 		if err != nil {
-			errors = append(errors, err.Error())
+			messages = append(messages, err.Error())
 		}
 		err = healthcheck.CheckClusterRoles(
 			ctx,
@@ -466,7 +495,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			serviceMirrorComponentsSelector(link.TargetClusterName),
 		)
 		if err != nil {
-			errors = append(errors, err.Error())
+			messages = append(messages, err.Error())
 		}
 		err = healthcheck.CheckClusterRoleBindings(
 			ctx,
@@ -476,7 +505,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			serviceMirrorComponentsSelector(link.TargetClusterName),
 		)
 		if err != nil {
-			errors = append(errors, err.Error())
+			messages = append(messages, err.Error())
 		}
 		err = healthcheck.CheckRoles(
 			ctx,
@@ -487,7 +516,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			serviceMirrorComponentsSelector(link.TargetClusterName),
 		)
 		if err != nil {
-			errors = append(errors, err.Error())
+			messages = append(messages, err.Error())
 		}
 		err = healthcheck.CheckRoleBindings(
 			ctx,
@@ -498,12 +527,12 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			serviceMirrorComponentsSelector(link.TargetClusterName),
 		)
 		if err != nil {
-			errors = append(errors, err.Error())
+			messages = append(messages, err.Error())
 		}
 		links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
 	}
-	if len(errors) > 0 {
-		return fmt.Errorf(strings.Join(errors, "\n"))
+	if len(messages) > 0 {
+		return errors.New(strings.Join(messages, "\n"))
 	}
 	if len(links) == 0 {
 		return healthcheck.SkipError{Reason: "no links"}
@@ -648,6 +677,10 @@ func (hc *healthChecker) checkIfMirrorServicesHaveEndpoints(ctx context.Context)
 		return err
 	}
 	for _, svc := range mirrorServices.Items {
+		if svc.Annotations[k8s.RemoteDiscoveryAnnotation] != "" || svc.Annotations[k8s.LocalDiscoveryAnnotation] != "" {
+			// This is a federated service and does not need to have endpoints.
+			continue
+		}
 		// have to use a new ctx for each call, otherwise we risk reaching the original context deadline
 		ctx, cancel := context.WithTimeout(context.Background(), healthcheck.RequestTimeout)
 		defer cancel()
@@ -668,7 +701,7 @@ func (hc *healthChecker) checkIfMirrorServicesHaveEndpoints(ctx context.Context)
 
 func (hc *healthChecker) checkForOrphanedServices(ctx context.Context) error {
 	errors := []error{}
-	selector := fmt.Sprintf("%s, !%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
+	selector := fmt.Sprintf("%s, !%s, %s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel, k8s.RemoteClusterNameLabel)
 	mirrorServices, err := hc.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return err
