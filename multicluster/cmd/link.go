@@ -248,6 +248,9 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      opts.clusterName,
 					Namespace: opts.namespace,
+					Annotations: map[string]string{
+						k8s.CreatedByAnnotation: k8s.CreatedByAnnotationValue(),
+					},
 				},
 				Spec: v1alpha2.LinkSpec{
 					TargetClusterName:             opts.clusterName,
