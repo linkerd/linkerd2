@@ -145,7 +145,7 @@ func TestDualStack(t *testing.T) {
 				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\noutput:\n%s", err, out)
 			}
 			if out != "IPv6\n" {
-				testutil.AnnotatedFatalf(t, "expected 'IPv6', received '%s'", out)
+				testutil.AnnotatedFatalf(t, "expected 'IPv6'", "received '%s'", out)
 			}
 		})
 
@@ -162,7 +162,7 @@ func TestDualStack(t *testing.T) {
 					testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\noutput:\n%s", err, out)
 				}
 				if out != "IPv6\n" {
-					testutil.AnnotatedFatalf(t, "expected 'IPv6', received '%s'", out)
+					testutil.AnnotatedFatalf(t, "expected 'IPv6'", "received '%s'", out)
 				}
 			}
 		})

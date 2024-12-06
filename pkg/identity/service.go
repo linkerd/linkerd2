@@ -103,7 +103,7 @@ func (svc *Service) Run(issuerEvent <-chan struct{}, issuerError <-chan error) {
 				svc.recordEvent(nil, v1.EventTypeWarning, eventTypeSkipped, message)
 			} else {
 				message := "Updated identity issuer"
-				log.Infof(message)
+				log.Info(message)
 				svc.recordEvent(nil, v1.EventTypeNormal, eventTypeUpdated, message)
 			}
 		case err := <-issuerError:

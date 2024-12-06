@@ -151,7 +151,7 @@ func TestDashboard(t *testing.T) {
 	output := strings.Join(outputLines, "")
 	if !strings.Contains(output, dashboardURL) {
 		testutil.AnnotatedFatalf(t,
-			"dashboard command failed. Expected url [%s] not present", dashboardURL)
+			"dashboard command failed", "Expected url [%s] not present", dashboardURL)
 	}
 
 	resp, err := TestHelper.HTTPGetURL(dashboardURL + "/api/version")

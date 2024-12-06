@@ -102,7 +102,7 @@ func TestPodToPodTraffic(t *testing.T) {
 					testutil.AnnotatedFatal(t, "mirror service should not have endpoints", "mirror service should not have endpoints")
 				}
 				if !kerrors.IsNotFound(err) {
-					testutil.AnnotatedFatalf(t, "failed to retrieve mirror service endpoints", err.Error())
+					testutil.AnnotatedFatal(t, "failed to retrieve mirror service endpoints", err.Error())
 				}
 				return nil
 			})
