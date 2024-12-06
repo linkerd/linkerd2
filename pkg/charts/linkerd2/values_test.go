@@ -90,16 +90,15 @@ func TestNewValues(t *testing.T) {
 			ServiceMirror: &PodMonitorComponent{Enabled: true},
 			Proxy:         &PodMonitorComponent{Enabled: true},
 		},
-		DestinationController: map[string]interface{}{
-			"meshedHttp2ClientProtobuf": map[string]interface{}{
+		DestinationController: &DestinationController{
+			MeshedHttp2ClientProtobuf: map[string]interface{}{
 				"keep_alive": map[string]interface{}{
 					"interval":   map[string]interface{}{"seconds": 10.0},
 					"timeout":    map[string]interface{}{"seconds": 3.0},
 					"while_idle": true,
 				},
 			},
-			"livenessProbe":  map[string]interface{}{"timeoutSeconds": 1.0},
-			"readinessProbe": map[string]interface{}{"timeoutSeconds": 1.0},
+			PodAnnotations: map[string]string{},
 		},
 		SPValidator: map[string]interface{}{
 			"livenessProbe":  map[string]interface{}{"timeoutSeconds": 1.0},
@@ -235,6 +234,7 @@ func TestNewValues(t *testing.T) {
 				ClientQPS:   100,
 				ClientBurst: 200,
 			},
+			PodAnnotations: map[string]string{},
 		},
 		NodeSelector: map[string]string{
 			"kubernetes.io/os": "linux",
@@ -246,7 +246,10 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 
-		ProxyInjector:    &ProxyInjector{Webhook: Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorInjector}},
+		ProxyInjector: &ProxyInjector{
+			Webhook:        Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorInjector},
+			PodAnnotations: map[string]string{},
+		},
 		ProfileValidator: &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorSimple},
 		PolicyValidator:  &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorSimple},
 		Egress:           &Egress{GlobalEgressNetworkNamespace: "linkerd-egress"},

@@ -384,6 +384,8 @@ destinationController:
       timeout:
         seconds: 3
       while_idle: true
+  # -- Additional annotations to add to destination pods
+  podAnnotations: {}
   livenessProbe:
     timeoutSeconds: 1
   readinessProbe:
@@ -427,6 +429,9 @@ identity:
       keyPEM: |
 
   kubeAPI: *kubeapi
+
+  # -- Additional annotations to add to identity pods
+  podAnnotations: {}
 
   livenessProbe:
     timeoutSeconds: 1
@@ -504,6 +509,9 @@ proxyInjector:
   # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource)
   # for more information.
   injectCaFromSecret: ""
+
+  # -- Additional annotations to add to proxy-injector pods
+  podAnnotations: {}
 
   livenessProbe:
     timeoutSeconds: 1
@@ -668,4 +676,3 @@ podMonitor:
 egress:
   # -- The namespace that is used to store egress configuration that affects all client workloads in the cluster
   globalEgressNetworkNamespace: linkerd-egress
-  

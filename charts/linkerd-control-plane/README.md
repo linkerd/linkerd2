@@ -163,6 +163,7 @@ Kubernetes: `>=1.22.0-0`
 | destinationController.meshedHttp2ClientProtobuf.keep_alive.interval.seconds | int | `10` |  |
 | destinationController.meshedHttp2ClientProtobuf.keep_alive.timeout.seconds | int | `3` |  |
 | destinationController.meshedHttp2ClientProtobuf.keep_alive.while_idle | bool | `true` |  |
+| destinationController.podAnnotations | object | `{}` | Additional annotations to add to destination pods |
 | destinationController.readinessProbe.timeoutSeconds | int | `1` |  |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob |
 | disableIPv6 | bool | `true` | disables routing IPv6 traffic in addition to IPv4 traffic through the proxy (IPv6 routing only available as of proxy-init v2.3.0 and linkerd-cni v1.4.0) |
@@ -183,6 +184,7 @@ Kubernetes: `>=1.22.0-0`
 | identity.kubeAPI.clientBurst | int | `200` | Burst value over clientQPS |
 | identity.kubeAPI.clientQPS | int | `100` | Maximum QPS sent to the kube-apiserver before throttling. See [token bucket rate limiter implementation](https://github.com/kubernetes/client-go/blob/v12.0.0/util/flowcontrol/throttle.go) |
 | identity.livenessProbe.timeoutSeconds | int | `1` |  |
+| identity.podAnnotations | object | `{}` | Additional annotations to add to identity pods |
 | identity.readinessProbe.timeoutSeconds | int | `1` |  |
 | identity.serviceAccountTokenProjection | bool | `true` | Use [Service Account token Volume projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection) for pod validation instead of the default token |
 | identityTrustAnchorsPEM | string | `""` | Trust root certificate (ECDSA). It must be provided during install. |
@@ -311,6 +313,7 @@ Kubernetes: `>=1.22.0-0`
 | proxyInjector.livenessProbe.timeoutSeconds | int | `1` |  |
 | proxyInjector.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]},{"key":"kubernetes.io/metadata.name","operator":"NotIn","values":["kube-system","cert-manager"]}]}` | Namespace selector used by admission webhook. |
 | proxyInjector.objectSelector | object | `{"matchExpressions":[{"key":"linkerd.io/control-plane-component","operator":"DoesNotExist"},{"key":"linkerd.io/cni-resource","operator":"DoesNotExist"}]}` | Object selector used by admission webhook. |
+| proxyInjector.podAnnotations | object | `{}` | Additional annotations to add to proxy-injector pods |
 | proxyInjector.readinessProbe.timeoutSeconds | int | `1` |  |
 | proxyInjector.timeoutSeconds | int | `10` | Timeout in seconds before the API Server cancels a request to the proxy injector. If timeout is exceeded, the webhookfailurePolicy is used. |
 | revisionHistoryLimit | int | `10` | Specifies the number of old ReplicaSets to retain to allow rollback. |
