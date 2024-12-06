@@ -475,7 +475,7 @@ func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnc
 
 func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error {
 	links := []string{}
-	errors := []string{}
+	messages := []string{}
 	for _, link := range hc.links {
 		err := healthcheck.CheckServiceAccounts(
 			ctx,
@@ -485,7 +485,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			serviceMirrorComponentsSelector(link.TargetClusterName),
 		)
 		if err != nil {
-			errors = append(errors, err.Error())
+			messages = append(messages, err.Error())
 		}
 		err = healthcheck.CheckClusterRoles(
 			ctx,
@@ -495,7 +495,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			serviceMirrorComponentsSelector(link.TargetClusterName),
 		)
 		if err != nil {
-			errors = append(errors, err.Error())
+			messages = append(messages, err.Error())
 		}
 		err = healthcheck.CheckClusterRoleBindings(
 			ctx,
@@ -505,7 +505,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			serviceMirrorComponentsSelector(link.TargetClusterName),
 		)
 		if err != nil {
-			errors = append(errors, err.Error())
+			messages = append(messages, err.Error())
 		}
 		err = healthcheck.CheckRoles(
 			ctx,
@@ -516,7 +516,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			serviceMirrorComponentsSelector(link.TargetClusterName),
 		)
 		if err != nil {
-			errors = append(errors, err.Error())
+			messages = append(messages, err.Error())
 		}
 		err = healthcheck.CheckRoleBindings(
 			ctx,
@@ -527,12 +527,12 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			serviceMirrorComponentsSelector(link.TargetClusterName),
 		)
 		if err != nil {
-			errors = append(errors, err.Error())
+			messages = append(messages, err.Error())
 		}
 		links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
 	}
-	if len(errors) > 0 {
-		return fmt.Errorf(strings.Join(errors, "\n"))
+	if len(messages) > 0 {
+		return errors.New(strings.Join(messages, "\n"))
 	}
 	if len(links) == 0 {
 		return healthcheck.SkipError{Reason: "no links"}

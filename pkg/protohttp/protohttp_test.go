@@ -187,7 +187,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 
 		responseWriter := newStubResponseWriter()
 		expectedErrorMessage := "error message"
-		grpcError := status.Errorf(codes.AlreadyExists, expectedErrorMessage)
+		grpcError := status.Error(codes.AlreadyExists, expectedErrorMessage)
 
 		WriteErrorToHTTPResponse(responseWriter, grpcError)
 
