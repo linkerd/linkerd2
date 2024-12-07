@@ -20,11 +20,10 @@ git clone --depth 1 --branch "$GEN_VER" https://github.com/kubernetes/code-gener
 rm -rf "${SCRIPT_ROOT}/controller/gen/client/clientset/*"
 rm -rf "${SCRIPT_ROOT}/controller/gen/client/listeners/*"
 rm -rf "${SCRIPT_ROOT}/controller/gen/client/informers/*"
-crds=(serviceprofile:v1alpha2 server:v1beta1 serverauthorization:v1beta1 link:v1alpha1 policy:v1alpha1 policy:v1beta3 externalworkload:v1beta1)
+crds=(serviceprofile server serverauthorization link policy policy externalworkload)
 for crd in "${crds[@]}"
 do
-  crd_path=$(tr : / <<< "$crd")
-  rm -f "${SCRIPT_ROOT}/controller/gen/apis/${crd_path}/zz_generated.deepcopy.go"
+  rm -f "${SCRIPT_ROOT}"/controller/gen/apis/"${crd}"/*/zz_generated.deepcopy.go
 done
 
 # shellcheck disable=SC1091

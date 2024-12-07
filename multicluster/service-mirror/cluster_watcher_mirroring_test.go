@@ -397,7 +397,6 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	k8s.NewFakeAPIWithL5dClient()
 	remoteAPI.Sync(nil)
 	localAPI.Sync(nil)
 

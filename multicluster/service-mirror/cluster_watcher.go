@@ -1844,9 +1844,9 @@ func deleteServiceStatus(remoteName, namespace string, statuses []v1alpha2.Servi
 }
 
 func mirrorStatusCondition(success bool, reason string, message string, localRef *corev1.Service) v1alpha2.LinkCondition {
-	status := "True"
+	status := metav1.ConditionTrue
 	if !success {
-		status = "False"
+		status = metav1.ConditionFalse
 	}
 	condition := v1alpha2.LinkCondition{
 		LastTransitionTime: metav1.Now(),

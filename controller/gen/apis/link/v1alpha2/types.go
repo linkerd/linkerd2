@@ -74,7 +74,7 @@ type LinkCondition struct {
 	Type string `json:"type"`
 	// Status of the condition.
 	// Can be True, False, Unknown
-	Status string `json:"status"`
+	Status metav1.ConditionStatus `json:"status"`
 	// Last time an ExternalWorkload was probed for a condition.
 	// +optional
 	LastProbeTime metav1.Time `json:"lastProbeTime,omitempty"`
