@@ -24,6 +24,7 @@ import (
 
 	externalworkloadv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalworkload/v1beta1"
 	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1"
+	linkv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha2"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1alpha1"
 	policyv1beta3 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1beta3"
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1"
@@ -40,6 +41,7 @@ type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	ExternalworkloadV1beta1() externalworkloadv1beta1.ExternalworkloadV1beta1Interface
 	LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface
+	LinkV1alpha2() linkv1alpha2.LinkV1alpha2Interface
 	PolicyV1alpha1() policyv1alpha1.PolicyV1alpha1Interface
 	PolicyV1beta3() policyv1beta3.PolicyV1beta3Interface
 	ServerV1beta1() serverv1beta1.ServerV1beta1Interface
@@ -54,6 +56,7 @@ type Clientset struct {
 	*discovery.DiscoveryClient
 	externalworkloadV1beta1    *externalworkloadv1beta1.ExternalworkloadV1beta1Client
 	linkV1alpha1               *linkv1alpha1.LinkV1alpha1Client
+	linkV1alpha2               *linkv1alpha2.LinkV1alpha2Client
 	policyV1alpha1             *policyv1alpha1.PolicyV1alpha1Client
 	policyV1beta3              *policyv1beta3.PolicyV1beta3Client
 	serverV1beta1              *serverv1beta1.ServerV1beta1Client
@@ -71,6 +74,11 @@ func (c *Clientset) ExternalworkloadV1beta1() externalworkloadv1beta1.Externalwo
 // LinkV1alpha1 retrieves the LinkV1alpha1Client
 func (c *Clientset) LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface {
 	return c.linkV1alpha1
+}
+
+// LinkV1alpha2 retrieves the LinkV1alpha2Client
+func (c *Clientset) LinkV1alpha2() linkv1alpha2.LinkV1alpha2Interface {
+	return c.linkV1alpha2
 }
 
 // PolicyV1alpha1 retrieves the PolicyV1alpha1Client
@@ -160,6 +168,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.linkV1alpha2, err = linkv1alpha2.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 	cs.policyV1alpha1, err = policyv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
@@ -211,6 +223,7 @@ func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.externalworkloadV1beta1 = externalworkloadv1beta1.New(c)
 	cs.linkV1alpha1 = linkv1alpha1.New(c)
+	cs.linkV1alpha2 = linkv1alpha2.New(c)
 	cs.policyV1alpha1 = policyv1alpha1.New(c)
 	cs.policyV1beta3 = policyv1beta3.New(c)
 	cs.serverV1beta1 = serverv1beta1.New(c)

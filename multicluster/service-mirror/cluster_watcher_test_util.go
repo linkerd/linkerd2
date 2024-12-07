@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/go-test/deep"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/multicluster"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,14 +22,14 @@ const (
 	clusterDomain      = "cluster.local"
 	defaultProbePath   = "/probe"
 	defaultProbePort   = 12345
-	defaultProbePeriod = 60
+	defaultProbePeriod = "60"
 )
 
 var (
-	defaultProbeSpec = multicluster.ProbeSpec{
+	defaultProbeSpec = v1alpha2.ProbeSpec{
 		Path:   defaultProbePath,
-		Port:   defaultProbePort,
-		Period: time.Duration(defaultProbePeriod) * time.Second,
+		Port:   fmt.Sprintf("%d", defaultProbePort),
+		Period: defaultProbePeriod,
 	}
 	defaultSelector, _                = metav1.ParseToLabelSelector(consts.DefaultExportedServiceSelector + "=true")
 	defaultRemoteDiscoverySelector, _ = metav1.ParseToLabelSelector(consts.DefaultExportedServiceSelector + "=remote-discovery")
@@ -40,7 +39,7 @@ type testEnvironment struct {
 	events          []interface{}
 	remoteResources []string
 	localResources  []string
-	link            multicluster.Link
+	link            v1alpha2.Link
 }
 
 func (te *testEnvironment) runEnvironment(watcherQueue workqueue.TypedRateLimitingInterface[any]) (*k8s.API, error) {
@@ -48,7 +47,7 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.TypedRateLimiti
 	if err != nil {
 		return nil, err
 	}
-	localAPI, err := k8s.NewFakeAPI(te.localResources...)
+	localAPI, l5dAPI, err := k8s.NewFakeAPIWithL5dClient(te.localResources...)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +58,7 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.TypedRateLimiti
 		link:                    &te.link,
 		remoteAPIClient:         remoteAPI,
 		localAPIClient:          localAPI,
+		linkClient:              l5dAPI,
 		stopper:                 nil,
 		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:             watcherQueue,
@@ -107,15 +107,17 @@ var createExportedService = &testEnvironment{
 	localResources: []string{
 		asYaml(namespace("ns1")),
 	},
-	link: multicluster.Link{
-		TargetClusterName:       clusterName,
-		TargetClusterDomain:     clusterDomain,
-		GatewayIdentity:         "gateway-identity",
-		GatewayAddress:          "192.0.2.127",
-		GatewayPort:             888,
-		ProbeSpec:               defaultProbeSpec,
-		Selector:                defaultSelector,
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             "888",
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
 	},
 }
 
@@ -144,15 +146,17 @@ var createRemoteDiscoveryService = &testEnvironment{
 	localResources: []string{
 		asYaml(namespace("ns1")),
 	},
-	link: multicluster.Link{
-		TargetClusterName:       clusterName,
-		TargetClusterDomain:     clusterDomain,
-		GatewayIdentity:         "gateway-identity",
-		GatewayAddress:          "192.0.2.127",
-		GatewayPort:             888,
-		ProbeSpec:               defaultProbeSpec,
-		Selector:                defaultSelector,
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             "888",
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
 	},
 }
 
@@ -181,15 +185,17 @@ var createFederatedService = &testEnvironment{
 	localResources: []string{
 		asYaml(namespace("ns1")),
 	},
-	link: multicluster.Link{
-		TargetClusterName:       clusterName,
-		TargetClusterDomain:     clusterDomain,
-		GatewayIdentity:         "gateway-identity",
-		GatewayAddress:          "192.0.2.127",
-		GatewayPort:             888,
-		ProbeSpec:               defaultProbeSpec,
-		Selector:                defaultSelector,
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             "888",
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
 	},
 }
 
@@ -233,15 +239,17 @@ func joinFederatedService() *testEnvironment {
 			asYaml(namespace("ns1")),
 			asYaml(fedSvc),
 		},
-		link: multicluster.Link{
-			TargetClusterName:       clusterName,
-			TargetClusterDomain:     clusterDomain,
-			GatewayIdentity:         "gateway-identity",
-			GatewayAddress:          "192.0.2.127",
-			GatewayPort:             888,
-			ProbeSpec:               defaultProbeSpec,
-			Selector:                defaultSelector,
-			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		link: v1alpha2.Link{
+			Spec: v1alpha2.LinkSpec{
+				TargetClusterName:       clusterName,
+				TargetClusterDomain:     clusterDomain,
+				GatewayIdentity:         "gateway-identity",
+				GatewayAddress:          "192.0.2.127",
+				GatewayPort:             "888",
+				ProbeSpec:               defaultProbeSpec,
+				Selector:                defaultSelector,
+				RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+			},
 		},
 	}
 }
@@ -271,15 +279,17 @@ var leftFederatedService = &testEnvironment{
 			},
 		}, "", fmt.Sprintf("service-one@other,service-one@%s", clusterName))),
 	},
-	link: multicluster.Link{
-		TargetClusterName:       clusterName,
-		TargetClusterDomain:     clusterDomain,
-		GatewayIdentity:         "gateway-identity",
-		GatewayAddress:          "192.0.2.127",
-		GatewayPort:             888,
-		ProbeSpec:               defaultProbeSpec,
-		Selector:                defaultSelector,
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             "888",
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
 	},
 }
 
@@ -308,15 +318,17 @@ var createLocalFederatedService = &testEnvironment{
 	localResources: []string{
 		asYaml(namespace("ns1")),
 	},
-	link: multicluster.Link{
-		TargetClusterName:       "", // local cluster
-		TargetClusterDomain:     clusterDomain,
-		GatewayIdentity:         "gateway-identity",
-		GatewayAddress:          "192.0.2.127",
-		GatewayPort:             888,
-		ProbeSpec:               defaultProbeSpec,
-		Selector:                defaultSelector,
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:       "", // local cluster
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             "888",
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
 	},
 }
 
@@ -360,15 +372,17 @@ func joinLocalFederatedService() *testEnvironment {
 			asYaml(namespace("ns1")),
 			asYaml(fedSvc),
 		},
-		link: multicluster.Link{
-			TargetClusterName:       "", // local cluster
-			TargetClusterDomain:     clusterDomain,
-			GatewayIdentity:         "gateway-identity",
-			GatewayAddress:          "192.0.2.127",
-			GatewayPort:             888,
-			ProbeSpec:               defaultProbeSpec,
-			Selector:                defaultSelector,
-			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		link: v1alpha2.Link{
+			Spec: v1alpha2.LinkSpec{
+				TargetClusterName:       "", // local cluster
+				TargetClusterDomain:     clusterDomain,
+				GatewayIdentity:         "gateway-identity",
+				GatewayAddress:          "192.0.2.127",
+				GatewayPort:             "888",
+				ProbeSpec:               defaultProbeSpec,
+				Selector:                defaultSelector,
+				RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+			},
 		},
 	}
 }
@@ -398,15 +412,17 @@ var leftLocalFederatedService = &testEnvironment{
 			},
 		}, "service-one", "service-one@other")),
 	},
-	link: multicluster.Link{
-		TargetClusterName:       "", // local cluster
-		TargetClusterDomain:     clusterDomain,
-		GatewayIdentity:         "gateway-identity",
-		GatewayAddress:          "192.0.2.127",
-		GatewayPort:             888,
-		ProbeSpec:               defaultProbeSpec,
-		Selector:                defaultSelector,
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:       "", // local cluster
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             "888",
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
 	},
 }
 
@@ -444,7 +460,7 @@ var createExportedHeadlessService = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		asYaml(gateway("existing-gateway", "existing-namespace", "222", "192.0.2.129", "gateway", 889, "gateway-identity", 123456, "/probe1", 120)),
+		asYaml(gateway("existing-gateway", "existing-namespace", "222", "192.0.2.129", "gateway", 889, "gateway-identity", 123456, "/probe1", "120s")),
 		asYaml(remoteHeadlessService("service-one", "ns2", "111", nil,
 			[]corev1.ServicePort{
 				{
@@ -474,19 +490,21 @@ var createExportedHeadlessService = &testEnvironment{
 	localResources: []string{
 		asYaml(namespace("ns2")),
 	},
-	link: multicluster.Link{
-		TargetClusterName:   clusterName,
-		TargetClusterDomain: clusterDomain,
-		GatewayIdentity:     "gateway-identity",
-		GatewayAddress:      "192.0.2.129",
-		GatewayPort:         889,
-		ProbeSpec: multicluster.ProbeSpec{
-			Port:   123456,
-			Path:   "/probe1",
-			Period: 120,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:   clusterName,
+			TargetClusterDomain: clusterDomain,
+			GatewayIdentity:     "gateway-identity",
+			GatewayAddress:      "192.0.2.129",
+			GatewayPort:         "889",
+			ProbeSpec: v1alpha2.ProbeSpec{
+				Port:   "123456",
+				Path:   "/probe1",
+				Period: "120",
+			},
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 		},
-		Selector:                defaultSelector,
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -501,15 +519,17 @@ var deleteMirrorService = &testEnvironment{
 		asYaml(mirrorService("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", nil)),
 		asYaml(endpoints("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", "gateway-identity", nil)),
 	},
-	link: multicluster.Link{
-		TargetClusterName:       clusterName,
-		TargetClusterDomain:     clusterDomain,
-		GatewayIdentity:         "gateway-identity",
-		GatewayAddress:          "192.0.2.127",
-		GatewayPort:             888,
-		ProbeSpec:               defaultProbeSpec,
-		Selector:                defaultSelector,
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             "888",
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
 	},
 }
 
@@ -595,15 +615,17 @@ var updateServiceWithChangedPorts = &testEnvironment{
 			},
 		})),
 	},
-	link: multicluster.Link{
-		TargetClusterName:       clusterName,
-		TargetClusterDomain:     clusterDomain,
-		GatewayIdentity:         "gateway-identity",
-		GatewayAddress:          "192.0.2.127",
-		GatewayPort:             888,
-		ProbeSpec:               defaultProbeSpec,
-		Selector:                defaultSelector,
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             "888",
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
 	},
 }
 
@@ -702,15 +724,17 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 				},
 			})),
 	},
-	link: multicluster.Link{
-		TargetClusterName:       clusterName,
-		TargetClusterDomain:     clusterDomain,
-		GatewayIdentity:         "gateway-identity",
-		GatewayAddress:          "192.0.2.127",
-		GatewayPort:             888,
-		ProbeSpec:               defaultProbeSpec,
-		Selector:                defaultSelector,
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             "888",
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
 	},
 }
 var clusterUnregistered = &testEnvironment{
@@ -723,8 +747,10 @@ var clusterUnregistered = &testEnvironment{
 		asYaml(mirrorService("test-service-2-remote", "test-namespace", "", nil)),
 		asYaml(endpoints("test-service-2-remote", "test-namespace", "", "", nil)),
 	},
-	link: multicluster.Link{
-		TargetClusterName: clusterName,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName: clusterName,
+		},
 	},
 }
 
@@ -746,8 +772,10 @@ var gcTriggered = &testEnvironment{
 		asYaml(remoteService("test-service-1", "test-namespace", "", map[string]string{consts.DefaultExportedServiceSelector: "true"}, nil)),
 		asYaml(remoteHeadlessService("test-headless-service", "test-namespace", "", nil, nil)),
 	},
-	link: multicluster.Link{
-		TargetClusterName: clusterName,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName: clusterName,
+		},
 	},
 }
 
@@ -793,19 +821,13 @@ var noGatewayLink = &testEnvironment{
 		asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 		asYaml(endpoints("service-two", "ns1", "192.0.2.128", "gateway-identity", []corev1.EndpointPort{})),
 	},
-	link: multicluster.Link{
-		TargetClusterName:   clusterName,
-		TargetClusterDomain: clusterDomain,
-		GatewayIdentity:     "",
-		GatewayAddress:      "",
-		GatewayPort:         0,
-		ProbeSpec: multicluster.ProbeSpec{
-			Path:   "",
-			Port:   0,
-			Period: time.Duration(0) * time.Second,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			Selector:                &metav1.LabelSelector{},
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 		},
-		Selector:                &metav1.LabelSelector{},
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -816,15 +838,17 @@ func onAddOrUpdateExportedSvc(isAdd bool) *testEnvironment {
 				consts.DefaultExportedServiceSelector: "true",
 			}, nil)),
 		},
-		link: multicluster.Link{
-			TargetClusterName:       clusterName,
-			TargetClusterDomain:     clusterDomain,
-			GatewayIdentity:         "gateway-identity",
-			GatewayAddress:          "192.0.2.127",
-			GatewayPort:             888,
-			ProbeSpec:               defaultProbeSpec,
-			Selector:                defaultSelector,
-			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		link: v1alpha2.Link{
+			Spec: v1alpha2.LinkSpec{
+				TargetClusterName:       clusterName,
+				TargetClusterDomain:     clusterDomain,
+				GatewayIdentity:         "gateway-identity",
+				GatewayAddress:          "192.0.2.127",
+				GatewayPort:             "888",
+				ProbeSpec:               defaultProbeSpec,
+				Selector:                defaultSelector,
+				RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+			},
 		},
 	}
 
@@ -841,15 +865,17 @@ func onAddOrUpdateRemoteServiceUpdated(isAdd bool) *testEnvironment {
 			asYaml(mirrorService("test-service-remote", "test-namespace", "pastResourceVersion", nil)),
 			asYaml(endpoints("test-service-remote", "test-namespace", "0.0.0.0", "", nil)),
 		},
-		link: multicluster.Link{
-			TargetClusterName:       clusterName,
-			TargetClusterDomain:     clusterDomain,
-			GatewayIdentity:         "gateway-identity",
-			GatewayAddress:          "192.0.2.127",
-			GatewayPort:             888,
-			ProbeSpec:               defaultProbeSpec,
-			Selector:                defaultSelector,
-			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		link: v1alpha2.Link{
+			Spec: v1alpha2.LinkSpec{
+				TargetClusterName:       clusterName,
+				TargetClusterDomain:     clusterDomain,
+				GatewayIdentity:         "gateway-identity",
+				GatewayAddress:          "192.0.2.127",
+				GatewayPort:             "888",
+				ProbeSpec:               defaultProbeSpec,
+				Selector:                defaultSelector,
+				RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+			},
 		},
 	}
 }
@@ -865,15 +891,17 @@ func onAddOrUpdateSameResVersion(isAdd bool) *testEnvironment {
 			asYaml(mirrorService("test-service-remote", "test-namespace", "currentResVersion", nil)),
 			asYaml(endpoints("test-service-remote", "test-namespace", "0.0.0.0", "", nil)),
 		},
-		link: multicluster.Link{
-			TargetClusterName:       clusterName,
-			TargetClusterDomain:     clusterDomain,
-			GatewayIdentity:         "gateway-identity",
-			GatewayAddress:          "192.0.2.127",
-			GatewayPort:             888,
-			ProbeSpec:               defaultProbeSpec,
-			Selector:                defaultSelector,
-			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		link: v1alpha2.Link{
+			Spec: v1alpha2.LinkSpec{
+				TargetClusterName:       clusterName,
+				TargetClusterDomain:     clusterDomain,
+				GatewayIdentity:         "gateway-identity",
+				GatewayAddress:          "192.0.2.127",
+				GatewayPort:             "888",
+				ProbeSpec:               defaultProbeSpec,
+				Selector:                defaultSelector,
+				RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+			},
 		},
 	}
 }
@@ -887,15 +915,17 @@ func serviceNotExportedAnymore(isAdd bool) *testEnvironment {
 			asYaml(mirrorService("test-service-remote", "test-namespace", "currentResVersion", nil)),
 			asYaml(endpoints("test-service-remote", "test-namespace", "0.0.0.0", "", nil)),
 		},
-		link: multicluster.Link{
-			TargetClusterName:       clusterName,
-			TargetClusterDomain:     clusterDomain,
-			GatewayIdentity:         "gateway-identity",
-			GatewayAddress:          "192.0.2.127",
-			GatewayPort:             888,
-			ProbeSpec:               defaultProbeSpec,
-			Selector:                defaultSelector,
-			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		link: v1alpha2.Link{
+			Spec: v1alpha2.LinkSpec{
+				TargetClusterName:       clusterName,
+				TargetClusterDomain:     clusterDomain,
+				GatewayIdentity:         "gateway-identity",
+				GatewayAddress:          "192.0.2.127",
+				GatewayPort:             "888",
+				ProbeSpec:               defaultProbeSpec,
+				Selector:                defaultSelector,
+				RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+			},
 		},
 	}
 }
@@ -908,15 +938,17 @@ var onDeleteExportedService = &testEnvironment{
 			}, nil),
 		},
 	},
-	link: multicluster.Link{
-		TargetClusterName:       clusterName,
-		TargetClusterDomain:     clusterDomain,
-		GatewayIdentity:         "gateway-identity",
-		GatewayAddress:          "192.0.2.127",
-		GatewayPort:             888,
-		ProbeSpec:               defaultProbeSpec,
-		Selector:                defaultSelector,
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             "888",
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
 	},
 }
 
@@ -926,15 +958,17 @@ var onDeleteNonExportedService = &testEnvironment{
 			svc: remoteService("gateway", "test-namespace", "currentResVersion", map[string]string{}, nil),
 		},
 	},
-	link: multicluster.Link{
-		TargetClusterName:       clusterName,
-		TargetClusterDomain:     clusterDomain,
-		GatewayIdentity:         "gateway-identity",
-		GatewayAddress:          "192.0.2.127",
-		GatewayPort:             888,
-		ProbeSpec:               defaultProbeSpec,
-		Selector:                defaultSelector,
-		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	link: v1alpha2.Link{
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             "888",
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
 	},
 }
 
@@ -1225,7 +1259,7 @@ func asYaml(obj interface{}) string {
 	return string(bytes)
 }
 
-func gateway(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int32, probePath string, probePeriod int) *corev1.Service {
+func gateway(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int32, probePath string, probePeriod string) *corev1.Service {
 	svc := corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -1238,7 +1272,7 @@ func gateway(name, namespace, resourceVersion, ip, portName string, port int32, 
 			Annotations: map[string]string{
 				consts.GatewayIdentity:    identity,
 				consts.GatewayProbePath:   probePath,
-				consts.GatewayProbePeriod: fmt.Sprint(probePeriod),
+				consts.GatewayProbePeriod: probePeriod,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -1451,19 +1485,13 @@ func createEnvWithSelector(defaultSelector, remoteSelector *metav1.LabelSelector
 			asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 			asYaml(endpoints("service-two", "ns1", "192.0.3.127", "gateway-identity", []corev1.EndpointPort{})),
 		},
-		link: multicluster.Link{
-			TargetClusterName:   clusterName,
-			TargetClusterDomain: clusterDomain,
-			GatewayIdentity:     "",
-			GatewayAddress:      "",
-			GatewayPort:         0,
-			ProbeSpec: multicluster.ProbeSpec{
-				Path:   "",
-				Port:   0,
-				Period: time.Duration(0) * time.Second,
+		link: v1alpha2.Link{
+			Spec: v1alpha2.LinkSpec{
+				TargetClusterName:       clusterName,
+				TargetClusterDomain:     clusterDomain,
+				Selector:                defaultSelector,
+				RemoteDiscoverySelector: remoteSelector,
 			},
-			Selector:                defaultSelector,
-			RemoteDiscoverySelector: remoteSelector,
 		},
 	}
 }

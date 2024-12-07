@@ -9,6 +9,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
 	"github.com/linkerd/linkerd2/multicluster/static"
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
@@ -16,7 +17,6 @@ import (
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	mc "github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -243,15 +243,23 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
-			link := mc.Link{
-				Name:                          opts.clusterName,
-				Namespace:                     opts.namespace,
-				TargetClusterName:             opts.clusterName,
-				TargetClusterDomain:           configMap.ClusterDomain,
-				TargetClusterLinkerdNamespace: controlPlaneNamespace,
-				ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
-				RemoteDiscoverySelector:       remoteDiscoverySelector,
-				FederatedServiceSelector:      federatedServiceSelector,
+			link := v1alpha2.Link{
+				TypeMeta: metav1.TypeMeta{Kind: "Link", APIVersion: "multicluster.linkerd.io/v1alpha2"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      opts.clusterName,
+					Namespace: opts.namespace,
+					Annotations: map[string]string{
+						k8s.CreatedByAnnotation: k8s.CreatedByAnnotationValue(),
+					},
+				},
+				Spec: v1alpha2.LinkSpec{
+					TargetClusterName:             opts.clusterName,
+					TargetClusterDomain:           configMap.ClusterDomain,
+					TargetClusterLinkerdNamespace: controlPlaneNamespace,
+					ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
+					RemoteDiscoverySelector:       remoteDiscoverySelector,
+					FederatedServiceSelector:      federatedServiceSelector,
+				},
 			}
 
 			// If there is a gateway in the exporting cluster, populate Link
@@ -275,9 +283,9 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				}
 
 				if opts.gatewayAddresses != "" {
-					link.GatewayAddress = opts.gatewayAddresses
+					link.Spec.GatewayAddress = opts.gatewayAddresses
 				} else if len(gwAddresses) > 0 {
-					link.GatewayAddress = strings.Join(gwAddresses, ",")
+					link.Spec.GatewayAddress = strings.Join(gwAddresses, ",")
 				} else {
 					return fmt.Errorf("Gateway %s.%s has no ingress addresses", gateway.Name, gateway.Namespace)
 				}
@@ -286,13 +294,13 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				if !ok || gatewayIdentity == "" {
 					return fmt.Errorf("Gateway %s.%s has no %s annotation", gateway.Name, gateway.Namespace, k8s.GatewayIdentity)
 				}
-				link.GatewayIdentity = gatewayIdentity
+				link.Spec.GatewayIdentity = gatewayIdentity
 
-				probeSpec, err := mc.ExtractProbeSpec(gateway)
+				probeSpec, err := extractProbeSpec(gateway)
 				if err != nil {
 					return err
 				}
-				link.ProbeSpec = probeSpec
+				link.Spec.ProbeSpec = probeSpec
 
 				gatewayPort, err := extractGatewayPort(gateway)
 				if err != nil {
@@ -303,27 +311,22 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				if opts.gatewayPort != 0 {
 					gatewayPort = opts.gatewayPort
 				}
-				link.GatewayPort = gatewayPort
+				link.Spec.GatewayPort = fmt.Sprintf("%d", gatewayPort)
 
-				link.Selector, err = metav1.ParseToLabelSelector(opts.selector)
+				link.Spec.Selector, err = metav1.ParseToLabelSelector(opts.selector)
 				if err != nil {
 					return err
 				}
-			}
-
-			obj, err := link.ToUnstructured()
-			if err != nil {
-				return err
 			}
 
 			var linkOut []byte
 			if opts.output == "yaml" {
-				linkOut, err = yaml.Marshal(obj.Object)
+				linkOut, err = yaml.Marshal(link)
 				if err != nil {
 					return err
 				}
 			} else if opts.output == "json" {
-				linkOut, err = json.Marshal(obj.Object)
+				linkOut, err = json.Marshal(link)
 				if err != nil {
 					return err
 				}
@@ -579,4 +582,38 @@ func extractSAToken(secrets []corev1.Secret, saName string) (string, error) {
 	}
 
 	return "", fmt.Errorf("could not find service account token secret for %s", saName)
+}
+
+// ExtractProbeSpec parses the ProbSpec from a gateway service's annotations.
+// For now we're not including the failureThreshold and timeout fields which
+// are new since edge-24.9.3, to avoid errors when attempting to apply them in
+// clusters with an older Link CRD.
+func extractProbeSpec(gateway *corev1.Service) (v1alpha2.ProbeSpec, error) {
+	path := gateway.Annotations[k8s.GatewayProbePath]
+	if path == "" {
+		return v1alpha2.ProbeSpec{}, errors.New("probe path is empty")
+	}
+
+	port, err := extractPort(gateway.Spec, k8s.ProbePortName)
+	if err != nil {
+		return v1alpha2.ProbeSpec{}, err
+	}
+
+	return v1alpha2.ProbeSpec{
+		Path:   path,
+		Port:   fmt.Sprintf("%d", port),
+		Period: gateway.Annotations[k8s.GatewayProbePeriod],
+	}, nil
+}
+
+func extractPort(spec corev1.ServiceSpec, portName string) (uint32, error) {
+	for _, p := range spec.Ports {
+		if p.Name == portName {
+			if spec.Type == "NodePort" {
+				return uint32(p.NodePort), nil
+			}
+			return uint32(p.Port), nil
+		}
+	}
+	return 0, fmt.Errorf("could not find port with name %s", portName)
 }
