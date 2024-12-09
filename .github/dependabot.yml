@@ -5,51 +5,65 @@
 # JS updates are run weekly.
 version: 2
 updates:
-  - package-ecosystem: "gomod"
+  - package-ecosystem: gomod
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: daily
       time: "03:00"
-      timezone: "UTC"
+      timezone: Etc/UTC
 
   - package-ecosystem: cargo
     directory: "/"
     schedule:
       interval: daily
       time: "03:30"
-      timezone: "UTC"
+      timezone: Etc/UTC
     allow:
-      - dependency-type: "all"
+      - dependency-type: all
     ignore:
-      # These dependencies will be updated via higher-level aggregator dependencies like `clap`,
-      # `futures`, `kube`, `prost`, and `tracing`:
-      - dependency-name: "clap_derive"
-      - dependency-name: "futures-channel"
-      - dependency-name: "futures-core"
-      - dependency-name: "futures-io"
-      - dependency-name: "futures-sink"
-      - dependency-name: "futures-task"
-      - dependency-name: "futures-util"
-      - dependency-name: "kube-client"
-      - dependency-name: "kube-core"
-      - dependency-name: "kube-derive"
-      - dependency-name: "kube-runtime"
-      - dependency-name: "prost-derive"
-      - dependency-name: "tracing-attributes"
-      - dependency-name: "tracing-core"
-      - dependency-name: "tracing-serde"
       # These dependencies are for platforms that we don't support:
-      - dependency-name: "redox_syscall"
-      - dependency-name: "js-sys"
-      - dependency-name: "wasm-bindgen"
-      - dependency-name: "web-sys"
+      - dependency-name: redox*
+      - dependency-name: js-sys
+      - dependency-name: wasm-bindgen
+      - dependency-name: web-sys
+      # These dependencies are updated via kubert, so only accept patch updates.
+      - dependency-name: clap
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: clap_*
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: kube
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: kube-*
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: k8s-openapi
+        update-types: [version-update:semver-major, version-update:semver-minor]
+    groups:
+      clap:
+        patterns:
+          - clap
+          - clap_*
+        update-types: [minor, patch]
+      futures:
+        patterns:
+          - futures
+          - futures-*
+      kube:
+        patterns:
+          - k8s-openapi
+          - kube
+          - kube-*
+        update-types: [patch]
+      tracing:
+        patterns:
+          - tracing
+          - tracing-*
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
       time: "04:00"
-      timezone: "UTC"
+      timezone: Etc/UTC
 
   - package-ecosystem: "npm"
     directory: "/web/app"
