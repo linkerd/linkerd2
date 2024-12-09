@@ -37,6 +37,13 @@ updates:
         update-types: [version-update:semver-major, version-update:semver-minor]
       - dependency-name: k8s-openapi
         update-types: [version-update:semver-major, version-update:semver-minor]
+      # These dependencies are updated via linkerd2-proxy-api, so only accept patch updates.
+      - dependency-name: prost
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: prost-*
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: tonic
+        update-types: [version-update:semver-major, version-update:semver-minor]
     groups:
       clap:
         patterns:
@@ -52,6 +59,12 @@ updates:
           - k8s-openapi
           - kube
           - kube-*
+        update-types: [patch]
+      grpc:
+        patterns:
+          - prost
+          - prost-*
+          - tonic
         update-types: [patch]
       tracing:
         patterns:
