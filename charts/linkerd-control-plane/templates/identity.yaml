@@ -136,7 +136,7 @@ spec:
       annotations:
         {{ include "partials.annotations.created-by" . }}
         {{- include "partials.proxy.annotations" . | nindent 8}}
-        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{- with (mergeOverwrite (deepCopy .Values.podAnnotations) .Values.identity.podAnnotations) }}{{ toYaml . | trim | nindent 8 }}{{- end }}
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: identity

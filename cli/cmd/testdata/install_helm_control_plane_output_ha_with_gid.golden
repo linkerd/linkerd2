@@ -532,8 +532,6 @@ data:
         maxSurge: 25%
         maxUnavailable: 1
     destinationController:
-      livenessProbe:
-        timeoutSeconds: 1
       meshedHttp2ClientProtobuf:
         keep_alive:
           interval:
@@ -541,8 +539,7 @@ data:
           timeout:
             seconds: 3
           while_idle: true
-      readinessProbe:
-        timeoutSeconds: 1
+      podAnnotations: {}
     destinationProxyResources: null
     destinationResources:
       cpu:
@@ -588,6 +585,7 @@ data:
       kubeAPI:
         clientBurst: 200
         clientQPS: 100
+      podAnnotations: {}
       serviceAccountTokenProjection: true
     identityProxyResources: null
     identityResources:
@@ -794,6 +792,7 @@ data:
           values:
           - kube-system
           - cert-manager
+      podAnnotations: {}
     proxyInjectorProxyResources: null
     proxyInjectorResources:
       cpu:
@@ -1647,7 +1646,6 @@ spec:
             path: /ping
             port: 9996
           initialDelaySeconds: 10
-          timeoutSeconds: 1
         name: destination
         ports:
         - containerPort: 8086
@@ -1659,7 +1657,6 @@ spec:
           httpGet:
             path: /ready
             port: 9996
-          timeoutSeconds: 1
         resources:
           limits:
             memory: "250Mi"
