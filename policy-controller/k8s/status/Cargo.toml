@@ -9,7 +9,7 @@ publish = false
 ahash = "0.8"
 anyhow = "1"
 # Fix for https://github.com/chronotope/chrono/issues/602
-chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
+chrono = { version = "0.4.39", default-features = false, features = ["clock"] }
 kubert = { workspace = true, default-features = false, features = [
     "index",
     "lease",
