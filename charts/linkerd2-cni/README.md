@@ -35,7 +35,7 @@ Kubernetes: `>=1.22.0-0`
 | image.version | string | `"v1.5.2"` | Tag for the CNI container Docker image |
 | imagePullSecrets | list | `[]` |  |
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
-| iptablesMode | string | `"legacy"` | Variant of iptables that will be used to configure routing |
+| iptablesMode | string | `"legacy"` | Variant of iptables that will be used to configure routing. Allowed values are 'nft', 'legacy' and 'default'. They invoke 'iptables-nft', 'iptables-legacy' and 'iptables' commands respectively. The 'default' mode is targeted at RHEL, which ships with an nftables-based 'iptables' command. |
 | logLevel | string | `"info"` | Log level for the CNI plugin |
 | outboundProxyPort | int | `4140` | Outbound port for the proxy container |
 | podLabels | object | `{}` | Additional labels to add to all pods |
