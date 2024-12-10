@@ -37,13 +37,16 @@ type LinkSpec struct {
 	GatewayIdentity               string               `json:"gatewayIdentity,omitempty"`
 	ProbeSpec                     ProbeSpec            `json:"probeSpec,omitempty"`
 	Selector                      metav1.LabelSelector `json:"selector,omitempty"`
+	RemoteDiscoverySelector       metav1.LabelSelector `json:"remoteDiscoverySelector,omitempty"`
 }
 
 // ProbeSpec for gateway health probe
 type ProbeSpec struct {
-	Path   string `json:"path,omitempty"`
-	Port   string `json:"port,omitempty"`
-	Period string `json:"period,omitempty"`
+	Path             string `json:"path,omitempty"`
+	Port             string `json:"port,omitempty"`
+	Period           string `json:"period,omitempty"`
+	Timeout          string `json:"timeout,omitempty"`
+	FailureThreshold string `json:"failureThreshold,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

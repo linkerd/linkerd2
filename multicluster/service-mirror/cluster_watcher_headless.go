@@ -292,17 +292,17 @@ func (rcsw *RemoteClusterServiceWatcher) createHeadlessMirrorEndpoints(ctx conte
 			Namespace: exportedService.Namespace,
 			Labels: map[string]string{
 				consts.MirroredResourceLabel:  "true",
-				consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
+				consts.RemoteClusterNameLabel: rcsw.link.Spec.TargetClusterName,
 			},
 			Annotations: map[string]string{
-				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.%s", exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain),
+				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.%s", exportedService.Name, exportedService.Namespace, rcsw.link.Spec.TargetClusterDomain),
 			},
 		},
 		Subsets: subsetsToCreate,
 	}
 
-	if rcsw.link.GatewayIdentity != "" {
-		headlessMirrorEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+	if rcsw.link.Spec.GatewayIdentity != "" {
+		headlessMirrorEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.Spec.GatewayIdentity
 	}
 
 	rcsw.log.Infof("Creating a new headless mirror endpoints object for headless mirror %s/%s", headlessMirrorServiceName, exportedService.Namespace)
@@ -334,7 +334,7 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 
 	endpointMirrorAnnotations := map[string]string{
 		consts.RemoteResourceVersionAnnotation: resourceVersion, // needed to detect real changes
-		consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.%s.svc.%s", endpointHostname, exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain),
+		consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.%s.svc.%s", endpointHostname, exportedService.Name, exportedService.Namespace, rcsw.link.Spec.TargetClusterDomain),
 	}
 
 	endpointMirrorLabels := rcsw.getMirrorServiceLabels(exportedService)
@@ -353,6 +353,10 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 			Ports: remapRemoteServicePorts(exportedService.Spec.Ports),
 		},
 	}
+	ports, err := rcsw.getEndpointsPorts(exportedService)
+	if err != nil {
+		return nil, err
+	}
 	endpointMirrorEndpoints := &corev1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      endpointMirrorService.Name,
@@ -365,13 +369,13 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 		Subsets: []corev1.EndpointSubset{
 			{
 				Addresses: gatewayAddresses,
-				Ports:     rcsw.getEndpointsPorts(exportedService),
+				Ports:     ports,
 			},
 		},
 	}
 
-	if rcsw.link.GatewayIdentity != "" {
-		endpointMirrorEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+	if rcsw.link.Spec.GatewayIdentity != "" {
+		endpointMirrorEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.Spec.GatewayIdentity
 	}
 
 	exportedServiceInfo := fmt.Sprintf("%s/%s", exportedService.Namespace, exportedService.Name)
