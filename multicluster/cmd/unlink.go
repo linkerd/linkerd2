@@ -9,7 +9,6 @@ import (
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s/resource"
-	mc "github.com/linkerd/linkerd2/pkg/multicluster"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
@@ -54,7 +53,7 @@ func newUnlinkCommand() *cobra.Command {
 				return err
 			}
 
-			l, err := mc.GetLink(cmd.Context(), k.DynamicClient, opts.namespace, opts.clusterName)
+			l, err := k.L5dCrdClient.LinkV1alpha2().Links(opts.namespace).Get(cmd.Context(), opts.clusterName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -74,7 +73,7 @@ func newUnlinkCommand() *cobra.Command {
 				role, roleBinding, serviceAccount, serviceMirror, lease,
 			}
 
-			if l.ProbeSpec.Path != "" {
+			if l.Spec.ProbeSpec.Path != "" {
 				gatewayMirror := resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "Service", fmt.Sprintf("probe-gateway-%s", opts.clusterName), opts.namespace)
 				resources = append(resources, gatewayMirror)
 			}

@@ -24,6 +24,8 @@ import (
 	fakeexternalworkloadv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalworkload/v1beta1/fake"
 	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1"
 	fakelinkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1/fake"
+	linkv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha2"
+	fakelinkv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha2/fake"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1alpha1"
 	fakepolicyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake"
 	policyv1beta3 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1beta3"
@@ -107,6 +109,11 @@ func (c *Clientset) ExternalworkloadV1beta1() externalworkloadv1beta1.Externalwo
 // LinkV1alpha1 retrieves the LinkV1alpha1Client
 func (c *Clientset) LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface {
 	return &fakelinkv1alpha1.FakeLinkV1alpha1{Fake: &c.Fake}
+}
+
+// LinkV1alpha2 retrieves the LinkV1alpha2Client
+func (c *Clientset) LinkV1alpha2() linkv1alpha2.LinkV1alpha2Interface {
+	return &fakelinkv1alpha2.FakeLinkV1alpha2{Fake: &c.Fake}
 }
 
 // PolicyV1alpha1 retrieves the PolicyV1alpha1Client

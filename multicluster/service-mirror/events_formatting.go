@@ -38,10 +38,16 @@ func formatPorts(ports []corev1.EndpointPort) string {
 }
 
 func formatService(svc *corev1.Service) string {
+	if svc == nil {
+		return "Service: nil"
+	}
 	return fmt.Sprintf("Service: {name: %s, namespace: %s, annotations: [%s], labels [%s]}", svc.Name, svc.Namespace, formatMetadata(svc.Annotations), formatMetadata(svc.Labels))
 }
 
 func formatEndpoints(endpoints *corev1.Endpoints) string {
+	if endpoints == nil {
+		return "Endpoints: nil"
+	}
 	var subsets []string
 
 	for _, ss := range endpoints.Subsets {

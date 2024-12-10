@@ -9,17 +9,19 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
+	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	servicemirror "github.com/linkerd/linkerd2/multicluster/service-mirror"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/multicluster"
 	sm "github.com/linkerd/linkerd2/pkg/servicemirror"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	dynamic "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -83,8 +85,8 @@ func Main(args []string) {
 	}()
 
 	// We create two different kubernetes API clients for the local cluster:
-	// k8sAPI is used as a dynamic client for unstructured access to Link custom
-	// resources.
+	// l5dClient is used for watching Link resources and updating their
+	// statuses.
 	//
 	// controllerK8sAPI is used by the cluster watcher to manage
 	// mirror resources such as services, namespaces, and endpoints.
@@ -101,6 +103,14 @@ func Main(args []string) {
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
+	config, err := k8s.GetConfig(*kubeConfigPath, "")
+	if err != nil {
+		log.Fatalf("error configuring Kubernetes API client: %s", err)
+	}
+	l5dClient, err := controllerK8s.NewL5DCRDClient(config)
+	if err != nil {
+		log.Fatalf("Failed to initialize K8s API: %s", err)
+	}
 
 	metrics := servicemirror.NewProbeMetricVecs()
 	controllerK8sAPI.Sync(nil)
@@ -110,7 +120,7 @@ func Main(args []string) {
 
 	if *localMirror {
 		run = func(ctx context.Context) {
-			err = startLocalClusterWatcher(ctx, *namespace, controllerK8sAPI, *requeueLimit, *repairPeriod, *enableHeadlessSvc, *enableNamespaceCreation, *federatedServiceSelector)
+			err = startLocalClusterWatcher(ctx, *namespace, controllerK8sAPI, l5dClient, *requeueLimit, *repairPeriod, *enableHeadlessSvc, *enableNamespaceCreation, *federatedServiceSelector)
 			if err != nil {
 				log.Fatalf("Failed to start local cluster watcher: %s", err)
 			}
@@ -126,75 +136,106 @@ func Main(args []string) {
 			cleanupWorkers()
 		}
 	} else {
-		k8sAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", []string{}, 0)
-		//TODO: Use can-i to check for required permissions
-		if err != nil {
-			log.Fatalf("Failed to initialize K8s API: %s", err)
-		}
-		linkClient := k8sAPI.DynamicClient.Resource(multicluster.LinkGVR).Namespace(*namespace)
-
 		run = func(ctx context.Context) {
-		main:
-			for {
-				// Start link watch
-				linkWatch, err := linkClient.Watch(ctx, metav1.ListOptions{})
-				if err != nil {
-					log.Fatalf("Failed to watch Link %s: %s", linkName, err)
-				}
-				results := linkWatch.ResultChan()
+			// Use a small buffered channel for Link updates to avoid dropping
+			// updates if there is an update burst.
+			results := make(chan *v1alpha2.Link, 100)
+			informerFactory := l5dcrdinformer.NewSharedInformerFactoryWithOptions(
+				l5dClient,
+				controllerK8s.ResyncTime,
+				l5dcrdinformer.WithNamespace(*namespace),
+			)
+			informer := informerFactory.Link().V1alpha2().Links().Informer()
+			log.Infof("Starting Link informer")
+			informerFactory.Start(ctx.Done())
 
-				// Each time the link resource is updated, reload the config and restart the
-				// cluster watcher.
-				for {
-					select {
-					// ctx.Done() is a one-shot channel that will be closed once
-					// the context has been cancelled. Receiving from a closed
-					// channel yields the value immediately.
-					case <-ctx.Done():
-						// The channel will be closed by the leader elector when a
-						// lease is lost, or by a background task handling SIGTERM.
-						// Before terminating the loop, stop the workers and set
-						// them to nil to release memory.
-						cleanupWorkers()
+			_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+				AddFunc: func(obj interface{}) {
+					link, ok := obj.(*v1alpha2.Link)
+					if !ok {
+						log.Errorf("object is not a Link: %+v", obj)
 						return
-					case event, ok := <-results:
-						if !ok {
-							log.Info("Link watch terminated; restarting watch")
-							continue main
-						}
-						switch obj := event.Object.(type) {
-						case *dynamic.Unstructured:
-							if obj.GetName() == linkName {
-								switch event.Type {
-								case watch.Added, watch.Modified:
-									link, err := multicluster.NewLink(*obj)
-									if err != nil {
-										log.Errorf("Failed to parse link %s: %s", linkName, err)
-										continue
-									}
-									log.Infof("Got updated link %s: %+v", linkName, link)
-									creds, err := loadCredentials(ctx, link, *namespace, k8sAPI)
-									if err != nil {
-										log.Errorf("Failed to load remote cluster credentials: %s", err)
-									}
-									err = restartClusterWatcher(ctx, link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *enableNamespaceCreation)
-									if err != nil {
-										// failed to restart cluster watcher; give a bit of slack
-										// and restart the link watch to give it another try
-										log.Error(err)
-										time.Sleep(linkWatchRestartAfter)
-										linkWatch.Stop()
-									}
-								case watch.Deleted:
-									log.Infof("Link %s deleted", linkName)
-									cleanupWorkers()
-								default:
-									log.Infof("Ignoring event type %s", event.Type)
-								}
-							}
+					}
+					if link.GetName() == linkName {
+						select {
+						case results <- link:
 						default:
-							log.Errorf("Unknown object type detected: %+v", obj)
+							log.Errorf("Link update dropped (queue full): %s", link.GetName())
 						}
+					}
+				},
+				UpdateFunc: func(_, obj interface{}) {
+					link, ok := obj.(*v1alpha2.Link)
+					if !ok {
+						log.Errorf("object is not a Link: %+v", obj)
+						return
+					}
+					if link.GetName() == linkName {
+						select {
+						case results <- link:
+						default:
+							log.Errorf("Link update dropped (queue full): %s", link.GetName())
+						}
+					}
+				},
+				DeleteFunc: func(obj interface{}) {
+					link, ok := obj.(*v1alpha2.Link)
+					if !ok {
+						tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+						if !ok {
+							log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+							return
+						}
+						link, ok = tombstone.Obj.(*v1alpha2.Link)
+						if !ok {
+							log.Errorf("DeletedFinalStateUnknown contained object that is not a Link %#v", obj)
+							return
+						}
+					}
+					if link.GetName() == linkName {
+						select {
+						case results <- nil: // nil indicates the link was deleted
+						default:
+							log.Errorf("Link delete dropped (queue full): %s", link.GetName())
+						}
+					}
+				},
+			})
+			if err != nil {
+				log.Fatalf("Failed to add event handler to Link informer: %s", err)
+			}
+
+			// Each time the link resource is updated, reload the config and restart the
+			// cluster watcher.
+			for {
+				select {
+				// ctx.Done() is a one-shot channel that will be closed once
+				// the context has been cancelled. Receiving from a closed
+				// channel yields the value immediately.
+				case <-ctx.Done():
+					// The channel will be closed by the leader elector when a
+					// lease is lost, or by a background task handling SIGTERM.
+					// Before terminating the loop, stop the workers and set
+					// them to nil to release memory.
+					cleanupWorkers()
+				case link := <-results:
+					if link != nil {
+						log.Infof("Got updated link %s: %+v", linkName, link)
+						creds, err := loadCredentials(ctx, link, *namespace, controllerK8sAPI.Client)
+						if err != nil {
+							log.Errorf("Failed to load remote cluster credentials: %s", err)
+						}
+						err = restartClusterWatcher(ctx, link, *namespace, creds, controllerK8sAPI, l5dClient, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *enableNamespaceCreation)
+						if err != nil {
+							// failed to restart cluster watcher; give a bit of slack
+							// and requeue the link to give it another try
+							log.Error(err)
+							time.Sleep(linkWatchRestartAfter)
+							results <- link
+						}
+					} else {
+						log.Infof("Link %s deleted", linkName)
+						cleanupWorkers()
 					}
 				}
 			}
@@ -291,21 +332,22 @@ func cleanupWorkers() {
 	}
 }
 
-func loadCredentials(ctx context.Context, link multicluster.Link, namespace string, k8sAPI *k8s.KubernetesAPI) ([]byte, error) {
+func loadCredentials(ctx context.Context, link *v1alpha2.Link, namespace string, k8sAPI kubernetes.Interface) ([]byte, error) {
 	// Load the credentials secret
-	secret, err := k8sAPI.Interface.CoreV1().Secrets(namespace).Get(ctx, link.ClusterCredentialsSecret, metav1.GetOptions{})
+	secret, err := k8sAPI.CoreV1().Secrets(namespace).Get(ctx, link.Spec.ClusterCredentialsSecret, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to load credentials secret %s: %w", link.ClusterCredentialsSecret, err)
+		return nil, fmt.Errorf("failed to load credentials secret %s: %w", link.Spec.ClusterCredentialsSecret, err)
 	}
 	return sm.ParseRemoteClusterSecret(secret)
 }
 
 func restartClusterWatcher(
 	ctx context.Context,
-	link multicluster.Link,
+	link *v1alpha2.Link,
 	namespace string,
 	creds []byte,
 	controllerK8sAPI *controllerK8s.API,
+	linkClient l5dcrdclient.Interface,
 	requeueLimit int,
 	repairPeriod time.Duration,
 	metrics servicemirror.ProbeMetricVecs,
@@ -315,7 +357,7 @@ func restartClusterWatcher(
 
 	cleanupWorkers()
 
-	workerMetrics, err := metrics.NewWorkerMetrics(link.TargetClusterName)
+	workerMetrics, err := metrics.NewWorkerMetrics(link.Spec.TargetClusterName)
 	if err != nil {
 		return fmt.Errorf("failed to create metrics for cluster watcher: %w", err)
 	}
@@ -323,8 +365,8 @@ func restartClusterWatcher(
 	// If linked against a cluster that has a gateway, start a probe and
 	// initialise the liveness channel
 	var ch chan bool
-	if link.ProbeSpec.Path != "" {
-		probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
+	if link.Spec.ProbeSpec.Path != "" {
+		probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.Spec.TargetClusterName), &link.Spec.ProbeSpec, workerMetrics, link.Spec.TargetClusterName)
 		probeWorker.Start()
 		ch = probeWorker.Liveness
 	}
@@ -334,16 +376,17 @@ func restartClusterWatcher(
 	if err != nil {
 		return fmt.Errorf("unable to parse kube config: %w", err)
 	}
-	remoteAPI, err := controllerK8s.InitializeAPIForConfig(ctx, cfg, false, link.TargetClusterName, controllerK8s.Svc, controllerK8s.Endpoint)
+	remoteAPI, err := controllerK8s.InitializeAPIForConfig(ctx, cfg, false, link.Spec.TargetClusterName, controllerK8s.Svc, controllerK8s.Endpoint)
 	if err != nil {
-		return fmt.Errorf("cannot initialize api for target cluster %s: %w", link.TargetClusterName, err)
+		return fmt.Errorf("cannot initialize api for target cluster %s: %w", link.Spec.TargetClusterName, err)
 	}
 	cw, err := servicemirror.NewRemoteClusterServiceWatcher(
 		ctx,
 		namespace,
 		controllerK8sAPI,
 		remoteAPI,
-		&link,
+		linkClient,
+		link,
 		requeueLimit,
 		repairPeriod,
 		ch,
@@ -366,6 +409,7 @@ func startLocalClusterWatcher(
 	ctx context.Context,
 	namespace string,
 	controllerK8sAPI *controllerK8s.API,
+	linkClient l5dcrdclient.Interface,
 	requeueLimit int,
 	repairPeriod time.Duration,
 	enableHeadlessSvc bool,
@@ -377,19 +421,24 @@ func startLocalClusterWatcher(
 		return fmt.Errorf("failed to parse federated service selector: %w", err)
 	}
 
-	link := multicluster.Link{
-		Name:                     "local",
-		Namespace:                namespace,
-		TargetClusterName:        "",
-		Selector:                 nil,
-		RemoteDiscoverySelector:  nil,
-		FederatedServiceSelector: federatedLabelSelector,
+	link := v1alpha2.Link{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "local",
+			Namespace: namespace,
+		},
+		Spec: v1alpha2.LinkSpec{
+			TargetClusterName:        "",
+			Selector:                 nil,
+			RemoteDiscoverySelector:  nil,
+			FederatedServiceSelector: federatedLabelSelector,
+		},
 	}
 	cw, err := servicemirror.NewRemoteClusterServiceWatcher(
 		ctx,
 		namespace,
 		controllerK8sAPI,
 		controllerK8sAPI,
+		linkClient,
 		&link,
 		requeueLimit,
 		repairPeriod,

@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/linkerd/linkerd2/pkg/servicemirror"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -66,13 +66,13 @@ func (options *checkOptions) validate() error {
 
 type healthChecker struct {
 	*healthcheck.HealthChecker
-	links []multicluster.Link
+	links []v1alpha2.Link
 }
 
 func newHealthChecker(linkerdHC *healthcheck.HealthChecker) *healthChecker {
 	return &healthChecker{
 		linkerdHC,
-		[]multicluster.Link{},
+		[]v1alpha2.Link{},
 	}
 }
 
@@ -322,18 +322,18 @@ func (hc *healthChecker) linkAccess(ctx context.Context) error {
 }
 
 func (hc *healthChecker) checkLinks(ctx context.Context) error {
-	links, err := multicluster.GetLinks(ctx, hc.KubeAPIClient().DynamicClient)
+	links, err := hc.KubeAPIClient().L5dCrdClient.LinkV1alpha2().Links("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
-	if len(links) == 0 {
+	if len(links.Items) == 0 {
 		return healthcheck.SkipError{Reason: "no links detected"}
 	}
 	linkNames := []string{}
-	for _, l := range links {
-		linkNames = append(linkNames, fmt.Sprintf("\t* %s", l.TargetClusterName))
+	for _, l := range links.Items {
+		linkNames = append(linkNames, fmt.Sprintf("\t* %s", l.Spec.TargetClusterName))
 	}
-	hc.links = links
+	hc.links = links.Items
 	return healthcheck.VerboseSuccess{Message: strings.Join(linkNames, "\n")}
 }
 
@@ -341,15 +341,15 @@ func (hc *healthChecker) checkLinkVersions() error {
 	errors := []error{}
 	links := []string{}
 	for _, link := range hc.links {
-		parts := strings.Split(link.CreatedBy, " ")
+		parts := strings.Split(link.Annotations[k8s.CreatedByAnnotation], " ")
 		if len(parts) == 2 && parts[0] == "linkerd/cli" {
 			if parts[1] == version.Version {
-				links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
+				links = append(links, fmt.Sprintf("\t* %s", link.Spec.TargetClusterName))
 			} else {
-				errors = append(errors, fmt.Errorf("* %s: CLI version is %s but Link version is %s", link.TargetClusterName, version.Version, parts[1]))
+				errors = append(errors, fmt.Errorf("* %s: CLI version is %s but Link version is %s", link.Spec.TargetClusterName, version.Version, parts[1]))
 			}
 		} else {
-			errors = append(errors, fmt.Errorf("* %s: unable to determine version", link.TargetClusterName))
+			errors = append(errors, fmt.Errorf("* %s: unable to determine version", link.Spec.TargetClusterName))
 		}
 	}
 	if len(errors) > 0 {
@@ -366,9 +366,9 @@ func (hc *healthChecker) checkRemoteClusterConnectivity(ctx context.Context) err
 	links := []string{}
 	for _, link := range hc.links {
 		// Load the credentials secret
-		secret, err := hc.KubeAPIClient().Interface.CoreV1().Secrets(link.Namespace).Get(ctx, link.ClusterCredentialsSecret, metav1.GetOptions{})
+		secret, err := hc.KubeAPIClient().Interface.CoreV1().Secrets(link.Namespace).Get(ctx, link.Spec.ClusterCredentialsSecret, metav1.GetOptions{})
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* secret: [%s/%s]: %w", link.Namespace, link.ClusterCredentialsSecret, err))
+			errors = append(errors, fmt.Errorf("* secret: [%s/%s]: %w", link.Namespace, link.Spec.ClusterCredentialsSecret, err))
 			continue
 		}
 		config, err := servicemirror.ParseRemoteClusterSecret(secret)
@@ -378,27 +378,27 @@ func (hc *healthChecker) checkRemoteClusterConnectivity(ctx context.Context) err
 		}
 		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %w", secret.Namespace, secret.Name, link.TargetClusterName, err))
+			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %w", secret.Namespace, secret.Name, link.Spec.TargetClusterName, err))
 			continue
 		}
 		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, healthcheck.RequestTimeout, 0, 0)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %w", secret.Namespace, secret.Name, link.TargetClusterName, err))
+			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %w", secret.Namespace, secret.Name, link.Spec.TargetClusterName, err))
 			continue
 		}
 		// We use this call just to check connectivity.
 		_, err = remoteAPI.Discovery().ServerVersion()
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* failed to connect to API for cluster: [%s]: %w", link.TargetClusterName, err))
+			errors = append(errors, fmt.Errorf("* failed to connect to API for cluster: [%s]: %w", link.Spec.TargetClusterName, err))
 			continue
 		}
 		verbs := []string{"get", "list", "watch"}
 		for _, verb := range verbs {
 			if err := healthcheck.CheckCanPerformAction(ctx, remoteAPI, verb, corev1.NamespaceAll, "", "v1", "services"); err != nil {
-				errors = append(errors, fmt.Errorf("* missing service permission [%s] for cluster [%s]: %w", verb, link.TargetClusterName, err))
+				errors = append(errors, fmt.Errorf("* missing service permission [%s] for cluster [%s]: %w", verb, link.Spec.TargetClusterName, err))
 			}
 		}
-		links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
+		links = append(links, fmt.Sprintf("\t* %s", link.Spec.TargetClusterName))
 	}
 	if len(errors) > 0 {
 		return joinErrors(errors, 2)
@@ -414,9 +414,9 @@ func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnc
 	links := []string{}
 	for _, link := range hc.links {
 		// Load the credentials secret
-		secret, err := hc.KubeAPIClient().Interface.CoreV1().Secrets(link.Namespace).Get(ctx, link.ClusterCredentialsSecret, metav1.GetOptions{})
+		secret, err := hc.KubeAPIClient().Interface.CoreV1().Secrets(link.Namespace).Get(ctx, link.Spec.ClusterCredentialsSecret, metav1.GetOptions{})
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("* secret: [%s/%s]: %s", link.Namespace, link.ClusterCredentialsSecret, err))
+			errors = append(errors, fmt.Sprintf("* secret: [%s/%s]: %s", link.Namespace, link.Spec.ClusterCredentialsSecret, err))
 			continue
 		}
 		config, err := servicemirror.ParseRemoteClusterSecret(secret)
@@ -426,29 +426,29 @@ func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnc
 		}
 		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, link.TargetClusterName, err))
+			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, link.Spec.TargetClusterName, err))
 			continue
 		}
 		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, healthcheck.RequestTimeout, 0, 0)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, link.TargetClusterName, err))
+			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, link.Spec.TargetClusterName, err))
 			continue
 		}
-		_, values, err := healthcheck.FetchCurrentConfiguration(ctx, remoteAPI, link.TargetClusterLinkerdNamespace)
+		_, values, err := healthcheck.FetchCurrentConfiguration(ctx, remoteAPI, link.Spec.TargetClusterLinkerdNamespace)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("* %s: unable to fetch anchors: %s", link.TargetClusterName, err))
+			errors = append(errors, fmt.Sprintf("* %s: unable to fetch anchors: %s", link.Spec.TargetClusterName, err))
 			continue
 		}
 		remoteAnchors, err := tls.DecodePEMCertificates(values.IdentityTrustAnchorsPEM)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("* %s: cannot parse trust anchors", link.TargetClusterName))
+			errors = append(errors, fmt.Sprintf("* %s: cannot parse trust anchors", link.Spec.TargetClusterName))
 			continue
 		}
 		// we fail early if the lens are not the same. If they are the
 		// same, we can only compare certs one way and be sure we have
 		// identical anchors
 		if len(remoteAnchors) != len(localAnchors) {
-			errors = append(errors, fmt.Sprintf("* %s", link.TargetClusterName))
+			errors = append(errors, fmt.Sprintf("* %s", link.Spec.TargetClusterName))
 			continue
 		}
 		localAnchorsMap := make(map[string]*x509.Certificate)
@@ -458,11 +458,11 @@ func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnc
 		for _, remote := range remoteAnchors {
 			local, ok := localAnchorsMap[string(remote.Signature)]
 			if !ok || !local.Equal(remote) {
-				errors = append(errors, fmt.Sprintf("* %s", link.TargetClusterName))
+				errors = append(errors, fmt.Sprintf("* %s", link.Spec.TargetClusterName))
 				break
 			}
 		}
-		links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
+		links = append(links, fmt.Sprintf("\t* %s", link.Spec.TargetClusterName))
 	}
 	if len(errors) > 0 {
 		return fmt.Errorf("Problematic clusters:\n    %s", strings.Join(errors, "\n    "))
@@ -480,9 +480,9 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 		err := healthcheck.CheckServiceAccounts(
 			ctx,
 			hc.KubeAPIClient(),
-			[]string{fmt.Sprintf(linkerdServiceMirrorServiceAccountName, link.TargetClusterName)},
+			[]string{fmt.Sprintf(linkerdServiceMirrorServiceAccountName, link.Spec.TargetClusterName)},
 			link.Namespace,
-			serviceMirrorComponentsSelector(link.TargetClusterName),
+			serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
 		)
 		if err != nil {
 			messages = append(messages, err.Error())
@@ -491,8 +491,8 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			ctx,
 			hc.KubeAPIClient(),
 			true,
-			[]string{fmt.Sprintf(linkerdServiceMirrorClusterRoleName, link.TargetClusterName)},
-			serviceMirrorComponentsSelector(link.TargetClusterName),
+			[]string{fmt.Sprintf(linkerdServiceMirrorClusterRoleName, link.Spec.TargetClusterName)},
+			serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
 		)
 		if err != nil {
 			messages = append(messages, err.Error())
@@ -501,8 +501,8 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			ctx,
 			hc.KubeAPIClient(),
 			true,
-			[]string{fmt.Sprintf(linkerdServiceMirrorClusterRoleName, link.TargetClusterName)},
-			serviceMirrorComponentsSelector(link.TargetClusterName),
+			[]string{fmt.Sprintf(linkerdServiceMirrorClusterRoleName, link.Spec.TargetClusterName)},
+			serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
 		)
 		if err != nil {
 			messages = append(messages, err.Error())
@@ -512,8 +512,8 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			hc.KubeAPIClient(),
 			true,
 			link.Namespace,
-			[]string{fmt.Sprintf(linkerdServiceMirrorRoleName, link.TargetClusterName)},
-			serviceMirrorComponentsSelector(link.TargetClusterName),
+			[]string{fmt.Sprintf(linkerdServiceMirrorRoleName, link.Spec.TargetClusterName)},
+			serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
 		)
 		if err != nil {
 			messages = append(messages, err.Error())
@@ -523,13 +523,13 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 			hc.KubeAPIClient(),
 			true,
 			link.Namespace,
-			[]string{fmt.Sprintf(linkerdServiceMirrorRoleName, link.TargetClusterName)},
-			serviceMirrorComponentsSelector(link.TargetClusterName),
+			[]string{fmt.Sprintf(linkerdServiceMirrorRoleName, link.Spec.TargetClusterName)},
+			serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
 		)
 		if err != nil {
 			messages = append(messages, err.Error())
 		}
-		links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
+		links = append(links, fmt.Sprintf("\t* %s", link.Spec.TargetClusterName))
 	}
 	if len(messages) > 0 {
 		return errors.New(strings.Join(messages, "\n"))
@@ -545,18 +545,18 @@ func (hc *healthChecker) checkServiceMirrorController(ctx context.Context) error
 	clusterNames := []string{}
 	for _, link := range hc.links {
 		options := metav1.ListOptions{
-			LabelSelector: serviceMirrorComponentsSelector(link.TargetClusterName),
+			LabelSelector: serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
 		}
 		result, err := hc.KubeAPIClient().AppsV1().Deployments(corev1.NamespaceAll).List(ctx, options)
 		if err != nil {
 			return err
 		}
 		if len(result.Items) > 1 {
-			errors = append(errors, fmt.Errorf("* too many service mirror controller deployments for Link %s", link.TargetClusterName))
+			errors = append(errors, fmt.Errorf("* too many service mirror controller deployments for Link %s", link.Spec.TargetClusterName))
 			continue
 		}
 		if len(result.Items) == 0 {
-			errors = append(errors, fmt.Errorf("* no service mirror controller deployment for Link %s", link.TargetClusterName))
+			errors = append(errors, fmt.Errorf("* no service mirror controller deployment for Link %s", link.Spec.TargetClusterName))
 			continue
 		}
 		controller := result.Items[0]
@@ -564,7 +564,7 @@ func (hc *healthChecker) checkServiceMirrorController(ctx context.Context) error
 			errors = append(errors, fmt.Errorf("* service mirror controller is not available: %s/%s", controller.Namespace, controller.Name))
 			continue
 		}
-		clusterNames = append(clusterNames, fmt.Sprintf("\t* %s", link.TargetClusterName))
+		clusterNames = append(clusterNames, fmt.Sprintf("\t* %s", link.Spec.TargetClusterName))
 	}
 	if len(errors) > 0 {
 		return joinErrors(errors, 2)
@@ -587,19 +587,19 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context,
 		// When linked against a cluster without a gateway, there will be no
 		// gateway address and no probe spec initialised. In such cases, skip
 		// the check
-		if link.GatewayAddress == "" || link.ProbeSpec.Path == "" {
+		if link.Spec.GatewayAddress == "" || link.Spec.ProbeSpec.Path == "" {
 			continue
 		}
 
 		// Check that each gateway probe service has endpoints.
-		selector := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s,%s=%s", k8s.MirroredGatewayLabel, k8s.RemoteClusterNameLabel, link.TargetClusterName)}
+		selector := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s,%s=%s", k8s.MirroredGatewayLabel, k8s.RemoteClusterNameLabel, link.Spec.TargetClusterName)}
 		gatewayMirrors, err := hc.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, selector)
 		if err != nil {
 			errors = append(errors, err)
 			continue
 		}
 		if len(gatewayMirrors.Items) != 1 {
-			errors = append(errors, fmt.Errorf("wrong number (%d) of probe gateways for target cluster %s", len(gatewayMirrors.Items), link.TargetClusterName))
+			errors = append(errors, fmt.Errorf("wrong number (%d) of probe gateways for target cluster %s", len(gatewayMirrors.Items), link.Spec.TargetClusterName))
 			continue
 		}
 		svc := gatewayMirrors.Items[0]
@@ -611,16 +611,16 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context,
 
 		// Get the service mirror component in the linkerd-multicluster
 		// namespace which corresponds to the current link.
-		selector = metav1.ListOptions{LabelSelector: fmt.Sprintf("component=linkerd-service-mirror,mirror.linkerd.io/cluster-name=%s", link.TargetClusterName)}
+		selector = metav1.ListOptions{LabelSelector: fmt.Sprintf("component=linkerd-service-mirror,mirror.linkerd.io/cluster-name=%s", link.Spec.TargetClusterName)}
 		pods, err := hc.KubeAPIClient().CoreV1().Pods(multiclusterNs.Name).List(ctx, selector)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to get the service-mirror component for target cluster %s: %w", link.TargetClusterName, err))
+			errors = append(errors, fmt.Errorf("failed to get the service-mirror component for target cluster %s: %w", link.Spec.TargetClusterName, err))
 			continue
 		}
 
-		lease, err := hc.KubeAPIClient().CoordinationV1().Leases(multiclusterNs.Name).Get(ctx, fmt.Sprintf("service-mirror-write-%s", link.TargetClusterName), metav1.GetOptions{})
+		lease, err := hc.KubeAPIClient().CoordinationV1().Leases(multiclusterNs.Name).Get(ctx, fmt.Sprintf("service-mirror-write-%s", link.Spec.TargetClusterName), metav1.GetOptions{})
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to get the service-mirror component Lease for target cluster %s: %w", link.TargetClusterName, err))
+			errors = append(errors, fmt.Errorf("failed to get the service-mirror component Lease for target cluster %s: %w", link.Spec.TargetClusterName, err))
 			continue
 		}
 
@@ -634,23 +634,23 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context,
 		// information.
 		gatewayMetrics := getGatewayMetrics(hc.KubeAPIClient(), pods.Items, leaders, wait)
 		if len(gatewayMetrics) != 1 {
-			errors = append(errors, fmt.Errorf("expected exactly one gateway metric for target cluster %s; got %d", link.TargetClusterName, len(gatewayMetrics)))
+			errors = append(errors, fmt.Errorf("expected exactly one gateway metric for target cluster %s; got %d", link.Spec.TargetClusterName, len(gatewayMetrics)))
 			continue
 		}
 		var metricsParser expfmt.TextParser
 		parsedMetrics, err := metricsParser.TextToMetricFamilies(bytes.NewReader(gatewayMetrics[0].metrics))
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to parse gateway metrics for target cluster %s: %w", link.TargetClusterName, err))
+			errors = append(errors, fmt.Errorf("failed to parse gateway metrics for target cluster %s: %w", link.Spec.TargetClusterName, err))
 			continue
 		}
 
 		// Ensure the gateway for the current link is alive.
 		for _, metrics := range parsedMetrics["gateway_alive"].GetMetric() {
-			if !isTargetClusterMetric(metrics, link.TargetClusterName) {
+			if !isTargetClusterMetric(metrics, link.Spec.TargetClusterName) {
 				continue
 			}
 			if metrics.GetGauge().GetValue() != 1 {
-				err = fmt.Errorf("liveness checks failed for %s", link.TargetClusterName)
+				err = fmt.Errorf("liveness checks failed for %s", link.Spec.TargetClusterName)
 			}
 			break
 		}
@@ -658,7 +658,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context,
 			errors = append(errors, err)
 			continue
 		}
-		links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
+		links = append(links, fmt.Sprintf("\t* %s", link.Spec.TargetClusterName))
 	}
 	if len(errors) > 0 {
 		return joinErrors(errors, 1)
@@ -706,15 +706,15 @@ func (hc *healthChecker) checkForOrphanedServices(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	links, err := multicluster.GetLinks(ctx, hc.KubeAPIClient().DynamicClient)
+	links, err := hc.KubeAPIClient().L5dCrdClient.LinkV1alpha2().Links("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
 	for _, svc := range mirrorServices.Items {
 		targetCluster := svc.Labels[k8s.RemoteClusterNameLabel]
 		hasLink := false
-		for _, link := range links {
-			if link.TargetClusterName == targetCluster {
+		for _, link := range links.Items {
+			if link.Spec.TargetClusterName == targetCluster {
 				hasLink = true
 				break
 			}
