@@ -20,4 +20,5 @@ jobs:
       - run: apt update && apt install -y unzip
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
-      - run: bin/protoc-diff
+      - run: bin/protoc-go.sh
+      - run: git diff --exit-code
