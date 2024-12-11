@@ -91,11 +91,11 @@ if [ "$k3d" ]; then
   if [ -z "$cluster" ]; then
     cluster=k3s-default
   fi
-  bin="$bindir"/k3d
+  bin=$bindir/k3d
   image_sub_cmd=(image import -c "$cluster")
 else
   kind=1
-  bin="$bindir"/kind
+  bin=$bindir/kind
   if [ -z "$cluster" ]; then
     cluster=kind
   fi
@@ -106,8 +106,7 @@ else
   fi
 fi
 
-if [ -z "$archive" ]
-then
+if [ -z "$archive" ]; then
   # shellcheck source=_tag.sh
   . "$bindir"/_tag.sh
   # shellcheck source=_docker.sh
@@ -122,9 +121,9 @@ fi
 rm -f load_fail
 for i in "${!images[@]}"; do
   if [ $archive ]; then
-    param="image-archives/${images[$i]}.tar"
+    param=image-archives/${images[$i]}.tar
   else
-    param="$DOCKER_REGISTRY/${images[$i]}:$TAG"
+    param=$DOCKER_REGISTRY/${images[$i]}:$TAG
     if [ $preload ]; then
       docker pull -q "$param" || (echo "Error pulling image $param"; touch load_fail) &
     fi

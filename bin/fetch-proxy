@@ -9,16 +9,16 @@ set -eu
 
 bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
-builddir="$rootdir/target/proxy"
+builddir=$rootdir/target/proxy
 
-proxy_repo="${LINKERD2_PROXY_REPO:-}"
+proxy_repo=${LINKERD2_PROXY_REPO:-}
 if [ -z "$proxy_repo" ]; then
   proxy_repo=linkerd/linkerd2-proxy
 fi
 
 releases_url=https://api.github.com/repos/"$proxy_repo"/releases
 
-github_token="${GITHUB_TOKEN:-}"
+github_token=${GITHUB_TOKEN:-}
 if [ -z "$github_token" ] && [ -n "${GITHUB_TOKEN_FILE:-}" ] && [ -f "$GITHUB_TOKEN_FILE" ]; then
   github_token=$(cat "$GITHUB_TOKEN_FILE")
 fi
@@ -42,16 +42,16 @@ if ! ghcurl "$releases_url" | jq '.[] | select(.name == "'"$version"'")' > relea
   exit 1
 fi
 
-pkgname="linkerd2-proxy-${version}-${arch}"
+pkgname=linkerd2-proxy-${version}-${arch}
 
-pkgfile="${pkgname}.tar.gz"
+pkgfile=${pkgname}.tar.gz
 pkgurl=$(jq -r '.assets[] | select(.name == "'"$pkgfile"'") | .url' release.json)
 if ! ghcurl -H 'Accept: application/octet-stream' -o "$pkgfile" "$pkgurl" ; then
   echo "Failed to fetch $pkgurl" >&2
   exit 1
 fi
 
-shafile="${pkgname}.txt"
+shafile=${pkgname}.txt
 shaurl=$(jq -r '.assets[] | select(.name == "'"$shafile"'") | .url' release.json)
 if ! ghcurl -H 'Accept: application/octet-stream' -o "$shafile" "$shaurl" ; then
   echo "Failed to fetch $shaurl" >&2

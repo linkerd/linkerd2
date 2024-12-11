@@ -15,10 +15,10 @@ if [[ $toolchain =~ $version_regex ]]; then
 fi
 
 # Otherwise, no matching line was found, so print an error.
-if [[ "${GITHUB_ACTIONS:-false}" ==  "true" ]]; then
-    echo "::error file=rust-toolchain.toml::failed to parse rust-toolchain.toml"
+if [ "${GITHUB_ACTIONS:-false}" =  'true' ]; then
+    echo '::error file=rust-toolchain.toml::failed to parse rust-toolchain.toml'
 else
-    echo "failed to parse rust-toolchain.toml"
+    echo 'failed to parse rust-toolchain.toml'
 fi
 
 exit 1

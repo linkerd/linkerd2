@@ -8,7 +8,7 @@ if [ $# -gt 1 ]; then
     echo "Usage: $0 [root]" >&2
     exit 64
 fi
-declare -r MODULE="${1:-github.com/linkerd/linkerd2}"
+declare -r MODULE=${1:-github.com/linkerd/linkerd2}
 
 GRAPH=$(go mod graph)
 declare -r GRAPH

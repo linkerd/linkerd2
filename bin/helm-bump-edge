@@ -11,7 +11,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 . "$bindir"/_tag.sh
 tag=$(named_tag)
 
-edge_tag_regex="edge-([0-9][0-9])\.([0-9]|[0-9][0-9])\.([0-9]+)"
+edge_tag_regex='edge-([0-9][0-9])\.([0-9]|[0-9][0-9])\.([0-9]+)'
 
 # Get the current edge version.
 url=https://run.linkerd.io/install-edge
@@ -24,7 +24,7 @@ yyyy=$(date +"%Y")
 new_mm=$(date +"%-m")
 
 # If this is a new month, `new_xx` should be 1; otherwise increment it.
-if [[ "$new_mm" != "$current_mm" ]]; then
+if [ "$new_mm" != "$current_mm" ]; then
     new_xx=1
 else
     new_xx=$((current_xx+1))
@@ -32,7 +32,7 @@ fi
 
 expected_tag="edge-$yy.$new_mm.$new_xx"
 
-if [[ "$tag" != "$expected_tag" ]]; then
+if [ "$tag" != "$expected_tag" ]; then
     echo "Tag ($tag) doesn't match computed edge version ($expected_tag)"
     exit 1
 fi

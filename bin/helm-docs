@@ -10,8 +10,8 @@ helmdocsv=1.12.0
 bindir=$( cd "${0%/*}" && pwd ) # Change to script dir and set bin dir to this
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
 helmdocsbin=$targetbin/helm-docs-$helmdocsv
-os=""
-arch=""
+os=''
+arch=''
 
 if [ ! -f "$helmdocsbin" ]; then
     case $(uname | tr '[:upper:]' '[:lower:]') in

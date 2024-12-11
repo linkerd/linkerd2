@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-#
+
 set -eu
 
 # Creates the root and issuer (intermediary) self-signed certificates for the control plane using openssl.
