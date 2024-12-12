@@ -81,7 +81,7 @@
     "webpack": "^5.97.1",
     "webpack-bundle-analyzer": "4.10.2",
     "webpack-cli": "5.1.4",
-    "webpack-dev-server": "5.1.0"
+    "webpack-dev-server": "5.2.0"
   },
   "resolutions": {
     "@lingui/**/**/minimist": ">=1.2.5",
