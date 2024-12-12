@@ -34,7 +34,7 @@ env:
 - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
   value: {{.Values.proxy.enableShutdownEndpoint | quote}}
 - name: LINKERD2_PROXY_LOG
-  value: "{{.Values.proxy.logLevel}}{{ if not (eq .Values.proxy.logHTTPHeaders "insecure") }},[{headers}]=off,[{request}]=off{{ end }}"
+  value: {{ printf "%s%s" .Values.proxy.logLevel (.Values.proxy.logHTTPHeaders | eq "insecure" | ternary "" ",[{headers}]=off,[{request}]=off") | quote }}
 - name: LINKERD2_PROXY_LOG_FORMAT
   value: {{.Values.proxy.logFormat | quote}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
