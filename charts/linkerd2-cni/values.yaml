@@ -28,7 +28,10 @@ destCNINetDir:    "/etc/cni/net.d"
 destCNIBinDir:    "/opt/cni/bin"
 # -- Configures the CNI plugin to use the -w flag for the iptables command
 useWaitFlag:      false
-# -- Variant of iptables that will be used to configure routing
+# -- Variant of iptables that will be used to configure routing. Allowed values
+# are 'nft', 'legacy' and 'plain'. They invoke the 'iptables-nft',
+# 'iptables-legacy' and 'iptables' commands respectively. The 'plain' mode is
+# targeted at RHEL, which ships with an nftables-based 'iptables' command.
 iptablesMode: "legacy"
 # -- Disables adding IPv6 rules on top of IPv4 rules
 disableIPv6: true
