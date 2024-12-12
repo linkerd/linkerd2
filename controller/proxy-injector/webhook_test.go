@@ -110,7 +110,6 @@ func TestGetPodPatch(t *testing.T) {
 			testCase := testCase // pin
 			t.Run(testCase.filename, func(t *testing.T) {
 				pod := fileContents(factory, t, testCase.filename)
-
 				fakeReq := getFakePodReq(pod)
 				fullConf := testCase.conf.
 					WithKind(fakeReq.Kind.Kind).
@@ -136,9 +135,6 @@ func TestGetPodPatch(t *testing.T) {
 		_, expectedPatch := loadPatch(factory, t, "pod-with-debug.patch.json")
 
 		pod := fileContents(factory, t, "pod-with-debug-enabled.yaml")
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err)
-		}
 		fakeReq := getFakePodReq(pod)
 		conf := confNsEnabled().WithKind(fakeReq.Kind.Kind).WithOwnerRetriever(ownerRetrieverFake)
 		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
@@ -184,7 +180,6 @@ func TestGetPodPatch(t *testing.T) {
 
 	t.Run("by checking container spec", func(t *testing.T) {
 		deployment := fileContents(factory, t, "deployment-with-injected-proxy.yaml")
-
 		fakeReq := getFakePodReq(deployment)
 		conf := confNsDisabled().WithKind(fakeReq.Kind.Kind)
 		patchJSON, err := conf.GetPodPatch(true)
