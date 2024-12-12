@@ -2372,7 +2372,7 @@ spec:
       serviceAccountName: linkerd-cni
       containers:
       - name: install-cni
-        image: cr.l5d.io/linkerd/cni-plugin:v1.5.2
+        image: cr.l5d.io/linkerd/cni-plugin:v1.6.0
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:
