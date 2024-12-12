@@ -11,6 +11,14 @@ updates:
       interval: daily
       time: "03:00"
       timezone: Etc/UTC
+    ignore:
+      # TODO(ver): Remove this once we update our Gateway API dependencies.
+      - dependency-name: sigs.k8s.io/gateway-api
+        update-types: [version-update:semver-major, version-update:semver-minor]
+    groups:
+      kube:
+        patterns:
+          - k8s.io/*
 
   - package-ecosystem: cargo
     directory: "/"
