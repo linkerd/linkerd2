@@ -3,7 +3,7 @@
 set -eu
 
 if [ $# -eq 1 ]; then
-    tag="${1:-}"
+    tag=${1:-}
 else
     echo "usage: ${0##*/} tag" >&2
     exit 64

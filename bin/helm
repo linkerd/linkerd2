@@ -22,7 +22,7 @@ if [ ! -f "$helmbin" ]; then
             arm) dpkg --print-architecture | grep -q arm64 && arch=arm64 || arch=arm ;;
         esac
     fi
-    helmcurl="https://get.helm.sh/helm-$helmversion-$os-$arch.tar.gz"
+    helmcurl=https://get.helm.sh/helm-$helmversion-$os-$arch.tar.gz
     targetdir=$os-$arch
     tmp=$(mktemp -d -t helm.XXX)
     mkdir -p "$targetbin"

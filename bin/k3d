@@ -10,7 +10,7 @@ bindir=$( cd "${0%/*}" && pwd )
 . "$bindir"/_os.sh
 
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
-k3dbin="$targetbin/k3d-${K3D_VERSION}"
+k3dbin=$targetbin/k3d-${K3D_VERSION}
 
 if [ ! -f "$k3dbin" ]; then
   arch=$(architecture)

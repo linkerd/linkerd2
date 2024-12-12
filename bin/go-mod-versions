@@ -8,7 +8,7 @@ if [ $# -ne 1 ]; then
     echo "Usage: $0 <module>" >&2
     exit 64
 fi
-declare -r MODULE="$1"
+declare -r MODULE=$1
 
 if [[ "$MODULE" == *@* ]]; then
     echo 'The dependency must not specify an exact version.' >&2

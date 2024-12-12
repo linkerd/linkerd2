@@ -60,16 +60,14 @@ done
 
 pr=$1
 
-if [ -z "$pr" ]
-then
+if [ -z "$pr" ]; then
   echo "Error: ${0##*/} accepts 1 argument
 Usage:
     ${0##*/} ####" >&2
   exit 1
 fi
 
-if [ -z "$GITHUB_TOKEN" ]
-then
+if [ -z "$GITHUB_TOKEN" ]; then
   # shellcheck disable=SC2016
   echo 'Error: Generate a personal access token at https://github.com/settings/tokens and set it in the $GITHUB_TOKEN env var'
   exit 1
@@ -108,18 +106,16 @@ do
   docker load -i "image-archives/$image.tar"
 done
 
-if [ "$is_kind" = true ] || [ "$is_k3d" = true ]
-then
+if [ "$is_kind" = true ] || [ "$is_k3d" = true ]; then
   # When importing into k3d or kind, the images must be renamed to use the
   # proper registry so that users don't have to change the default install
   # output.
   docker_rename_registry "$tag" 'ghcr.io/linkerd' 'cr.l5d.io/linkerd'
   distro=k3d
-  if [ "$is_kind" = true ]
-  then
+  if [ "$is_kind" = true ]; then
     distro=kind
   fi
-  export TAG="$tag"
+  export TAG=$tag
   "$bindir"/image-load --"$distro" --cluster "$cluster"
 else
   # The images were built with the ghcr.io registry so when pushing to a

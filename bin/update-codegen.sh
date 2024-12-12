@@ -4,8 +4,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
-SCRIPT_ROOT="$(dirname "${SCRIPT_DIR}")"
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+SCRIPT_ROOT=$(dirname "${SCRIPT_DIR}")
 GEN_VER=$( awk '/k8s.io\/code-generator/ { print $2 }' "${SCRIPT_ROOT}/go.mod" )
 KUBE_OPEN_API_VER=$( awk '/k8s.io\/kube-openapi/ { print $2 }' "${SCRIPT_ROOT}/go.mod" )
 CODEGEN_PKG=$(mktemp -d -t "code-generator-${GEN_VER}.XXX")/code-generator
@@ -38,10 +38,10 @@ kube::codegen::gen_helpers \
     --boilerplate "${SCRIPT_ROOT}/controller/gen/boilerplate.go.txt" \
     github.com/linkerd/linkerd2/controller/gen/apis
 
-if [[ -n "${API_KNOWN_VIOLATIONS_DIR:-}" ]]; then
-    report_filename="${API_KNOWN_VIOLATIONS_DIR}/codegen_violation_exceptions.list"
-    if [[ "${UPDATE_API_KNOWN_VIOLATIONS:-}" == "true" ]]; then
-        update_report="--update-report"
+if [ -n "${API_KNOWN_VIOLATIONS_DIR:-}" ]; then
+    report_filename=${API_KNOWN_VIOLATIONS_DIR}/codegen_violation_exceptions.list
+    if [ "${UPDATE_API_KNOWN_VIOLATIONS:-}" = 'true' ]; then
+        update_report='--update-report'
     fi
 fi
 

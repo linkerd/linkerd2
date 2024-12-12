@@ -65,17 +65,17 @@ docker_build() {
     shift
 
     rootdir=${ROOTDIR:-$( cd "$bindir"/.. && pwd )}
-    cache_params=""
+    cache_params=''
 
     if [ "$ACTIONS_CACHE_URL" ]; then
       cache_params="--cache-from type=gha,scope=$name-$DOCKER_TARGET --cache-to type=gha,scope=$name-$DOCKER_TARGET,mode=max"
     fi
 
-    output_params="--load"
+    output_params='--load'
     if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
       output_params="--platform $SUPPORTED_ARCHS"
       if [ "$DOCKER_PUSH" ]; then
-        output_params+=" --push"
+        output_params+=' --push'
       else
         echo 'Error: env DOCKER_PUSH=1 is missing
 When building the multi-arch images it is required to push the images to the registry

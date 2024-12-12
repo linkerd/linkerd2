@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 set -eu
 
-export OS_ARCH_ALL="linux-amd64 linux-arm64 linux-arm darwin darwin-arm64 windows"
+export OS_ARCH_ALL='linux-amd64 linux-arm64 linux-arm darwin darwin-arm64 windows'
 
 architecture() {
   arch=$(uname -m)
@@ -32,7 +32,7 @@ architecture() {
 
 os() {
   os=$(uname -s)
-  arch=""
+  arch=''
   case $os in
     CYGWIN* | MINGW64*)
       os=windows

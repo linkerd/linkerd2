@@ -98,13 +98,13 @@ done
 BOOKS_APP=$("$bindir"/scurl https://raw.githubusercontent.com/BuoyantIO/booksapp/main/k8s/mysql-app.yml)
 
 # add "-sleep=10ms" param to the traffic app (~100rps)
-traffic_param="        - \"webapp:7000\""
+traffic_param='        - "webapp:7000"'
 sleep_param=$(cat <<-END
         - "-sleep=10ms"
         - "webapp:7000"
 END
 )
-BOOKS_APP="${BOOKS_APP/$traffic_param/$sleep_param}"
+BOOKS_APP=${BOOKS_APP/$traffic_param/$sleep_param}
 
 # inject
 BOOKS_APP=$(echo "$BOOKS_APP" | "$linkerd_path" -l "$linkerd_namespace" inject -)
@@ -128,10 +128,10 @@ EMOJIVOTO=$("$bindir"/scurl https://run.linkerd.io/emojivoto.yml)
 # delete namespace
 EMOJIVOTO=$(echo "$EMOJIVOTO" | tail -n +6)
 emojins='namespace: emojivoto'
-EMOJIVOTO="${EMOJIVOTO//$emojins/}"
+EMOJIVOTO=${EMOJIVOTO//$emojins/}
 emojins=.emojivoto:
 newns=:
-EMOJIVOTO="${EMOJIVOTO//$emojins/$newns}"
+EMOJIVOTO=${EMOJIVOTO//$emojins/$newns}
 
 # inject
 EMOJIVOTO=$(echo "$EMOJIVOTO" | "$linkerd_path" -l "$linkerd_namespace" inject -)

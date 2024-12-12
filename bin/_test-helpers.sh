@@ -8,7 +8,7 @@ k8s_version_min='+v1.22'
 k8s_version_max='docker.io/rancher/k3s:v1.29.6-k3s2'
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
-testdir="$bindir"/../test/integration
+testdir=$bindir/../test/integration
 
 ##### Test setup helpers #####
 
@@ -20,7 +20,7 @@ export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_te
 images_load_default=(proxy controller policy-controller web metrics-api tap)
 
 tests_usage() {
-  progname="${0##*/}"
+  progname=${0##*/}
   echo "Run Linkerd integration tests.
 
 Optionally specify a test with the --name flag: [${all_test_names[*]}]
@@ -56,7 +56,7 @@ Available Commands:
 }
 
 cleanup_usage() {
-  progname="${0##*/}"
+  progname=${0##*/}
   echo "Cleanup Linkerd integration tests.
 
 Usage:
@@ -76,7 +76,7 @@ handle_tests_input() {
   export skip_cluster_create=''
   export skip_cluster_delete=''
   export cleanup_docker=''
-  export linkerd_path=""
+  export linkerd_path=''
 
   while  [ $# -ne 0 ]; do
     case $1 in
@@ -227,7 +227,7 @@ cleanup_cluster() {
 
 setup_min_cluster() {
   local name=$1
-  export helm_path="$bindir"/helm
+  export helm_path=$bindir/helm
 
   check_linkerd_binary
   if [ -z "$skip_cluster_create" ]; then
@@ -239,7 +239,7 @@ setup_min_cluster() {
 
 setup_cluster() {
   local name=$1
-  export helm_path="$bindir"/helm
+  export helm_path=$bindir/helm
 
   check_linkerd_binary
   if [ -z "$skip_cluster_create" ]; then
@@ -428,7 +428,7 @@ run_helm-upgrade_test() {
   fi
 
   setup_helm
-  helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
+  helm_viz_chart=$( cd "$bindir"/.. && pwd )/viz/charts/linkerd-viz
   run_test "$testdir/install/install_test.go" --helm-path="$helm_path" --helm-charts="$helm_charts" \
   --viz-helm-chart="$helm_viz_chart" --viz-helm-stable-chart="linkerd/linkerd-viz" --helm-release="$helm_release_name" --upgrade-helm-from-version="$edge_version"
   helm_cleanup
