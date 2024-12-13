@@ -287,7 +287,7 @@ Kubernetes: `>=1.22.0-0`
 | proxy.startupProbe.periodSeconds | int | `1` |  |
 | proxy.uid | int | `2102` | User id under which the proxy runs |
 | proxy.waitBeforeExitSeconds | int | `0` | If set the injected proxy sidecars in the data plane will stay alive for at least the given period before receiving the SIGTERM signal from Kubernetes but no longer than the pod's `terminationGracePeriodSeconds`. See [Lifecycle hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks) for more info on container lifecycle hooks. |
-| proxyInit.closeWaitTimeoutSecs | int | `0` |  |
+| proxyInit.closeWaitTimeoutSecs | int | `0` | Changes the default value for the nf_conntrack_tcp_timeout_close_wait kernel parameter. If used, runAsRoot needs to be true. |
 | proxyInit.ignoreInboundPorts | string | `"4567,4568"` | Default set of inbound ports to skip via iptables - Galera (4567,4568) |
 | proxyInit.ignoreOutboundPorts | string | `"4567,4568"` | Default set of outbound ports to skip via iptables - Galera (4567,4568) |
 | proxyInit.image.name | string | `"cr.l5d.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
