@@ -28,6 +28,9 @@ args:
 - {{.Values.proxyInit.ignoreOutboundPorts | quote}}
 {{- end }}
 {{- if .Values.proxyInit.closeWaitTimeoutSecs }}
+  {{- if not .Values.proxyInit.runAsRoot }}
+{{ fail "if proxyInit.closeWaitTimeoutSecs is modified, then proxyInit.runAsRoot must be true" }}
+  {{- end }}
 - --timeout-close-wait-secs
 - {{ .Values.proxyInit.closeWaitTimeoutSecs | quote}}
 {{- end }}
