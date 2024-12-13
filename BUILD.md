@@ -39,8 +39,6 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
 - [Linkerd Helm Chart](#linkerd-helm-chart)
   - [Extensions Helm charts](#extensions-helm-charts)
   - [Making changes to the chart templates](#making-changes-to-the-chart-templates)
-  - [Generating Helm charts docs](#generating-helm-charts-docs)
-  - [Using helm-docs](#using-helm-docs)
   - [Annotating values.yaml](#annotating-valuesyaml)
   - [Markdown templates](#markdown-templates)
 
@@ -509,31 +507,7 @@ Whenever you make changes to the files under
 [`bin/helm-build`](bin/helm-build) which will refresh the dependencies and lint
 the templates.
 
-### Generating Helm charts docs
-
-Whenever a new chart is created or updated a README should be generated from the
-chart's `values.yaml`. This can be done by utilizing
-[helm-docs](https://github.com/norwoodj/helm-docs) (included in the dev
-container). For adding additional information, such as specific installation
-instructions a README template is required to be created. Check existing charts
-for examples.
-
-#### Using helm-docs
-
-Example usage:
-
-```sh
-helm-docs
-helm-docs --dry-run #Prints to cli instead
-helm-docs --chart-search-root=./charts #Sets search root for charts
-helm-docs --template-files=README.md.gotmpl #Sets the template file used
-```
-
-Note:
-The tool searches through the current directory and sub-directories by default.
-For additional information checkout their repo above.
-
-#### Annotating values.yaml
+### Annotating values.yaml
 
 To allow helm-docs to properly document the values in `values.yaml` a descriptive
 comment is required. This can be done in two ways.
@@ -542,7 +516,7 @@ Either comment the value directly above with
 annotates the value. Another explicit usage is to type out the value name.
 `# global.MyNiceValue -- I really like this value`
 
-#### Markdown templates
+### Markdown templates
 
 In order to accommodate for extra data that might not have a proper place in the
 ´values.yaml´ file the corresponding ´README.md.gotmpl´ can be modified for each
