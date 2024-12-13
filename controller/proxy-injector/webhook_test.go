@@ -99,6 +99,11 @@ func TestGetPodPatch(t *testing.T) {
 				conf:     confNsDisabled(),
 			},
 			{
+				filename: "pod-inject-enabled.yaml",
+				ns:       nsDisabled,
+				conf:     confNsDisabled(),
+			},
+			{
 				filename: "pod-with-debug-disabled.yaml",
 				ns:       nsDisabled,
 				conf:     confNsDisabled(),
@@ -146,6 +151,30 @@ func TestGetPodPatch(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
+		actualPatch := unmarshalPatch(t, patchJSON)
+		if diff := deep.Equal(expectedPatch, actualPatch); diff != nil {
+			t.Fatalf("The actual patch didn't match what was expected.\n%+v", diff)
+		}
+	})
+
+	t.Run("by configuring log level", func(t *testing.T) {
+		_, expectedPatch := loadPatch(factory, t, "pod-log-level.json")
+
+		pod := fileContents(factory, t, "pod-inject-enabled-log-level.yaml")
+		fakeReq := getFakePodReq(pod)
+		conf := confNsWithoutOpaquePorts().
+			WithKind(fakeReq.Kind.Kind).
+			WithOwnerRetriever(ownerRetrieverFake)
+		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		patchJSON, err := conf.GetPodPatch(true)
+		if err != nil {
+			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+		}
+
 		actualPatch := unmarshalPatch(t, patchJSON)
 		if diff := deep.Equal(expectedPatch, actualPatch); diff != nil {
 			t.Fatalf("The actual patch didn't match what was expected.\n%+v", diff)
