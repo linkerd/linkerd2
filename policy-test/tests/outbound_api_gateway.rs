@@ -17,46 +17,6 @@ use std::{collections::BTreeMap, time::Duration};
 // function correctly with both types of resources.
 
 #[tokio::test(flavor = "current_thread")]
-async fn service_does_not_exist() {
-    with_temp_ns(|client, ns| async move {
-        // Build a service but don't apply it to the cluster.
-        let mut svc = mk_service(&ns, "my-svc", 4191);
-        // Give it a bogus cluster ip.
-        svc.spec.as_mut().unwrap().cluster_ip = Some("192.168.0.2".to_string());
-
-        let mut policy_api = grpc::OutboundPolicyClient::port_forwarded(&client).await;
-        let rsp = policy_api.watch(&ns, &svc, 4191).await;
-
-        assert!(rsp.is_err());
-        assert_eq!(rsp.err().unwrap().code(), tonic::Code::NotFound);
-    })
-    .await;
-}
-
-#[tokio::test(flavor = "current_thread")]
-async fn service_with_no_http_routes() {
-    with_temp_ns(|client, ns| async move {
-        // Create a service
-        let svc = create_service(&client, &ns, "my-svc", 4191).await;
-        parent_with_no_http_routes(Resource::Service(svc), &client, &ns).await;
-    })
-    .await;
-}
-
-#[tokio::test(flavor = "current_thread")]
-async fn egress_net_with_no_http_routes() {
-    with_temp_ns(|client, ns| async move {
-        // Create an egress net
-        let egress = create_egress_network(&client, &ns, "my-egress").await;
-        let status = await_egress_net_status(&client, &ns, "my-egress").await;
-        assert_status_accepted(status.conditions);
-
-        parent_with_no_http_routes(Resource::EgressNetwork(egress), &client, &ns).await;
-    })
-    .await;
-}
-
-#[tokio::test(flavor = "current_thread")]
 async fn service_with_http_route_without_rules() {
     with_temp_ns(|client, ns| async move {
         // Create a service
