@@ -511,21 +511,22 @@ the templates.
 
 ### Generating Helm charts docs
 
-Whenever a new chart is created or updated a README should be generated from
-the chart's `values.yaml`. This can be done by utilizing the bundled
-[helm-docs](https://github.com/norwoodj/helm-docs) binary. For adding additional
-information, such as specific installation instructions a README template is
-required to be created. Check existing charts for examples.
+Whenever a new chart is created or updated a README should be generated from the
+chart's `values.yaml`. This can be done by utilizing
+[helm-docs](https://github.com/norwoodj/helm-docs) (included in the dev
+container). For adding additional information, such as specific installation
+instructions a README template is required to be created. Check existing charts
+for examples.
 
 #### Using helm-docs
 
 Example usage:
 
 ```sh
-bin/helm-docs
-bin/helm-docs --dry-run #Prints to cli instead
-bin/helm-docs --chart-search-root=./charts #Sets search root for charts
-bin/helm-docs --template-files=README.md.gotmpl #Sets the template file used
+helm-docs
+helm-docs --dry-run #Prints to cli instead
+helm-docs --chart-search-root=./charts #Sets search root for charts
+helm-docs --template-files=README.md.gotmpl #Sets the template file used
 ```
 
 Note:
