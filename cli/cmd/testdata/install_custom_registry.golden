@@ -753,7 +753,7 @@ data:
       image:
         name: my.custom.registry/linkerd-io/proxy-init
         pullPolicy: ""
-        version: v2.4.1
+        version: v2.4.2
       iptablesMode: legacy
       kubeAPIServerPorts: 443,6443
       logFormat: ""
@@ -1155,7 +1155,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: my.custom.registry/linkerd-io/proxy-init:v2.4.1
+        image: my.custom.registry/linkerd-io/proxy-init:v2.4.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1673,7 +1673,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: my.custom.registry/linkerd-io/proxy-init:v2.4.1
+        image: my.custom.registry/linkerd-io/proxy-init:v2.4.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2083,7 +2083,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: my.custom.registry/linkerd-io/proxy-init:v2.4.1
+        image: my.custom.registry/linkerd-io/proxy-init:v2.4.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

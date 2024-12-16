@@ -211,7 +211,7 @@ spec:
         - 4190,4191,4567,4568
         - --outbound-ports-to-ignore
         - 4567,4568
-        image: cr.l5d.io/linkerd/proxy-init:v2.4.1
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         securityContext:
@@ -458,7 +458,7 @@ spec:
         - 4190,4191,4567,4568
         - --outbound-ports-to-ignore
         - 4567,4568
-        image: cr.l5d.io/linkerd/proxy-init:v2.4.1
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         securityContext:
