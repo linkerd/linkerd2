@@ -10,10 +10,14 @@ use linkerd_policy_test::{
     test_route::{TestParent, TestRoute},
     with_temp_ns,
 };
+use tracing::debug_span;
 
 #[tokio::test(flavor = "current_thread")]
 async fn parent_does_not_exist() {
     async fn test<P: TestParent + Send>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
             let port = 4191;
             // Some IP address in the cluster networks which we assume is not
@@ -37,6 +41,10 @@ async fn parent_does_not_exist() {
 #[tokio::test(flavor = "current_thread")]
 async fn parent_with_no_routes() {
     async fn test<P: TestParent, R: TestRoute>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default())
+        );
         with_temp_ns(|client, ns| async move {
             let port = 4191;
             // Create a parent with no routes.
@@ -69,6 +77,10 @@ async fn parent_with_no_routes() {
 #[tokio::test(flavor = "current_thread")]
 async fn http_route_with_no_rules() {
     async fn test<P: TestParent, R: TestRoute>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default())
+        );
         with_temp_ns(|client, ns| async move {
             let port = 4191;
             let parent = create(&client, P::make_parent(&ns)).await;
@@ -89,7 +101,11 @@ async fn http_route_with_no_rules() {
                 assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
             });
 
-            let route = R::create_route(&client, ns.clone(), vec![parent.obj_ref()], vec![]).await;
+            let route = create(
+                &client,
+                R::make_route(ns.clone(), vec![parent.obj_ref()], vec![]),
+            )
+            .await;
             let status = await_route_status(&client, &route).await;
             assert_status_accepted(status);
 
@@ -104,7 +120,7 @@ async fn http_route_with_no_rules() {
 
             // There should be a route with no rules.
             R::routes(&config, |routes| {
-                let outbound_route = assert_singleton(routes);
+                let outbound_route = routes.first().expect("route must exist");
                 let rules = &R::rules_first_available(outbound_route);
                 assert!(route.meta_eq(R::extract_meta(outbound_route)));
                 assert!(rules.is_empty());
@@ -122,6 +138,12 @@ async fn http_route_with_no_rules() {
 #[tokio::test(flavor = "current_thread")]
 async fn http_routes_without_backends() {
     async fn test<P: TestParent, R: TestRoute>() {
+        let _span = debug_span!(
+            "test",
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default())
+        )
+        .entered();
         with_temp_ns(|client, ns| async move {
             // Create a parent
             let port = 4191;
@@ -144,8 +166,11 @@ async fn http_routes_without_backends() {
             });
 
             // Create a route with one rule with no backends.
-            let route =
-                R::create_route(&client, ns.clone(), vec![parent.obj_ref()], vec![vec![]]).await;
+            let route = create(
+                &client,
+                R::make_route(ns.clone(), vec![parent.obj_ref()], vec![vec![]]),
+            )
+            .await;
             let status = await_route_status(&client, &route).await;
             assert_status_accepted(status);
 
@@ -180,6 +205,10 @@ async fn http_routes_without_backends() {
 #[tokio::test(flavor = "current_thread")]
 async fn routes_with_backend() {
     async fn test<P: TestParent, R: TestRoute>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default())
+        );
         with_temp_ns(|client, ns| async move {
             // Create a parent
             let port = 4191;
@@ -187,8 +216,10 @@ async fn routes_with_backend() {
 
             // Create a backend
             let backend_port = 8888;
-            let backend = P::make_backend(&ns);
-            create(&client, backend.clone()).await;
+            let backend = match P::make_backend(&ns) {
+                Some(b) => create(&client, b).await,
+                None => parent.clone(),
+            };
 
             let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
             let config = rx
@@ -207,22 +238,24 @@ async fn routes_with_backend() {
             });
 
             let dt = Default::default();
-            let route = R::create_route(
+            let route = create(
                 &client,
-                ns,
-                vec![parent.obj_ref()],
-                vec![vec![gateway::BackendRef {
-                    weight: None,
-                    inner: gateway::BackendObjectReference {
-                        group: Some(P::group(&dt).to_string()),
-                        kind: Some(P::kind(&dt).to_string()),
-                        name: backend.name_unchecked(),
-                        namespace: backend.namespace(),
-                        port: Some(backend_port),
-                    },
-                }]],
-            );
-            create(&client, route.clone()).await;
+                R::make_route(
+                    ns,
+                    vec![parent.obj_ref()],
+                    vec![vec![gateway::BackendRef {
+                        weight: None,
+                        inner: gateway::BackendObjectReference {
+                            group: Some(P::group(&dt).to_string()),
+                            kind: Some(P::kind(&dt).to_string()),
+                            name: backend.name_unchecked(),
+                            namespace: backend.namespace(),
+                            port: Some(backend_port),
+                        },
+                    }]],
+                ),
+            )
+            .await;
             let status = await_route_status(&client, &route).await;
             assert_status_accepted(status);
 
