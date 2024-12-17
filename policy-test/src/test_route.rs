@@ -35,6 +35,7 @@ pub trait TestRoute:
     fn rules_random_available(route: &Self::Route) -> Vec<Vec<&Self::Backend>>;
     fn backend(backend: &Self::Backend) -> &outbound::Backend;
     fn conditions(&self) -> Option<Vec<&Condition>>;
+    fn is_failure_filter(filter: &Self::Filter) -> bool;
 
     fn meta_eq(&self, meta: &Metadata) -> bool {
         let meta = match &meta.kind {
@@ -63,6 +64,19 @@ pub trait TestParent:
     fn make_backend(ns: impl ToString) -> Option<Self>;
     fn conditions(&self) -> Vec<&Condition>;
     fn obj_ref(&self) -> ParentReference;
+    fn backend_ref(&self, port: u16) -> gateway::BackendRef {
+        let dt = Default::default();
+        gateway::BackendRef {
+            weight: None,
+            inner: gateway::BackendObjectReference {
+                group: Some(Self::group(&dt).to_string()),
+                kind: Some(Self::kind(&dt).to_string()),
+                name: self.name_unchecked(),
+                namespace: self.namespace(),
+                port: Some(port),
+            },
+        }
+    }
     fn ip(&self) -> &str;
 }
 
@@ -179,6 +193,13 @@ impl TestRoute for gateway::HttpRoute {
                 .flatten()
                 .collect()
         })
+    }
+
+    fn is_failure_filter(filter: &outbound::http_route::Filter) -> bool {
+        match filter.kind.as_ref().unwrap() {
+            outbound::http_route::filter::Kind::FailureInjector(_) => true,
+            _ => false,
+        }
     }
 }
 
@@ -297,6 +318,13 @@ impl TestRoute for policy::HttpRoute {
                 .collect()
         })
     }
+
+    fn is_failure_filter(filter: &outbound::http_route::Filter) -> bool {
+        match filter.kind.as_ref().unwrap() {
+            outbound::http_route::filter::Kind::FailureInjector(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl TestRoute for gateway::GrpcRoute {
@@ -414,6 +442,13 @@ impl TestRoute for gateway::GrpcRoute {
                 .collect()
         })
     }
+
+    fn is_failure_filter(filter: &outbound::grpc_route::Filter) -> bool {
+        match filter.kind.as_ref().unwrap() {
+            outbound::grpc_route::filter::Kind::FailureInjector(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl TestRoute for gateway::TlsRoute {
@@ -519,6 +554,13 @@ impl TestRoute for gateway::TlsRoute {
                 .collect()
         })
     }
+
+    fn is_failure_filter(filter: &outbound::tls_route::Filter) -> bool {
+        match filter.kind.as_ref().unwrap() {
+            outbound::tls_route::filter::Kind::Invalid(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl TestRoute for gateway::TcpRoute {
@@ -622,6 +664,13 @@ impl TestRoute for gateway::TcpRoute {
                 .flatten()
                 .collect()
         })
+    }
+
+    fn is_failure_filter(filter: &outbound::opaque_route::Filter) -> bool {
+        match filter.kind.as_ref().unwrap() {
+            outbound::opaque_route::filter::Kind::Invalid(_) => true,
+            _ => false,
+        }
     }
 }
 
