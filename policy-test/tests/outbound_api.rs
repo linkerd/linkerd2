@@ -16,12 +16,13 @@ async fn parent_does_not_exist() {
     async fn test<P: TestParent + Send>() {
         with_temp_ns(|client, ns| async move {
             let port = 4191;
-            // Build a parent but don't apply it to the cluster.
-            let parent = P::make_parent(&ns);
+            // Some IP address in the cluster networks which we assume is not
+            // used.
+            let ip = "10.8.255.255";
 
             let mut policy_api = grpc::OutboundPolicyClient::port_forwarded(&client).await;
             let rsp: Result<tonic::Streaming<grpc::outbound::OutboundPolicy>, tonic::Status> =
-                policy_api.watch_ip(&ns, parent.ip(), port).await;
+                policy_api.watch_ip(&ns, ip, port).await;
 
             assert!(rsp.is_err());
             assert_eq!(rsp.err().unwrap().code(), tonic::Code::NotFound);
@@ -39,8 +40,8 @@ async fn parent_with_no_routes() {
         with_temp_ns(|client, ns| async move {
             let port = 4191;
             // Create a parent with no routes.
-            let parent = P::make_parent(&ns);
-            create(&client, parent.clone()).await;
+            // let parent = P::create_parent(&client.clone(), &ns).await;
+            let parent = create(&client, P::make_parent(&ns)).await;
 
             let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
             let config = rx
@@ -53,9 +54,9 @@ async fn parent_with_no_routes() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            R::routes(&config, |routes| {
+            gateway::HttpRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<R>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
             });
         })
         .await;
@@ -70,8 +71,7 @@ async fn http_route_with_no_rules() {
     async fn test<P: TestParent, R: TestRoute>() {
         with_temp_ns(|client, ns| async move {
             let port = 4191;
-            let parent = P::make_parent(&ns);
-            create(&client, parent.clone()).await;
+            let parent = create(&client, P::make_parent(&ns)).await;
 
             let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
             let config = rx
@@ -84,13 +84,12 @@ async fn http_route_with_no_rules() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            R::routes(&config, |routes| {
+            gateway::HttpRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<R>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
             });
 
-            let route = R::make_route(ns.clone(), vec![parent.obj_ref()], vec![]);
-            let _ = create(&client, route.clone()).await;
+            let route = R::create_route(&client, ns.clone(), vec![parent.obj_ref()], vec![]).await;
             let status = await_route_status(&client, &route).await;
             assert_status_accepted(status);
 
@@ -126,8 +125,7 @@ async fn http_routes_without_backends() {
         with_temp_ns(|client, ns| async move {
             // Create a parent
             let port = 4191;
-            let parent = P::make_parent(&ns);
-            create(&client, parent.clone()).await;
+            let parent = create(&client, P::make_parent(&ns)).await;
 
             let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
             let config = rx
@@ -140,14 +138,14 @@ async fn http_routes_without_backends() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            R::routes(&config, |routes| {
+            gateway::HttpRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<R>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
             });
 
             // Create a route with one rule with no backends.
-            let route = R::make_route(ns.clone(), vec![parent.obj_ref()], vec![vec![]]);
-            let _ = create(&client, route.clone()).await;
+            let route =
+                R::create_route(&client, ns.clone(), vec![parent.obj_ref()], vec![vec![]]).await;
             let status = await_route_status(&client, &route).await;
             assert_status_accepted(status);
 
@@ -162,7 +160,7 @@ async fn http_routes_without_backends() {
 
             // There should be a route with the logical backend.
             R::routes(&config, |routes| {
-                let outbound_route = assert_singleton(routes);
+                let outbound_route = routes.first().expect("route must exist");
                 let rules = &R::rules_first_available(outbound_route);
                 assert!(route.meta_eq(R::extract_meta(outbound_route)));
                 let backends = assert_singleton(rules);
@@ -185,8 +183,7 @@ async fn routes_with_backend() {
         with_temp_ns(|client, ns| async move {
             // Create a parent
             let port = 4191;
-            let parent = P::make_parent(&ns);
-            create(&client, parent.clone()).await;
+            let parent = create(&client, P::make_parent(&ns)).await;
 
             // Create a backend
             let backend_port = 8888;
@@ -204,13 +201,14 @@ async fn routes_with_backend() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            R::routes(&config, |routes| {
+            gateway::HttpRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<R>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
             });
 
             let dt = Default::default();
-            let route = R::make_route(
+            let route = R::create_route(
+                &client,
                 ns,
                 vec![parent.obj_ref()],
                 vec![vec![gateway::BackendRef {
@@ -239,7 +237,7 @@ async fn routes_with_backend() {
 
             // There should be a route with a backend with no filters.
             R::routes(&config, |routes| {
-                let outbound_route = assert_singleton(routes);
+                let outbound_route = routes.first().expect("route must exist");
                 let rules = &R::rules_random_available(outbound_route);
                 assert!(route.meta_eq(R::extract_meta(outbound_route)));
                 let backends = assert_singleton(rules);

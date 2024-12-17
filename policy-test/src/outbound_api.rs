@@ -328,11 +328,15 @@ pub fn assert_backend_matches_reference(
     obj_ref: &ParentReference,
     port: u16,
 ) {
+    let mut group = obj_ref.group.as_deref();
+    if group == Some("") {
+        group = Some("core");
+    }
     match backend.metadata.as_ref().unwrap().kind.as_ref().unwrap() {
         grpc::meta::metadata::Kind::Resource(resource) => {
             assert_eq!(resource.name, obj_ref.name);
             assert_eq!(Some(&resource.namespace), obj_ref.namespace.as_ref());
-            assert_eq!(Some(&resource.group), obj_ref.group.as_ref());
+            assert_eq!(Some(resource.group.as_str()), group);
             assert_eq!(Some(&resource.kind), obj_ref.kind.as_ref());
             assert_eq!(resource.port, u32::from(port));
         }

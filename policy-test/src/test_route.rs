@@ -1,11 +1,17 @@
+use std::future::Future;
+
 use k8s_gateway_api::{self as gateway, BackendRef, ParentReference};
 use k8s_openapi::Resource;
+use kube::Client;
 use linkerd2_proxy_api::{meta, meta::Metadata, outbound};
 use linkerd_policy_controller_k8s_api::{
     self as k8s, policy, Condition, Resource as _, ResourceExt,
 };
 
-use crate::outbound_api::{detect_http_routes, grpc_routes, tcp_routes, tls_routes};
+use crate::{
+    create,
+    outbound_api::{detect_http_routes, grpc_routes, tcp_routes, tls_routes},
+};
 
 pub trait TestRoute:
     kube::Resource<Scope = kube::core::NamespaceResourceScope, DynamicType: Default>
@@ -21,11 +27,12 @@ pub trait TestRoute:
     type Backend;
     type Filter;
 
-    fn make_route(
+    fn create_route(
+        client: &Client,
         ns: impl ToString,
         parents: Vec<ParentReference>,
         rules: Vec<Vec<BackendRef>>,
-    ) -> Self;
+    ) -> impl Future<Output = Self>;
     fn routes<F>(config: &outbound::OutboundPolicy, f: F)
     where
         F: Fn(&[Self::Route]);
@@ -49,6 +56,7 @@ pub trait TestRoute:
     }
 }
 
+#[allow(async_fn_in_trait)]
 pub trait TestParent:
     kube::Resource<Scope = kube::core::NamespaceResourceScope, DynamicType: Default>
     + serde::Serialize
@@ -58,8 +66,9 @@ pub trait TestParent:
     + Send
     + Sync
 {
+    async fn create_parent(client: &Client, ns: impl ToString) -> Self;
     fn make_parent(ns: impl ToString) -> Self;
-    fn make_backend(ns: impl ToString) -> Self;
+    async fn create_backend(client: &Client, ns: impl ToString) -> Self;
     fn conditions(&self) -> Vec<&Condition>;
     fn obj_ref(&self) -> ParentReference;
     fn ip(&self) -> &str;
@@ -70,7 +79,8 @@ impl TestRoute for gateway::HttpRoute {
     type Backend = outbound::http_route::RouteBackend;
     type Filter = outbound::http_route::Filter;
 
-    fn make_route(
+    async fn create_route(
+        client: &Client,
         ns: impl ToString,
         parents: Vec<ParentReference>,
         rules: Vec<Vec<BackendRef>>,
@@ -92,7 +102,7 @@ impl TestRoute for gateway::HttpRoute {
                 }
             })
             .collect();
-        gateway::HttpRoute {
+        let route = gateway::HttpRoute {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
                 name: Some("foo-route".to_string()),
@@ -106,7 +116,8 @@ impl TestRoute for gateway::HttpRoute {
                 rules: Some(rules),
             },
             status: None,
-        }
+        };
+        create(client, route).await
     }
 
     fn routes<F>(config: &outbound::OutboundPolicy, f: F)
@@ -186,7 +197,8 @@ impl TestRoute for policy::HttpRoute {
     type Backend = outbound::http_route::RouteBackend;
     type Filter = outbound::http_route::Filter;
 
-    fn make_route(
+    async fn create_route(
+        client: &Client,
         ns: impl ToString,
         parents: Vec<ParentReference>,
         rules: Vec<Vec<BackendRef>>,
@@ -209,7 +221,7 @@ impl TestRoute for policy::HttpRoute {
                 }
             })
             .collect();
-        policy::HttpRoute {
+        let route = policy::HttpRoute {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
                 name: Some("foo-route".to_string()),
@@ -223,7 +235,8 @@ impl TestRoute for policy::HttpRoute {
                 rules: Some(rules),
             },
             status: None,
-        }
+        };
+        create(client, route).await
     }
 
     fn routes<F>(config: &outbound::OutboundPolicy, f: F)
@@ -303,7 +316,8 @@ impl TestRoute for gateway::GrpcRoute {
     type Backend = outbound::grpc_route::RouteBackend;
     type Filter = outbound::grpc_route::Filter;
 
-    fn make_route(
+    async fn create_route(
+        client: &Client,
         ns: impl ToString,
         parents: Vec<ParentReference>,
         rules: Vec<Vec<BackendRef>>,
@@ -326,7 +340,7 @@ impl TestRoute for gateway::GrpcRoute {
                 }
             })
             .collect();
-        gateway::GrpcRoute {
+        let route = gateway::GrpcRoute {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
                 name: Some("foo-route".to_string()),
@@ -340,7 +354,8 @@ impl TestRoute for gateway::GrpcRoute {
                 rules: Some(rules),
             },
             status: None,
-        }
+        };
+        create(client, route).await
     }
 
     fn routes<F>(config: &outbound::OutboundPolicy, f: F)
@@ -420,7 +435,8 @@ impl TestRoute for gateway::TlsRoute {
     type Backend = outbound::tls_route::RouteBackend;
     type Filter = outbound::tls_route::Filter;
 
-    fn make_route(
+    async fn create_route(
+        client: &Client,
         ns: impl ToString,
         parents: Vec<ParentReference>,
         rules: Vec<Vec<BackendRef>>,
@@ -431,7 +447,7 @@ impl TestRoute for gateway::TlsRoute {
                 backend_refs: backends,
             })
             .collect();
-        gateway::TlsRoute {
+        let route = gateway::TlsRoute {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
                 name: Some("foo-route".to_string()),
@@ -445,7 +461,8 @@ impl TestRoute for gateway::TlsRoute {
                 rules,
             },
             status: None,
-        }
+        };
+        create(client, route).await
     }
 
     fn routes<F>(config: &outbound::OutboundPolicy, f: F)
@@ -525,7 +542,8 @@ impl TestRoute for gateway::TcpRoute {
     type Backend = outbound::opaque_route::RouteBackend;
     type Filter = outbound::opaque_route::Filter;
 
-    fn make_route(
+    async fn create_route(
+        client: &Client,
         ns: impl ToString,
         parents: Vec<ParentReference>,
         rules: Vec<Vec<BackendRef>>,
@@ -536,7 +554,7 @@ impl TestRoute for gateway::TcpRoute {
                 backend_refs: backends,
             })
             .collect();
-        gateway::TcpRoute {
+        let route = gateway::TcpRoute {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
                 name: Some("foo-route".to_string()),
@@ -549,7 +567,8 @@ impl TestRoute for gateway::TcpRoute {
                 rules,
             },
             status: None,
-        }
+        };
+        create(client, route).await
     }
 
     fn routes<F>(config: &outbound::OutboundPolicy, f: F)
@@ -625,6 +644,25 @@ impl TestRoute for gateway::TcpRoute {
 }
 
 impl TestParent for k8s::Service {
+    async fn create_parent(client: &Client, ns: impl ToString) -> Self {
+        let service = k8s::Service {
+            metadata: k8s::ObjectMeta {
+                namespace: Some(ns.to_string()),
+                name: Some("my-svc".to_string()),
+                ..Default::default()
+            },
+            spec: Some(k8s::ServiceSpec {
+                ports: Some(vec![k8s::ServicePort {
+                    port: 4191,
+                    ..Default::default()
+                }]),
+                ..Default::default()
+            }),
+            ..k8s::Service::default()
+        };
+        create(client, service).await
+    }
+
     fn make_parent(ns: impl ToString) -> Self {
         k8s::Service {
             metadata: k8s::ObjectMeta {
@@ -637,15 +675,14 @@ impl TestParent for k8s::Service {
                     port: 4191,
                     ..Default::default()
                 }]),
-                cluster_ip: Some("192.168.0.2".to_string()),
                 ..Default::default()
             }),
             ..k8s::Service::default()
         }
     }
 
-    fn make_backend(ns: impl ToString) -> Self {
-        k8s::Service {
+    async fn create_backend(client: &Client, ns: impl ToString) -> Self {
+        let service = k8s::Service {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
                 name: Some("backend".to_string()),
@@ -656,11 +693,11 @@ impl TestParent for k8s::Service {
                     port: 4191,
                     ..Default::default()
                 }]),
-                cluster_ip: Some("192.168.0.3".to_string()),
                 ..Default::default()
             }),
             ..k8s::Service::default()
-        }
+        };
+        create(client, service).await
     }
 
     fn conditions(&self) -> Vec<&Condition> {
@@ -690,24 +727,32 @@ impl TestParent for k8s::Service {
     }
 }
 
+fn make_egress(ns: impl ToString) -> policy::EgressNetwork {
+    policy::EgressNetwork {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some("my-egress".to_string()),
+            ..Default::default()
+        },
+        spec: policy::EgressNetworkSpec {
+            networks: None,
+            traffic_policy: policy::egress_network::TrafficPolicy::Allow,
+        },
+        status: None,
+    }
+}
+
 impl TestParent for policy::EgressNetwork {
-    fn make_parent(ns: impl ToString) -> Self {
-        policy::EgressNetwork {
-            metadata: k8s::ObjectMeta {
-                namespace: Some(ns.to_string()),
-                name: Some("my-egress".to_string()),
-                ..Default::default()
-            },
-            spec: policy::EgressNetworkSpec {
-                networks: None,
-                traffic_policy: policy::egress_network::TrafficPolicy::Allow,
-            },
-            status: None,
-        }
+    async fn create_parent(client: &Client, ns: impl ToString) -> Self {
+        create(client, make_egress(ns)).await
     }
 
-    fn make_backend(ns: impl ToString) -> Self {
-        Self::make_parent(ns)
+    fn make_parent(ns: impl ToString) -> Self {
+        make_egress(ns)
+    }
+
+    async fn create_backend(_client: &Client, ns: impl ToString) -> Self {
+        make_egress(ns)
     }
 
     fn conditions(&self) -> Vec<&Condition> {
@@ -719,7 +764,7 @@ impl TestParent for policy::EgressNetwork {
             kind: Some(policy::EgressNetwork::kind(&()).to_string()),
             name: self.name_unchecked(),
             namespace: self.namespace(),
-            group: Some(k8s::Service::GROUP.to_string()),
+            group: Some(policy::EgressNetwork::group(&()).to_string()),
             section_name: None,
             port: Some(4191),
         }

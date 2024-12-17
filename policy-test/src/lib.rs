@@ -601,11 +601,15 @@ pub fn assert_resource_meta(
 ) {
     println!("meta: {:?}", meta);
     tracing::debug!(?meta, ?parent_ref, port, "Asserting parent metadata");
+    let mut group = parent_ref.group.unwrap();
+    if group.is_empty() {
+        group = "core".to_string();
+    }
     assert_eq!(
         meta,
         &Some(grpc::meta::Metadata {
             kind: Some(grpc::meta::metadata::Kind::Resource(grpc::meta::Resource {
-                group: parent_ref.group.unwrap(),
+                group,
                 kind: parent_ref.kind.unwrap(),
                 name: parent_ref.name,
                 namespace: parent_ref.namespace.unwrap(),
