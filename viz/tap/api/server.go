@@ -74,7 +74,7 @@ func NewServer(
 		TLSConfig: &tls.Config{
 			ClientAuth: tls.VerifyClientCertIfGiven,
 			ClientCAs:  clientCertPool,
-			MinVersion: tls.VersionTLS12,
+			MinVersion: tls.VersionTLS13,
 		},
 	}
 
