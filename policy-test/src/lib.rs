@@ -208,25 +208,25 @@ pub async fn await_pod_ip(client: &kube::Client, ns: &str, name: &str) -> std::n
         .expect("pod IP must be valid")
 }
 
-// Waits until an HttpRoute with the given namespace and name has a status set
-// on it, then returns the generic route status representation.
-pub async fn await_route_status<R: TestRoute>(
-    client: &kube::Client,
-    route: &R,
-) -> Vec<k8s::Condition> {
+// Waits until an HttpRoute with the given namespace and name has been accepted.
+pub async fn await_route_accepted<R: TestRoute>(client: &kube::Client, route: &R) {
     await_condition(
         client,
         &route.namespace().unwrap(),
         &route.name_unchecked(),
-        |obj: Option<&R>| -> bool { obj.and_then(|route| route.conditions()).is_some() },
+        |obj: Option<&R>| -> bool {
+            obj.map_or(false, |route| {
+                let conditions = route
+                    .conditions()
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|c| c.clone())
+                    .collect::<Vec<_>>();
+                is_status_accepted(&conditions)
+            })
+        },
     )
-    .await
-    .expect("must fetch route")
-    .conditions()
-    .expect("route must contain a status representation")
-    .into_iter()
-    .map(|c| c.clone())
-    .collect()
+    .await;
 }
 
 // Waits until an HttpRoute with the given namespace and name has a status set

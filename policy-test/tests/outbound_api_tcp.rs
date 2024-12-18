@@ -8,68 +8,6 @@
 // use maplit::{btreemap, convert_args};
 
 // #[tokio::test(flavor = "current_thread")]
-// async fn service_with_tcp_routes_with_invalid_backend() {
-//     with_temp_ns(|client, ns| async move {
-//         // Create a service
-//         let svc = create_service(&client, &ns, "my-svc", 4191).await;
-//         let backend = mk_service(&ns, "invalid", 4191);
-
-//         parent_with_tcp_routes_with_invalid_backend(
-//             Resource::Service(svc),
-//             Resource::Service(backend),
-//             &client,
-//             &ns,
-//         )
-//         .await;
-//     })
-//     .await;
-// }
-
-// #[tokio::test(flavor = "current_thread")]
-// async fn egress_net_with_tcp_routes_with_invalid_backend() {
-//     with_temp_ns(|client, ns| async move {
-//         // Create an egress network
-//         let egress = create_egress_network(&client, &ns, "my-egress").await;
-//         let status = await_egress_net_status(&client, &ns, "my-egress").await;
-//         assert_status_accepted(status.conditions);
-
-//         let backend = mk_egress_net(&ns, "invalid");
-
-//         parent_with_tcp_routes_with_invalid_backend(
-//             Resource::EgressNetwork(egress),
-//             Resource::EgressNetwork(backend),
-//             &client,
-//             &ns,
-//         )
-//         .await;
-//     })
-//     .await;
-// }
-
-// #[tokio::test(flavor = "current_thread")]
-// async fn service_with_multiple_tcp_routes() {
-//     with_temp_ns(|client, ns| async move {
-//         // Create a service
-//         let svc = create_service(&client, &ns, "my-svc", 4191).await;
-//         parent_with_multiple_tcp_routes(Resource::Service(svc), &client, &ns).await;
-//     })
-//     .await;
-// }
-
-// #[tokio::test(flavor = "current_thread")]
-// async fn egress_net_with_multiple_tcp_routes() {
-//     with_temp_ns(|client, ns| async move {
-//         // Create an egress net
-//         let egress = create_egress_network(&client, &ns, "my-egress").await;
-//         let status = await_egress_net_status(&client, &ns, "my-egress").await;
-//         assert_status_accepted(status.conditions);
-
-//         parent_with_multiple_tcp_routes(Resource::EgressNetwork(egress), &client, &ns).await;
-//     })
-//     .await;
-// }
-
-// #[tokio::test(flavor = "current_thread")]
 // async fn tcp_route_with_no_port() {
 //     with_temp_ns(|client, ns| async move {
 //         // Create a service
