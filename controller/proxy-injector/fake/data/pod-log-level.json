@@ -139,12 +139,24 @@
           }
         },
         {
+          "name": "_pod_uid",
+          "valueFrom": {
+            "fieldRef": {
+              "fieldPath": "metadata.uid"
+            }
+          }
+        },
+        {
           "name": "_pod_nodeName",
           "valueFrom": {
             "fieldRef": {
               "fieldPath": "spec.nodeName"
             }
           }
+        },
+        {
+          "name": "_pod_containerName",
+          "value": "linkerd-proxy"
         },
         {
           "name": "LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED",

@@ -973,10 +973,16 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_uid
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
         - name: _pod_nodeName
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: _pod_containerName
+          value: linkerd-proxy
         - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
           value: "8080"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
@@ -1346,10 +1352,16 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_uid
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
         - name: _pod_nodeName
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: _pod_containerName
+          value: linkerd-proxy
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
@@ -1857,10 +1869,16 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_uid
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
         - name: _pod_nodeName
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: _pod_containerName
+          value: linkerd-proxy
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
