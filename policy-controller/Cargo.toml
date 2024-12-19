@@ -6,11 +6,10 @@ license = "Apache-2.0"
 publish = false
 
 [features]
-default = ["openssl-tls", "openssl-vendored"]
+default = ["linkerd-policy-controller-runtime/rustls-tls"]
 openssl-tls = ["linkerd-policy-controller-runtime/openssl-tls"]
 # Vendor openssl to statically link lib
 openssl-vendored = ["linkerd-policy-controller-runtime/openssl-vendored"]
-rustls-tls = ["linkerd-policy-controller-runtime/rustls-tls"]
 
 [dependencies]
 anyhow = "1"
