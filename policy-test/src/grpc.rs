@@ -4,14 +4,16 @@
 //! forwarding to connect to a running instance.
 
 use anyhow::Result;
-pub use linkerd2_proxy_api::*;
 use linkerd2_proxy_api::{
     inbound::inbound_server_policies_client::InboundServerPoliciesClient,
     outbound::outbound_policies_client::OutboundPoliciesClient,
 };
 use linkerd_policy_controller_grpc::workload;
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
+use std::{future::Future, pin::Pin};
 use tokio::io;
+
+pub use linkerd2_proxy_api::*;
 
 #[macro_export]
 macro_rules! assert_is_default_all_unauthenticated {
@@ -105,7 +107,7 @@ pub struct OutboundPolicyClient {
 
 #[derive(Debug)]
 struct GrpcHttp {
-    tx: hyper::client::conn::SendRequest<tonic::body::BoxBody>,
+    tx: hyper::client::conn::http2::SendRequest<tonic::body::BoxBody>,
 }
 
 async fn get_policy_controller_pod(client: &kube::Client) -> Result<String> {
@@ -338,8 +340,7 @@ impl GrpcHttp {
     where
         I: io::AsyncRead + io::AsyncWrite + Unpin + Send + 'static,
     {
-        let (tx, conn) = hyper::client::conn::Builder::new()
-            .http2_only(true)
+        let (tx, conn) = hyper::client::conn::http2::Builder::new(crate::rt::TokioExecutor)
             .handshake(io)
             .await?;
         tokio::spawn(conn);
@@ -350,7 +351,7 @@ impl GrpcHttp {
 impl hyper::service::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp {
     type Response = hyper::Response<hyper::Body>;
     type Error = hyper::Error;
-    type Future = hyper::client::conn::ResponseFuture;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn poll_ready(
         &mut self,
@@ -360,6 +361,8 @@ impl hyper::service::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp 
     }
 
     fn call(&mut self, req: hyper::Request<tonic::body::BoxBody>) -> Self::Future {
+        use futures::FutureExt;
+
         let (mut parts, body) = req.into_parts();
 
         let mut uri = parts.uri.into_parts();
@@ -371,7 +374,9 @@ impl hyper::service::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp 
         );
         parts.uri = hyper::Uri::from_parts(uri).unwrap();
 
-        self.tx.call(hyper::Request::from_parts(parts, body))
+        self.tx
+            .send_request(hyper::Request::from_parts(parts, body))
+            .boxed()
     }
 }
 
