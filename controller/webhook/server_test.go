@@ -18,7 +18,7 @@ var mockHTTPServer = &http.Server{
 	Addr:              ":0",
 	ReadHeaderTimeout: 15 * time.Second,
 	TLSConfig: &tls.Config{
-		MinVersion: tls.VersionTLS12,
+		MinVersion: tls.VersionTLS13,
 	},
 }
 
