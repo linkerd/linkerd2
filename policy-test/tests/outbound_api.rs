@@ -4,8 +4,8 @@ use futures::StreamExt;
 use k8s_gateway_api::{self as gateway};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy};
 use linkerd_policy_test::{
-    assert_resource_meta, await_route_accepted, create, create_cluster_scoped,
-    delete_cluster_scoped, grpc,
+    assert_default_accrual_backoff, assert_resource_meta, await_route_accepted, create,
+    create_cluster_scoped, delete_cluster_scoped, grpc,
     outbound_api::{
         assert_backend_matches_reference, assert_route_is_default, assert_singleton,
         detect_failure_accrual, failure_accrual_consecutive, retry_watch_outbound_policy,
@@ -14,7 +14,6 @@ use linkerd_policy_test::{
     with_temp_ns,
 };
 use maplit::{btreemap, convert_args};
-use tracing::debug_span;
 
 #[tokio::test(flavor = "current_thread")]
 async fn parent_does_not_exist() {
@@ -79,13 +78,13 @@ async fn parent_with_no_routes() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn http_route_with_no_rules() {
+async fn route_with_no_rules() {
     async fn test<P: TestParent, R: TestRoute>() {
-        tracing::debug!(
-            parent = %P::kind(&P::DynamicType::default()),
-            route = %R::kind(&R::DynamicType::default())
-        );
         with_temp_ns(|client, ns| async move {
+            tracing::debug!(
+                parent = %P::kind(&P::DynamicType::default()),
+                route = %R::kind(&R::DynamicType::default()),
+            );
             let port = 4191;
             let parent = create(&client, P::make_parent(&ns)).await;
 
@@ -133,20 +132,20 @@ async fn http_route_with_no_rules() {
     }
 
     test::<k8s::Service, gateway::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
+    test::<k8s::Service, gateway::GrpcRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
+    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
+    test::<policy::EgressNetwork, gateway::GrpcRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn http_routes_without_backends() {
+async fn routes_without_backends() {
     async fn test<P: TestParent, R: TestRoute>() {
-        let _span = debug_span!(
-            "test",
+        tracing::debug!(
             parent = %P::kind(&P::DynamicType::default()),
-            route = %R::kind(&R::DynamicType::default())
-        )
-        .entered();
+            route = %R::kind(&R::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
             // Create a parent
             let port = 4191;
@@ -199,9 +198,11 @@ async fn http_routes_without_backends() {
     }
 
     test::<k8s::Service, gateway::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
+    test::<k8s::Service, gateway::GrpcRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
+    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
+    test::<policy::EgressNetwork, gateway::GrpcRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -568,106 +569,15 @@ async fn multiple_routes() {
     test::<k8s::Service, policy::HttpRoute>().await;
     test::<k8s::Service, gateway::GrpcRoute>().await;
     test::<k8s::Service, gateway::TlsRoute>().await;
-    //test::<k8s::Service, gateway::TcpRoute>().await;
     test::<policy::EgressNetwork, gateway::HttpRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
     test::<policy::EgressNetwork, gateway::GrpcRoute>().await;
     test::<policy::EgressNetwork, gateway::TlsRoute>().await;
-    //test::<policy::EgressNetwork, gateway::TcpRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn multiple_tcp_routes() {
-    async fn test<P: TestParent, R: TestRoute>() {
-        with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-                route = %R::kind(&R::DynamicType::default()),
-            );
-            // Create a parent
-            let port = 4191;
-            let parent = create(&client, P::make_parent(&ns)).await;
-
-            // Create a backend
-            let backend_port = 8888;
-            let backend = match P::make_backend(&ns) {
-                Some(b) => create(&client, b).await,
-                None => parent.clone(),
-            };
-
-            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
-            let config = rx
-                .next()
-                .await
-                .expect("watch must not fail")
-                .expect("watch must return an initial config");
-            tracing::trace!(?config);
-
-            assert_resource_meta(&config.metadata, parent.obj_ref(), port);
-
-            // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
-                let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
-            });
-
-            // Routes should be returned in sorted order by creation timestamp then
-            // name. To ensure that this test isn't timing dependant, routes should
-            // be created in alphabetical order.
-            let mut route_a = R::make_route(
-                ns.clone(),
-                vec![parent.obj_ref()],
-                vec![vec![backend.backend_ref(backend_port)]],
-            );
-            route_a.meta_mut().name = Some("a-route".to_string());
-            let route_a = create(&client, route_a).await;
-            await_route_accepted(&client, &route_a).await;
-
-            // First route update.
-            let config = rx
-                .next()
-                .await
-                .expect("watch must not fail")
-                .expect("watch must return an updated config");
-            tracing::trace!(?config);
-
-            assert_resource_meta(&config.metadata, parent.obj_ref(), port);
-
-            let mut route_b = R::make_route(
-                ns.clone(),
-                vec![parent.obj_ref()],
-                vec![vec![backend.backend_ref(backend_port)]],
-            );
-            route_b.meta_mut().name = Some("b-route".to_string());
-            let route_b = create(&client, route_b).await;
-            await_route_accepted(&client, &route_b).await;
-
-            // Second route update.
-            let config = rx
-                .next()
-                .await
-                .expect("watch must not fail")
-                .expect("watch must return an updated config");
-            tracing::trace!(?config);
-
-            assert_resource_meta(&config.metadata, parent.obj_ref(), port);
-
-            R::routes(&config, |routes| {
-                // Only the first TCPRoute should be returned in the config.
-                assert!(route_a.meta_eq(R::extract_meta(&routes[0])));
-                assert_eq!(routes.len(), 1);
-            });
-        })
-        .await
-    }
-
-    test::<k8s::Service, gateway::TcpRoute>().await;
-    test::<policy::EgressNetwork, gateway::TcpRoute>().await;
-}
-
-#[tokio::test(flavor = "current_thread")]
-async fn consecutive_failure_accrual() {
-    async fn test<P: TestParent>() {
+async fn opaque_service() {
+    async fn test<P: TestParent + Send>() {
         with_temp_ns(|client, ns| async move {
             tracing::debug!(
                 parent = %P::kind(&P::DynamicType::default()),
@@ -676,11 +586,7 @@ async fn consecutive_failure_accrual() {
             let port = 4191;
             let mut parent = P::make_parent(&ns);
             parent.meta_mut().annotations = Some(btreemap! {
-                "balancer.linkerd.io/failure-accrual".to_string() => "consecutive".to_string(),
-                "balancer.linkerd.io/failure-accrual-consecutive-max-failures".to_string() => "8".to_string(),
-                "balancer.linkerd.io/failure-accrual-consecutive-min-penalty".to_string() => "10s".to_string(),
-                "balancer.linkerd.io/failure-accrual-consecutive-max-penalty".to_string() => "10m".to_string(),
-                "balancer.linkerd.io/failure-accrual-consecutive-jitter-ratio".to_string() => "1.0".to_string(),
+                "config.linkerd.io/opaque-ports".to_string() => port.to_string(),
             });
             let parent = create(&client, parent).await;
 
@@ -694,21 +600,11 @@ async fn consecutive_failure_accrual() {
 
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
-            detect_failure_accrual(&config, |accrual| {
-                let consecutive = failure_accrual_consecutive(accrual);
-                assert_eq!(8, consecutive.max_failures);
-                assert_eq!(
-                    &grpc::outbound::ExponentialBackoff {
-                        min_backoff: Some(Duration::from_secs(10).try_into().unwrap()),
-                        max_backoff: Some(Duration::from_secs(600).try_into().unwrap()),
-                        jitter_ratio: 1.0_f32,
-                    },
-                    consecutive
-                        .backoff
-                        .as_ref()
-                        .expect("backoff must be configured")
-                );
-            });
+            // Proxy protocol should be opaque.
+            match config.protocol.unwrap().kind.unwrap() {
+                grpc::outbound::proxy_protocol::Kind::Opaque(_) => {}
+                _ => panic!("proxy protocol must be Opaque"),
+            };
         })
         .await;
     }
