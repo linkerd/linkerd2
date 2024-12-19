@@ -15,10 +15,16 @@ env:
   valueFrom:
     fieldRef:
       fieldPath: metadata.namespace
+- name: _pod_uid
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.uid
 - name: _pod_nodeName
   valueFrom:
     fieldRef:
       fieldPath: spec.nodeName
+- name: _pod_containerName
+  value: &containerName linkerd-proxy
 {{- if .Values.proxy.cores }}
 - name: LINKERD2_PROXY_CORES
   value: {{.Values.proxy.cores | quote}}
@@ -197,7 +203,7 @@ livenessProbe:
     port: {{.Values.proxy.ports.admin}}
   initialDelaySeconds: {{.Values.proxy.livenessProbe.initialDelaySeconds }}
   timeoutSeconds: {{.Values.proxy.livenessProbe.timeoutSeconds }}
-name: linkerd-proxy
+name: *containerName
 ports:
 - containerPort: {{.Values.proxy.ports.inbound}}
   name: linkerd-proxy
