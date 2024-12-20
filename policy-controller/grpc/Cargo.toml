@@ -11,7 +11,7 @@ async-trait = "0.1"
 http = "0.2"
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
-hyper = { version = "0.14", features = ["http2", "server", "tcp"] }
+hyper = { version = "0.14", features = ["backports", "deprecated", "http2", "server", "tcp"] }
 linkerd-policy-controller-core = { path = "../core" }
 maplit = "1"
 prost-types = "0.12.6"
