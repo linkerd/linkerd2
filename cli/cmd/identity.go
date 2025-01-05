@@ -183,7 +183,7 @@ func getContainerCertificate(k8sAPI *k8s.KubernetesAPI, pod corev1.Pod, containe
 
 	defer portForward.Stop()
 	if err = portForward.Init(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
+		fmt.Fprintf(os.Stderr, "Error running port-forward: %s\n", err)
 		return nil, err
 	}
 
