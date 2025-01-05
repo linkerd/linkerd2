@@ -19,7 +19,7 @@ linkerd-policy-controller-k8s-api = { path = "../api" }
 parking_lot = "0.12"
 prometheus-client = { version = "0.22.3", default-features = false }
 serde = "1"
-serde_json = "1.0.133"
+serde_json = "1.0.134"
 thiserror = "2"
 tokio = { version = "1", features = ["macros"] }
 tracing = "0.1.41"
