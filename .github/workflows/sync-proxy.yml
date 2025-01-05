@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   meta:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       GH_REPO: ${{ vars.LINKERD2_PROXY_REPO || 'linkerd/linkerd2-proxy' }}
@@ -59,7 +59,7 @@ jobs:
 
   changed:
     needs: meta
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       VERSION: ${{ needs.meta.outputs.name }}
@@ -81,7 +81,7 @@ jobs:
   sync-proxy:
     needs: [meta, changed]
     if: needs.changed.outputs.changed == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       checks: read

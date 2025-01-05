@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v44-rust-musl AS controller
+FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v45-rust-musl AS controller
 ARG BUILD_TYPE="release"
 WORKDIR /build
 RUN mkdir -p target/bin
