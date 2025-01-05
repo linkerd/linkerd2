@@ -177,7 +177,7 @@ pub async fn create_ready_pod(client: &kube::Client, pod: k8s::Pod) -> k8s::Pod 
         ip = %pod
             .status.as_ref().expect("pod must have a status")
             .pod_ips.as_ref().unwrap()[0]
-            .ip.as_deref().expect("pod ip must be set"),
+            .ip,
         containers = ?pod
             .spec.as_ref().expect("pod must have a spec")
             .containers.iter().map(|c| &*c.name).collect::<Vec<_>>(),
@@ -755,15 +755,11 @@ pub async fn await_service_account(client: &kube::Client, ns: &str, name: &str) 
             .expect("serviceaccounts watch must not fail");
         tracing::info!(?ev);
         match ev {
-            kube::runtime::watcher::Event::Restarted(sas) => {
-                if sas.iter().any(|sa| sa.name_unchecked() == name) {
-                    return;
-                }
-            }
-            kube::runtime::watcher::Event::Applied(sa) => {
-                if sa.name_unchecked() == name {
-                    return;
-                }
+            kube::runtime::watcher::Event::InitApply(sa)
+            | kube::runtime::watcher::Event::Apply(sa)
+                if sa.name_unchecked() == name =>
+            {
+                return
             }
             _ => {}
         }

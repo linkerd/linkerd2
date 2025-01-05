@@ -51,7 +51,7 @@ trait Validate<T> {
 
 // === impl AdmissionService ===
 
-impl hyper::service::Service<Request<Body>> for Admission {
+impl hyper::service::Service<Request<hyper::body::Incoming>> for Admission {
     type Response = Response<Body>;
     type Error = Error;
     type Future = future::BoxFuture<'static, Result<Response<Body>, Error>>;

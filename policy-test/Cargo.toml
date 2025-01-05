@@ -7,10 +7,10 @@ publish = false
 
 [dependencies]
 anyhow = "1"
-hyper = { version = "0.14", features = ["client", "http2"] }
+hyper = { version = "1", features = ["client", "http2"] }
 futures = { version = "0.3", default-features = false }
 ipnet = "2"
-k8s-gateway-api = "0.16"
+k8s-gateway-api = { workspace = true }
 k8s-openapi = { workspace = true }
 linkerd-policy-controller-core = { path = "../policy-controller/core" }
 linkerd-policy-controller-k8s-api = { path = "../policy-controller/k8s/api" }

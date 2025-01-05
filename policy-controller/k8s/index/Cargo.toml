@@ -27,7 +27,7 @@ tracing = "0.1"
 
 [dev-dependencies]
 chrono = { version = "0.4", default-features = false }
-k8s-openapi = { version = "0.20", features = ["schemars"] }
+k8s-openapi = { workspace = true, features = ["schemars"] }
 maplit = "1"
 tokio-stream = "0.1"
 tokio-test = "0.4"
