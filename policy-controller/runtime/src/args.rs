@@ -188,7 +188,7 @@ impl Args {
             kubert::LeaseParams {
                 name: LEASE_NAME.to_string(),
                 namespace: control_plane_namespace.clone(),
-                claimant: hostname,
+                claimant: hostname.clone(),
                 lease_duration: LEASE_DURATION,
                 renew_grace_period: RENEW_GRACE_PERIOD,
                 field_manager: Some("policy-controller".into()),

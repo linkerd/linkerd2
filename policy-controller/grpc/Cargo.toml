@@ -8,19 +8,19 @@ publish = false
 [dependencies]
 async-stream = "0.3"
 async-trait = "0.1"
-http = "0.2"
+http = "1"
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
 hyper = { version = "1", features = ["http2", "server"] }
 linkerd-policy-controller-core = { path = "../core" }
 maplit = "1"
-prost-types = "0.12.6"
+prost-types = "0.13"
 tokio = { version = "1", features = ["macros"] }
-tonic = { version = "0.10", default-features = false }
+tonic = { version = "0.12", default-features = false }
 tracing = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 [dependencies.linkerd2-proxy-api]
-version = "0.15"
+workspace = true
 features = ["inbound", "outbound"]

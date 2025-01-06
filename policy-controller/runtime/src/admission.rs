@@ -8,14 +8,15 @@ use crate::k8s::policy::{
 };
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use futures::future;
-use hyper::{body::Buf, http, Body, Request, Response};
+use http_body_util::BodyExt;
+use hyper::{http, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_core as core;
 use linkerd_policy_controller_k8s_api::gateway::{self as k8s_gateway_api, GrpcRoute};
 use linkerd_policy_controller_k8s_index::{self as index, outbound::index as outbound_index};
 use serde::de::DeserializeOwned;
-use std::{collections::BTreeMap, task};
+use std::collections::BTreeMap;
 use thiserror::Error;
 use tracing::{debug, info, trace, warn};
 
@@ -49,31 +50,37 @@ trait Validate<T> {
     ) -> Result<()>;
 }
 
+type Body = http_body_util::Full<bytes::Bytes>;
+
 // === impl AdmissionService ===
 
-impl hyper::service::Service<Request<hyper::body::Incoming>> for Admission {
+impl tower::Service<Request<hyper::body::Incoming>> for Admission {
     type Response = Response<Body>;
     type Error = Error;
     type Future = future::BoxFuture<'static, Result<Response<Body>, Error>>;
 
-    fn poll_ready(&mut self, _cx: &mut task::Context<'_>) -> task::Poll<Result<(), Error>> {
-        task::Poll::Ready(Ok(()))
+    fn poll_ready(
+        &mut self,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::result::Result<(), Self::Error>> {
+        std::task::Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
+    fn call(&mut self, req: Request<hyper::body::Incoming>) -> Self::Future {
         trace!(?req);
         if req.method() != http::Method::POST || req.uri().path() != "/" {
             return Box::pin(future::ok(
                 Response::builder()
                     .status(http::StatusCode::NOT_FOUND)
-                    .body(Body::empty())
+                    .body(Body::default())
                     .expect("not found response must be valid"),
             ));
         }
 
         let admission = self.clone();
         Box::pin(async move {
-            let bytes = hyper::body::aggregate(req.into_body()).await?;
+            use bytes::Buf;
+            let bytes = req.into_body().collect().await?.to_bytes();
             let review: Review = match serde_json::from_reader(bytes.reader()) {
                 Ok(review) => review,
                 Err(error) => {
