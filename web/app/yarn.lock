@@ -1577,15 +1577,30 @@
     "@messageformat/parser" "^5.0.0"
     make-plural "^6.2.2"
 
-"@lingui/macro@3.17.2":
-  version "3.17.2"
-  resolved "https://registry.yarnpkg.com/@lingui/macro/-/macro-3.17.2.tgz#b0c358335fa190df8364a66fa17fca2266561b0a"
-  integrity sha512-kk1ZtwYSx5Knu/5LsRGisTqfNoLIeVkJJPn6xjZXcItoxUgRsykyKb3BqCJwxqYUClz4i4A8Ld/aA4xBi4apRQ==
+"@lingui/core@^5.1.2":
+  version "5.1.2"
+  resolved "https://registry.yarnpkg.com/@lingui/core/-/core-5.1.2.tgz#77acdc7f990e7db180c3c73e05daaa277aa969f3"
+  integrity sha512-biqmMCWuBBj7ERSpgGSV91hTShnSrR/RIFUcNKjWuZYgDd3HpBdEmXKCo9NTanQYbkBUpmyw/bgwsSBex6vkDA==
   dependencies:
     "@babel/runtime" "^7.20.13"
-    "@babel/types" "^7.20.7"
-    "@lingui/conf" "3.17.2"
-    ramda "^0.27.1"
+    "@lingui/message-utils" "^5.1.2"
+    unraw "^3.0.0"
+
+"@lingui/macro@5.1.2":
+  version "5.1.2"
+  resolved "https://registry.yarnpkg.com/@lingui/macro/-/macro-5.1.2.tgz#0a5ec9be41d0f2300667ca4662cb49e184508e54"
+  integrity sha512-R6HV7XmiskkI/85JCjAtQuBPRu5AB57lOJdJE6xs2qBaeRu70v0BalTn4wyG5+r0JSkDI4gakWaXKW2KpWN6fQ==
+  dependencies:
+    "@lingui/core" "^5.1.2"
+    "@lingui/react" "^5.1.2"
+
+"@lingui/message-utils@^5.1.2":
+  version "5.1.2"
+  resolved "https://registry.yarnpkg.com/@lingui/message-utils/-/message-utils-5.1.2.tgz#8142a2b9ec148a845ddc8b3b9b91a5702efaf519"
+  integrity sha512-P/N0yBy2MuC726EaGPGiOafc/0RafHiwkvZJdFKjm1/XOMWrFZDPFXTuxguVQ3HQsRi5eUIPaboU4uRX4GepPg==
+  dependencies:
+    "@messageformat/parser" "^5.0.0"
+    js-sha256 "^0.10.1"
 
 "@lingui/react@3.17.2":
   version "3.17.2"
@@ -1594,6 +1609,14 @@
   dependencies:
     "@babel/runtime" "^7.20.13"
     "@lingui/core" "3.17.2"
+
+"@lingui/react@^5.1.2":
+  version "5.1.2"
+  resolved "https://registry.yarnpkg.com/@lingui/react/-/react-5.1.2.tgz#0ab2976300c4fed98144b72f200653c5a14eb1af"
+  integrity sha512-YPAvbPUd+kJrmA9H1LSJ9f6+0hkOlm0w8g+7a8FtE7olamjXd7SyIgJMbeJmvKSdztrrdcLBs9YEftUKTfjiyg==
+  dependencies:
+    "@babel/runtime" "^7.20.13"
+    "@lingui/core" "^5.1.2"
 
 "@material-ui/core@4.12.4":
   version "4.12.4"
@@ -6247,6 +6270,11 @@ jest@^29.7.0:
     import-local "^3.0.2"
     jest-cli "^29.7.0"
 
+js-sha256@^0.10.1:
+  version "0.10.1"
+  resolved "https://registry.yarnpkg.com/js-sha256/-/js-sha256-0.10.1.tgz#b40104ba1368e823fdd5f41b66b104b15a0da60d"
+  integrity sha512-5obBtsz9301ULlsgggLg542s/jqtddfOpV5KJc4hajc9JV8GeY2gZHSVpYBn4nWqAUTJ9v+xwtbJ1mIBgIH5Vw==
+
 "js-tokens@^3.0.0 || ^4.0.0", js-tokens@^4.0.0:
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/js-tokens/-/js-tokens-4.0.0.tgz#19203fb59991df98e3a287050d4647cdeaf32499"
@@ -8948,6 +8976,11 @@ unpipe@1.0.0, unpipe@~1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/unpipe/-/unpipe-1.0.0.tgz#b2bf4ee8514aae6165b4817829d21b2ef49904ec"
   integrity sha1-sr9O6FFKrmFltIF4KdIbLvSZBOw=
+
+unraw@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/unraw/-/unraw-3.0.0.tgz#73443ed70d2ab09ccbac2b00525602d5991fbbe3"
+  integrity sha512-08/DA66UF65OlpUDIQtbJyrqTR0jTAlJ+jsnkQ4jxR7+K5g5YG1APZKQSMCE1vqqmD+2pv6+IdEjmopFatacvg==
 
 update-browserslist-db@^1.1.0:
   version "1.1.0"
