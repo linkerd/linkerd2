@@ -6,7 +6,7 @@ permissions:
 
 jobs:
   meta:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: tj-actions/changed-files@d6e91a2266cdb9d62096cebf1e8546899c6aa18f
@@ -28,8 +28,8 @@ jobs:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 10
-    runs-on: ubuntu-22.04
-    container: ghcr.io/linkerd/dev:v44-go
+    runs-on: ubuntu-24.04
+    container: ghcr.io/linkerd/dev:v45-go
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -39,8 +39,8 @@ jobs:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 10
-    runs-on: ubuntu-22.04
-    container: ghcr.io/linkerd/dev:v44-go
+    runs-on: ubuntu-24.04
+    container: ghcr.io/linkerd/dev:v45-go
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -50,8 +50,8 @@ jobs:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 10
-    runs-on: ubuntu-22.04
-    container: ghcr.io/linkerd/dev:v44-go
+    runs-on: ubuntu-24.04
+    container: ghcr.io/linkerd/dev:v45-go
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -63,7 +63,7 @@ jobs:
   go-test-retry:
     needs: go-test
     if: failure() && fromJSON(github.run_attempt) < 3
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       actions: write
     env:
@@ -77,7 +77,7 @@ jobs:
   go-ok:
     needs: [go-lint, go-format, go-test]
     if: always()
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Results
         run: |

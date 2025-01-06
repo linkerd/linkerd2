@@ -11,7 +11,7 @@ permissions:
 jobs:
   choco-psscript-lint:
     timeout-minutes: 10
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: devblackops/github-action-psscriptanalyzer@854038567344559afaaa8ccb7a014452b99d86ee

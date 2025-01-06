@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   rerun:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       actions: write
