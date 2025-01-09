@@ -1,17 +1,15 @@
-use std::time::Duration;
-
-use futures::StreamExt;
+use futures::{FutureExt, StreamExt};
 use k8s_gateway_api::{self as gateway};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy};
 use linkerd_policy_test::{
-    assert_default_accrual_backoff, assert_resource_meta, await_route_accepted, create,
-    create_cluster_scoped, delete_cluster_scoped, grpc,
+    assert_resource_meta, await_route_accepted, create, create_cluster_scoped,
+    delete_cluster_scoped, grpc,
     outbound_api::{
         assert_backend_matches_reference, assert_route_is_default, assert_singleton,
-        detect_failure_accrual, failure_accrual_consecutive, retry_watch_outbound_policy,
+        retry_watch_outbound_policy,
     },
     test_route::{TestParent, TestRoute},
-    with_temp_ns,
+    update, with_temp_ns,
 };
 use maplit::{btreemap, convert_args};
 
@@ -611,4 +609,497 @@ async fn opaque_service() {
 
     test::<k8s::Service>().await;
     test::<policy::EgressNetwork>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn route_with_no_port() {
+    async fn test<P: TestParent, R: TestRoute>() {
+        with_temp_ns(|client, ns| async move {
+            tracing::debug!(
+                parent = %P::kind(&P::DynamicType::default()),
+                route = %R::kind(&R::DynamicType::default()),
+            );
+            // Create a parent
+            let parent = create(&client, P::make_parent(&ns)).await;
+            // Create a backend
+            let backend_port = 8888;
+            let backend = match P::make_backend(&ns) {
+                Some(b) => create(&client, b).await,
+                None => parent.clone(),
+            };
+
+            let port_a = 4191;
+            let port_b = 9999;
+
+            let mut rx_a = retry_watch_outbound_policy(&client, &ns, parent.ip(), port_a).await;
+            let config_a = rx_a
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config_a);
+
+            let mut rx_b = retry_watch_outbound_policy(&client, &ns, parent.ip(), port_b).await;
+            let config_b = rx_b
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config_b);
+
+            // There should be a default route.
+            gateway::HttpRoute::routes(&config_a, |routes| {
+                let route = assert_singleton(routes);
+                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port_a);
+            });
+            gateway::HttpRoute::routes(&config_b, |routes| {
+                let route = assert_singleton(routes);
+                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port_b);
+            });
+
+            // Create a route with no port in the parent_ref.
+            let mut parent_ref = parent.obj_ref();
+            parent_ref.port = None;
+            let route = create(
+                &client,
+                R::make_route(
+                    ns.clone(),
+                    vec![parent_ref],
+                    vec![vec![backend.backend_ref(backend_port)]],
+                ),
+            )
+            .await;
+            await_route_accepted(&client, &route).await;
+
+            let config_a = rx_a
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an updated config");
+            tracing::trace!(?config_a);
+            assert_resource_meta(&config_a.metadata, parent.obj_ref(), port_a);
+
+            let config_b = rx_b
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an updated config");
+            tracing::trace!(?config_b);
+            assert_resource_meta(&config_b.metadata, parent.obj_ref(), port_b);
+
+            // The route should apply to both ports.
+            R::routes(&config_a, |routes| {
+                let outbound_route = routes.first().expect("route must exist");
+                assert!(route.meta_eq(R::extract_meta(outbound_route)));
+            });
+            R::routes(&config_b, |routes| {
+                let outbound_route = routes.first().expect("route must exist");
+                assert!(route.meta_eq(R::extract_meta(outbound_route)));
+            });
+        })
+        .await;
+    }
+
+    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, policy::HttpRoute>().await;
+    test::<k8s::Service, gateway::GrpcRoute>().await;
+    test::<k8s::Service, gateway::TlsRoute>().await;
+    test::<k8s::Service, gateway::TcpRoute>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn producer_route() {
+    async fn test<P: TestParent, R: TestRoute>() {
+        with_temp_ns(|client, ns| async move {
+            tracing::debug!(
+                parent = %P::kind(&P::DynamicType::default()),
+                route = %R::kind(&R::DynamicType::default()),
+            );
+            // Create a parent
+            let parent = create(&client, P::make_parent(&ns)).await;
+            let port = 4191;
+            // Create a backend
+            let backend_port = 8888;
+            let backend = match P::make_backend(&ns) {
+                Some(b) => create(&client, b).await,
+                None => parent.clone(),
+            };
+
+            let mut producer_rx =
+                retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let producer_config = producer_rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?producer_config);
+            assert_resource_meta(&producer_config.metadata, parent.obj_ref(), port);
+
+            let mut consumer_rx =
+                retry_watch_outbound_policy(&client, "consumer_ns", parent.ip(), port).await;
+            let consumer_config = consumer_rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?consumer_config);
+            assert_resource_meta(&consumer_config.metadata, parent.obj_ref(), port);
+
+            // There should be a default route.
+            gateway::HttpRoute::routes(&producer_config, |routes| {
+                let route = assert_singleton(routes);
+                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+            });
+            gateway::HttpRoute::routes(&consumer_config, |routes| {
+                let route = assert_singleton(routes);
+                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+            });
+
+            // A route created in the same namespace as its parent service is called
+            // a producer route. It should be returned in outbound policy requests
+            // for that service from ALL namespaces.
+            let route = create(
+                &client,
+                R::make_route(
+                    ns.clone(),
+                    vec![parent.obj_ref()],
+                    vec![vec![backend.backend_ref(backend_port)]],
+                ),
+            )
+            .await;
+            await_route_accepted(&client, &route).await;
+
+            let producer_config = producer_rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an updated config");
+            tracing::trace!(?producer_config);
+            assert_resource_meta(&producer_config.metadata, parent.obj_ref(), port);
+
+            let consumer_config = consumer_rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?consumer_config);
+            assert_resource_meta(&consumer_config.metadata, parent.obj_ref(), port);
+
+            // The route should be returned in queries from the producer namespace.
+            R::routes(&producer_config, |routes| {
+                let outbound_route = routes.first().expect("route must exist");
+                assert!(route.meta_eq(R::extract_meta(outbound_route)));
+            });
+            // The route should be returned in queries from a consumer namespace.
+            R::routes(&consumer_config, |routes| {
+                let outbound_route = routes.first().expect("route must exist");
+                assert!(route.meta_eq(R::extract_meta(outbound_route)));
+            });
+        })
+        .await;
+    }
+
+    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, policy::HttpRoute>().await;
+    test::<k8s::Service, gateway::GrpcRoute>().await;
+    test::<k8s::Service, gateway::TlsRoute>().await;
+    test::<k8s::Service, gateway::TcpRoute>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn pre_existing_producer_route() {
+    async fn test<P: TestParent, R: TestRoute>() {
+        // We test the scenario where outbound policy watches are initiated after
+        // a produce route already exists.
+        with_temp_ns(|client, ns| async move {
+            tracing::debug!(
+                parent = %P::kind(&P::DynamicType::default()),
+                route = %R::kind(&R::DynamicType::default()),
+            );
+            // Create a parent
+            let parent = create(&client, P::make_parent(&ns)).await;
+            let port = 4191;
+            // Create a backend
+            let backend_port = 8888;
+            let backend = match P::make_backend(&ns) {
+                Some(b) => create(&client, b).await,
+                None => parent.clone(),
+            };
+
+            // A route created in the same namespace as its parent service is called
+            // a producer route. It should be returned in outbound policy requests
+            // for that service from ALL namespaces.
+            let route = create(
+                &client,
+                R::make_route(
+                    ns.clone(),
+                    vec![parent.obj_ref()],
+                    vec![vec![backend.backend_ref(backend_port)]],
+                ),
+            )
+            .await;
+            await_route_accepted(&client, &route).await;
+
+            let mut producer_rx =
+                retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let producer_config = producer_rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?producer_config);
+            assert_resource_meta(&producer_config.metadata, parent.obj_ref(), port);
+
+            let mut consumer_rx =
+                retry_watch_outbound_policy(&client, "consumer_ns", parent.ip(), port).await;
+            let consumer_config = consumer_rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?consumer_config);
+            assert_resource_meta(&consumer_config.metadata, parent.obj_ref(), port);
+
+            // The route should be returned in queries from the producer namespace.
+            R::routes(&producer_config, |routes| {
+                let outbound_route = routes.first().expect("route must exist");
+                assert!(route.meta_eq(R::extract_meta(outbound_route)));
+            });
+            // The route should be returned in queries from a consumer namespace.
+            R::routes(&consumer_config, |routes| {
+                let outbound_route = routes.first().expect("route must exist");
+                assert!(route.meta_eq(R::extract_meta(outbound_route)));
+            });
+        })
+        .await;
+    }
+
+    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, policy::HttpRoute>().await;
+    test::<k8s::Service, gateway::GrpcRoute>().await;
+    test::<k8s::Service, gateway::TlsRoute>().await;
+    test::<k8s::Service, gateway::TcpRoute>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn consumer_route() {
+    async fn test<P: TestParent, R: TestRoute>() {
+        with_temp_ns(|client, ns| async move {
+            tracing::debug!(
+                parent = %P::kind(&P::DynamicType::default()),
+                route = %R::kind(&R::DynamicType::default()),
+            );
+            // Create a parent
+            let parent = create(&client, P::make_parent(&ns)).await;
+            let port = 4191;
+            // Create a backend
+            let backend_port = 8888;
+            let backend = match P::make_backend(&ns) {
+                Some(b) => create(&client, b).await,
+                None => parent.clone(),
+            };
+
+            let consumer_ns_name = format!("{}-consumer", ns);
+            let consumer_ns = create_cluster_scoped(
+                &client,
+                k8s::Namespace {
+                    metadata: k8s::ObjectMeta {
+                        name: Some(consumer_ns_name.clone()),
+                        labels: Some(convert_args!(btreemap!(
+                            "linkerd-policy-test" => std::thread::current().name().unwrap_or(""),
+                        ))),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            )
+            .await;
+
+            let mut producer_rx =
+                retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let producer_config = producer_rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?producer_config);
+            assert_resource_meta(&producer_config.metadata, parent.obj_ref(), port);
+
+            let mut consumer_rx =
+                retry_watch_outbound_policy(&client, &consumer_ns_name, parent.ip(), port).await;
+            let consumer_config = consumer_rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?consumer_config);
+            assert_resource_meta(&consumer_config.metadata, parent.obj_ref(), port);
+
+            let mut other_rx =
+                retry_watch_outbound_policy(&client, "other_ns", parent.ip(), port).await;
+            let other_config = other_rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?other_config);
+            assert_resource_meta(&other_config.metadata, parent.obj_ref(), port);
+
+            // There should be a default route.
+            gateway::HttpRoute::routes(&producer_config, |routes| {
+                let route = assert_singleton(routes);
+                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+            });
+            gateway::HttpRoute::routes(&consumer_config, |routes| {
+                let route = assert_singleton(routes);
+                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+            });
+            gateway::HttpRoute::routes(&other_config, |routes| {
+                let route = assert_singleton(routes);
+                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+            });
+
+            // A route created in a different namespace as its parent service is
+            // called a consumer route. It should be returned in outbound policy
+            // requests for that service ONLY when the request comes from the
+            // consumer namespace.
+            let route = create(
+                &client,
+                R::make_route(
+                    consumer_ns_name.clone(),
+                    vec![parent.obj_ref()],
+                    vec![vec![backend.backend_ref(backend_port)]],
+                ),
+            )
+            .await;
+            await_route_accepted(&client, &route).await;
+
+            // The route should NOT be returned in queries from the producer namespace.
+            // There should be a default route.
+            assert!(producer_rx.next().now_or_never().is_none());
+
+            // The route should be returned in queries from the same consumer
+            // namespace.
+            let consumer_config = consumer_rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?consumer_config);
+            assert_resource_meta(&consumer_config.metadata, parent.obj_ref(), port);
+
+            R::routes(&consumer_config, |routes| {
+                let outbound_route = routes.first().expect("route must exist");
+                assert!(route.meta_eq(R::extract_meta(outbound_route)));
+            });
+
+            // The route should NOT be returned in queries from a different consumer
+            // namespace.
+            assert!(other_rx.next().now_or_never().is_none());
+
+            delete_cluster_scoped(&client, consumer_ns).await;
+        })
+        .await;
+    }
+
+    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, policy::HttpRoute>().await;
+    test::<k8s::Service, gateway::GrpcRoute>().await;
+    test::<k8s::Service, gateway::TlsRoute>().await;
+    test::<k8s::Service, gateway::TcpRoute>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn route_reattachment() {
+    async fn test<P: TestParent, R: TestRoute>() {
+        with_temp_ns(|client, ns| async move {
+            // Create a parent
+            let port = 4191;
+            let parent = create(&client, P::make_parent(&ns)).await;
+
+            // Create a backend
+            let backend_port = 8888;
+            let backend = match P::make_backend(&ns) {
+                Some(b) => create(&client, b).await,
+                None => parent.clone(),
+            };
+
+            let mut route = create(
+                &client,
+                R::make_route(
+                    ns.clone(),
+                    vec![parent.obj_ref()],
+                    vec![vec![backend.backend_ref(backend_port)]],
+                ),
+            )
+            .await;
+            await_route_accepted(&client, &route).await;
+
+            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config);
+
+            assert_resource_meta(&config.metadata, parent.obj_ref(), port);
+
+            // The route should be attached.
+            R::routes(&config, |routes| {
+                let outbound_route = routes.first().expect("route must exist");
+                assert!(route.meta_eq(R::extract_meta(outbound_route)));
+            });
+
+            // Detatch route.
+            route.parents_mut().first_mut().unwrap().name = "other".to_string();
+            update(&client, route.clone()).await;
+
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an updated config");
+            tracing::trace!(?config);
+
+            assert_resource_meta(&config.metadata, parent.obj_ref(), port);
+
+            // The route should be unattached and the default route should be present.
+            gateway::HttpRoute::routes(&config, |routes| {
+                let route = assert_singleton(routes);
+                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+            });
+
+            // Reattach route.
+            route.parents_mut().first_mut().unwrap().name = parent.meta().name.clone().unwrap();
+            update(&client, route.clone()).await;
+
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an updated config");
+            tracing::trace!(?config);
+
+            assert_resource_meta(&config.metadata, parent.obj_ref(), port);
+
+            // The route should be attached again.
+            R::routes(&config, |routes| {
+                let outbound_route = routes.first().expect("route must exist");
+                assert!(route.meta_eq(R::extract_meta(outbound_route)));
+            });
+        })
+        .await;
+    }
+
+    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, policy::HttpRoute>().await;
+    test::<k8s::Service, gateway::GrpcRoute>().await;
+    test::<k8s::Service, gateway::TlsRoute>().await;
+    test::<k8s::Service, gateway::TcpRoute>().await;
+    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
+    test::<policy::EgressNetwork, policy::HttpRoute>().await;
+    test::<policy::EgressNetwork, gateway::GrpcRoute>().await;
+    test::<policy::EgressNetwork, gateway::TlsRoute>().await;
+    test::<policy::EgressNetwork, gateway::TcpRoute>().await;
 }

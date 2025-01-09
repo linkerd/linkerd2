@@ -29,6 +29,7 @@ pub trait TestRoute:
     fn routes<F>(config: &outbound::OutboundPolicy, f: F)
     where
         F: Fn(&[Self::Route]);
+    fn parents_mut(&mut self) -> Vec<&mut ParentReference>;
     fn extract_meta(route: &Self::Route) -> &Metadata;
     fn backend_filters(backend: &Self::Backend) -> Vec<&Self::Filter>;
     fn rules_first_available(route: &Self::Route) -> Vec<Vec<&Self::Backend>>;
@@ -201,6 +202,16 @@ impl TestRoute for gateway::HttpRoute {
             _ => false,
         }
     }
+
+    fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
+        self.spec
+            .inner
+            .parent_refs
+            .as_mut()
+            .unwrap()
+            .iter_mut()
+            .collect()
+    }
 }
 
 impl TestRoute for policy::HttpRoute {
@@ -324,6 +335,16 @@ impl TestRoute for policy::HttpRoute {
             outbound::http_route::filter::Kind::FailureInjector(_) => true,
             _ => false,
         }
+    }
+
+    fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
+        self.spec
+            .inner
+            .parent_refs
+            .as_mut()
+            .unwrap()
+            .iter_mut()
+            .collect()
     }
 }
 
@@ -449,6 +470,16 @@ impl TestRoute for gateway::GrpcRoute {
             _ => false,
         }
     }
+
+    fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
+        self.spec
+            .inner
+            .parent_refs
+            .as_mut()
+            .unwrap()
+            .iter_mut()
+            .collect()
+    }
 }
 
 impl TestRoute for gateway::TlsRoute {
@@ -561,6 +592,16 @@ impl TestRoute for gateway::TlsRoute {
             _ => false,
         }
     }
+
+    fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
+        self.spec
+            .inner
+            .parent_refs
+            .as_mut()
+            .unwrap()
+            .iter_mut()
+            .collect()
+    }
 }
 
 impl TestRoute for gateway::TcpRoute {
@@ -671,6 +712,16 @@ impl TestRoute for gateway::TcpRoute {
             outbound::opaque_route::filter::Kind::Invalid(_) => true,
             _ => false,
         }
+    }
+
+    fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
+        self.spec
+            .inner
+            .parent_refs
+            .as_mut()
+            .unwrap()
+            .iter_mut()
+            .collect()
     }
 }
 
