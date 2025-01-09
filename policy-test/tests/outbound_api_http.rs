@@ -12,10 +12,10 @@ use maplit::btreemap;
 #[tokio::test(flavor = "current_thread")]
 async fn gateway_http_route_with_filters_service() {
     async fn test<P: TestParent>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-            );
             // Create a parent
             let port = 4191;
             let parent = create(&client, P::make_parent(&ns)).await;
@@ -152,10 +152,10 @@ async fn gateway_http_route_with_filters_service() {
 #[tokio::test(flavor = "current_thread")]
 async fn policy_http_route_with_filters_service() {
     async fn test<P: TestParent>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-            );
             // Create a parent
             let port = 4191;
             let parent = create(&client, P::make_parent(&ns)).await;
@@ -292,10 +292,10 @@ async fn policy_http_route_with_filters_service() {
 #[tokio::test(flavor = "current_thread")]
 async fn gateway_http_route_with_backend_filters() {
     async fn test<P: TestParent>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-            );
             // Create a parent
             let port = 4191;
             let parent = create(&client, P::make_parent(&ns)).await;
@@ -435,10 +435,10 @@ async fn gateway_http_route_with_backend_filters() {
 #[tokio::test(flavor = "current_thread")]
 async fn policy_http_route_with_backend_filters() {
     async fn test<P: TestParent>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-            );
             // Create a parent
             let port = 4191;
             let parent = create(&client, P::make_parent(&ns)).await;
@@ -578,11 +578,11 @@ async fn policy_http_route_with_backend_filters() {
 #[tokio::test(flavor = "current_thread")]
 async fn http_route_retries_and_timeouts() {
     async fn test<P: TestParent, R: TestRoute<Route = outbound::HttpRoute>>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-                route = %R::kind(&R::DynamicType::default()),
-            );
             // Create a parent
             let parent = create(&client, P::make_parent(&ns)).await;
             let port = 4191;
@@ -650,11 +650,11 @@ async fn http_route_retries_and_timeouts() {
 #[tokio::test(flavor = "current_thread")]
 async fn parent_retries_and_timeouts() {
     async fn test<P: TestParent, R: TestRoute<Route = outbound::HttpRoute>>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-                route = %R::kind(&R::DynamicType::default()),
-            );
             // Create a parent
             let mut parent = P::make_parent(&ns);
             parent.meta_mut().annotations = Some(btreemap! {

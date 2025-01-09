@@ -35,7 +35,7 @@ async fn inbound_accepted_parent() {
         }];
 
         // Create a route that references the Server resource.
-        let route = create(&client, mk_route(&ns, "test-accepted-route", Some(srv_ref))).await;
+        let _route = create(&client, mk_route(&ns, "test-accepted-route", Some(srv_ref))).await;
         // Wait until route is updated with a status
         let statuses = await_route_status(&client, &ns, "test-accepted-route")
             .await

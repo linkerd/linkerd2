@@ -190,17 +190,16 @@ impl TestRoute for gateway::HttpRoute {
                 .inner
                 .parents
                 .iter()
-                .map(|parent_status| &parent_status.conditions)
-                .flatten()
+                .flat_map(|parent_status| &parent_status.conditions)
                 .collect()
         })
     }
 
     fn is_failure_filter(filter: &outbound::http_route::Filter) -> bool {
-        match filter.kind.as_ref().unwrap() {
-            outbound::http_route::filter::Kind::FailureInjector(_) => true,
-            _ => false,
-        }
+        matches!(
+            filter.kind.as_ref().unwrap(),
+            outbound::http_route::filter::Kind::FailureInjector(_)
+        )
     }
 
     fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
@@ -324,17 +323,16 @@ impl TestRoute for policy::HttpRoute {
                 .inner
                 .parents
                 .iter()
-                .map(|parent_status| &parent_status.conditions)
-                .flatten()
+                .flat_map(|parent_status| &parent_status.conditions)
                 .collect()
         })
     }
 
     fn is_failure_filter(filter: &outbound::http_route::Filter) -> bool {
-        match filter.kind.as_ref().unwrap() {
-            outbound::http_route::filter::Kind::FailureInjector(_) => true,
-            _ => false,
-        }
+        matches!(
+            filter.kind.as_ref().unwrap(),
+            outbound::http_route::filter::Kind::FailureInjector(_)
+        )
     }
 
     fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
@@ -458,17 +456,16 @@ impl TestRoute for gateway::GrpcRoute {
                 .inner
                 .parents
                 .iter()
-                .map(|parent_status| &parent_status.conditions)
-                .flatten()
+                .flat_map(|parent_status| &parent_status.conditions)
                 .collect()
         })
     }
 
     fn is_failure_filter(filter: &outbound::grpc_route::Filter) -> bool {
-        match filter.kind.as_ref().unwrap() {
-            outbound::grpc_route::filter::Kind::FailureInjector(_) => true,
-            _ => false,
-        }
+        matches!(
+            filter.kind.as_ref().unwrap(),
+            outbound::grpc_route::filter::Kind::FailureInjector(_)
+        )
     }
 
     fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
@@ -580,17 +577,16 @@ impl TestRoute for gateway::TlsRoute {
                 .inner
                 .parents
                 .iter()
-                .map(|parent_status| &parent_status.conditions)
-                .flatten()
+                .flat_map(|parent_status| &parent_status.conditions)
                 .collect()
         })
     }
 
     fn is_failure_filter(filter: &outbound::tls_route::Filter) -> bool {
-        match filter.kind.as_ref().unwrap() {
-            outbound::tls_route::filter::Kind::Invalid(_) => true,
-            _ => false,
-        }
+        matches!(
+            filter.kind.as_ref().unwrap(),
+            outbound::tls_route::filter::Kind::Invalid(_)
+        )
     }
 
     fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
@@ -701,17 +697,16 @@ impl TestRoute for gateway::TcpRoute {
                 .inner
                 .parents
                 .iter()
-                .map(|parent_status| &parent_status.conditions)
-                .flatten()
+                .flat_map(|parent_status| &parent_status.conditions)
                 .collect()
         })
     }
 
     fn is_failure_filter(filter: &outbound::opaque_route::Filter) -> bool {
-        match filter.kind.as_ref().unwrap() {
-            outbound::opaque_route::filter::Kind::Invalid(_) => true,
-            _ => false,
-        }
+        matches!(
+            filter.kind.as_ref().unwrap(),
+            outbound::opaque_route::filter::Kind::Invalid(_)
+        )
     }
 
     fn parents_mut(&mut self) -> Vec<&mut ParentReference> {

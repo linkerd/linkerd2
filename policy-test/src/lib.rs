@@ -220,7 +220,7 @@ pub async fn await_route_accepted<R: TestRoute>(client: &kube::Client, route: &R
                     .conditions()
                     .unwrap_or_default()
                     .into_iter()
-                    .map(|c| c.clone())
+                    .cloned()
                     .collect::<Vec<_>>();
                 is_status_accepted(&conditions)
             })

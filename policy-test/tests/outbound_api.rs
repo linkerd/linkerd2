@@ -78,6 +78,10 @@ async fn parent_with_no_routes() {
 #[tokio::test(flavor = "current_thread")]
 async fn route_with_no_rules() {
     async fn test<P: TestParent, R: TestRoute>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default())
+        );
         with_temp_ns(|client, ns| async move {
             tracing::debug!(
                 parent = %P::kind(&P::DynamicType::default()),
@@ -482,6 +486,10 @@ async fn routes_with_invalid_backend() {
 #[tokio::test(flavor = "current_thread")]
 async fn multiple_routes() {
     async fn test<P: TestParent, R: TestRoute>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default())
+        );
         with_temp_ns(|client, ns| async move {
             tracing::debug!(
                 parent = %P::kind(&P::DynamicType::default()),
@@ -576,6 +584,9 @@ async fn multiple_routes() {
 #[tokio::test(flavor = "current_thread")]
 async fn opaque_service() {
     async fn test<P: TestParent + Send>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
             tracing::debug!(
                 parent = %P::kind(&P::DynamicType::default()),
@@ -614,11 +625,11 @@ async fn opaque_service() {
 #[tokio::test(flavor = "current_thread")]
 async fn route_with_no_port() {
     async fn test<P: TestParent, R: TestRoute>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default())
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-                route = %R::kind(&R::DynamicType::default()),
-            );
             // Create a parent
             let parent = create(&client, P::make_parent(&ns)).await;
             // Create a backend
@@ -710,11 +721,11 @@ async fn route_with_no_port() {
 #[tokio::test(flavor = "current_thread")]
 async fn producer_route() {
     async fn test<P: TestParent, R: TestRoute>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default())
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-                route = %R::kind(&R::DynamicType::default()),
-            );
             // Create a parent
             let parent = create(&client, P::make_parent(&ns)).await;
             let port = 4191;
@@ -809,13 +820,13 @@ async fn producer_route() {
 #[tokio::test(flavor = "current_thread")]
 async fn pre_existing_producer_route() {
     async fn test<P: TestParent, R: TestRoute>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default())
+        );
         // We test the scenario where outbound policy watches are initiated after
         // a produce route already exists.
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-                route = %R::kind(&R::DynamicType::default()),
-            );
             // Create a parent
             let parent = create(&client, P::make_parent(&ns)).await;
             let port = 4191;
@@ -884,11 +895,11 @@ async fn pre_existing_producer_route() {
 #[tokio::test(flavor = "current_thread")]
 async fn consumer_route() {
     async fn test<P: TestParent, R: TestRoute>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-                route = %R::kind(&R::DynamicType::default()),
-            );
             // Create a parent
             let parent = create(&client, P::make_parent(&ns)).await;
             let port = 4191;
@@ -1012,6 +1023,10 @@ async fn consumer_route() {
 #[tokio::test(flavor = "current_thread")]
 async fn route_reattachment() {
     async fn test<P: TestParent, R: TestRoute>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
             // Create a parent
             let port = 4191;

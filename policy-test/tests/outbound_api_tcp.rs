@@ -1,12 +1,3 @@
-// use futures::prelude::*;
-// use linkerd_policy_controller_k8s_api as k8s;
-// use linkerd_policy_test::{
-//     assert_resource_meta, assert_status_accepted, await_egress_net_status, await_tcp_route_status,
-//     create, create_cluster_scoped, create_egress_network, create_service, delete_cluster_scoped,
-//     mk_egress_net, mk_service, outbound_api::*, update, with_temp_ns, Resource,
-// };
-// use maplit::{btreemap, convert_args};
-
 use futures::StreamExt;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy};
 use linkerd_policy_test::{
@@ -19,11 +10,11 @@ use linkerd_policy_test::{
 #[tokio::test(flavor = "current_thread")]
 async fn multiple_tcp_routes() {
     async fn test<P: TestParent, R: TestRoute>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+            route = %R::kind(&R::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-                route = %R::kind(&R::DynamicType::default()),
-            );
             // Create a parent
             let port = 4191;
             let parent = create(&client, P::make_parent(&ns)).await;

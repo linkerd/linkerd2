@@ -15,10 +15,10 @@ use maplit::btreemap;
 #[tokio::test(flavor = "current_thread")]
 async fn consecutive_failure_accrual() {
     async fn test<P: TestParent>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-            );
             // Create a parent
             let port = 4191;
             let mut parent = P::make_parent(&ns);
@@ -67,10 +67,10 @@ async fn consecutive_failure_accrual() {
 #[tokio::test(flavor = "current_thread")]
 async fn consecutive_failure_accrual_defaults_no_config() {
     async fn test<P: TestParent>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-            );
             // Create a service configured to do consecutive failure accrual, but
             // with no additional configuration
             let port = 4191;
@@ -110,10 +110,10 @@ async fn consecutive_failure_accrual_defaults_no_config() {
 #[tokio::test(flavor = "current_thread")]
 async fn consecutive_failure_accrual_defaults_max_fails() {
     async fn test<P: TestParent>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-            );
             // Create a service configured to do consecutive failure accrual with
             // max number of failures and with default backoff
             let port = 4191;
@@ -154,10 +154,10 @@ async fn consecutive_failure_accrual_defaults_max_fails() {
 #[tokio::test(flavor = "current_thread")]
 async fn consecutive_failure_accrual_defaults_jitter() {
     async fn test<P: TestParent>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-            );
             // Create a service configured to do consecutive failure accrual with
             // max number of failures and with default backoff
             let port = 4191;
@@ -205,12 +205,12 @@ async fn consecutive_failure_accrual_defaults_jitter() {
 #[tokio::test(flavor = "current_thread")]
 async fn default_failure_accrual() {
     async fn test<P: TestParent>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
         with_temp_ns(|client, ns| async move {
-            tracing::debug!(
-                parent = %P::kind(&P::DynamicType::default()),
-            );
-        // Create Service with consecutive failure accrual config for
-        // max_failures but no mode
+            // Create Service with consecutive failure accrual config for
+            // max_failures but no mode
             let port = 4191;
             let mut parent = P::make_parent(&ns);
             parent.meta_mut().annotations = Some(btreemap! {
