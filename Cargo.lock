@@ -1236,7 +1236,7 @@ dependencies = [
  "kubert-prometheus-tokio",
  "parking_lot",
  "pin-project-lite",
- "prometheus-client",
+ "prometheus-client 0.22.3",
  "rustls-pemfile",
  "serde",
  "serde_json",
@@ -1257,7 +1257,7 @@ checksum = "40d2f45f0fb66a3681630fe2efd018c63eb7336697c44d909e53a99847113b97"
 dependencies = [
  "libc",
  "procfs",
- "prometheus-client",
+ "prometheus-client 0.22.3",
  "tracing",
 ]
 
@@ -1267,7 +1267,7 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a101fa3df488c89130664aaf4652986da49e204fb1725d089122f75b22ff6cbb"
 dependencies = [
- "prometheus-client",
+ "prometheus-client 0.22.3",
  "tokio",
  "tokio-metrics",
  "tracing",
@@ -1378,7 +1378,7 @@ dependencies = [
  "linkerd-policy-controller-k8s-api",
  "maplit",
  "parking_lot",
- "prometheus-client",
+ "prometheus-client 0.23.0",
  "thiserror 2.0.11",
  "tokio",
  "tokio-stream",
@@ -1398,7 +1398,7 @@ dependencies = [
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
  "parking_lot",
- "prometheus-client",
+ "prometheus-client 0.23.0",
  "serde",
  "serde_json",
  "thiserror 2.0.11",
@@ -1427,7 +1427,7 @@ dependencies = [
  "linkerd-policy-controller-k8s-status",
  "openssl",
  "parking_lot",
- "prometheus-client",
+ "prometheus-client 0.23.0",
  "regex",
  "serde",
  "serde_json",
@@ -1832,6 +1832,18 @@ name = "prometheus-client"
 version = "0.22.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "504ee9ff529add891127c4827eb481bd69dc0ebc72e9a682e187db4caa60c3ca"
+dependencies = [
+ "dtoa",
+ "itoa",
+ "parking_lot",
+ "prometheus-client-derive-encode",
+]
+
+[[package]]
+name = "prometheus-client"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92f2b0cae6fd19ec4f2b6ded3f39ffcce7a8c8490b34aa406c27e2c855bdc97d"
 dependencies = [
  "dtoa",
  "itoa",
