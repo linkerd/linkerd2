@@ -6,6 +6,7 @@ pub mod bb;
 pub mod curl;
 pub mod grpc;
 pub mod outbound_api;
+pub mod test_route;
 pub mod web;
 
 use kube::runtime::wait::Condition;
@@ -15,6 +16,7 @@ use linkerd_policy_controller_k8s_api::{
     ResourceExt,
 };
 use maplit::{btreemap, convert_args};
+use test_route::TestRoute;
 use tokio::time;
 use tracing::Instrument;
 
@@ -206,24 +208,25 @@ pub async fn await_pod_ip(client: &kube::Client, ns: &str, name: &str) -> std::n
         .expect("pod IP must be valid")
 }
 
-// Waits until an HttpRoute with the given namespace and name has a status set
-// on it, then returns the generic route status representation.
-pub async fn await_route_status(
-    client: &kube::Client,
-    ns: &str,
-    name: &str,
-) -> k8s::policy::httproute::RouteStatus {
-    use k8s::policy::httproute as api;
-    let route_status = await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
-        obj.and_then(|route| route.status.as_ref()).is_some()
-    })
-    .await
-    .expect("must fetch route")
-    .status
-    .expect("route must contain a status representation")
-    .inner;
-    tracing::trace!(?route_status, name, ns, "got route status");
-    route_status
+// Waits until an HttpRoute with the given namespace and name has been accepted.
+pub async fn await_route_accepted<R: TestRoute>(client: &kube::Client, route: &R) {
+    await_condition(
+        client,
+        &route.namespace().unwrap(),
+        &route.name_unchecked(),
+        |obj: Option<&R>| -> bool {
+            obj.map_or(false, |route| {
+                let conditions = route
+                    .conditions()
+                    .unwrap_or_default()
+                    .into_iter()
+                    .cloned()
+                    .collect::<Vec<_>>();
+                is_status_accepted(&conditions)
+            })
+        },
+    )
+    .await;
 }
 
 // Waits until an HttpRoute with the given namespace and name has a status set
@@ -591,17 +594,25 @@ pub fn mk_egress_net(ns: &str, name: &str) -> k8s::policy::EgressNetwork {
 }
 
 #[track_caller]
-pub fn assert_resource_meta(meta: &Option<grpc::meta::Metadata>, resource: &Resource, port: u16) {
+pub fn assert_resource_meta(
+    meta: &Option<grpc::meta::Metadata>,
+    parent_ref: ParentReference,
+    port: u16,
+) {
     println!("meta: {:?}", meta);
-    tracing::debug!(?meta, ?resource, port, "Asserting service metadata");
+    tracing::debug!(?meta, ?parent_ref, port, "Asserting parent metadata");
+    let mut group = parent_ref.group.unwrap();
+    if group.is_empty() {
+        group = "core".to_string();
+    }
     assert_eq!(
         meta,
         &Some(grpc::meta::Metadata {
             kind: Some(grpc::meta::metadata::Kind::Resource(grpc::meta::Resource {
-                group: resource.group(),
-                kind: resource.kind(),
-                name: resource.name(),
-                namespace: resource.namespace(),
+                group,
+                kind: parent_ref.kind.unwrap(),
+                name: parent_ref.name,
+                namespace: parent_ref.namespace.unwrap(),
                 section: "".to_string(),
                 port: port.into()
             })),

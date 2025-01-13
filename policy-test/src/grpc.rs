@@ -292,22 +292,6 @@ impl OutboundPolicyClient {
         Ok(rsp.into_inner())
     }
 
-    pub async fn watch(
-        &mut self,
-        ns: &str,
-        svc: &k8s::Service,
-        port: u16,
-    ) -> Result<tonic::Streaming<outbound::OutboundPolicy>, tonic::Status> {
-        let address = svc
-            .spec
-            .as_ref()
-            .expect("Service must have a spec")
-            .cluster_ip
-            .as_ref()
-            .expect("Service must have a cluster ip");
-        self.watch_ip(ns, address, port).await
-    }
-
     pub async fn watch_ip(
         &mut self,
         ns: &str,

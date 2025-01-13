@@ -5,9 +5,9 @@
   "license": "MIT",
   "dependencies": {
     "@babel/eslint-plugin": "7.25.9",
-    "@fortawesome/fontawesome-svg-core": "6.7.1",
-    "@fortawesome/free-regular-svg-icons": "6.7.1",
-    "@fortawesome/free-solid-svg-icons": "6.7.1",
+    "@fortawesome/fontawesome-svg-core": "6.7.2",
+    "@fortawesome/free-regular-svg-icons": "6.7.2",
+    "@fortawesome/free-solid-svg-icons": "6.7.2",
     "@fortawesome/react-fontawesome": "0.2.2",
     "@lingui/core": "^3.17.1",
     "@lingui/macro": "3.17.2",
@@ -16,7 +16,7 @@
     "@material-ui/icons": "4.11.3",
     "@material-ui/lab": "^4.0.0-alpha.61",
     "classnames": "2.5.1",
-    "core-js": "^3.39.0",
+    "core-js": "^3.40.0",
     "css-mediaquery": "^0.1.2",
     "d3-drag": "3.0.0",
     "d3-force": "3.0.0",
@@ -80,7 +80,7 @@
     "url-loader": "^4.1.1",
     "webpack": "^5.97.1",
     "webpack-bundle-analyzer": "4.10.2",
-    "webpack-cli": "5.1.4",
+    "webpack-cli": "6.0.1",
     "webpack-dev-server": "5.2.0"
   },
   "resolutions": {
