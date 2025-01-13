@@ -1208,9 +1208,9 @@ dependencies = [
 
 [[package]]
 name = "kubert"
-version = "0.23.0-alpha5"
+version = "0.23.0-alpha6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21825be1d69132c9d6f74adaef53b66a3dc6d5a26290ae60c2e22aa0eed8d83d"
+checksum = "fa4fca7cf1b9de3a75b580d9bf34aa5da412a1edf8211bd19f83bb13f2e3d37a"
 dependencies = [
  "ahash",
  "backoff",
@@ -1247,9 +1247,9 @@ dependencies = [
 
 [[package]]
 name = "kubert-prometheus-process"
-version = "0.1.0"
+version = "0.2.0-alpha1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40d2f45f0fb66a3681630fe2efd018c63eb7336697c44d909e53a99847113b97"
+checksum = "e5df580a32e3cddba16ff702e448e09d829527de76caf501d14d4869080002e2"
 dependencies = [
  "libc",
  "procfs",
@@ -1259,9 +1259,9 @@ dependencies = [
 
 [[package]]
 name = "kubert-prometheus-tokio"
-version = "0.1.0"
+version = "0.2.0-alpha1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a101fa3df488c89130664aaf4652986da49e204fb1725d089122f75b22ff6cbb"
+checksum = "3dbcc33c25a942237489d4a50beffb704a01a0faff50ec0d5c97eb98b12c6c23"
 dependencies = [
  "prometheus-client",
  "tokio",
@@ -1808,22 +1808,21 @@ dependencies = [
 
 [[package]]
 name = "procfs"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "731e0d9356b0c25f16f33b5be79b1c57b562f141ebfcdb0ad8ac2c13a24293b4"
+checksum = "cc5b72d8145275d844d4b5f6d4e1eef00c8cd889edb6035c21675d1bb1f45c9f"
 dependencies = [
  "bitflags",
  "hex",
- "lazy_static",
  "procfs-core",
  "rustix",
 ]
 
 [[package]]
 name = "procfs-core"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d3554923a69f4ce04c4a754260c338f505ce22642d3830e049a399fc2059a29"
+checksum = "239df02d8349b06fc07398a3a1697b06418223b1c7725085e801e7c0fc6a12ec"
 dependencies = [
  "bitflags",
  "hex",
@@ -1831,9 +1830,9 @@ dependencies = [
 
 [[package]]
 name = "prometheus-client"
-version = "0.22.3"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "504ee9ff529add891127c4827eb481bd69dc0ebc72e9a682e187db4caa60c3ca"
+checksum = "92f2b0cae6fd19ec4f2b6ded3f39ffcce7a8c8490b34aa406c27e2c855bdc97d"
 dependencies = [
  "dtoa",
  "itoa",
@@ -2425,9 +2424,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-metrics"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eace09241d62c98b7eeb1107d4c5c64ca3bd7da92e8c218c153ab3a78f9be112"
+checksum = "cb2bb07a8451c4c6fa8b3497ad198510d8b8dffa5df5cfb97a64102a58b113c8"
 dependencies = [
  "futures-util",
  "pin-project-lite",
