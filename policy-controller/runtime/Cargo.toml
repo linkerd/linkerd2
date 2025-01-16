@@ -23,7 +23,7 @@ hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
 ipnet = { version = "2", default-features = false }
 openssl = { version = "0.10.68", optional = true }
 parking_lot = "0.12"
-prometheus-client = { version = "0.22.3", default-features = false }
+prometheus-client = { version = "0.23.1", default-features = false }
 serde = "1"
 serde_json = "1"
 thiserror = "2"
