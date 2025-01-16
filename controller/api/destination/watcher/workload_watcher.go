@@ -659,6 +659,17 @@ func (wp *workloadPublisher) unsubscribe(listener WorkloadUpdateListener) {
 // the listener's Update() method, only if the pod's running state has
 // changed. If the passed pod is nil, it means the pod (still referred to in
 // wp.pod) has been deleted.
+// Note that we care only about the running state instead of a stronger
+// requirement on readiness state because this is used in the context of
+// _endpoint_ profile subscriptions, as opposed to _service_ profile
+// subscriptions. The former is used when calling GetProfile for a specific
+// pod, usually when hitting instances of a StatefulSet, with IPs possibly
+// derived from a headless service. An example of this is a Cassandra cluster,
+// where a new node won't become ready until it's connected from other members
+// of the cluster. For such connections to work inside the mesh, we need
+// GetProfile to return the endpoint profile for the pod, even if it's not
+// ready.
+// See https://github.com/linkerd/linkerd2/issues/13247
 func (wp *workloadPublisher) updatePod(pod *corev1.Pod) {
 	wp.mu.Lock()
 	defer wp.mu.Unlock()
