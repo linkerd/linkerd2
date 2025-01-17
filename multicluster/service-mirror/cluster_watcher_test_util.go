@@ -86,6 +86,7 @@ var createExportedService = &testEnvironment{
 		&RemoteServiceExported{
 			service: remoteService("service-one", "ns1", "111", map[string]string{
 				consts.DefaultExportedServiceSelector: "true",
+				"lk":                                  "lv",
 			}, []corev1.ServicePort{
 				{
 					Name:     "port1",
@@ -102,7 +103,7 @@ var createExportedService = &testEnvironment{
 	},
 	remoteResources: []string{
 		asYaml(gateway("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod)),
-		asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+		asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 	},
 	localResources: []string{
 		asYaml(namespace("ns1")),
@@ -141,7 +142,7 @@ var createRemoteDiscoveryService = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+		asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 	},
 	localResources: []string{
 		asYaml(namespace("ns1")),
@@ -180,7 +181,7 @@ var createFederatedService = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+		asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 	},
 	localResources: []string{
 		asYaml(namespace("ns1")),
@@ -233,7 +234,7 @@ func joinFederatedService() *testEnvironment {
 			},
 		},
 		remoteResources: []string{
-			asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+			asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 		},
 		localResources: []string{
 			asYaml(namespace("ns1")),
@@ -262,7 +263,7 @@ var leftFederatedService = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+		asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 	},
 	localResources: []string{
 		asYaml(namespace("ns1")),
@@ -313,7 +314,7 @@ var createLocalFederatedService = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+		asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 	},
 	localResources: []string{
 		asYaml(namespace("ns1")),
@@ -366,7 +367,7 @@ func joinLocalFederatedService() *testEnvironment {
 			},
 		},
 		remoteResources: []string{
-			asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+			asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 		},
 		localResources: []string{
 			asYaml(namespace("ns1")),
@@ -395,7 +396,7 @@ var leftLocalFederatedService = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+		asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 	},
 	localResources: []string{
 		asYaml(namespace("ns1")),
@@ -431,6 +432,7 @@ var createExportedHeadlessService = &testEnvironment{
 		&RemoteServiceExported{
 			service: remoteHeadlessService("service-one", "ns2", "111", map[string]string{
 				consts.DefaultExportedServiceSelector: "true",
+				"lk":                                  "lv",
 			}, []corev1.ServicePort{
 				{
 					Name:     "port1",
@@ -461,7 +463,7 @@ var createExportedHeadlessService = &testEnvironment{
 	},
 	remoteResources: []string{
 		asYaml(gateway("existing-gateway", "existing-namespace", "222", "192.0.2.129", "gateway", 889, "gateway-identity", 123456, "/probe1", "120s")),
-		asYaml(remoteHeadlessService("service-one", "ns2", "111", nil,
+		asYaml(remoteHeadlessService("service-one", "ns2", "111", map[string]string{"lk": "lv"},
 			[]corev1.ServicePort{
 				{
 					Name:     "port1",
@@ -516,8 +518,8 @@ var deleteMirrorService = &testEnvironment{
 		},
 	},
 	localResources: []string{
-		asYaml(mirrorService("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", nil)),
-		asYaml(endpoints("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", "gateway-identity", nil)),
+		asYaml(mirrorService("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", nil, nil)),
+		asYaml(endpoints("test-service-remote-to-delete-remote", "test-namespace-to-delete", nil, "", "gateway-identity", nil)),
 	},
 	link: v1alpha2.Link{
 		Spec: v1alpha2.LinkSpec{
@@ -550,7 +552,7 @@ var updateServiceWithChangedPorts = &testEnvironment{
 					Port:     333,
 				},
 			}),
-			localService: mirrorService("test-service-remote", "test-namespace", "pastServiceResVersion", []corev1.ServicePort{
+			localService: mirrorService("test-service-remote", "test-namespace", "pastServiceResVersion", nil, []corev1.ServicePort{
 				{
 					Name:     "port1",
 					Protocol: "TCP",
@@ -562,7 +564,7 @@ var updateServiceWithChangedPorts = &testEnvironment{
 					Port:     222,
 				},
 			}),
-			localEndpoints: endpoints("test-service-remote", "test-namespace", "192.0.2.127", "", []corev1.EndpointPort{
+			localEndpoints: endpoints("test-service-remote", "test-namespace", nil, "192.0.2.127", "", []corev1.EndpointPort{
 				{
 					Name:     "port1",
 					Port:     888,
@@ -580,7 +582,7 @@ var updateServiceWithChangedPorts = &testEnvironment{
 		asYaml(gateway("gateway", "gateway-ns", "currentGatewayResVersion", "192.0.2.127", "mc-gateway", 888, "", defaultProbePort, defaultProbePath, defaultProbePeriod)),
 	},
 	localResources: []string{
-		asYaml(mirrorService("test-service-remote", "test-namespace", "past", []corev1.ServicePort{
+		asYaml(mirrorService("test-service-remote", "test-namespace", "past", nil, []corev1.ServicePort{
 			{
 				Name:     "port1",
 				Protocol: "TCP",
@@ -597,7 +599,7 @@ var updateServiceWithChangedPorts = &testEnvironment{
 				Port:     333,
 			},
 		})),
-		asYaml(endpoints("test-service-remote", "test-namespace", "192.0.2.127", "", []corev1.EndpointPort{
+		asYaml(endpoints("test-service-remote", "test-namespace", nil, "192.0.2.127", "", []corev1.EndpointPort{
 			{
 				Name:     "port1",
 				Port:     888,
@@ -664,7 +666,7 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 			})),
 	},
 	localResources: []string{
-		asYaml(headlessMirrorService("service-two-remote", "eptest", "222",
+		asYaml(headlessMirrorService("service-two-remote", "eptest", "222", nil,
 			[]corev1.ServicePort{
 				{
 					Name:     "port1",
@@ -677,7 +679,7 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 					Port:     666,
 				},
 			})),
-		asYaml(endpointMirrorService("pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
+		asYaml(endpointMirrorService("pod-0", "service-two-remote", "eptest", "333", nil, []corev1.ServicePort{
 			{
 				Name:     "port1",
 				Protocol: "TCP",
@@ -692,6 +694,7 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 		asYaml(headlessMirrorEndpoints(
 			"service-two-remote",
 			"eptest",
+			nil,
 			"gateway-identity",
 			[]corev1.EndpointPort{
 				{
@@ -708,6 +711,7 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 		asYaml(endpointMirrorEndpoints(
 			"service-two-remote",
 			"eptest",
+			nil,
 			"pod-0",
 			"192.0.2.127",
 			"gateway-identity",
@@ -742,10 +746,10 @@ var clusterUnregistered = &testEnvironment{
 		&ClusterUnregistered{},
 	},
 	localResources: []string{
-		asYaml(mirrorService("test-service-1-remote", "test-namespace", "", nil)),
-		asYaml(endpoints("test-service-1-remote", "test-namespace", "", "", nil)),
-		asYaml(mirrorService("test-service-2-remote", "test-namespace", "", nil)),
-		asYaml(endpoints("test-service-2-remote", "test-namespace", "", "", nil)),
+		asYaml(mirrorService("test-service-1-remote", "test-namespace", "", nil, nil)),
+		asYaml(endpoints("test-service-1-remote", "test-namespace", nil, "", "", nil)),
+		asYaml(mirrorService("test-service-2-remote", "test-namespace", "", nil, nil)),
+		asYaml(endpoints("test-service-2-remote", "test-namespace", nil, "", "", nil)),
 	},
 	link: v1alpha2.Link{
 		Spec: v1alpha2.LinkSpec{
@@ -759,14 +763,14 @@ var gcTriggered = &testEnvironment{
 		&OrphanedServicesGcTriggered{},
 	},
 	localResources: []string{
-		asYaml(mirrorService("test-service-1-remote", "test-namespace", "", nil)),
-		asYaml(endpoints("test-service-1-remote", "test-namespace", "", "", nil)),
-		asYaml(mirrorService("test-service-2-remote", "test-namespace", "", nil)),
-		asYaml(endpoints("test-service-2-remote", "test-namespace", "", "", nil)),
-		asYaml(headlessMirrorService("test-headless-service-remote", "test-namespace", "", nil)),
-		asYaml(endpointMirrorService("pod-0", "test-headless-service-remote", "test-namespace", "", nil)),
-		asYaml(headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", "", nil)),
-		asYaml(endpointMirrorEndpoints("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil)),
+		asYaml(mirrorService("test-service-1-remote", "test-namespace", "", nil, nil)),
+		asYaml(endpoints("test-service-1-remote", "test-namespace", nil, "", "", nil)),
+		asYaml(mirrorService("test-service-2-remote", "test-namespace", "", nil, nil)),
+		asYaml(endpoints("test-service-2-remote", "test-namespace", nil, "", "", nil)),
+		asYaml(headlessMirrorService("test-headless-service-remote", "test-namespace", "", nil, nil)),
+		asYaml(endpointMirrorService("pod-0", "test-headless-service-remote", "test-namespace", "", nil, nil)),
+		asYaml(headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", nil, "", nil)),
+		asYaml(endpointMirrorEndpoints("test-headless-service-remote", "test-namespace", nil, "pod-0", "", "", nil)),
 	},
 	remoteResources: []string{
 		asYaml(remoteService("test-service-1", "test-namespace", "", map[string]string{consts.DefaultExportedServiceSelector: "true"}, nil)),
@@ -818,8 +822,8 @@ var noGatewayLink = &testEnvironment{
 		asYaml(namespace("ns1")),
 	},
 	remoteResources: []string{
-		asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
-		asYaml(endpoints("service-two", "ns1", "192.0.2.128", "gateway-identity", []corev1.EndpointPort{})),
+		asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+		asYaml(endpoints("service-two", "ns1", nil, "192.0.2.128", "gateway-identity", []corev1.EndpointPort{})),
 	},
 	link: v1alpha2.Link{
 		Spec: v1alpha2.LinkSpec{
@@ -862,8 +866,8 @@ func onAddOrUpdateRemoteServiceUpdated(isAdd bool) *testEnvironment {
 			}, nil)),
 		},
 		localResources: []string{
-			asYaml(mirrorService("test-service-remote", "test-namespace", "pastResourceVersion", nil)),
-			asYaml(endpoints("test-service-remote", "test-namespace", "0.0.0.0", "", nil)),
+			asYaml(mirrorService("test-service-remote", "test-namespace", "pastResourceVersion", nil, nil)),
+			asYaml(endpoints("test-service-remote", "test-namespace", nil, "0.0.0.0", "", nil)),
 		},
 		link: v1alpha2.Link{
 			Spec: v1alpha2.LinkSpec{
@@ -888,8 +892,8 @@ func onAddOrUpdateSameResVersion(isAdd bool) *testEnvironment {
 			}, nil)),
 		},
 		localResources: []string{
-			asYaml(mirrorService("test-service-remote", "test-namespace", "currentResVersion", nil)),
-			asYaml(endpoints("test-service-remote", "test-namespace", "0.0.0.0", "", nil)),
+			asYaml(mirrorService("test-service-remote", "test-namespace", "currentResVersion", nil, nil)),
+			asYaml(endpoints("test-service-remote", "test-namespace", nil, "0.0.0.0", "", nil)),
 		},
 		link: v1alpha2.Link{
 			Spec: v1alpha2.LinkSpec{
@@ -912,8 +916,8 @@ func serviceNotExportedAnymore(isAdd bool) *testEnvironment {
 			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "currentResVersion", map[string]string{}, nil)),
 		},
 		localResources: []string{
-			asYaml(mirrorService("test-service-remote", "test-namespace", "currentResVersion", nil)),
-			asYaml(endpoints("test-service-remote", "test-namespace", "0.0.0.0", "", nil)),
+			asYaml(mirrorService("test-service-remote", "test-namespace", "currentResVersion", nil, nil)),
+			asYaml(endpoints("test-service-remote", "test-namespace", nil, "0.0.0.0", "", nil)),
 		},
 		link: v1alpha2.Link{
 			Spec: v1alpha2.LinkSpec{
@@ -1137,10 +1141,16 @@ func remoteHeadlessEndpointsUpdate(name, namespace, resourceVersion, address str
 	}
 }
 
-func mirrorService(name, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
+func mirrorService(name, namespace, resourceVersion string, labels map[string]string, ports []corev1.ServicePort) *corev1.Service {
 	annotations := make(map[string]string)
 	annotations[consts.RemoteResourceVersionAnnotation] = resourceVersion
 	annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.svc.cluster.local", strings.Replace(name, "-remote", "", 1), namespace)
+
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[consts.RemoteClusterNameLabel] = clusterName
+	labels[consts.MirroredResourceLabel] = "true"
 
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -1148,12 +1158,9 @@ func mirrorService(name, namespace, resourceVersion string, ports []corev1.Servi
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				consts.RemoteClusterNameLabel: clusterName,
-				consts.MirroredResourceLabel:  "true",
-			},
+			Name:        name,
+			Namespace:   namespace,
+			Labels:      labels,
 			Annotations: annotations,
 		},
 		Spec: corev1.ServiceSpec{
@@ -1162,16 +1169,23 @@ func mirrorService(name, namespace, resourceVersion string, ports []corev1.Servi
 	}
 }
 
-func headlessMirrorService(name, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
-	svc := mirrorService(name, namespace, resourceVersion, ports)
+func headlessMirrorService(name, namespace, resourceVersion string, labels map[string]string, ports []corev1.ServicePort) *corev1.Service {
+	svc := mirrorService(name, namespace, resourceVersion, labels, ports)
 	svc.Spec.ClusterIP = "None"
 	return svc
 }
 
-func endpointMirrorService(hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
+func endpointMirrorService(hostname, rootName, namespace, resourceVersion string, labels map[string]string, ports []corev1.ServicePort) *corev1.Service {
 	annotations := make(map[string]string)
 	annotations[consts.RemoteResourceVersionAnnotation] = resourceVersion
 	annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.%s.svc.cluster.local", hostname, strings.Replace(rootName, "-remote", "", 1), namespace)
+
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[consts.MirroredHeadlessSvcNameLabel] = rootName
+	labels[consts.RemoteClusterNameLabel] = clusterName
+	labels[consts.MirroredResourceLabel] = "true"
 
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -1179,14 +1193,9 @@ func endpointMirrorService(hostname, rootName, namespace, resourceVersion string
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", hostname, clusterName),
-			Namespace: namespace,
-			Labels: map[string]string{
-
-				consts.MirroredHeadlessSvcNameLabel: rootName,
-				consts.RemoteClusterNameLabel:       clusterName,
-				consts.MirroredResourceLabel:        "true",
-			},
+			Name:        fmt.Sprintf("%s-%s", hostname, clusterName),
+			Namespace:   namespace,
+			Labels:      labels,
 			Annotations: annotations,
 		},
 		Spec: corev1.ServiceSpec{
@@ -1297,7 +1306,7 @@ func gateway(name, namespace, resourceVersion, ip, portName string, port int32, 
 	return &svc
 }
 
-func endpoints(name, namespace, gatewayIP string, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+func endpoints(name, namespace string, labels map[string]string, gatewayIP string, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	var subsets []corev1.EndpointSubset
 	if gatewayIP != "" {
 		subsets = []corev1.EndpointSubset{
@@ -1312,6 +1321,12 @@ func endpoints(name, namespace, gatewayIP string, gatewayIdentity string, ports 
 		}
 	}
 
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[consts.RemoteClusterNameLabel] = clusterName
+	labels[consts.MirroredResourceLabel] = "true"
+
 	endpoints := &corev1.Endpoints{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Endpoints",
@@ -1320,10 +1335,7 @@ func endpoints(name, namespace, gatewayIP string, gatewayIdentity string, ports 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			Labels: map[string]string{
-				consts.RemoteClusterNameLabel: clusterName,
-				consts.MirroredResourceLabel:  "true",
-			},
+			Labels:    labels,
 			Annotations: map[string]string{
 				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.cluster.local", strings.Replace(name, "-remote", "", 1), namespace),
 			},
@@ -1338,9 +1350,9 @@ func endpoints(name, namespace, gatewayIP string, gatewayIdentity string, ports 
 	return endpoints
 }
 
-func endpointMirrorEndpoints(rootName, namespace, hostname, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+func endpointMirrorEndpoints(rootName, namespace string, labels map[string]string, hostname, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	localName := fmt.Sprintf("%s-%s", hostname, clusterName)
-	ep := endpoints(localName, namespace, gatewayIP, gatewayIdentity, ports)
+	ep := endpoints(localName, namespace, labels, gatewayIP, gatewayIdentity, ports)
 
 	ep.Annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.%s.svc.cluster.local", hostname, strings.Replace(rootName, "-remote", "", 1), namespace)
 	ep.Labels[consts.MirroredHeadlessSvcNameLabel] = rootName
@@ -1348,7 +1360,12 @@ func endpointMirrorEndpoints(rootName, namespace, hostname, gatewayIP, gatewayId
 	return ep
 }
 
-func headlessMirrorEndpoints(name, namespace, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+func headlessMirrorEndpoints(name, namespace string, labels map[string]string, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[consts.RemoteClusterNameLabel] = clusterName
+	labels[consts.MirroredResourceLabel] = "true"
 	endpoints := &corev1.Endpoints{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Endpoints",
@@ -1357,10 +1374,7 @@ func headlessMirrorEndpoints(name, namespace, gatewayIdentity string, ports []co
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			Labels: map[string]string{
-				consts.RemoteClusterNameLabel: clusterName,
-				consts.MirroredResourceLabel:  "true",
-			},
+			Labels:    labels,
 			Annotations: map[string]string{
 				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.cluster.local", strings.Replace(name, "-remote", "", 1), namespace),
 			},
@@ -1482,8 +1496,8 @@ func createEnvWithSelector(defaultSelector, remoteSelector *metav1.LabelSelector
 			asYaml(namespace("ns1")),
 		},
 		remoteResources: []string{
-			asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
-			asYaml(endpoints("service-two", "ns1", "192.0.3.127", "gateway-identity", []corev1.EndpointPort{})),
+			asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+			asYaml(endpoints("service-two", "ns1", nil, "192.0.3.127", "gateway-identity", []corev1.EndpointPort{})),
 		},
 		link: v1alpha2.Link{
 			Spec: v1alpha2.LinkSpec{

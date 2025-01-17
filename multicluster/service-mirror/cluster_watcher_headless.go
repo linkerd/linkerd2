@@ -290,10 +290,7 @@ func (rcsw *RemoteClusterServiceWatcher) createHeadlessMirrorEndpoints(ctx conte
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      headlessMirrorServiceName,
 			Namespace: exportedService.Namespace,
-			Labels: map[string]string{
-				consts.MirroredResourceLabel:  "true",
-				consts.RemoteClusterNameLabel: rcsw.link.Spec.TargetClusterName,
-			},
+			Labels:    rcsw.getMirrorEndpointLabels(exportedService),
 			Annotations: map[string]string{
 				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.%s", exportedService.Name, exportedService.Namespace, rcsw.link.Spec.TargetClusterDomain),
 			},
