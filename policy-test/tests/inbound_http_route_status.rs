@@ -1,8 +1,7 @@
 use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
-    await_condition, await_route_status, create, find_route_condition, mk_route, update,
-    with_temp_ns,
+    await_condition, create, find_route_condition, mk_route, update, with_temp_ns,
 };
 
 #[tokio::test(flavor = "current_thread")]
@@ -348,4 +347,24 @@ async fn inbound_accepted_reconcile_parent_delete() {
         .expect("route must contain a status representation");
     })
     .await;
+}
+
+// Waits until an HttpRoute with the given namespace and name has a status set
+// on it, then returns the generic route status representation.
+async fn await_route_status(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> k8s::policy::httproute::RouteStatus {
+    use k8s::policy::httproute as api;
+    let route_status = await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
+        obj.and_then(|route| route.status.as_ref()).is_some()
+    })
+    .await
+    .expect("must fetch route")
+    .status
+    .expect("route must contain a status representation")
+    .inner;
+    tracing::trace!(?route_status, name, ns, "got route status");
+    route_status
 }

@@ -45,6 +45,11 @@ var (
 	websocketUpgrader   = websocket.Upgrader{
 		ReadBufferSize:  maxMessageSize,
 		WriteBufferSize: maxMessageSize,
+		// Only allows requests from the same host, to prevent CSRF attacks.
+		// This is the default behavior in gorilla/websocket even if the
+		// CheckOrigin field is not set, but we make it explicit here as a good
+		// practice, avoiding relying on default behavior.
+		CheckOrigin: checkSameOrigin,
 	}
 
 	// Checks whose description matches the following regexp won't be included
