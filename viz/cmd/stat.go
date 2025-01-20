@@ -832,6 +832,11 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 
 	requests := make([]*pb.StatSummaryRequest, 0)
 	for _, target := range targets {
+		if target.Type == k8s.Authority {
+			return nil, fmt.Errorf("Target type is not supported: %s", target.Type)
+
+		}
+
 		err = options.validate(target.Type)
 		if err != nil {
 			return nil, err
