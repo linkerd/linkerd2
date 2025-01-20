@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"reflect"
 	"syscall"
 	"time"
 
@@ -164,17 +165,26 @@ func Main(args []string) {
 						}
 					}
 				},
-				UpdateFunc: func(_, obj interface{}) {
-					link, ok := obj.(*v1alpha2.Link)
+				UpdateFunc: func(oldObj, currentObj interface{}) {
+					oldLink, ok := oldObj.(*v1alpha2.Link)
 					if !ok {
-						log.Errorf("object is not a Link: %+v", obj)
+						log.Errorf("object is not a Link: %+v", oldObj)
 						return
 					}
-					if link.GetName() == linkName {
+					currentLink, ok := currentObj.(*v1alpha2.Link)
+					if !ok {
+						log.Errorf("object is not a Link: %+v", currentObj)
+						return
+					}
+					if reflect.DeepEqual(oldLink.Spec, currentLink.Spec) {
+						log.Infof("Link update ignored (only status changed): %s", currentLink.GetName())
+						return
+					}
+					if currentLink.GetName() == linkName {
 						select {
-						case results <- link:
+						case results <- currentLink:
 						default:
-							log.Errorf("Link update dropped (queue full): %s", link.GetName())
+							log.Errorf("Link update dropped (queue full): %s", currentLink.GetName())
 						}
 					}
 				},
