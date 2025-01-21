@@ -39,6 +39,11 @@ disableIPv6: true
 priorityClassName: ""
 # -- Specifies the number of old ReplicaSets to retain to allow rollback.
 revisionHistoryLimit: 10
+# -- Specifies the update strategy for how the new pods are rolled out
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
 
 # -- Add a PSP resource and bind it to the linkerd-cni ServiceAccounts.
 # Note PSP has been deprecated since k8s v1.21

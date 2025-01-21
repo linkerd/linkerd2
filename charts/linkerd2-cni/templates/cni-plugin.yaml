@@ -199,10 +199,7 @@ spec:
   selector:
     matchLabels:
       k8s-app: linkerd-cni
-  updateStrategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 1
+  updateStrategy: {{ .Values.updateStrategy | toYaml | nindent 4 }}
   template:
     metadata:
       labels:
