@@ -177,7 +177,7 @@ func Main(args []string) {
 						return
 					}
 					if reflect.DeepEqual(oldLink.Spec, currentLink.Spec) {
-						log.Infof("Link update ignored (only status changed): %s", currentLink.GetName())
+						log.Debugf("Link update ignored (only status changed): %s", currentLink.GetName())
 						return
 					}
 					if currentLink.GetName() == linkName {
