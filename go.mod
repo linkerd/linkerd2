@@ -6,7 +6,7 @@ require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24
 	github.com/bombsimon/logrusr/v4 v4.1.0
-	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
+	github.com/briandowns/spinner v1.23.2
 	github.com/clarketm/json v1.15.7
 	github.com/emicklei/proto v1.14.0
 	github.com/evanphx/json-patch v5.9.0+incompatible
