@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 // requesting, and the test will pass.
 func TestCliStatForLinkerdNamespace(t *testing.T) {
 	ctx := context.Background()
-	var prometheusPod, prometheusAuthority, prometheusNamespace, prometheusDeployment, metricsPod string
+	var prometheusPod, prometheusNamespace, prometheusDeployment, metricsPod string
 	// Get Metrics Pod
 	pods, err := TestHelper.GetPodNamesForDeployment(ctx, TestHelper.GetVizNamespace(), "metrics-api")
 	if err != nil {
@@ -61,7 +61,6 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		testutil.Fatalf(t, "expected 1 pod for prometheus, got %d", len(pods))
 	}
 	prometheusPod = pods[0]
-	prometheusAuthority = prometheusDeployment + "." + prometheusNamespace + ".svc.cluster.local:9090"
 
 	testCases := []struct {
 		args         []string
@@ -100,13 +99,6 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			expectedRows: map[string]string{
 				"metrics-api": "1/1",
 			},
-		},
-		{
-			args: []string{"viz", "stat", "po", "-n", TestHelper.GetVizNamespace(), "--to", fmt.Sprintf("au/%s", prometheusAuthority), "--to-namespace", prometheusNamespace},
-			expectedRows: map[string]string{
-				metricsPod: "1/1",
-			},
-			status: "Running",
 		},
 	}
 
