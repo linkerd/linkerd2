@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
 	"github.com/linkerd/linkerd2/multicluster/static"
@@ -599,10 +601,21 @@ func extractProbeSpec(gateway *corev1.Service) (v1alpha2.ProbeSpec, error) {
 		return v1alpha2.ProbeSpec{}, err
 	}
 
+	// the `mirror.linkerd.io/probe-period` annotation is initialized with a
+	// default value of "3", but we require a duration-formatted string. So we
+	// perform the conversion, if required.
+	period := gateway.Annotations[k8s.GatewayProbePeriod]
+	if secs, err := strconv.ParseInt(period, 10, 64); err == nil {
+		dur := time.Duration(secs) * time.Second
+		period = dur.String()
+	} else if _, err := time.ParseDuration(period); err != nil {
+		return v1alpha2.ProbeSpec{}, fmt.Errorf("could not parse probe period: %w", err)
+	}
+
 	return v1alpha2.ProbeSpec{
 		Path:   path,
 		Port:   fmt.Sprintf("%d", port),
-		Period: gateway.Annotations[k8s.GatewayProbePeriod],
+		Period: period,
 	}, nil
 }
 
