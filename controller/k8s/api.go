@@ -12,6 +12,7 @@ import (
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	ewinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalworkload/v1beta1"
+	linkinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/link/v1alpha2"
 	srvinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server/v1beta3"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -52,6 +53,7 @@ type API struct {
 	es       discoveryinformers.EndpointSliceInformer
 	ew       ewinformers.ExternalWorkloadInformer
 	job      batchv1informers.JobInformer
+	link     linkinformers.LinkInformer
 	mwc      arinformers.MutatingWebhookConfigurationInformer
 	ns       coreinformers.NamespaceInformer
 	pod      coreinformers.PodInformer
@@ -248,6 +250,13 @@ func newAPI(
 			api.job = sharedInformers.Batch().V1().Jobs()
 			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.Job, informerLabels, api.job.Informer())
+		case Link:
+			if l5dCrdSharedInformers == nil {
+				panic("Linkerd CRD shared informer not configured")
+			}
+			api.link = l5dCrdSharedInformers.Link().V1alpha2().Links()
+			api.syncChecks = append(api.syncChecks, api.link.Informer().HasSynced)
+			api.promGauges.addInformerSize(k8s.Link, informerLabels, api.link.Informer())
 		case MWC:
 			api.mwc = sharedInformers.Admissionregistration().V1().MutatingWebhookConfigurations()
 			api.syncChecks = append(api.syncChecks, api.mwc.Informer().HasSynced)
