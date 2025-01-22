@@ -372,7 +372,7 @@ func statHasRequestData(stat *pb.BasicStats) bool {
 }
 
 func isPodOwnerResource(typ string) bool {
-	return typ != k8s.Authority && typ != k8s.Service && typ != k8s.Server && typ != k8s.ServerAuthorization && typ != k8s.AuthorizationPolicy && typ != k8s.HTTPRoute
+	return typ != k8s.Service && typ != k8s.Server && typ != k8s.ServerAuthorization && typ != k8s.AuthorizationPolicy && typ != k8s.HTTPRoute
 }
 
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
@@ -433,7 +433,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		statTables[resourceKey][key] = &row{}
 		if resourceKey != k8s.Server && resourceKey != k8s.ServerAuthorization {
 			meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
-			if resourceKey == k8s.Authority || resourceKey == k8s.Service {
+			if resourceKey == k8s.Service {
 				meshedCount = "-"
 			}
 			statTables[resourceKey][key] = &row{
@@ -503,7 +503,7 @@ func showTCPBytes(options *statOptions, resourceType string) bool {
 }
 
 func showTCPConns(resourceType string) bool {
-	return resourceType != k8s.Authority && resourceType != k8s.ServerAuthorization && resourceType != k8s.AuthorizationPolicy && resourceType != k8s.HTTPRoute
+	return resourceType != k8s.ServerAuthorization && resourceType != k8s.AuthorizationPolicy && resourceType != k8s.HTTPRoute
 }
 
 func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength int, options *statOptions) {
@@ -832,11 +832,6 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 
 	requests := make([]*pb.StatSummaryRequest, 0)
 	for _, target := range targets {
-		if target.Type == k8s.Authority {
-			return nil, fmt.Errorf("Target type is not supported: %s", target.Type)
-
-		}
-
 		err = options.validate(target.Type)
 		if err != nil {
 			return nil, err

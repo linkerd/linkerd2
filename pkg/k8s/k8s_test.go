@@ -32,8 +32,6 @@ func TestCanonicalResourceNameFromFriendlyName(t *testing.T) {
 			"pod":          Pod,
 			"deployment":   Deployment,
 			"deployments":  Deployment,
-			"au":           Authority,
-			"authorities":  Authority,
 			"cj":           CronJob,
 			"cronjob":      CronJob,
 			"serverauthz":  ServerAuthorization,

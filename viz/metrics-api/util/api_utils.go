@@ -274,9 +274,7 @@ func validateFromResourceType(resourceType string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if name == k8s.Authority {
-		return "", errors.New("cannot query traffic --from an authority")
-	}
+
 	return name, nil
 }
 

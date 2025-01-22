@@ -143,10 +143,6 @@ func NewCmdStatOutbound() *cobra.Command {
 				return err
 			}
 
-			if resource.Type == k8s.Authority {
-				return fmt.Errorf("Resource type is not supported: %s", resource.Type)
-			}
-
 			// Issue Prometheus queries for HTTP.
 
 			httpBackendChan := queryRate(
