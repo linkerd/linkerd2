@@ -341,8 +341,8 @@ fn update_backend_on_route_with_no_port() {
     let (gknn, outbound_route) = policy.http_routes.iter().next().unwrap();
     assert_eq!(gknn.name, "foo-route");
     assert_eq!(gknn.namespace, ns);
-    let rule = outbound_route.rules.get(0).unwrap();
-    let backend = rule.backends.get(0).unwrap();
+    let rule = outbound_route.rules.first().unwrap();
+    let backend = rule.backends.first().unwrap();
     if let outbound::Backend::Service(outbound::WeightedService {
         weight: _,
         authority: _,
