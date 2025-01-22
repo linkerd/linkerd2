@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -188,36 +187,6 @@ func validateRequest(req *pb.TopRoutesRequest) *pb.TopRoutesResponse {
 		}
 	}
 	return nil
-}
-
-func (s *grpcServer) getProfilesForAuthority(authority string, clientNs string, labelSelector labels.Selector) (map[string]*sp.ServiceProfile, error) {
-	if authority == "" {
-		// All authorities
-		ps, err := s.k8sAPI.SP().Lister().ServiceProfiles(clientNs).List(labelSelector)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(ps) == 0 {
-			return nil, errors.New("No ServiceProfiles found")
-		}
-
-		profiles := make(map[string]*sp.ServiceProfile)
-
-		for _, p := range ps {
-			profiles[p.Name] = p
-		}
-
-		return profiles, nil
-	}
-	// Specific authority
-	p, err := s.k8sAPI.SP().Lister().ServiceProfiles(clientNs).Get(authority)
-	if err != nil {
-		return nil, err
-	}
-	return map[string]*sp.ServiceProfile{
-		p.Name: p,
-	}, nil
 }
 
 func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesRequest, profiles map[string]*sp.ServiceProfile, resource *pb.Resource) (indexedTable, error) {

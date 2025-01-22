@@ -22,11 +22,11 @@ type statSumExpected struct {
 
 func prometheusMetric(resName string, resType string) model.Vector {
 	return model.Vector{
-		genPromSample(resName, resType, "emojivoto", false),
+		genPromSample(resName, resType, false),
 	}
 }
 
-func genPromSample(resName string, resType string, resNs string, isDst bool) *model.Sample {
+func genPromSample(resName string, resType string, isDst bool) *model.Sample {
 	labelName := model.LabelName(resType)
 	namespaceLabel := model.LabelName("namespace")
 
@@ -38,7 +38,7 @@ func genPromSample(resName string, resType string, resNs string, isDst bool) *mo
 	return &model.Sample{
 		Metric: model.Metric{
 			labelName:        model.LabelValue(resName),
-			namespaceLabel:   model.LabelValue(resNs),
+			namespaceLabel:   model.LabelValue("emojivoto"),
 			"classification": model.LabelValue("success"),
 			"tls":            model.LabelValue("true"),
 		},
@@ -865,7 +865,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("emojivoto-1", "pod", "emojivoto", false),
+						genPromSample("emojivoto-1", "pod", false),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
@@ -922,7 +922,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("emojivoto-1", "pod", "emojivoto", false),
+						genPromSample("emojivoto-1", "pod", false),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
@@ -990,7 +990,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("emojivoto-1", "pod", "emojivoto", true),
+						genPromSample("emojivoto-1", "pod", true),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
@@ -1058,7 +1058,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("emojivoto-1", "pod", "emojivoto", true),
+						genPromSample("emojivoto-1", "pod", true),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
