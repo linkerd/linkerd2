@@ -21,6 +21,7 @@ const (
 	EndpointSlices        = "endpointslices"
 	ExtWorkload           = "externalworkload"
 	Job                   = "job"
+	Link                  = "link"
 	MeshTLSAuthentication = "meshtlsauthentication"
 	MutatingWebhookConfig = "mutatingwebhookconfig"
 	Namespace             = "namespace"

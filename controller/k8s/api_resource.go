@@ -32,6 +32,7 @@ const (
 	ES // EndpointSlice resource
 	ExtWorkload
 	Job
+	Link
 	MWC
 	NS
 	Pod
