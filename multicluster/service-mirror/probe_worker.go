@@ -70,12 +70,11 @@ func (pw *ProbeWorker) run() {
 		pw.log.Error("Probe spec is nil")
 		return
 	}
-	probeTickerPeriodSeconds, err := strconv.ParseInt(pw.probeSpec.Period, 10, 64)
+	probeTickerPeriod, err := time.ParseDuration(pw.probeSpec.Period)
 	if err != nil {
 		pw.log.Errorf("could not parse probe period: %s", err)
 		return
 	}
-	probeTickerPeriod := time.Duration(probeTickerPeriodSeconds) * time.Second
 	maxJitter := probeTickerPeriod / 10 // max jitter is 10% of period
 	probeTicker := NewTicker(probeTickerPeriod, maxJitter)
 	defer probeTicker.Stop()

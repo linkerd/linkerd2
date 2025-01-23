@@ -468,6 +468,7 @@ spec:
                     type: string
                   period:
                     description: Interval in between probe requests
+                    format: duration
                     type: string
                   port:
                     description: Port of remote gateway health endpoint
