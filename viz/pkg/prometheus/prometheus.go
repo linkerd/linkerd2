@@ -63,10 +63,7 @@ func QueryLabels(resource *pb.Resource) model.LabelSet {
 // note that metricToKey assumes the label ordering (namespace, name)
 func DstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{DstNamespaceLabel}
-
-	if IsNonK8sResourceQuery(resource.GetType()) {
-		names = append(names, ResourceType(resource))
-	} else if resource.Type != k8s.Namespace {
+	if resource.Type != k8s.Namespace {
 		names = append(names, "dst_"+ResourceType(resource))
 	}
 	return names
@@ -76,14 +73,11 @@ func DstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 func DstQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
-		if IsNonK8sResourceQuery(resource.GetType()) {
-			set[ResourceType(resource)] = model.LabelValue(resource.Name)
-		} else {
-			set["dst_"+ResourceType(resource)] = model.LabelValue(resource.Name)
-			if shouldAddNamespaceLabel(resource) {
-				set[DstNamespaceLabel] = model.LabelValue(resource.Namespace)
-			}
+		set["dst_"+ResourceType(resource)] = model.LabelValue(resource.Name)
+		if shouldAddNamespaceLabel(resource) {
+			set[DstNamespaceLabel] = model.LabelValue(resource.Namespace)
 		}
+
 	}
 
 	return set
@@ -97,8 +91,4 @@ func ResourceType(resource *pb.Resource) model.LabelName {
 // determine if we should add "namespace=<namespace>" to a named query
 func shouldAddNamespaceLabel(resource *pb.Resource) bool {
 	return resource.Type != k8s.Namespace && resource.Namespace != ""
-}
-
-func IsNonK8sResourceQuery(resourceType string) bool {
-	return resourceType == k8s.Authority
 }

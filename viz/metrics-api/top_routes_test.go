@@ -460,44 +460,4 @@ func TestTopRoutes(t *testing.T) {
 
 		testTopRoutes(t, expectations)
 	})
-
-	t.Run("Successfully performs an outbound authority query", func(t *testing.T) {
-		routes := []string{"/a"}
-		counts := []uint64{123}
-		expectations := []topRoutesExpected{
-			{
-				expectedStatRPC: expectedStatRPC{
-					err:              nil,
-					mockPromResponse: routesMetric([]string{"/a"}),
-					expectedPrometheusQueries: []string{
-						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{deployment="books", direction="outbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", namespace="default"}[1m])) by (le, dst, rt_route))`,
-						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{deployment="books", direction="outbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", namespace="default"}[1m])) by (le, dst, rt_route))`,
-						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{deployment="books", direction="outbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", namespace="default"}[1m])) by (le, dst, rt_route))`,
-						`sum(increase(route_response_total{deployment="books", direction="outbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", namespace="default"}[1m])) by (rt_route, dst, classification)`,
-						`sum(increase(route_actual_response_total{deployment="books", direction="outbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", namespace="default"}[1m])) by (rt_route, dst, classification)`,
-					},
-					k8sConfigs: booksConfig,
-				},
-				req: &pb.TopRoutesRequest{
-					Selector: &pb.ResourceSelection{
-						Resource: &pb.Resource{
-							Namespace: "default",
-							Type:      pkgK8s.Deployment,
-							Name:      "books",
-						},
-					},
-					Outbound: &pb.TopRoutesRequest_ToResource{
-						ToResource: &pb.Resource{
-							Type: pkgK8s.Authority,
-							Name: "books.default.svc.cluster.local",
-						},
-					},
-					TimeWindow: "1m",
-				},
-				expectedResponse: GenTopRoutesResponse(routes, counts, true, "books.default.svc.cluster.local"),
-			},
-		}
-
-		testTopRoutes(t, expectations)
-	})
 }

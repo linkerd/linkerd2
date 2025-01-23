@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -57,11 +56,6 @@ func (s *grpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*
 	labelSelector, err := getTopLabelSelector(req)
 	if err != nil {
 		return nil, err
-	}
-	if targetResource.GetType() == k8s.Authority {
-		// Authority cannot be the target because authorities don't have namespaces,
-		// therefore there is no namespace in which to look for a service profile.
-		return topRoutesError(req, "Authority cannot be the target of a routes query; try using an authority in the --to flag instead"), nil
 	}
 
 	err = s.validateTimeWindow(ctx, req.TimeWindow)
@@ -139,31 +133,22 @@ func (s *grpcServer) topRoutesFor(ctx context.Context, req *pb.TopRoutesRequest,
 
 	profiles := make(map[string]*sp.ServiceProfile)
 
-	if requestedResource.GetType() == k8s.Authority {
-		// Authorities may not be a source, so we know this is a ToResource.
-		profiles, err = s.getProfilesForAuthority(requestedResource.GetName(), clientNs, labelSelector)
+	// Lookup individual resource objects.
+	objects, err := s.k8sAPI.GetObjects(requestedResource.Namespace, requestedResource.Type, requestedResource.Name, labelSelector)
+	if err != nil {
+		return nil, err
+	}
+	// Find service profiles for all services in all objects in the resource.
+	for _, obj := range objects {
+		// Lookup services for each object.
+		services, err := s.k8sAPI.GetServicesFor(obj, false)
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		// Non-authority resource.
-		// Lookup individual resource objects.
-		objects, err := s.k8sAPI.GetObjects(requestedResource.Namespace, requestedResource.Type, requestedResource.Name, labelSelector)
-		if err != nil {
-			return nil, err
-		}
-		// Find service profiles for all services in all objects in the resource.
-		for _, obj := range objects {
-			// Lookup services for each object.
-			services, err := s.k8sAPI.GetServicesFor(obj, false)
-			if err != nil {
-				return nil, err
-			}
 
-			for _, svc := range services {
-				p := s.k8sAPI.GetServiceProfileFor(svc, clientNs, s.clusterDomain)
-				profiles[svc.GetName()] = p
-			}
+		for _, svc := range services {
+			p := s.k8sAPI.GetServiceProfileFor(svc, clientNs, s.clusterDomain)
+			profiles[svc.GetName()] = p
 		}
 	}
 
@@ -197,41 +182,11 @@ func validateRequest(req *pb.TopRoutesRequest) *pb.TopRoutesResponse {
 	if req.GetNone() == nil {
 		// This is an outbound (--to) request.
 		targetType := req.GetSelector().GetResource().GetType()
-		if targetType == k8s.Service || targetType == k8s.Authority {
+		if targetType == k8s.Service {
 			return topRoutesError(req, fmt.Sprintf("The %s resource type is not supported with 'to' queries", targetType))
 		}
 	}
 	return nil
-}
-
-func (s *grpcServer) getProfilesForAuthority(authority string, clientNs string, labelSelector labels.Selector) (map[string]*sp.ServiceProfile, error) {
-	if authority == "" {
-		// All authorities
-		ps, err := s.k8sAPI.SP().Lister().ServiceProfiles(clientNs).List(labelSelector)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(ps) == 0 {
-			return nil, errors.New("No ServiceProfiles found")
-		}
-
-		profiles := make(map[string]*sp.ServiceProfile)
-
-		for _, p := range ps {
-			profiles[p.Name] = p
-		}
-
-		return profiles, nil
-	}
-	// Specific authority
-	p, err := s.k8sAPI.SP().Lister().ServiceProfiles(clientNs).Get(authority)
-	if err != nil {
-		return nil, err
-	}
-	return map[string]*sp.ServiceProfile{
-		p.Name: p,
-	}, nil
 }
 
 func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesRequest, profiles map[string]*sp.ServiceProfile, resource *pb.Resource) (indexedTable, error) {

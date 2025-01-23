@@ -125,9 +125,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		statReq.Selector.Resource.Type = resource
 
 		go func() {
-			if prometheus.IsNonK8sResourceQuery(statReq.GetSelector().GetResource().GetType()) {
-				resultChan <- s.nonK8sResourceQuery(ctx, statReq)
-			} else if statReq.GetSelector().GetResource().GetType() == k8s.Service {
+			if statReq.GetSelector().GetResource().GetType() == k8s.Service {
 				resultChan <- s.serviceResourceQuery(ctx, statReq)
 			} else if isPolicyResource(statReq.GetSelector().GetResource()) {
 				resultChan <- s.policyResourceQuery(ctx, statReq)
@@ -360,42 +358,6 @@ func sortTrafficSplitRows(rows []*pb.StatTable_PodGroup_Row) []*pb.StatTable_Pod
 		return false
 	})
 	return rows
-}
-
-func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
-	var requestMetrics map[rKey]*pb.BasicStats
-	if !req.SkipStats {
-		var err error
-		requestMetrics, _, err = s.getStatMetrics(ctx, req, req.TimeWindow)
-		if err != nil {
-			return resourceResult{res: nil, err: err}
-		}
-	}
-	rows := make([]*pb.StatTable_PodGroup_Row, 0)
-
-	for rkey, metrics := range requestMetrics {
-		rkey.Type = req.GetSelector().GetResource().GetType()
-
-		row := pb.StatTable_PodGroup_Row{
-			Resource: &pb.Resource{
-				Type:      rkey.Type,
-				Namespace: rkey.Namespace,
-				Name:      rkey.Name,
-			},
-			TimeWindow: req.TimeWindow,
-			Stats:      metrics,
-		}
-		rows = append(rows, &row)
-	}
-
-	rsp := pb.StatTable{
-		Table: &pb.StatTable_PodGroup_{
-			PodGroup: &pb.StatTable_PodGroup{
-				Rows: rows,
-			},
-		},
-	}
-	return resourceResult{res: &rsp, err: nil}
 }
 
 // get the list of objects for which we want to return results

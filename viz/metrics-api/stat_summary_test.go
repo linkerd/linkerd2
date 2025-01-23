@@ -22,11 +22,11 @@ type statSumExpected struct {
 
 func prometheusMetric(resName string, resType string) model.Vector {
 	return model.Vector{
-		genPromSample(resName, resType, "emojivoto", false),
+		genPromSample(resName, resType, false),
 	}
 }
 
-func genPromSample(resName string, resType string, resNs string, isDst bool) *model.Sample {
+func genPromSample(resName string, resType string, isDst bool) *model.Sample {
 	labelName := model.LabelName(resType)
 	namespaceLabel := model.LabelName("namespace")
 
@@ -38,7 +38,7 @@ func genPromSample(resName string, resType string, resNs string, isDst bool) *mo
 	return &model.Sample{
 		Metric: model.Metric{
 			labelName:        model.LabelValue(resName),
-			namespaceLabel:   model.LabelValue(resNs),
+			namespaceLabel:   model.LabelValue("emojivoto"),
 			"classification": model.LabelValue("success"),
 			"tls":            model.LabelValue("true"),
 		},
@@ -865,7 +865,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("emojivoto-1", "pod", "emojivoto", false),
+						genPromSample("emojivoto-1", "pod", false),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
@@ -922,7 +922,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("emojivoto-1", "pod", "emojivoto", false),
+						genPromSample("emojivoto-1", "pod", false),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
@@ -990,7 +990,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("emojivoto-1", "pod", "emojivoto", true),
+						genPromSample("emojivoto-1", "pod", true),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
@@ -1058,7 +1058,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("emojivoto-1", "pod", "emojivoto", true),
+						genPromSample("emojivoto-1", "pod", true),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
@@ -1223,28 +1223,6 @@ status:
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{},
-										},
-									},
-								},
-								{
-									Table: &pb.StatTable_PodGroup_{
-										PodGroup: &pb.StatTable_PodGroup{
-											Rows: []*pb.StatTable_PodGroup_Row{
-												{
-													Resource: &pb.Resource{
-														Namespace: "emojivoto",
-														Type:      pkgK8s.Authority,
-													},
-													TimeWindow: "1m",
-													Stats: &pb.BasicStats{
-														SuccessCount: 123,
-														FailureCount: 0,
-														LatencyMsP50: 123,
-														LatencyMsP95: 123,
-														LatencyMsP99: 123,
-													},
-												},
-											},
 										},
 									},
 								},
@@ -1684,146 +1662,6 @@ status:
 
 			testStatSummary(t, expectations)
 		})
-	})
-
-	t.Run("Queries prometheus for authority stats", func(t *testing.T) {
-		expectations := []statSumExpected{
-			{
-				expectedStatRPC: expectedStatRPC{
-					err: nil,
-					k8sConfigs: []string{`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: emojivoto-1
-  namespace: emojivoto
-  labels:
-    app: emoji-svc
-    linkerd.io/control-plane-ns: linkerd
-status:
-  phase: Running
-`,
-					},
-					mockPromResponse: model.Vector{
-						genPromSample("10.1.1.239:9995", "authority", "linkerd", false),
-					},
-					expectedPrometheusQueries: []string{
-						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
-						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
-						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
-						`sum(increase(response_total{direction="inbound", namespace="linkerd"}[1m])) by (namespace, authority, classification, tls)`,
-					},
-				},
-				req: &pb.StatSummaryRequest{
-					Selector: &pb.ResourceSelection{
-						Resource: &pb.Resource{
-							Namespace: "linkerd",
-							Type:      pkgK8s.Authority,
-						},
-					},
-					TimeWindow: "1m",
-				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{"linkerd"}, nil, true, false),
-			},
-		}
-
-		testStatSummary(t, expectations)
-	})
-
-	t.Run("Queries prometheus for authority stats when --from deployment is used", func(t *testing.T) {
-		expectations := []statSumExpected{
-			{
-				expectedStatRPC: expectedStatRPC{
-					err: nil,
-					k8sConfigs: []string{`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: emojivoto-1
-  namespace: emojivoto
-  labels:
-    app: emoji-svc
-    linkerd.io/control-plane-ns: linkerd
-status:
-  phase: Running
-`,
-					},
-					mockPromResponse: model.Vector{
-						genPromSample("10.1.1.239:9995", "authority", "linkerd", false),
-					},
-					expectedPrometheusQueries: []string{
-						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{deployment="emojivoto", direction="outbound"}[1m])) by (le, dst_namespace, authority))`,
-						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{deployment="emojivoto", direction="outbound"}[1m])) by (le, dst_namespace, authority))`,
-						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{deployment="emojivoto", direction="outbound"}[1m])) by (le, dst_namespace, authority))`,
-						`sum(increase(response_total{deployment="emojivoto", direction="outbound"}[1m])) by (dst_namespace, authority, classification, tls)`,
-					},
-				},
-				req: &pb.StatSummaryRequest{
-					Selector: &pb.ResourceSelection{
-						Resource: &pb.Resource{
-							Namespace: "linkerd",
-							Type:      pkgK8s.Authority,
-						},
-					},
-					TimeWindow: "1m",
-					Outbound: &pb.StatSummaryRequest_FromResource{
-						FromResource: &pb.Resource{
-							Name:      "emojivoto",
-							Namespace: "",
-							Type:      pkgK8s.Deployment,
-						},
-					},
-				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{""}, nil, true, false),
-			},
-		}
-
-		testStatSummary(t, expectations)
-	})
-
-	t.Run("Queries prometheus for a named authority", func(t *testing.T) {
-		expectations := []statSumExpected{
-			{
-				expectedStatRPC: expectedStatRPC{
-					err: nil,
-					k8sConfigs: []string{`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: emojivoto-1
-  namespace: emojivoto
-  labels:
-    app: emoji-svc
-    linkerd.io/control-plane-ns: linkerd
-status:
-  phase: Running
-`,
-					},
-					mockPromResponse: model.Vector{
-						genPromSample("10.1.1.239:9995", "authority", "linkerd", false),
-					},
-					expectedPrometheusQueries: []string{
-						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
-						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
-						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
-						`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (namespace, authority, classification, tls)`,
-					},
-				},
-				req: &pb.StatSummaryRequest{
-					Selector: &pb.ResourceSelection{
-						Resource: &pb.Resource{
-							Namespace: "linkerd",
-							Type:      pkgK8s.Authority,
-							Name:      "10.1.1.239:9995",
-						},
-					},
-					TimeWindow: "1m",
-				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{"linkerd"}, nil, true, false),
-			},
-		}
-
-		testStatSummary(t, expectations)
 	})
 
 	t.Run("Stats returned are nil when SkipStats is true", func(t *testing.T) {

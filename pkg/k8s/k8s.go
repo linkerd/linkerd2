@@ -12,7 +12,6 @@ import (
 // These constants are string representations of Kubernetes resource types.
 const (
 	All                   = "all"
-	Authority             = "authority"
 	ConfigMap             = "configmap"
 	CronJob               = "cronjob"
 	DaemonSet             = "daemonset"
@@ -73,7 +72,6 @@ type resourceName struct {
 
 // AllResources is a sorted list of all resources defined as constants above.
 var AllResources = []string{
-	Authority,
 	AuthorizationPolicy,
 	CronJob,
 	DaemonSet,
@@ -100,7 +98,6 @@ var StatAllResourceTypes = []string{
 	ReplicationController,
 	Pod,
 	Service,
-	Authority,
 	CronJob,
 	ReplicaSet,
 }
@@ -115,13 +112,11 @@ var CompletionResourceTypes = []string{
 	ReplicationController,
 	Pod,
 	Service,
-	Authority,
 	CronJob,
 	ReplicaSet,
 }
 
 var resourceNames = []resourceName{
-	{"au", "authority", "authorities"},
 	{"cj", "cronjob", "cronjobs"},
 	{"ds", "daemonset", "daemonsets"},
 	{"deploy", "deployment", "deployments"},
@@ -190,8 +185,6 @@ func PluralResourceNameFromFriendlyName(friendlyName string) (string, error) {
 // Essentially the reverse of CanonicalResourceNameFromFriendlyName
 func ShortNameFromCanonicalResourceName(canonicalName string) string {
 	switch canonicalName {
-	case Authority:
-		return "au"
 	case CronJob:
 		return "cj"
 	case DaemonSet:
