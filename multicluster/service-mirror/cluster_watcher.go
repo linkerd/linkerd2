@@ -289,6 +289,16 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServiceLabels(remoteService *c
 	return labels
 }
 
+// Provides labels for mirror endpoint. Copies all labels from the exported
+// service to the mirror endpoint (except labels with the "SvcMirrorPrefix").
+func (rcsw *RemoteClusterServiceWatcher) getMirrorEndpointLabels(exportedService *corev1.Service) map[string]string {
+	labels := rcsw.getCommonServiceLabels(exportedService)
+
+	labels[consts.RemoteClusterNameLabel] = rcsw.link.Spec.TargetClusterName
+
+	return labels
+}
+
 // Provides labels for federated services. Copies all labels from the remote
 // service to the federated service (except labels with the "SvcMirrorPrefix").
 func (rcsw *RemoteClusterServiceWatcher) getFederatedServiceLabels(remoteService *corev1.Service) map[string]string {
@@ -1000,10 +1010,7 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      localServiceName,
 			Namespace: exportedService.Namespace,
-			Labels: map[string]string{
-				consts.MirroredResourceLabel:  "true",
-				consts.RemoteClusterNameLabel: rcsw.link.Spec.TargetClusterName,
-			},
+			Labels:    rcsw.getMirrorEndpointLabels(exportedService),
 			Annotations: map[string]string{
 				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.%s", exportedService.Name, exportedService.Namespace, rcsw.link.Spec.TargetClusterDomain),
 			},
