@@ -641,33 +641,35 @@ func createWeightedAddr(
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
 
 	if controllerNSLabel != "" && !isSkippedInboundPort {
-		weightedAddr.Http2 = meshedHttp2
-		weightedAddr.ProtocolHint = &pb.ProtocolHint{}
+		// Configure use of the meshed transport protocol for all meshed
+		// traffic.
+		port, err := getInboundPort(&address.Pod.Spec)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read inbound port: %w", err)
+		}
+		hint := pb.ProtocolHint{
+			OpaqueTransport: &pb.ProtocolHint_OpaqueTransport{InboundPort: port},
+		}
 
-		_, opaquePort := opaquePorts[address.Port]
 		// If address is set as opaque by a Server, or its port is set as
 		// opaque by annotation or default value, then set the hinted protocol to
 		// Opaque.
+		_, opaquePort := opaquePorts[address.Port]
 		if address.OpaqueProtocol || opaquePort {
-			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
+			hint.Protocol = &pb.ProtocolHint_Opaque_{
 				Opaque: &pb.ProtocolHint_Opaque{},
-			}
-
-			port, err := getInboundPort(&address.Pod.Spec)
-			if err != nil {
-				return nil, fmt.Errorf("failed to read inbound port: %w", err)
-			}
-			weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-				InboundPort: port,
 			}
 		} else if enableH2Upgrade {
 			// If the pod is controlled by any Linkerd control plane, then it can be
 			// hinted that this destination knows H2 (and handles our orig-proto
 			// translation)
-			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
+			hint.Protocol = &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},
 			}
 		}
+
+		weightedAddr.Http2 = meshedHttp2
+		weightedAddr.ProtocolHint = &hint
 	}
 
 	// If the pod is controlled by the same Linkerd control plane, then it can
