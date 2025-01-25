@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
-    "@babel/eslint-parser": "^7.25.9",
+    "@babel/eslint-parser": "^7.26.5",
     "@babel/plugin-proposal-class-properties": "^7.17.12",
     "@babel/preset-env": "^7.26.0",
     "@babel/preset-react": "^7.26.3",
@@ -64,7 +64,7 @@
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-promise": "^7.2.1",
-    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-webpack-plugin": "^4.2.0",
     "file-loader": "^6.2.0",

@@ -26,7 +26,9 @@ type mirroringTestCase struct {
 }
 
 func (tc *mirroringTestCase) run(t *testing.T) {
+	t.Helper()
 	t.Run(tc.description, func(t *testing.T) {
+		t.Helper()
 
 		q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]())
 		localAPI, err := tc.environment.runEnvironment(q)
@@ -52,7 +54,7 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 				}
 
 				if err := diffServices(expected, actual); err != nil {
-					t.Fatal(err)
+					t.Fatalf("service %s/%s: %v", expected.Namespace, expected.Name, err)
 				}
 			}
 		}
@@ -68,7 +70,7 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 				}
 
 				if err := diffEndpoints(expected, actual); err != nil {
-					t.Fatal(err)
+					t.Fatalf("endpoint %s/%s: %v", expected.Namespace, expected.Name, err)
 				}
 			}
 		}
@@ -99,6 +101,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 					"service-one-remote",
 					"ns1",
 					"111",
+					map[string]string{"lk": "lv"},
 					[]corev1.ServicePort{
 						{
 							Name:     "port1",
@@ -113,7 +116,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 					}),
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{
-				endpoints("service-one-remote", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{
+				endpoints("service-one-remote", "ns1", map[string]string{"lk": "lv"}, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{
 					{
 						Name:     "port1",
 						Port:     888,
@@ -135,6 +138,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 					"service-one-remote",
 					"ns2",
 					"111",
+					map[string]string{"lk": "lv"},
 					[]corev1.ServicePort{
 						{
 							Name:     "port1",
@@ -152,6 +156,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 					"service-one-remote",
 					"ns2",
 					"112",
+					map[string]string{"lk": "lv"},
 					[]corev1.ServicePort{
 						{
 							Name:     "port1",
@@ -167,7 +172,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 				),
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{
-				headlessMirrorEndpoints("service-one-remote", "ns2", "gateway-identity", []corev1.EndpointPort{
+				headlessMirrorEndpoints("service-one-remote", "ns2", map[string]string{"lk": "lv"}, "gateway-identity", []corev1.EndpointPort{
 					{
 						Name:     "port1",
 						Port:     555,
@@ -182,6 +187,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 				endpointMirrorEndpoints(
 					"service-one-remote",
 					"ns2",
+					map[string]string{"lk": "lv"},
 					"pod-0",
 					"192.0.2.129",
 					"gateway-identity",
@@ -388,7 +394,7 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	remoteAPI, err := k8s.NewFakeAPI(
 		asYaml(gateway("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod)),
 		asYaml(remoteService("service-one", "ns1", "111", map[string]string{consts.DefaultExportedServiceSelector: "true"}, []corev1.ServicePort{})),
-		asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+		asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -480,7 +486,7 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 	remoteAPI, err := k8s.NewFakeAPI(
 		asYaml(gateway("gateway", "gateway-ns", "1", "192.0.0.1", "gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod)),
 		asYaml(remoteService("svc", "ns", "1", map[string]string{consts.DefaultExportedServiceSelector: "true"}, []corev1.ServicePort{})),
-		asYaml(endpoints("svc", "ns", "192.0.0.1", "gateway-identity", []corev1.EndpointPort{})),
+		asYaml(endpoints("svc", "ns", nil, "192.0.0.1", "gateway-identity", []corev1.EndpointPort{})),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -631,7 +637,7 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 	remoteAPI, err := k8s.NewFakeAPI(
 		asYaml(gateway("gateway", "gateway-ns", "1", "192.0.0.1", "gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod)),
 		asYaml(remoteService("svc", "ns", "1", map[string]string{consts.DefaultExportedServiceSelector: "true"}, []corev1.ServicePort{})),
-		asYaml(endpoints("svc", "ns", "192.0.0.1", "gateway-identity", []corev1.EndpointPort{})),
+		asYaml(endpoints("svc", "ns", nil, "192.0.0.1", "gateway-identity", []corev1.EndpointPort{})),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -747,7 +753,7 @@ func TestRemoteServiceUpdatedMirroring(t *testing.T) {
 			description: "updates service ports on both service and endpoints",
 			environment: updateServiceWithChangedPorts,
 			expectedLocalServices: []*corev1.Service{
-				mirrorService("test-service-remote", "test-namespace", "currentServiceResVersion",
+				mirrorService("test-service-remote", "test-namespace", "currentServiceResVersion", nil,
 					[]corev1.ServicePort{
 						{
 							Name:     "port1",
@@ -763,7 +769,7 @@ func TestRemoteServiceUpdatedMirroring(t *testing.T) {
 			},
 
 			expectedLocalEndpoints: []*corev1.Endpoints{
-				endpoints("test-service-remote", "test-namespace", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{
+				endpoints("test-service-remote", "test-namespace", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{
 					{
 						Name:     "port1",
 						Port:     888,
@@ -847,7 +853,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 			description: "updates headless mirror service with new remote Endpoints hosts",
 			environment: updateEndpointsWithChangedHosts,
 			expectedLocalServices: []*corev1.Service{
-				headlessMirrorService("service-two-remote", "eptest", "222", []corev1.ServicePort{
+				headlessMirrorService("service-two-remote", "eptest", "222", nil, []corev1.ServicePort{
 					{
 						Name:     "port1",
 						Protocol: "TCP",
@@ -859,7 +865,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 						Port:     666,
 					},
 				}),
-				endpointMirrorService("pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
+				endpointMirrorService("pod-0", "service-two-remote", "eptest", "333", nil, []corev1.ServicePort{
 					{
 						Name:     "port1",
 						Protocol: "TCP",
@@ -871,7 +877,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 						Port:     666,
 					},
 				}),
-				endpointMirrorService("pod-1", "service-two-remote", "eptest", "112", []corev1.ServicePort{
+				endpointMirrorService("pod-1", "service-two-remote", "eptest", "112", nil, []corev1.ServicePort{
 					{
 						Name:     "port1",
 						Protocol: "TCP",
@@ -906,6 +912,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 				endpointMirrorEndpoints(
 					"service-two-remote",
 					"eptest",
+					nil,
 					"pod-0",
 					"192.0.2.127",
 					"gateway-identity",
@@ -924,6 +931,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 				endpointMirrorEndpoints(
 					"service-two-remote",
 					"eptest",
+					nil,
 					"pod-1",
 					"192.0.2.127",
 					"gateway-identity",
@@ -965,15 +973,15 @@ func TestGcOrphanedServicesMirroring(t *testing.T) {
 			description: "deletes mirrored resources that are no longer present on the remote cluster",
 			environment: gcTriggered,
 			expectedLocalServices: []*corev1.Service{
-				mirrorService("test-service-1-remote", "test-namespace", "", nil),
-				headlessMirrorService("test-headless-service-remote", "test-namespace", "", nil),
-				endpointMirrorService("pod-0", "test-headless-service-remote", "test-namespace", "", nil),
+				mirrorService("test-service-1-remote", "test-namespace", "", nil, nil),
+				headlessMirrorService("test-headless-service-remote", "test-namespace", "", nil, nil),
+				endpointMirrorService("pod-0", "test-headless-service-remote", "test-namespace", "", nil, nil),
 			},
 
 			expectedLocalEndpoints: []*corev1.Endpoints{
-				endpoints("test-service-1-remote", "test-namespace", "", "", nil),
-				headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", "", nil),
-				endpointMirrorEndpoints("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil),
+				endpoints("test-service-1-remote", "test-namespace", nil, "", "", nil),
+				headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", nil, "", nil),
+				endpointMirrorEndpoints("test-headless-service-remote", "test-namespace", nil, "pod-0", "", "", nil),
 			},
 		},
 	} {
@@ -1003,27 +1011,27 @@ func onAddOrUpdateTestCases(isAdd bool) []mirroringTestCase {
 			description: fmt.Sprintf("enqueue a RemoteServiceUpdated event if this is a service that we have already mirrored and its res version is different (%s)", testType),
 			environment: onAddOrUpdateRemoteServiceUpdated(isAdd),
 			expectedEventsInQueue: []interface{}{&RemoteExportedServiceUpdated{
-				localService:   mirrorService("test-service-remote", "test-namespace", "pastResourceVersion", nil),
-				localEndpoints: endpoints("test-service-remote", "test-namespace", "0.0.0.0", "", nil),
+				localService:   mirrorService("test-service-remote", "test-namespace", "pastResourceVersion", nil, nil),
+				localEndpoints: endpoints("test-service-remote", "test-namespace", nil, "0.0.0.0", "", nil),
 				remoteUpdate: remoteService("test-service", "test-namespace", "currentResVersion", map[string]string{
 					consts.DefaultExportedServiceSelector: "true",
 				}, nil),
 			}},
 			expectedLocalServices: []*corev1.Service{
-				mirrorService("test-service-remote", "test-namespace", "pastResourceVersion", nil),
+				mirrorService("test-service-remote", "test-namespace", "pastResourceVersion", nil, nil),
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{
-				endpoints("test-service-remote", "test-namespace", "0.0.0.0", "", nil),
+				endpoints("test-service-remote", "test-namespace", nil, "0.0.0.0", "", nil),
 			},
 		},
 		{
 			description: fmt.Sprintf("not enqueue any events as this update does not really tell us anything new (res version is the same...) (%s)", testType),
 			environment: onAddOrUpdateSameResVersion(isAdd),
 			expectedLocalServices: []*corev1.Service{
-				mirrorService("test-service-remote", "test-namespace", "currentResVersion", nil),
+				mirrorService("test-service-remote", "test-namespace", "currentResVersion", nil, nil),
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{
-				endpoints("test-service-remote", "test-namespace", "0.0.0.0", "", nil),
+				endpoints("test-service-remote", "test-namespace", nil, "0.0.0.0", "", nil),
 			},
 		},
 		{
@@ -1035,10 +1043,10 @@ func onAddOrUpdateTestCases(isAdd bool) []mirroringTestCase {
 			}},
 
 			expectedLocalServices: []*corev1.Service{
-				mirrorService("test-service-remote", "test-namespace", "currentResVersion", nil),
+				mirrorService("test-service-remote", "test-namespace", "currentResVersion", nil, nil),
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{
-				endpoints("test-service-remote", "test-namespace", "0.0.0.0", "", nil),
+				endpoints("test-service-remote", "test-namespace", nil, "0.0.0.0", "", nil),
 			},
 		},
 	}

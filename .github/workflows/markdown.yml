@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: DavidAnson/markdownlint-cli2-action@a23dae216ce3fee4db69da41fed90d2a4af801cf
+      - uses: DavidAnson/markdownlint-cli2-action@05f32210e84442804257b2a6f20b273450ec8265
         with:
           globs: |
             **/*.md

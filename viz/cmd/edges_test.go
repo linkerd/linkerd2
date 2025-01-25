@@ -67,7 +67,7 @@ func TestEdges(t *testing.T) {
 	t.Run("Returns an error if request is for authority", func(t *testing.T) {
 		options.outputFormat = tableOutput
 		args := []string{"authority"}
-		expectedError := "Resource type is not supported: authority"
+		expectedError := "cannot find Kubernetes canonical name from friendly name [authority]"
 
 		_, err := buildEdgesRequests(args, options)
 		if err == nil || err.Error() != expectedError {

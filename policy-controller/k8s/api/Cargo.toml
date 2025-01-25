@@ -13,7 +13,7 @@ kube = { workspace = true, default-features = false, features = [
     "derive",
     "runtime",
 ] }
-ipnet = { version = "2.10", features = ["json"] }
+ipnet = { version = "2.11", features = ["json"] }
 schemars = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

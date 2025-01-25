@@ -14,7 +14,6 @@ import (
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
@@ -379,7 +378,7 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 		LabelSelector: options.labelSelector,
 	}
 
-	options.dstIsService = target.GetType() != k8s.Authority
+	options.dstIsService = true
 
 	if options.toResource != "" {
 		if options.toNamespace == "" {
@@ -390,7 +389,7 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 			return nil, err
 		}
 
-		options.dstIsService = toRes.GetType() != k8s.Authority
+		options.dstIsService = true
 
 		requestParams.ToName = toRes.Name
 		requestParams.ToNamespace = toRes.Namespace

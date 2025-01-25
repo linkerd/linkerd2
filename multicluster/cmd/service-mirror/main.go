@@ -21,7 +21,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -149,58 +148,7 @@ func Main(args []string) {
 			log.Infof("Starting Link informer")
 			informerFactory.Start(ctx.Done())
 
-			_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-				AddFunc: func(obj interface{}) {
-					link, ok := obj.(*v1alpha2.Link)
-					if !ok {
-						log.Errorf("object is not a Link: %+v", obj)
-						return
-					}
-					if link.GetName() == linkName {
-						select {
-						case results <- link:
-						default:
-							log.Errorf("Link update dropped (queue full): %s", link.GetName())
-						}
-					}
-				},
-				UpdateFunc: func(_, obj interface{}) {
-					link, ok := obj.(*v1alpha2.Link)
-					if !ok {
-						log.Errorf("object is not a Link: %+v", obj)
-						return
-					}
-					if link.GetName() == linkName {
-						select {
-						case results <- link:
-						default:
-							log.Errorf("Link update dropped (queue full): %s", link.GetName())
-						}
-					}
-				},
-				DeleteFunc: func(obj interface{}) {
-					link, ok := obj.(*v1alpha2.Link)
-					if !ok {
-						tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-						if !ok {
-							log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
-							return
-						}
-						link, ok = tombstone.Obj.(*v1alpha2.Link)
-						if !ok {
-							log.Errorf("DeletedFinalStateUnknown contained object that is not a Link %#v", obj)
-							return
-						}
-					}
-					if link.GetName() == linkName {
-						select {
-						case results <- nil: // nil indicates the link was deleted
-						default:
-							log.Errorf("Link delete dropped (queue full): %s", link.GetName())
-						}
-					}
-				},
-			})
+			_, err := informer.AddEventHandler(servicemirror.GetLinkHandlers(results, linkName))
 			if err != nil {
 				log.Fatalf("Failed to add event handler to Link informer: %s", err)
 			}

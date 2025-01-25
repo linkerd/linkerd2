@@ -18,7 +18,6 @@ import (
 // - target resource on an outbound 'to' query
 // - destination resource on an outbound 'from' query
 var ValidTargets = []string{
-	k8s.Authority,
 	k8s.CronJob,
 	k8s.DaemonSet,
 	k8s.Deployment,
