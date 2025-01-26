@@ -34,6 +34,7 @@ pub struct OutboundPolicy {
     pub http_retry: Option<RouteRetry<HttpRetryCondition>>,
     pub grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
     pub timeouts: RouteTimeouts,
+    pub allow_l5d_request_headers: bool,
 }
 
 impl ParentInfo {

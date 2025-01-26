@@ -102,21 +102,30 @@ struct ResourceInfo {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct ResourcePort {
     kind: ResourceKind,
-    name: String,
+    parent_name: String,
     port: NonZeroU16,
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+struct PortInfo {
+    number: NonZeroU16,
+    name: Option<String>,
+    app_protocol: Option<String>,
 }
 
 #[derive(Debug)]
 struct ResourceRoutes {
     parent_info: ParentInfo,
     namespace: Arc<String>,
-    port: NonZeroU16,
+    port: PortInfo,
     watches_by_ns: HashMap<String, RoutesWatch>,
     opaque: bool,
     accrual: Option<FailureAccrual>,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
     timeouts: RouteTimeouts,
+    allow_l5d_request_headers: bool,
 }
 
 #[derive(Debug)]
@@ -469,16 +478,18 @@ impl Index {
                 resource_port_routes: Default::default(),
             });
 
-        let key = ResourcePort { kind, name, port };
-
-        tracing::debug!(?key, "subscribing to resource port");
-
-        let routes =
-            ns.resource_routes_or_default(key, &self.namespaces.cluster_info, &self.resource_info);
-
-        let watch = routes.watch_for_ns_or_default(source_namespace);
-
-        Ok(watch.watch.subscribe())
+        let port = ResourcePort {
+            kind,
+            parent_name: name,
+            port,
+        };
+        tracing::debug!(?port, "Subscribing");
+        let rx = ns
+            .resource_routes_or_default(port, &self.namespaces.cluster_info, &self.resource_info)
+            .watch_for_ns_or_default(source_namespace)
+            .watch
+            .subscribe();
+        Ok(rx)
     }
 
     pub fn lookup_service(&self, addr: IpAddr) -> Option<(String, String)> {
@@ -699,43 +710,32 @@ impl Namespace {
                 continue;
             }
 
-            let port = parent_ref.port.and_then(NonZeroU16::new);
-
-            if let Some(port) = port {
-                let resource_port = ResourcePort {
-                    kind: parent_kind,
+            if let Some(port) = parent_ref.port.and_then(NonZeroU16::new) {
+                let port = ResourcePort {
                     port,
-                    name: parent_ref.name.clone(),
+                    kind: parent_kind,
+                    parent_name: parent_ref.name.clone(),
                 };
-
-                if !route_accepted_by_resource_port(route.status(), &resource_port) {
-                    continue;
+                if route_accepted_by_resource_port(route.status(), &port) {
+                    tracing::debug!(?port, route = route.name(), "Attaching HTTPRoute");
+                    self.resource_routes_or_default(port, cluster_info, resource_info)
+                        .apply_http_route(route.gknn(), outbound_route.clone());
                 }
-
-                tracing::debug!(
-                    ?resource_port,
-                    route = route.name(),
-                    "inserting httproute for resource"
-                );
-
-                let service_routes =
-                    self.resource_routes_or_default(resource_port, cluster_info, resource_info);
-
-                service_routes.apply_http_route(route.gknn(), outbound_route.clone());
-            } else {
-                if !route_accepted_by_service(route.status(), &parent_ref.name) {
-                    continue;
-                }
+            } else if route_accepted_by_service(route.status(), &parent_ref.name) {
                 // If the parent_ref doesn't include a port, apply this route
                 // to all ResourceRoutes which match the resource name.
-                for (ResourcePort { name, port: _, .. }, routes) in
-                    self.resource_port_routes.iter_mut()
+                for (
+                    ResourcePort {
+                        parent_name: name, ..
+                    },
+                    routes,
+                ) in self.resource_port_routes.iter_mut()
                 {
                     if name == &parent_ref.name {
+                        tracing::debug!(route = route.name(), "Attaching HTTPRoute");
                         routes.apply_http_route(route.gknn(), outbound_route.clone());
                     }
                 }
-
                 // Also add the route to the list of routes that target the
                 // resource without specifying a port.
                 self.service_http_routes
@@ -804,7 +804,7 @@ impl Namespace {
                 let port = ResourcePort {
                     kind: parent_kind,
                     port,
-                    name: parent_ref.name.clone(),
+                    parent_name: parent_ref.name.clone(),
                 };
 
                 if !route_accepted_by_resource_port(status, &port) {
@@ -814,7 +814,7 @@ impl Namespace {
                 tracing::debug!(
                     ?port,
                     route = route.name_unchecked(),
-                    "inserting grpcroute for resource"
+                    "Attaching grpcroute for resource"
                 );
 
                 let service_routes =
@@ -828,7 +828,14 @@ impl Namespace {
                 // If the parent_ref doesn't include a port, apply this route
                 // to all ResourceRoutes which match the resource name.
                 self.resource_port_routes.iter_mut().for_each(
-                    |(ResourcePort { name, port: _, .. }, routes)| {
+                    |(
+                        ResourcePort {
+                            parent_name: name,
+                            port: _,
+                            ..
+                        },
+                        routes,
+                    )| {
                         if name == &parent_ref.name {
                             routes.apply_grpc_route(gknn.clone(), outbound_route.clone());
                         }
@@ -900,7 +907,7 @@ impl Namespace {
                 let port = ResourcePort {
                     kind: parent_kind,
                     port,
-                    name: parent_ref.name.clone(),
+                    parent_name: parent_ref.name.clone(),
                 };
 
                 if !route_accepted_by_resource_port(status, &port) {
@@ -910,7 +917,7 @@ impl Namespace {
                 tracing::debug!(
                     ?port,
                     route = route.name_unchecked(),
-                    "inserting tlsroute for resource"
+                    "Attaching tlsroute for resource"
                 );
 
                 let resource_routes =
@@ -924,7 +931,14 @@ impl Namespace {
                 // If the parent_ref doesn't include a port, apply this route
                 // to all ResourceRoutes which match the resource name.
                 self.resource_port_routes.iter_mut().for_each(
-                    |(ResourcePort { name, port: _, .. }, routes)| {
+                    |(
+                        ResourcePort {
+                            parent_name: name,
+                            port: _,
+                            ..
+                        },
+                        routes,
+                    )| {
                         if name == &parent_ref.name {
                             routes.apply_tls_route(gknn.clone(), outbound_route.clone());
                         }
@@ -996,36 +1010,33 @@ impl Namespace {
                 let port = ResourcePort {
                     kind: parent_kind,
                     port,
-                    name: parent_ref.name.clone(),
+                    parent_name: parent_ref.name.clone(),
                 };
-
-                if !route_accepted_by_resource_port(status, &port) {
-                    continue;
+                if route_accepted_by_resource_port(status, &port) {
+                    tracing::debug!(
+                        parent = %port.parent_name,
+                        port = %port.port,
+                        route = route.name_unchecked(),
+                        "Attaching TCPRoute"
+                    );
+                    self.resource_routes_or_default(port, cluster_info, resource_info)
+                        .apply_tcp_route(gknn.clone(), outbound_route.clone());
                 }
-
-                tracing::debug!(
-                    ?port,
-                    route = route.name_unchecked(),
-                    "inserting tcproute for resource"
-                );
-
-                let resource_routes =
-                    self.resource_routes_or_default(port, cluster_info, resource_info);
-
-                resource_routes.apply_tcp_route(gknn.clone(), outbound_route.clone());
-            } else {
-                if !route_accepted_by_service(status, &parent_ref.name) {
-                    continue;
-                }
+            } else if route_accepted_by_service(status, &parent_ref.name) {
                 // If the parent_ref doesn't include a port, apply this route
                 // to all ResourceRoutes which match the resource name.
-                self.resource_port_routes.iter_mut().for_each(
-                    |(ResourcePort { name, port: _, .. }, routes)| {
-                        if name == &parent_ref.name {
+                self.resource_port_routes
+                    .iter_mut()
+                    .for_each(|(port, routes)| {
+                        if port.parent_name == parent_ref.name {
+                            tracing::debug!(
+                                parent = %port.parent_name,
+                                route = route.name_unchecked(),
+                                "Attaching TCPRoute"
+                            );
                             routes.apply_tcp_route(gknn.clone(), outbound_route.clone());
                         }
-                    },
-                );
+                    });
 
                 // Also add the route to the list of routes that target the
                 // resource without specifying a port.
@@ -1114,23 +1125,11 @@ impl Namespace {
     }
 
     fn update_resource(&mut self, name: String, kind: ResourceKind, resource: &ResourceInfo) {
-        tracing::debug!(?name, ?resource, "updating resource");
-
-        for (resource_port, resource_routes) in self.resource_port_routes.iter_mut() {
-            if resource_port.name != name || kind != resource_port.kind {
-                continue;
+        tracing::debug!(?name, ?resource, "Updating");
+        for (port, routes) in self.resource_port_routes.iter_mut() {
+            if port.parent_name == name && kind == port.kind {
+                routes.update_resource(port.port, resource)
             }
-
-            let opaque = resource.opaque_ports.contains(&resource_port.port);
-
-            resource_routes.update_resource(
-                opaque,
-                resource.accrual,
-                resource.http_retry.clone(),
-                resource.grpc_retry.clone(),
-                resource.timeouts.clone(),
-                resource.traffic_policy,
-            );
         }
     }
 
@@ -1188,7 +1187,7 @@ impl Namespace {
             .entry(rp.clone())
             .or_insert_with(|| {
                 let resource_ref = ResourceRef {
-                    name: rp.name.clone(),
+                    name: rp.parent_name.clone(),
                     namespace: self.namespace.to_string(),
                     kind: rp.kind.clone(),
                 };
@@ -1200,8 +1199,11 @@ impl Namespace {
                         namespace: resource_ref.namespace.clone(),
                     },
                     ResourceKind::Service => {
-                        let authority =
-                            cluster.service_dns_authority(&self.namespace, &rp.name, rp.port);
+                        let authority = cluster.service_dns_authority(
+                            &self.namespace,
+                            &rp.parent_name,
+                            rp.port,
+                        );
                         ParentInfo::Service {
                             authority,
                             name: resource_ref.name.clone(),
@@ -1234,22 +1236,22 @@ impl Namespace {
                 // a port apply to all ports. Therefore, we include them.
                 let http_routes = self
                     .service_http_routes
-                    .get(&rp.name)
+                    .get(&rp.parent_name)
                     .cloned()
                     .unwrap_or_default();
                 let grpc_routes = self
                     .service_grpc_routes
-                    .get(&rp.name)
+                    .get(&rp.parent_name)
                     .cloned()
                     .unwrap_or_default();
                 let tls_routes = self
                     .service_tls_routes
-                    .get(&rp.name)
+                    .get(&rp.parent_name)
                     .cloned()
                     .unwrap_or_default();
                 let tcp_routes = self
                     .service_tcp_routes
-                    .get(&rp.name)
+                    .get(&rp.parent_name)
                     .cloned()
                     .unwrap_or_default();
 
@@ -1260,9 +1262,14 @@ impl Namespace {
                     http_retry,
                     grpc_retry,
                     timeouts,
-                    port: rp.port,
                     namespace: self.namespace.clone(),
                     watches_by_ns: Default::default(),
+                    allow_l5d_request_headers: false, // FIXME
+                    port: PortInfo {
+                        number: rp.port,
+                        name: None,
+                        app_protocol: None,
+                    },
                 };
 
                 // Producer routes are routes in the same namespace as
@@ -1472,7 +1479,7 @@ fn route_accepted_by_resource_port(
             if parent_group.is_empty() {
                 parent_group = "core";
             }
-            resource_port.name == parent_status.parent_ref.name
+            resource_port.parent_name == parent_status.parent_ref.name
                 && Some(kind.as_ref()) == parent_status.parent_ref.kind.as_deref()
                 && group == parent_group
                 && port_matches
@@ -1547,12 +1554,13 @@ impl ResourceRoutes {
         self.watches_by_ns.entry(namespace).or_insert_with(|| {
             let (sender, _) = watch::channel(OutboundPolicy {
                 parent_info: self.parent_info.clone(),
-                port: self.port,
+                port: self.port.number,
                 opaque: self.opaque,
                 accrual: self.accrual,
                 http_retry: self.http_retry.clone(),
                 grpc_retry: self.grpc_retry.clone(),
                 timeouts: self.timeouts.clone(),
+                allow_l5d_request_headers: self.allow_l5d_request_headers,
                 http_routes: http_routes.clone(),
                 grpc_routes: grpc_routes.clone(),
                 tls_routes: tls_routes.clone(),
@@ -1663,28 +1671,31 @@ impl ResourceRoutes {
         }
     }
 
-    fn update_resource(
-        &mut self,
-        opaque: bool,
-        accrual: Option<FailureAccrual>,
-        http_retry: Option<RouteRetry<HttpRetryCondition>>,
-        grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
-        timeouts: RouteTimeouts,
-        traffic_policy: Option<TrafficPolicy>,
-    ) {
-        self.opaque = opaque;
-        self.accrual = accrual;
+    fn update_resource(&mut self, port: NonZeroU16, rsc: &ResourceInfo) {
+        let ResourceInfo {
+            opaque_ports,
+            accrual,
+            http_retry,
+            grpc_retry,
+            timeouts,
+            traffic_policy,
+            ..
+        } = rsc;
+        self.opaque = opaque_ports.contains(&port);
+
+        self.accrual = *accrual;
         self.http_retry = http_retry.clone();
         self.grpc_retry = grpc_retry.clone();
         self.timeouts = timeouts.clone();
-        self.update_traffic_policy(traffic_policy);
+        self.update_traffic_policy(*traffic_policy);
+
         for watch in self.watches_by_ns.values_mut() {
-            watch.opaque = opaque;
-            watch.accrual = accrual;
+            watch.opaque = self.opaque;
+            watch.accrual = *accrual;
             watch.http_retry = http_retry.clone();
             watch.grpc_retry = grpc_retry.clone();
             watch.timeouts = timeouts.clone();
-            watch.update_traffic_policy(traffic_policy);
+            watch.update_traffic_policy(*traffic_policy);
             watch.send_if_modified();
         }
     }
@@ -1693,9 +1704,7 @@ impl ResourceRoutes {
         if let (ParentInfo::EgressNetwork { traffic_policy, .. }, Some(new)) =
             (&mut self.parent_info, traffic_policy)
         {
-            if *traffic_policy != new {
-                *traffic_policy = new;
-            }
+            *traffic_policy = new;
         }
     }
 

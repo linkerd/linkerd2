@@ -31,7 +31,6 @@ pub struct OutboundPolicyServer<T> {
     index: T,
     // Used to parse named addresses into <svc>.<ns>.svc.<cluster-domain>.
     cluster_domain: Arc<str>,
-    allow_l5d_request_headers: bool,
     drain: drain::Watch,
 }
 
@@ -39,16 +38,10 @@ impl<T> OutboundPolicyServer<T>
 where
     T: DiscoverOutboundPolicy<ResourceTarget, OutboundDiscoverTarget> + Send + Sync + 'static,
 {
-    pub fn new(
-        discover: T,
-        cluster_domain: impl Into<Arc<str>>,
-        allow_l5d_request_headers: bool,
-        drain: drain::Watch,
-    ) -> Self {
+    pub fn new(discover: T, cluster_domain: impl Into<Arc<str>>, drain: drain::Watch) -> Self {
         Self {
             index: discover,
             cluster_domain: cluster_domain.into(),
-            allow_l5d_request_headers,
             drain,
         }
     }
@@ -163,11 +156,7 @@ where
                     })?;
 
                 if let Some(policy) = policy {
-                    Ok(tonic::Response::new(to_proto(
-                        policy,
-                        self.allow_l5d_request_headers,
-                        original_dst,
-                    )))
+                    Ok(tonic::Response::new(to_proto(policy, original_dst)))
                 } else {
                     Err(tonic::Status::not_found("No such policy"))
                 }
@@ -200,7 +189,6 @@ where
                 Ok(tonic::Response::new(response_stream(
                     drain,
                     rx,
-                    self.allow_l5d_request_headers,
                     original_dst,
                 )))
             }
@@ -224,7 +212,6 @@ type BoxWatchStream = std::pin::Pin<
 fn response_stream(
     drain: drain::Watch,
     mut rx: OutboundPolicyStream,
-    allow_l5d_request_headers: bool,
     original_dst: Option<SocketAddr>,
 ) -> BoxWatchStream {
     Box::pin(async_stream::try_stream! {
@@ -237,7 +224,7 @@ fn response_stream(
                 // When the port is updated with a new server, update the server watch.
                 res = rx.next() => match res {
                     Some(policy) => {
-                        yield to_proto(policy, allow_l5d_request_headers, original_dst);
+                        yield to_proto(policy, original_dst);
                     }
                     None => return,
                 },
@@ -365,11 +352,7 @@ fn fallback(original_dst: SocketAddr) -> outbound::OutboundPolicy {
     }
 }
 
-fn to_proto(
-    policy: OutboundPolicy,
-    allow_l5d_request_headers: bool,
-    original_dst: Option<SocketAddr>,
-) -> outbound::OutboundPolicy {
+fn to_proto(policy: OutboundPolicy, original_dst: Option<SocketAddr>) -> outbound::OutboundPolicy {
     let backend: outbound::Backend = default_backend(&policy, original_dst);
 
     let kind = if policy.opaque {
@@ -408,7 +391,7 @@ fn to_proto(
                 accrual,
                 policy.grpc_retry.clone(),
                 policy.timeouts.clone(),
-                allow_l5d_request_headers,
+                policy.allow_l5d_request_headers,
                 &policy.parent_info,
                 original_dst,
             )
@@ -420,7 +403,7 @@ fn to_proto(
                 accrual,
                 policy.http_retry.clone(),
                 policy.timeouts.clone(),
-                allow_l5d_request_headers,
+                policy.allow_l5d_request_headers,
                 &policy.parent_info,
                 original_dst,
             )
@@ -448,7 +431,7 @@ fn to_proto(
                 accrual,
                 policy.http_retry.clone(),
                 policy.timeouts.clone(),
-                allow_l5d_request_headers,
+                policy.allow_l5d_request_headers,
                 &policy.parent_info,
                 original_dst,
             )
