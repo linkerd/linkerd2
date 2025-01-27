@@ -69,7 +69,7 @@ pub(crate) fn resolve_egress_network<'n>(
     source_namespace: String,
     global_egress_network_namespace: &str,
     nets: impl Iterator<Item = &'n EgressNetwork>,
-) -> Option<super::ResourceRef> {
+) -> Option<super::ParentRef> {
     let (same_ns, rest): (Vec<_>, Vec<_>) = nets
         .filter(|en| {
             en.namespace == source_namespace || en.namespace == *global_egress_network_namespace
@@ -90,8 +90,8 @@ pub(crate) fn resolve_egress_network<'n>(
             })
         })
         .max_by(compare_matched_egress_network)
-        .map(|m| super::ResourceRef {
-            kind: super::ResourceKind::EgressNetwork,
+        .map(|m| super::ParentRef {
+            kind: super::ParentFlavor::EgressNetwork,
             name: m.name,
             namespace: m.namespace,
         })

@@ -2,7 +2,7 @@ use super::{default_balancer_config, default_queue_config};
 use crate::routes::convert_sni_match;
 use linkerd2_proxy_api::{destination, meta, outbound};
 use linkerd_policy_controller_core::{
-    outbound::{Backend, ParentInfo, TlsRoute, TrafficPolicy},
+    outbound::{Backend, Parent, ParentKind, TlsRoute, TrafficPolicy},
     routes::GroupKindNamespaceName,
 };
 use std::net::SocketAddr;
@@ -10,26 +10,17 @@ use std::net::SocketAddr;
 pub(crate) fn protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, TlsRoute)>,
-    parent_info: &ParentInfo,
+    parent: &Parent,
     original_dst: Option<SocketAddr>,
 ) -> outbound::proxy_protocol::Kind {
     let mut routes = routes
         .map(|(gknn, route)| {
-            convert_outbound_route(
-                gknn,
-                route,
-                default_backend.clone(),
-                parent_info,
-                original_dst,
-            )
+            convert_outbound_route(gknn, route, default_backend.clone(), parent, original_dst)
         })
         .collect::<Vec<_>>();
 
-    if let ParentInfo::EgressNetwork { traffic_policy, .. } = parent_info {
-        routes.push(default_outbound_egress_route(
-            default_backend,
-            traffic_policy,
-        ));
+    if let ParentKind::EgressNetwork { ref traffic } = parent.kind {
+        routes.push(default_outbound_egress_route(default_backend, traffic));
     }
 
     outbound::proxy_protocol::Kind::Tls(outbound::proxy_protocol::Tls { routes })
@@ -43,7 +34,7 @@ fn convert_outbound_route(
         creation_timestamp: _,
     }: TlsRoute,
     backend: outbound::Backend,
-    parent_info: &ParentInfo,
+    parent: &Parent,
     original_dst: Option<SocketAddr>,
 ) -> outbound::TlsRoute {
     let metadata = Some(meta::Metadata {
@@ -61,7 +52,7 @@ fn convert_outbound_route(
     let backends = rule
         .backends
         .into_iter()
-        .map(|b| convert_backend(b, parent_info, original_dst))
+        .map(|b| convert_backend(b, parent, original_dst))
         .collect::<Vec<_>>();
 
     let dist = if backends.is_empty() {
@@ -93,7 +84,7 @@ fn convert_outbound_route(
 
 fn convert_backend(
     backend: Backend,
-    parent_info: &ParentInfo,
+    parent: &Parent,
     original_dst: Option<SocketAddr>,
 ) -> outbound::tls_route::WeightedRouteBackend {
     let original_dst_port = original_dst.map(|o| o.port());
@@ -147,14 +138,9 @@ fn convert_backend(
             super::service_meta(svc),
         ),
         Backend::EgressNetwork(egress_net) if egress_net.exists => {
-            match (parent_info, original_dst) {
-                (
-                    ParentInfo::EgressNetwork {
-                        name, namespace, ..
-                    },
-                    Some(original_dst),
-                ) => {
-                    if *name == egress_net.name && *namespace == egress_net.namespace {
+            match (&parent.kind, original_dst) {
+                (ParentKind::EgressNetwork { .. }, Some(original_dst)) => {
+                    if parent.name == egress_net.name && parent.namespace == egress_net.namespace {
                         outbound::tls_route::WeightedRouteBackend {
                             weight: egress_net.weight,
                             backend: Some(outbound::tls_route::RouteBackend {
@@ -185,12 +171,12 @@ fn convert_backend(
                         )
                     }
                 }
-                (ParentInfo::EgressNetwork { .. }, None) => invalid_backend(
+                (ParentKind::EgressNetwork { .. }, None) => invalid_backend(
                     egress_net.weight,
                     "EgressNetwork can be resolved from an ip:port combo only".to_string(),
                     super::egress_net_meta(egress_net, original_dst_port),
                 ),
-                (ParentInfo::Service { .. }, _) => invalid_backend(
+                (ParentKind::Service { .. }, _) => invalid_backend(
                     egress_net.weight,
                     "EgressNetwork backends attach to EgressNetwork parents only".to_string(),
                     super::egress_net_meta(egress_net, original_dst_port),

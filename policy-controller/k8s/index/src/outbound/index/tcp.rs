@@ -1,6 +1,6 @@
 use std::num::NonZeroU16;
 
-use super::{ResourceInfo, ResourceKind, ResourceRef};
+use super::{ParentFlavor, ParentRef, ParentState};
 use crate::ClusterInfo;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Result};
@@ -12,7 +12,7 @@ pub(super) fn convert_route(
     ns: &str,
     route: gateway::TcpRoute,
     cluster: &ClusterInfo,
-    resource_info: &HashMap<ResourceRef, ResourceInfo>,
+    resource_info: &HashMap<ParentRef, ParentState>,
 ) -> Result<TcpRoute> {
     if route.spec.rules.len() != 1 {
         bail!("TCPRoute needs to have one rule");
@@ -39,7 +39,7 @@ pub(super) fn convert_backend(
     ns: &str,
     backend: gateway::BackendRef,
     cluster: &ClusterInfo,
-    resources: &HashMap<ResourceRef, ResourceInfo>,
+    resources: &HashMap<ParentRef, ParentState>,
 ) -> Option<Backend> {
     let backend_kind = match super::backend_kind(&backend.inner) {
         Some(backend_kind) => backend_kind,
@@ -55,7 +55,7 @@ pub(super) fn convert_backend(
         }
     };
 
-    let backend_ref = ResourceRef {
+    let backend_ref = ParentRef {
         name: backend.inner.name.clone(),
         namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
         kind: backend_kind.clone(),
@@ -70,7 +70,7 @@ pub(super) fn convert_backend(
         .and_then(|p| NonZeroU16::try_from(p).ok());
 
     match backend_kind {
-        ResourceKind::Service => {
+        ParentFlavor::Service => {
             // The gateway API dictates:
             //
             // Port is required when the referent is a Kubernetes Service.
@@ -94,7 +94,7 @@ pub(super) fn convert_backend(
                 exists: resources.contains_key(&backend_ref),
             }))
         }
-        ResourceKind::EgressNetwork => Some(Backend::EgressNetwork(WeightedEgressNetwork {
+        ParentFlavor::EgressNetwork => Some(Backend::EgressNetwork(WeightedEgressNetwork {
             weight: weight.into(),
             name,
             namespace: backend_ref.namespace.to_string(),

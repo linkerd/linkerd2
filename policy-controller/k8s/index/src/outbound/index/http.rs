@@ -1,6 +1,6 @@
 use std::{num::NonZeroU16, time};
 
-use super::{parse_duration, parse_timeouts, ResourceInfo, ResourceKind, ResourceRef};
+use super::{parse_duration, parse_timeouts, ParentFlavor, ParentRef, ParentState};
 use crate::{
     routes::{self, HttpRouteResource},
     ClusterInfo,
@@ -21,7 +21,7 @@ pub(super) fn convert_route(
     ns: &str,
     route: HttpRouteResource,
     cluster: &ClusterInfo,
-    resource_info: &HashMap<ResourceRef, ResourceInfo>,
+    resource_info: &HashMap<ParentRef, ParentState>,
 ) -> Result<OutboundRoute<HttpRouteMatch, HttpRetryCondition>> {
     match route {
         HttpRouteResource::LinkerdHttp(route) => {
@@ -105,7 +105,7 @@ fn convert_linkerd_rule(
     ns: &str,
     rule: policy::httproute::HttpRouteRule,
     cluster: &ClusterInfo,
-    resource_info: &HashMap<ResourceRef, ResourceInfo>,
+    resource_info: &HashMap<ParentRef, ParentState>,
     mut timeouts: RouteTimeouts,
     retry: Option<RouteRetry<HttpRetryCondition>>,
 ) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryCondition>> {
@@ -156,7 +156,7 @@ fn convert_gateway_rule(
     ns: &str,
     rule: gateway::HttpRouteRule,
     cluster: &ClusterInfo,
-    resource_info: &HashMap<ResourceRef, ResourceInfo>,
+    resource_info: &HashMap<ParentRef, ParentState>,
     timeouts: RouteTimeouts,
     retry: Option<RouteRetry<HttpRetryCondition>>,
 ) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryCondition>> {
@@ -194,7 +194,7 @@ pub(super) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
     ns: &str,
     backend: BackendRef,
     cluster: &ClusterInfo,
-    resources: &HashMap<ResourceRef, ResourceInfo>,
+    resources: &HashMap<ParentRef, ParentState>,
 ) -> Option<Backend> {
     let backend = backend.into();
     let filters = backend.filters;
@@ -214,7 +214,7 @@ pub(super) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
         }
     };
 
-    let backend_ref = ResourceRef {
+    let backend_ref = ParentRef {
         name: backend.inner.name.clone(),
         namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
         kind: backend_kind.clone(),
@@ -244,7 +244,7 @@ pub(super) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
         .and_then(|p| NonZeroU16::try_from(p).ok());
 
     match backend_kind {
-        ResourceKind::Service => {
+        ParentFlavor::Service => {
             // The gateway API dictates:
             //
             // Port is required when the referent is a Kubernetes Service.
@@ -268,7 +268,7 @@ pub(super) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
                 exists: resources.contains_key(&backend_ref),
             }))
         }
-        ResourceKind::EgressNetwork => Some(Backend::EgressNetwork(WeightedEgressNetwork {
+        ParentFlavor::EgressNetwork => Some(Backend::EgressNetwork(WeightedEgressNetwork {
             weight: weight.into(),
             name,
             namespace: backend_ref.namespace.to_string(),

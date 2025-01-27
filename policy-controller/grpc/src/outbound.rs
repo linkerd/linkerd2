@@ -13,9 +13,9 @@ use linkerd2_proxy_api::{
 };
 use linkerd_policy_controller_core::{
     outbound::{
-        DiscoverOutboundPolicy, ExternalPolicyStream, Kind, OutboundDiscoverTarget, OutboundPolicy,
-        OutboundPolicyStream, ParentInfo, ResourceTarget, Route, WeightedEgressNetwork,
-        WeightedService,
+        DiscoverOutboundPolicy, ExternalPolicyStream, OutboundDiscoverTarget, OutboundPolicy,
+        OutboundPolicyStream, Parent, ParentKind, ResourceTarget, Route, TargetKind,
+        WeightedEgressNetwork, WeightedService,
     },
     routes::GroupKindNamespaceName,
 };
@@ -60,7 +60,7 @@ where
             outbound::traffic_spec::Target::Authority(auth) => {
                 return self.lookup_authority(&auth).map(|(namespace, name, port)| {
                     OutboundDiscoverTarget::Resource(ResourceTarget {
-                        kind: Kind::Service,
+                        kind: TargetKind::Service,
                         name,
                         namespace,
                         port,
@@ -355,9 +355,9 @@ fn fallback(original_dst: SocketAddr) -> outbound::OutboundPolicy {
 fn to_proto(policy: OutboundPolicy, original_dst: Option<SocketAddr>) -> outbound::OutboundPolicy {
     let backend: outbound::Backend = default_backend(&policy, original_dst);
 
-    let kind = if policy.opaque {
+    let kind = if policy.parent.port.opaque {
         outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
-            routes: vec![default_outbound_opaq_route(backend, &policy.parent_info)],
+            routes: vec![default_outbound_opaq_route(backend, &policy.parent)],
         })
     } else {
         let accrual = policy.accrual.map(|accrual| outbound::FailureAccrual {
@@ -392,7 +392,7 @@ fn to_proto(policy: OutboundPolicy, original_dst: Option<SocketAddr>) -> outboun
                 policy.grpc_retry.clone(),
                 policy.timeouts.clone(),
                 policy.allow_l5d_request_headers,
-                &policy.parent_info,
+                &policy.parent,
                 original_dst,
             )
         } else if !http_routes.is_empty() {
@@ -404,7 +404,7 @@ fn to_proto(policy: OutboundPolicy, original_dst: Option<SocketAddr>) -> outboun
                 policy.http_retry.clone(),
                 policy.timeouts.clone(),
                 policy.allow_l5d_request_headers,
-                &policy.parent_info,
+                &policy.parent,
                 original_dst,
             )
         } else if !tls_routes.is_empty() {
@@ -412,7 +412,7 @@ fn to_proto(policy: OutboundPolicy, original_dst: Option<SocketAddr>) -> outboun
             tls::protocol(
                 backend,
                 tls_routes.into_iter(),
-                &policy.parent_info,
+                &policy.parent,
                 original_dst,
             )
         } else if !tcp_routes.is_empty() {
@@ -420,7 +420,7 @@ fn to_proto(policy: OutboundPolicy, original_dst: Option<SocketAddr>) -> outboun
             tcp::protocol(
                 backend,
                 tcp_routes.into_iter(),
-                &policy.parent_info,
+                &policy.parent,
                 original_dst,
             )
         } else {
@@ -432,28 +432,24 @@ fn to_proto(policy: OutboundPolicy, original_dst: Option<SocketAddr>) -> outboun
                 policy.http_retry.clone(),
                 policy.timeouts.clone(),
                 policy.allow_l5d_request_headers,
-                &policy.parent_info,
+                &policy.parent,
                 original_dst,
             )
         }
     };
 
-    let (parent_group, parent_kind, namespace, name) = match policy.parent_info {
-        ParentInfo::EgressNetwork {
-            namespace, name, ..
-        } => ("policy.linkerd.io", "EgressNetwork", namespace, name),
-        ParentInfo::Service {
-            name, namespace, ..
-        } => ("core", "Service", namespace, name),
+    let (parent_group, parent_kind) = match policy.parent.kind {
+        ParentKind::EgressNetwork { .. } => ("policy.linkerd.io", "EgressNetwork"),
+        ParentKind::Service { .. } => ("core", "Service"),
     };
 
     let metadata = Metadata {
         kind: Some(metadata::Kind::Resource(api::meta::Resource {
             group: parent_group.into(),
             kind: parent_kind.into(),
-            namespace,
-            name,
-            port: u16::from(policy.port).into(),
+            namespace: policy.parent.namespace.clone(),
+            name: policy.parent.name.clone(),
+            port: u16::from(policy.parent.port.number).into(),
             ..Default::default()
         })),
     };
@@ -483,21 +479,16 @@ fn timestamp_then_name<R: Route>(
 }
 
 fn default_backend(policy: &OutboundPolicy, original_dst: Option<SocketAddr>) -> outbound::Backend {
-    match policy.parent_info.clone() {
-        ParentInfo::Service {
-            authority,
-            namespace,
-            name,
-            ..
-        } => outbound::Backend {
+    match &policy.parent.kind {
+        ParentKind::Service { authority } => outbound::Backend {
             metadata: Some(Metadata {
                 kind: Some(metadata::Kind::Resource(api::meta::Resource {
                     group: "core".to_string(),
                     kind: "Service".to_string(),
-                    name,
-                    namespace,
+                    name: policy.parent.name.clone(),
+                    namespace: policy.parent.namespace.clone(),
+                    port: u16::from(policy.parent.port.number).into(),
                     section: Default::default(),
-                    port: u16::from(policy.port).into(),
                 })),
             }),
             queue: Some(default_queue_config()),
@@ -515,9 +506,7 @@ fn default_backend(policy: &OutboundPolicy, original_dst: Option<SocketAddr>) ->
             )),
         },
 
-        ParentInfo::EgressNetwork {
-            namespace, name, ..
-        } => {
+        ParentKind::EgressNetwork { .. } => {
             debug_assert!(
                 original_dst.is_some(),
                 "Must not serve EgressNetwork for named lookups; IP:PORT required"
@@ -526,10 +515,10 @@ fn default_backend(policy: &OutboundPolicy, original_dst: Option<SocketAddr>) ->
                 kind: Some(metadata::Kind::Resource(api::meta::Resource {
                     group: "policy.linkerd.io".to_string(),
                     kind: "EgressNetwork".to_string(),
-                    name,
-                    namespace,
+                    name: policy.parent.name.clone(),
+                    namespace: policy.parent.namespace.clone(),
+                    port: u16::from(policy.parent.port.number).into(),
                     section: Default::default(),
-                    port: u16::from(policy.port).into(),
                 })),
             });
 
@@ -562,13 +551,13 @@ fn default_backend(policy: &OutboundPolicy, original_dst: Option<SocketAddr>) ->
 
 fn default_outbound_opaq_route(
     backend: outbound::Backend,
-    parent_info: &ParentInfo,
+    parent: &Parent,
 ) -> outbound::OpaqueRoute {
-    match parent_info {
-        ParentInfo::EgressNetwork { traffic_policy, .. } => {
-            tcp::default_outbound_egress_route(backend, traffic_policy)
+    match &parent.kind {
+        ParentKind::EgressNetwork { traffic } => {
+            tcp::default_outbound_egress_route(backend, traffic)
         }
-        ParentInfo::Service { .. } => {
+        ParentKind::Service { .. } => {
             let metadata = Some(Metadata {
                 kind: Some(metadata::Kind::Default("opaq".to_string())),
             });

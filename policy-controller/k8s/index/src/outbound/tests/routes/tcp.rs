@@ -1,6 +1,6 @@
 use kube::Resource;
 use linkerd_policy_controller_core::{
-    outbound::{Backend, Kind, ResourceTarget, WeightedEgressNetwork, WeightedService},
+    outbound::{Backend, ResourceTarget, TargetKind, WeightedEgressNetwork, WeightedService},
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
@@ -40,7 +40,7 @@ fn backend_service() {
             namespace: "ns".to_string(),
             port: 8080.try_into().unwrap(),
             source_namespace: "ns".to_string(),
-            kind: Kind::Service,
+            kind: TargetKind::Service,
         })
         .expect("apex.ns should exist");
 
@@ -131,7 +131,7 @@ fn backend_egress_network() {
             namespace: "ns".to_string(),
             port: 8080.try_into().unwrap(),
             source_namespace: "ns".to_string(),
-            kind: Kind::EgressNetwork("192.168.0.1:8080".parse().unwrap()),
+            kind: TargetKind::EgressNetwork("192.168.0.1:8080".parse().unwrap()),
         })
         .expect("apex.ns should exist");
 

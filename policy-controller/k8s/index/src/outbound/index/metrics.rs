@@ -57,7 +57,7 @@ impl Collector for Instrumented {
         )?;
         for (ns, index) in &this.namespaces.by_ns {
             let labels = vec![("namespace", ns.as_str())];
-            let service_port_routes = ConstGauge::new(index.resource_port_routes.len() as u32);
+            let service_port_routes = ConstGauge::new(index.routes_by_parent_port.len() as u32);
             let service_port_route_encoder = service_port_route_encoder.encode_family(&labels)?;
             service_port_routes.encode(service_port_route_encoder)?;
         }

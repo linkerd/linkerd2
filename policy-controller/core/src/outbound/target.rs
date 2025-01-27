@@ -16,11 +16,11 @@ pub struct ResourceTarget {
     pub namespace: String,
     pub port: NonZeroU16,
     pub source_namespace: String,
-    pub kind: Kind,
+    pub kind: TargetKind,
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum Kind {
+pub enum TargetKind {
     EgressNetwork(SocketAddr),
     Service,
 }
@@ -28,8 +28,8 @@ pub enum Kind {
 impl ResourceTarget {
     pub fn original_dst(&self) -> Option<SocketAddr> {
         match self.kind {
-            Kind::EgressNetwork(original_dst) => Some(original_dst),
-            Kind::Service => None,
+            TargetKind::EgressNetwork(original_dst) => Some(original_dst),
+            TargetKind::Service => None,
         }
     }
 }

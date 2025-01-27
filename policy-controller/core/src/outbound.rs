@@ -14,8 +14,8 @@ mod target;
 type FallbackPolicy = ();
 
 pub use self::{
-    policy::{OutboundPolicy, ParentInfo},
-    target::{Kind, OutboundDiscoverTarget, ResourceTarget},
+    policy::{OutboundPolicy, Parent, ParentKind, ParentPort},
+    target::{OutboundDiscoverTarget, ResourceTarget, TargetKind},
 };
 
 pub trait Route {

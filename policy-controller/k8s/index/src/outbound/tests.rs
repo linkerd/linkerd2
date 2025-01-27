@@ -7,7 +7,7 @@ use crate::{
 };
 use k8s_openapi::chrono::Utc;
 use kubert::index::IndexNamespacedResource;
-use linkerd_policy_controller_core::outbound::{Kind, ResourceTarget};
+use linkerd_policy_controller_core::outbound::{ResourceTarget, TargetKind};
 use linkerd_policy_controller_core::IpNet;
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
@@ -129,7 +129,7 @@ fn switch_to_another_egress_network_parent() {
             namespace: ns.clone(),
             port: 8080.try_into().unwrap(),
             source_namespace: ns,
-            kind: Kind::EgressNetwork("192.168.0.1:8080".parse().unwrap()),
+            kind: TargetKind::EgressNetwork("192.168.0.1:8080".parse().unwrap()),
         })
         .expect("b.ns should exist");
 
@@ -162,7 +162,7 @@ fn switch_to_another_egress_network_parent() {
             namespace: ns.clone(),
             port: 8080.try_into().unwrap(),
             source_namespace: ns,
-            kind: Kind::EgressNetwork("192.168.0.1:8080".parse().unwrap()),
+            kind: TargetKind::EgressNetwork("192.168.0.1:8080".parse().unwrap()),
         })
         .expect("a.ns should exist");
 

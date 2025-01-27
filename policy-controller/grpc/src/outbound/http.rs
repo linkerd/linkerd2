@@ -9,8 +9,8 @@ use crate::routes::{
 use linkerd2_proxy_api::{destination, http_route, meta, outbound};
 use linkerd_policy_controller_core::{
     outbound::{
-        Backend, Filter, HttpRetryCondition, HttpRoute, OutboundRouteRule, ParentInfo, RouteRetry,
-        RouteTimeouts, TrafficPolicy,
+        Backend, Filter, HttpRetryCondition, HttpRoute, OutboundRouteRule, Parent, ParentKind,
+        RouteRetry, RouteTimeouts, TrafficPolicy,
     },
     routes::GroupKindNamespaceName,
 };
@@ -24,10 +24,10 @@ pub(crate) fn protocol(
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
-    parent_info: &ParentInfo,
+    parent: &Parent,
     original_dst: Option<SocketAddr>,
 ) -> outbound::proxy_protocol::Kind {
-    let opaque_route = default_outbound_opaq_route(default_backend.clone(), parent_info);
+    let opaque_route = default_outbound_opaq_route(default_backend.clone(), parent);
     let mut routes = routes
         .map(|(gknn, route)| {
             convert_outbound_route(
@@ -37,14 +37,14 @@ pub(crate) fn protocol(
                 service_retry.clone(),
                 service_timeouts.clone(),
                 allow_l5d_request_headers,
-                parent_info,
+                parent,
                 original_dst,
             )
         })
         .collect::<Vec<_>>();
 
-    match parent_info {
-        ParentInfo::Service { .. } => {
+    match &parent.kind {
+        ParentKind::Service { .. } => {
             if routes.is_empty() {
                 routes.push(default_outbound_service_route(
                     default_backend,
@@ -53,12 +53,12 @@ pub(crate) fn protocol(
                 ));
             }
         }
-        ParentInfo::EgressNetwork { traffic_policy, .. } => {
+        ParentKind::EgressNetwork { traffic } => {
             routes.push(default_outbound_egress_route(
                 default_backend,
                 service_retry.clone(),
                 service_timeouts.clone(),
-                traffic_policy,
+                traffic,
             ));
         }
     }
@@ -96,7 +96,7 @@ fn convert_outbound_route(
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
-    parent_info: &ParentInfo,
+    parent: &Parent,
     original_dst: Option<SocketAddr>,
 ) -> outbound::HttpRoute {
     let metadata = Some(meta::Metadata {
@@ -123,7 +123,7 @@ fn convert_outbound_route(
              }| {
                 let backends = backends
                     .into_iter()
-                    .map(|b| convert_backend(b, parent_info, original_dst))
+                    .map(|b| convert_backend(b, parent, original_dst))
                     .collect::<Vec<_>>();
                 let dist = if backends.is_empty() {
                     outbound::http_route::distribution::Kind::FirstAvailable(
@@ -172,7 +172,7 @@ fn convert_outbound_route(
 
 fn convert_backend(
     backend: Backend,
-    parent_info: &ParentInfo,
+    parent: &Parent,
     original_dst: Option<SocketAddr>,
 ) -> outbound::http_route::WeightedRouteBackend {
     let original_dst_port = original_dst.map(|o| o.port());
@@ -235,14 +235,9 @@ fn convert_backend(
             super::service_meta(svc),
         ),
         Backend::EgressNetwork(egress_net) if egress_net.exists => {
-            match (parent_info, original_dst) {
-                (
-                    ParentInfo::EgressNetwork {
-                        name, namespace, ..
-                    },
-                    Some(original_dst),
-                ) => {
-                    if *name == egress_net.name && *namespace == egress_net.namespace {
+            match (&parent.kind, original_dst) {
+                (ParentKind::EgressNetwork { .. }, Some(original_dst)) => {
+                    if parent.name == egress_net.name && parent.namespace == egress_net.namespace {
                         let filters = egress_net
                             .filters
                             .clone()
@@ -281,12 +276,12 @@ fn convert_backend(
                         )
                     }
                 }
-                (ParentInfo::EgressNetwork { .. }, None) => invalid_backend(
+                (ParentKind::EgressNetwork { .. }, None) => invalid_backend(
                     egress_net.weight,
                     "EgressNetwork can be resolved from an ip:port combo only".to_string(),
                     super::egress_net_meta(egress_net, original_dst_port),
                 ),
-                (ParentInfo::Service { .. }, _) => invalid_backend(
+                (ParentKind::Service { .. }, _) => invalid_backend(
                     egress_net.weight,
                     "EgressNetwork backends attach to EgressNetwork parents only".to_string(),
                     super::egress_net_meta(egress_net, original_dst_port),

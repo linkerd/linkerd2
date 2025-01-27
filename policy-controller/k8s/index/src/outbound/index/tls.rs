@@ -1,5 +1,5 @@
 use super::tcp::convert_backend;
-use super::{ResourceInfo, ResourceRef};
+use super::{ParentRef, ParentState};
 use crate::{routes, ClusterInfo};
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Result};
@@ -10,7 +10,7 @@ pub(super) fn convert_route(
     ns: &str,
     route: gateway::TlsRoute,
     cluster: &ClusterInfo,
-    resource_info: &HashMap<ResourceRef, ResourceInfo>,
+    resource_info: &HashMap<ParentRef, ParentState>,
 ) -> Result<TlsRoute> {
     if route.spec.rules.len() != 1 {
         bail!("TLSRoute needs to have one rule");

@@ -134,7 +134,7 @@ impl
                     namespace,
                     port,
                     source_namespace,
-                    kind: core::outbound::Kind::Service,
+                    kind: core::outbound::TargetKind::Service,
                 },
             ));
         }
@@ -147,7 +147,7 @@ impl
                     namespace,
                     port,
                     source_namespace,
-                    kind: core::outbound::Kind::EgressNetwork(std::net::SocketAddr::new(
+                    kind: core::outbound::TargetKind::EgressNetwork(std::net::SocketAddr::new(
                         addr,
                         port.into(),
                     )),
