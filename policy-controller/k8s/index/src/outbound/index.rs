@@ -24,7 +24,6 @@ use parking_lot::RwLock;
 use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
 use tokio::sync::watch;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Index {
     namespaces: NamespaceIndex,
