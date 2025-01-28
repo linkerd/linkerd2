@@ -33,7 +33,7 @@ impl Collector for Instrumented {
             None,
             MetricType::Gauge,
         )?;
-        let service_infos = ConstGauge::new(this.resource_info.len() as u32);
+        let service_infos = ConstGauge::new(this.parents_by_ref.len() as u32);
         service_infos.encode(service_info_encoder)?;
 
         let mut service_route_encoder = encoder.encode_descriptor(

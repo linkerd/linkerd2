@@ -30,7 +30,7 @@ pub struct Index {
     services_by_ip: HashMap<IpAddr, ParentRef>,
     egress_networks_by_ref: HashMap<ParentRef, EgressNetwork>,
     // holds information about resources. currently EgressNetworks and Services
-    resource_info: HashMap<ParentRef, ParentState>,
+    parents_by_ref: HashMap<ParentRef, ParentState>,
 
     cluster_networks: Vec<linkerd_k8s_api::Cidr>,
     global_egress_network_namespace: Arc<String>,
@@ -90,7 +90,7 @@ struct Namespace {
 
 #[derive(Debug)]
 struct ParentState {
-    ports: HashMap<NonZeroU16, PortSpec>,
+    ports: HashMap<NonZeroU16, ParentPortSpec>,
     accrual: Option<FailureAccrual>,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
@@ -107,7 +107,7 @@ struct ParentPortKey {
 
 #[derive(Debug)]
 #[allow(dead_code)]
-struct PortSpec {
+struct ParentPortSpec {
     number: NonZeroU16,
     name: Option<String>,
     app_protocol: Option<String>,
@@ -263,8 +263,8 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
                 .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
         let mut ports = HashMap::new();
-        /* TODO(ver): use service ports with appProtocol.
-        for sp in service.spec.iter().flat_map(|s| s.ports.iter().flatten()) {
+        // TODO(ver): Enumerate service ports, tracking app protocols.
+        /* for sp in service.spec.iter().flat_map(|s| s.ports.iter().flatten()) {
             if !matches!(sp.protocol.as_deref(), Some("TCP") | None) {
                 continue;
             }
@@ -283,22 +283,22 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                 app_protocol,
             };
             ports.insert(number, spec);
-        }
-         */
-        for port in opaque_ports {
-            if !ports.contains_key(&port) {
-                let spec = PortSpec {
-                    number: port,
-                    name: None,
-                    // We specify an app protocol that is not in the 'known' set
-                    // so that the traffic is handled opaquely.
-                    app_protocol: Some("linkerd.io/opaque".to_string()),
-                };
-                ports.insert(port, spec);
+        } */
+        for opaque_port in opaque_ports {
+            if ports.contains_key(&opaque_port) {
+                continue;
             }
+            let spec = ParentPortSpec {
+                number: opaque_port,
+                name: None,
+                // We specify an app protocol that is not in the 'known' set
+                // so that the traffic is handled opaquely.
+                app_protocol: Some("linkerd.io/opaque".to_string()),
+            };
+            ports.insert(opaque_port, spec);
         }
 
-        let service_info = ParentState {
+        let parent = ParentState {
             ports,
             accrual,
             http_retry,
@@ -311,20 +311,14 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             .by_ns
             .entry(ns.clone())
             .or_insert_with(|| Namespace::new(ns.clone()))
-            .update_resource(
-                service.name_unchecked(),
-                ParentFlavor::Service,
-                &service_info,
-            );
+            .update_resource(service.name_unchecked(), ParentFlavor::Service, &parent);
 
-        self.resource_info.insert(
-            ParentRef {
-                kind: ParentFlavor::Service,
-                name: service.name_unchecked(),
-                namespace: service.namespace().expect("Service must have Namespace"),
-            },
-            service_info,
-        );
+        let key = ParentRef {
+            kind: ParentFlavor::Service,
+            name: service.name_unchecked(),
+            namespace: service.namespace().expect("Service must have Namespace"),
+        };
+        self.parents_by_ref.insert(key, parent);
 
         self.reindex_resources();
     }
@@ -336,7 +330,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             name,
             namespace,
         };
-        self.resource_info.remove(&service_ref);
+        self.parents_by_ref.remove(&service_ref);
         self.services_by_ip.retain(|_, v| *v != service_ref);
 
         self.reindex_resources();
@@ -392,7 +386,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
             if !ports.contains_key(&port) {
                 ports.insert(
                     port,
-                    PortSpec {
+                    ParentPortSpec {
                         number: port,
                         name: None,
                         app_protocol: Some("linkerd.io/opaque".to_string()),
@@ -421,7 +415,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
                 &egress_network_info,
             );
 
-        self.resource_info
+        self.parents_by_ref
             .insert(egress_net_ref, egress_network_info);
 
         self.reindex_resources();
@@ -457,7 +451,7 @@ impl Index {
             },
             services_by_ip: HashMap::default(),
             egress_networks_by_ref: HashMap::default(),
-            resource_info: HashMap::default(),
+            parents_by_ref: HashMap::default(),
             cluster_networks: cluster_networks.into_iter().map(Cidr::from).collect(),
             fallback_polcy_tx,
             global_egress_network_namespace,
@@ -509,7 +503,7 @@ impl Index {
         };
         tracing::debug!(?port, "Subscribing");
         let rx = ns
-            .resource_routes_or_default(port, &self.namespaces.cluster_info, &self.resource_info)
+            .resource_routes_or_default(port, &self.namespaces.cluster_info, &self.parents_by_ref)
             .watch_for_ns_or_default(source_namespace)
             .watch
             .subscribe();
@@ -561,7 +555,7 @@ impl Index {
             ns.apply_http_route(
                 route.clone(),
                 &self.namespaces.cluster_info,
-                &self.resource_info,
+                &self.parents_by_ref,
             );
         });
     }
@@ -590,7 +584,7 @@ impl Index {
             ns.apply_grpc_route(
                 route.clone(),
                 &self.namespaces.cluster_info,
-                &self.resource_info,
+                &self.parents_by_ref,
             );
         }
     }
@@ -619,7 +613,7 @@ impl Index {
             ns.apply_tls_route(
                 route.clone(),
                 &self.namespaces.cluster_info,
-                &self.resource_info,
+                &self.parents_by_ref,
             );
         }
     }
@@ -648,14 +642,14 @@ impl Index {
             ns.apply_tcp_route(
                 route.clone(),
                 &self.namespaces.cluster_info,
-                &self.resource_info,
+                &self.parents_by_ref,
             );
         }
     }
 
     fn reindex_resources(&mut self) {
         for ns in self.namespaces.by_ns.values_mut() {
-            ns.reindex_resources(&self.resource_info);
+            ns.reindex_resources(&self.parents_by_ref);
         }
     }
 
@@ -1964,7 +1958,7 @@ pub(crate) fn backend_kind(
     }
 }
 
-fn port_is_opaque(ports: &HashMap<NonZeroU16, PortSpec>, port: NonZeroU16) -> bool {
+fn port_is_opaque(ports: &HashMap<NonZeroU16, ParentPortSpec>, port: NonZeroU16) -> bool {
     // If the appProtocol is known and it is not one that we support, mark the
     // port as opaque.
     ports.get(&port).map_or(false, |ps| {
