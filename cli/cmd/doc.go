@@ -266,7 +266,7 @@ func generateAnnotationsDocs() []annotationDoc {
 		},
 		{
 			Name:        k8s.ProxyWaitBeforeExitSecondsAnnotation,
-			Description: "The proxy sidecar will stay alive for at least the given period after receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. Defaults to `0`",
+			Description: "Adds a preStop hook to the proxy container to delay receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. Defaults to `0`",
 		},
 		{
 			Name:        k8s.ProxyAwait,
