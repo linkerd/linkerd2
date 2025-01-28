@@ -236,29 +236,28 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             tracing::warn!(%error, service=name, namespace=ns, "Failed to parse grpc retry")
         }).unwrap_or_default();
 
-        if let Some(cluster_ips) = service
+        for cluster_ip in service
             .spec
             .as_ref()
-            .and_then(|spec| spec.cluster_ips.as_deref())
+            .iter()
+            .flat_map(|spec| spec.cluster_ips.iter().flatten())
         {
-            for cluster_ip in cluster_ips {
-                if cluster_ip == "None" {
+            if cluster_ip.eq_ignore_ascii_case("None") {
+                continue;
+            }
+            let addr = match cluster_ip.parse() {
+                Ok(addr) => addr,
+                Err(error) => {
+                    tracing::warn!(%error, service=name, cluster_ip, "Invalid cluster ip");
                     continue;
                 }
-                match cluster_ip.parse() {
-                    Ok(addr) => {
-                        let service_ref = ParentRef {
-                            kind: ParentFlavor::Service,
-                            name: name.clone(),
-                            namespace: ns.clone(),
-                        };
-                        self.services_by_ip.insert(addr, service_ref);
-                    }
-                    Err(error) => {
-                        tracing::warn!(%error, service=name, cluster_ip, "Invalid cluster ip");
-                    }
-                }
-            }
+            };
+            let parent = ParentRef {
+                kind: ParentFlavor::Service,
+                name: name.clone(),
+                namespace: ns.clone(),
+            };
+            self.services_by_ip.insert(addr, parent);
         }
 
         let opaque_ports =
@@ -292,6 +291,8 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                 let spec = PortSpec {
                     number: port,
                     name: None,
+                    // We specify an app protocol that is not in the 'known' set
+                    // so that the traffic is handled opaquely.
                     app_protocol: Some("linkerd.io/opaque".to_string()),
                 };
                 ports.insert(port, spec);
@@ -310,14 +311,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         self.namespaces
             .by_ns
             .entry(ns.clone())
-            .or_insert_with(|| Namespace {
-                service_http_routes: Default::default(),
-                service_grpc_routes: Default::default(),
-                service_tls_routes: Default::default(),
-                service_tcp_routes: Default::default(),
-                routes_by_parent_port: Default::default(),
-                namespace: Arc::new(ns),
-            })
+            .or_insert_with(|| Namespace::new(ns.clone()))
             .update_resource(
                 service.name_unchecked(),
                 ParentFlavor::Service,
@@ -421,14 +415,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         self.namespaces
             .by_ns
             .entry(ns.to_string())
-            .or_insert_with(|| Namespace {
-                service_http_routes: Default::default(),
-                service_grpc_routes: Default::default(),
-                service_tls_routes: Default::default(),
-                service_tcp_routes: Default::default(),
-                routes_by_parent_port: Default::default(),
-                namespace: ns.clone(),
-            })
+            .or_insert_with(|| Namespace::new(ns.clone()))
             .update_resource(
                 egress_network.name_unchecked(),
                 ParentFlavor::EgressNetwork,
@@ -514,14 +501,7 @@ impl Index {
             .namespaces
             .by_ns
             .entry(namespace.clone())
-            .or_insert_with(|| Namespace {
-                namespace: Arc::new(namespace.to_string()),
-                service_http_routes: Default::default(),
-                service_grpc_routes: Default::default(),
-                service_tls_routes: Default::default(),
-                service_tcp_routes: Default::default(),
-                routes_by_parent_port: Default::default(),
-            });
+            .or_insert_with(|| Namespace::new(namespace.clone()));
 
         let port = ParentPortKey {
             kind,
@@ -572,14 +552,7 @@ impl Index {
             self.namespaces
                 .by_ns
                 .entry(ns.clone())
-                .or_insert_with(|| Namespace {
-                    namespace: Arc::new(ns),
-                    service_http_routes: Default::default(),
-                    service_grpc_routes: Default::default(),
-                    service_tls_routes: Default::default(),
-                    service_tcp_routes: Default::default(),
-                    routes_by_parent_port: Default::default(),
-                });
+                .or_insert_with(|| Namespace::new(ns));
         }
 
         // We must send the route update to all namespace indexes in case this
@@ -608,14 +581,7 @@ impl Index {
             self.namespaces
                 .by_ns
                 .entry(ns.clone())
-                .or_insert_with(|| Namespace {
-                    namespace: Arc::new(ns),
-                    service_http_routes: Default::default(),
-                    service_grpc_routes: Default::default(),
-                    service_tls_routes: Default::default(),
-                    service_tcp_routes: Default::default(),
-                    routes_by_parent_port: Default::default(),
-                });
+                .or_insert_with(|| Namespace::new(ns));
         }
 
         // We must send the route update to all namespace indexes in case this
@@ -644,14 +610,7 @@ impl Index {
             self.namespaces
                 .by_ns
                 .entry(ns.clone())
-                .or_insert_with(|| Namespace {
-                    namespace: Arc::new(ns),
-                    service_http_routes: Default::default(),
-                    service_grpc_routes: Default::default(),
-                    service_tls_routes: Default::default(),
-                    service_tcp_routes: Default::default(),
-                    routes_by_parent_port: Default::default(),
-                });
+                .or_insert_with(|| Namespace::new(ns));
         }
 
         // We must send the route update to all namespace indexes in case this
@@ -680,14 +639,7 @@ impl Index {
             self.namespaces
                 .by_ns
                 .entry(ns.clone())
-                .or_insert_with(|| Namespace {
-                    namespace: Arc::new(ns),
-                    service_http_routes: Default::default(),
-                    service_grpc_routes: Default::default(),
-                    service_tls_routes: Default::default(),
-                    service_tcp_routes: Default::default(),
-                    routes_by_parent_port: Default::default(),
-                });
+                .or_insert_with(|| Namespace::new(ns));
         }
 
         // We must send the route update to all namespace indexes in case this
@@ -718,6 +670,17 @@ impl Index {
 }
 
 impl Namespace {
+    fn new(ns: impl Into<Arc<String>>) -> Self {
+        Self {
+            namespace: ns.into(),
+            service_http_routes: Default::default(),
+            service_grpc_routes: Default::default(),
+            service_tls_routes: Default::default(),
+            service_tcp_routes: Default::default(),
+            routes_by_parent_port: Default::default(),
+        }
+    }
+
     fn apply_http_route(
         &mut self,
         route: HttpRouteResource,
