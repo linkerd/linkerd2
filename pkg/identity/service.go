@@ -132,6 +132,10 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 	}
 
 	log.Debugf("Loaded issuer cert: %s", creds.EncodeCertificatePEM())
+	log.WithFields(log.Fields{
+		"invalid_after":      creds.Certificate.NotAfter.Unix(),
+		"process_clock_time": time.Now().Unix(),
+	}).Info("Issuer cert loaded")
 	return tls.NewCA(*creds, *svc.validity), nil
 }
 
