@@ -75,7 +75,7 @@ pub(crate) fn protocol(
         }),
         http1: Some(outbound::proxy_protocol::Http1 {
             routes: routes.clone(),
-            failure_accrual: accrual.clone(),
+            failure_accrual: accrual,
         }),
         http2: Some(outbound::proxy_protocol::Http2 {
             routes,
