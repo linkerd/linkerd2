@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 anyhow = "1"
-hyper = { version = "0.14", features = ["client", "http2"] }
+hyper = { version = "0.14", features = ["backports", "deprecated", "client", "http2", "runtime"] }
 futures = { version = "0.3", default-features = false }
 ipnet = "2"
 k8s-gateway-api = "0.16"
