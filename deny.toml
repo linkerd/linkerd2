@@ -64,6 +64,8 @@ skip-tree = [
     { name = "indexmap" },
     # thiserror v2 is still making its way through the ecosystem
     { name = "thiserror", version = "1" },
+    # rand v0.9 is still making its way through the ecosystem
+    { name = "rand", version = "0.8" },
 ]
 
 [sources]

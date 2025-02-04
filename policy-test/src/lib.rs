@@ -784,7 +784,7 @@ pub async fn await_service_account(client: &kube::Client, ns: &str, name: &str) 
 pub fn random_suffix(len: usize) -> String {
     use rand::Rng;
 
-    rand::thread_rng()
+    rand::rng()
         .sample_iter(&LowercaseAlphanumeric)
         .take(len)
         .map(char::from)
@@ -837,7 +837,7 @@ struct LowercaseAlphanumeric;
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-impl rand::distributions::Distribution<u8> for LowercaseAlphanumeric {
+impl rand::distr::Distribution<u8> for LowercaseAlphanumeric {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> u8 {
         const RANGE: u32 = 26 + 10;
         const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";

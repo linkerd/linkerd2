@@ -1115,6 +1115,35 @@ impl Namespace {
                 watch.send_if_modified();
             }
         }
+
+        let http_backends = self
+            .service_http_routes
+            .values_mut()
+            .flat_map(|routes| routes.values_mut())
+            .flat_map(|route| route.rules.iter_mut())
+            .flat_map(|rule| rule.backends.iter_mut());
+        let grpc_backends = self
+            .service_grpc_routes
+            .values_mut()
+            .flat_map(|routes| routes.values_mut())
+            .flat_map(|route| route.rules.iter_mut())
+            .flat_map(|rule| rule.backends.iter_mut());
+        let tls_backends = self
+            .service_tls_routes
+            .values_mut()
+            .flat_map(|routes| routes.values_mut())
+            .flat_map(|route| route.rule.backends.iter_mut());
+        let tcp_backends = self
+            .service_tcp_routes
+            .values_mut()
+            .flat_map(|routes| routes.values_mut())
+            .flat_map(|route| route.rule.backends.iter_mut());
+
+        http_backends
+            .chain(grpc_backends)
+            .chain(tls_backends)
+            .chain(tcp_backends)
+            .for_each(update_backend);
     }
 
     fn reinitialize_egress_watches(&mut self) {

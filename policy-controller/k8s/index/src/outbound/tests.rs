@@ -7,10 +7,13 @@ use crate::{
 };
 use k8s_openapi::chrono::Utc;
 use kubert::index::IndexNamespacedResource;
-use linkerd_policy_controller_core::outbound::{ResourceTarget, TargetKind};
-use linkerd_policy_controller_core::IpNet;
+use linkerd_policy_controller_core::{outbound, IpNet};
+use linkerd_policy_controller_core::{
+    outbound::{ResourceTarget, TargetKind},
+    POLICY_CONTROLLER_NAME,
+};
 use linkerd_policy_controller_k8s_api::{
-    self as k8s,
+    self as k8s, gateway,
     policy::{self, EgressNetwork},
 };
 use tokio::time;
@@ -214,4 +217,147 @@ fn fallback_rx_closed_when_egress_net_deleted() {
     );
 
     assert!(fallback_rx.has_changed().is_err());
+}
+
+#[test]
+fn update_backend_on_route_with_no_port() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::TRACE)
+        .try_init()
+        .ok();
+
+    let test = TestConfig::default();
+    let ns = "ns";
+
+    let parent = k8s::Service {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some("parent-svc".to_string()),
+            ..Default::default()
+        },
+        spec: Some(k8s::ServiceSpec {
+            cluster_ip: Some("1.1.1.1".to_string()),
+            cluster_ips: Some(vec!["1.1.1.1".to_string()]),
+            type_: Some("ClusterIP".to_string()),
+            ..Default::default()
+        }),
+        status: None,
+    };
+
+    test.index.write().apply(parent);
+
+    let parent_ref = gateway::ParentReference {
+        name: "parent-svc".to_string(),
+        namespace: Some(ns.to_string()),
+        kind: Some("Service".to_string()),
+        group: Some("core".to_string()),
+        section_name: None,
+        port: None, // Route is attached to parent without specifying port.
+    };
+
+    let route = gateway::HttpRoute {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some("foo-route".to_string()),
+            ..Default::default()
+        },
+        spec: gateway::HttpRouteSpec {
+            inner: gateway::CommonRouteSpec {
+                parent_refs: Some(vec![parent_ref.clone()]),
+            },
+            hostnames: None,
+            rules: Some(vec![gateway::HttpRouteRule {
+                matches: None,
+                filters: None,
+                // Reference to a backend that doesn't exist yet.
+                backend_refs: Some(vec![gateway::HttpBackendRef {
+                    backend_ref: Some(gateway::BackendRef {
+                        weight: Some(1),
+                        inner: gateway::BackendObjectReference {
+                            group: Some("core".to_string()),
+                            kind: Some("Service".to_string()),
+                            name: "backend-svc".to_string(),
+                            namespace: Some(ns.to_string()),
+                            port: Some(8080),
+                        },
+                    }),
+                    filters: None,
+                }]),
+            }]),
+        },
+        status: Some(gateway::HttpRouteStatus {
+            inner: gateway::RouteStatus {
+                parents: vec![gateway::RouteParentStatus {
+                    parent_ref,
+                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
+                    conditions: vec![k8s::Condition {
+                        last_transition_time: k8s::Time(Utc::now()),
+                        message: "".to_string(),
+                        observed_generation: None,
+                        reason: "Accepted".to_string(),
+                        status: "True".to_string(),
+                        type_: "Accepted".to_string(),
+                    }],
+                }],
+            },
+        }),
+    };
+
+    test.index.write().apply(route);
+
+    // Create the backend.
+    let backend = k8s::Service {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some("backend-svc".to_string()),
+            ..Default::default()
+        },
+        spec: Some(k8s::ServiceSpec {
+            cluster_ip: Some("1.1.1.2".to_string()),
+            cluster_ips: Some(vec!["1.1.1.2".to_string()]),
+            type_: Some("ClusterIP".to_string()),
+            ..Default::default()
+        }),
+        status: None,
+    };
+    test.index.write().apply(backend);
+
+    let mut rx = test
+        .index
+        .write()
+        .outbound_policy_rx(ResourceTarget {
+            name: "parent-svc".to_string(),
+            namespace: ns.to_string(),
+            port: 8080.try_into().unwrap(),
+            source_namespace: ns.to_string(),
+            kind: TargetKind::Service,
+        })
+        .expect("parent-svc should exist");
+
+    // Backend should be valid.
+    let policy = rx.borrow_and_update();
+    assert_eq!(policy.parent_namespace(), "ns");
+    assert_eq!(policy.parent_name(), "parent-svc");
+    let (gknn, outbound_route) = policy.http_routes.iter().next().unwrap();
+    assert_eq!(gknn.name, "foo-route");
+    assert_eq!(gknn.namespace, ns);
+    let rule = outbound_route.rules.first().unwrap();
+    let backend = rule.backends.first().unwrap();
+    if let outbound::Backend::Service(outbound::WeightedService {
+        weight: _,
+        authority: _,
+        name,
+        namespace,
+        port: _,
+        filters: _,
+        exists,
+    }) = backend
+    {
+        assert_eq!(name, "backend-svc");
+        assert_eq!(namespace, ns);
+        assert!(exists);
+    } else {
+        panic!("expected outbound::Backend::Service");
+    }
+    drop(policy);
 }
