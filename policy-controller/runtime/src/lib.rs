@@ -11,7 +11,7 @@ mod validation;
 
 pub use self::args::Args;
 
-use std::num::NonZeroU16;
+use std::{net::SocketAddr, num::NonZeroU16};
 
 #[derive(Clone, Debug)]
 struct InboundDiscover(index::inbound::SharedIndex);
@@ -125,10 +125,10 @@ impl
         addr: std::net::IpAddr,
         port: NonZeroU16,
         source_namespace: String,
-    ) -> Option<core::outbound::OutboundDiscoverTarget> {
+    ) -> Option<Result<core::outbound::OutboundDiscoverTarget, SocketAddr>> {
         let index = self.0.read();
         if let Some((namespace, name)) = index.lookup_service(addr) {
-            return Some(core::outbound::OutboundDiscoverTarget::Resource(
+            return Some(Ok(core::outbound::OutboundDiscoverTarget::Resource(
                 core::outbound::ResourceTarget {
                     name,
                     namespace,
@@ -136,29 +136,27 @@ impl
                     source_namespace,
                     kind: core::outbound::TargetKind::Service,
                 },
-            ));
+            )));
         }
 
         if let Some((namespace, name)) = index.lookup_egress_network(addr, source_namespace.clone())
         {
-            return Some(core::outbound::OutboundDiscoverTarget::Resource(
+            return Some(Ok(core::outbound::OutboundDiscoverTarget::Resource(
                 core::outbound::ResourceTarget {
                     name,
                     namespace,
                     port,
                     source_namespace,
-                    kind: core::outbound::TargetKind::EgressNetwork(std::net::SocketAddr::new(
+                    kind: core::outbound::TargetKind::EgressNetwork(SocketAddr::new(
                         addr,
                         port.into(),
                     )),
                 },
-            ));
+            )));
         }
 
         if !index.is_address_in_cluster(addr) {
-            return Some(core::outbound::OutboundDiscoverTarget::External(
-                std::net::SocketAddr::new(addr, port.into()),
-            ));
+            return Some(Err(SocketAddr::new(addr, port.into())));
         }
 
         None

@@ -31,7 +31,12 @@ pub trait DiscoverOutboundPolicy<R, T> {
 
     async fn watch_external_policy(&self) -> ExternalPolicyStream;
 
-    fn lookup_ip(&self, addr: IpAddr, port: NonZeroU16, source_namespace: String) -> Option<T>;
+    fn lookup_ip(
+        &self,
+        addr: IpAddr,
+        port: NonZeroU16,
+        source_namespace: String,
+    ) -> Option<Result<T, std::net::SocketAddr>>;
 }
 
 pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send + Sync + 'static>>;
