@@ -4,7 +4,7 @@ use linkerd_policy_controller_core::{
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
-use linkerd_policy_controller_k8s_api::gateway as k8s_gateway_api;
+use linkerd_policy_controller_k8s_api::{gateway::tlsroutes as gateway, Time};
 use tracing::Level;
 
 use super::super::*;
@@ -49,8 +49,8 @@ fn backend_service() {
         let backend = policy
             .tls_routes
             .get(&GroupKindNamespaceName {
-                group: k8s_gateway_api::TlsRoute::group(&()),
-                kind: k8s_gateway_api::TlsRoute::kind(&()),
+                group: gateway::TLSRoute::group(&()),
+                kind: gateway::TLSRoute::kind(&()),
                 namespace: "ns".into(),
                 name: "route".into(),
             })
@@ -79,8 +79,8 @@ fn backend_service() {
         let backend = policy
             .tls_routes
             .get(&GroupKindNamespaceName {
-                group: k8s_gateway_api::TlsRoute::group(&()),
-                kind: k8s_gateway_api::TlsRoute::kind(&()),
+                group: gateway::TLSRoute::group(&()),
+                kind: gateway::TLSRoute::kind(&()),
                 namespace: "ns".into(),
                 name: "route".into(),
             })
@@ -140,8 +140,8 @@ fn backend_egress_network() {
         let backend = policy
             .tls_routes
             .get(&GroupKindNamespaceName {
-                group: k8s_gateway_api::TlsRoute::group(&()),
-                kind: k8s_gateway_api::TlsRoute::kind(&()),
+                group: gateway::TLSRoute::group(&()),
+                kind: gateway::TLSRoute::kind(&()),
                 namespace: "ns".into(),
                 name: "route".into(),
             })
@@ -169,8 +169,7 @@ fn mk_route(
     parent: impl ToString,
     backend_name: impl ToString,
     backend: super::BackendKind,
-) -> k8s_gateway_api::TlsRoute {
-    use k8s::{policy::httproute::*, Time};
+) -> gateway::TLSRoute {
     let (group, kind) = match backend {
         super::BackendKind::Service => ("core".to_string(), "Service".to_string()),
         super::BackendKind::Egress => {
@@ -178,60 +177,55 @@ fn mk_route(
         }
     };
 
-    k8s_gateway_api::TlsRoute {
+    gateway::TLSRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
             creation_timestamp: Some(Time(Utc::now())),
             ..Default::default()
         },
-        spec: k8s_gateway_api::TlsRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![ParentReference {
+        spec: gateway::TLSRouteSpec {
+            parent_refs: Some(vec![gateway::TLSRouteParentRefs {
+                group: Some(group.clone()),
+                kind: Some(kind.clone()),
+                namespace: Some(ns.to_string()),
+                name: parent.to_string(),
+                section_name: None,
+                port: Some(port.into()),
+            }]),
+            hostnames: None,
+            rules: vec![gateway::TLSRouteRules {
+                name: None,
+                backend_refs: Some(vec![gateway::TLSRouteRulesBackendRefs {
+                    weight: None,
+                    group: Some(group.clone()),
+                    kind: Some(kind.clone()),
+                    namespace: Some(ns.to_string()),
+                    name: backend_name.to_string(),
+                    port: Some(port.into()),
+                }]),
+            }],
+        },
+        status: Some(gateway::TLSRouteStatus {
+            parents: vec![gateway::TLSRouteStatusParents {
+                parent_ref: gateway::TLSRouteStatusParentsParentRef {
                     group: Some(group.clone()),
                     kind: Some(kind.clone()),
                     namespace: Some(ns.to_string()),
                     name: parent.to_string(),
                     section_name: None,
-                    port: Some(port),
+                    port: Some(port.into()),
+                },
+                controller_name: POLICY_CONTROLLER_NAME.to_string(),
+                conditions: Some(vec![k8s::Condition {
+                    last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
+                    message: "".to_string(),
+                    observed_generation: None,
+                    reason: "Accepted".to_string(),
+                    status: "True".to_string(),
+                    type_: "Accepted".to_string(),
                 }]),
-            },
-            hostnames: None,
-            rules: vec![k8s_gateway_api::TlsRouteRule {
-                backend_refs: vec![k8s_gateway_api::BackendRef {
-                    weight: None,
-                    inner: BackendObjectReference {
-                        group: Some(group.clone()),
-                        kind: Some(kind.clone()),
-                        namespace: Some(ns.to_string()),
-                        name: backend_name.to_string(),
-                        port: Some(port),
-                    },
-                }],
             }],
-        },
-        status: Some(k8s_gateway_api::TlsRouteStatus {
-            inner: RouteStatus {
-                parents: vec![k8s::gateway::RouteParentStatus {
-                    parent_ref: ParentReference {
-                        group: Some(group.clone()),
-                        kind: Some(kind.clone()),
-                        namespace: Some(ns.to_string()),
-                        name: parent.to_string(),
-                        section_name: None,
-                        port: Some(port),
-                    },
-                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![k8s::Condition {
-                        last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
-                        message: "".to_string(),
-                        observed_generation: None,
-                        reason: "Accepted".to_string(),
-                        status: "True".to_string(),
-                        type_: "Accepted".to_string(),
-                    }],
-                }],
-            },
         }),
     }
 }

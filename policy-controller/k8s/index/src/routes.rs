@@ -1,5 +1,5 @@
 use linkerd_policy_controller_core::routes::{GroupKindName, GroupKindNamespaceName, HostMatch};
-use linkerd_policy_controller_k8s_api::{gateway as api, policy, Resource, ResourceExt};
+use linkerd_policy_controller_k8s_api::{gateway, policy, Resource, ResourceExt};
 
 pub mod grpc;
 pub mod http;
@@ -7,7 +7,7 @@ pub mod http;
 #[derive(Debug, Clone)]
 pub(crate) enum HttpRouteResource {
     LinkerdHttp(policy::HttpRoute),
-    GatewayHttp(api::HttpRoute),
+    GatewayHttp(gateway::httproutes::HTTPRoute),
 }
 
 impl HttpRouteResource {
@@ -25,17 +25,17 @@ impl HttpRouteResource {
         }
     }
 
-    pub(crate) fn inner(&self) -> &api::CommonRouteSpec {
+    pub(crate) fn parent_refs(&self) -> &Option<Vec<gateway::httproutes::HTTPRouteParentRefs>> {
         match self {
-            Self::LinkerdHttp(route) => &route.spec.inner,
-            Self::GatewayHttp(route) => &route.spec.inner,
+            Self::LinkerdHttp(route) => &route.spec.parent_refs,
+            Self::GatewayHttp(route) => &route.spec.parent_refs,
         }
     }
 
-    pub(crate) fn status(&self) -> Option<&api::RouteStatus> {
+    pub(crate) fn status(&self) -> Option<&gateway::httproutes::HTTPRouteStatus> {
         match self {
             Self::LinkerdHttp(route) => route.status.as_ref().map(|status| &status.inner),
-            Self::GatewayHttp(route) => route.status.as_ref().map(|status| &status.inner),
+            Self::GatewayHttp(route) => route.status.as_ref().map(|status| status),
         }
     }
 
@@ -78,7 +78,7 @@ impl ExplicitGKN for str {
     }
 }
 
-pub fn host_match(hostname: api::Hostname) -> HostMatch {
+pub fn host_match(hostname: String) -> HostMatch {
     if hostname.starts_with("*.") {
         let mut reverse_labels = hostname
             .split('.')

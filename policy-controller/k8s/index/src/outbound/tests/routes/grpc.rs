@@ -4,7 +4,7 @@ use linkerd_policy_controller_core::{
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
-use linkerd_policy_controller_k8s_api::gateway as k8s_gateway_api;
+use linkerd_policy_controller_k8s_api::{gateway::grpcroutes as gateway, Time};
 use tracing::Level;
 
 use super::super::*;
@@ -49,8 +49,8 @@ fn backend_service() {
         let backend = policy
             .grpc_routes
             .get(&GroupKindNamespaceName {
-                group: k8s_gateway_api::GrpcRoute::group(&()),
-                kind: k8s_gateway_api::GrpcRoute::kind(&()),
+                group: gateway::GRPCRoute::group(&()),
+                kind: gateway::GRPCRoute::kind(&()),
                 namespace: "ns".into(),
                 name: "route".into(),
             })
@@ -81,8 +81,8 @@ fn backend_service() {
         let backend = policy
             .grpc_routes
             .get(&GroupKindNamespaceName {
-                group: k8s_gateway_api::GrpcRoute::group(&()),
-                kind: k8s_gateway_api::GrpcRoute::kind(&()),
+                group: gateway::GRPCRoute::group(&()),
+                kind: gateway::GRPCRoute::kind(&()),
                 namespace: "ns".into(),
                 name: "route".into(),
             })
@@ -144,8 +144,8 @@ fn backend_egress_network() {
         let backend = policy
             .grpc_routes
             .get(&GroupKindNamespaceName {
-                group: k8s_gateway_api::GrpcRoute::group(&()),
-                kind: k8s_gateway_api::GrpcRoute::kind(&()),
+                group: gateway::GRPCRoute::group(&()),
+                kind: gateway::GRPCRoute::kind(&()),
                 namespace: "ns".into(),
                 name: "route".into(),
             })
@@ -175,8 +175,7 @@ fn mk_route(
     parent: impl ToString,
     backend_name: impl ToString,
     backend: super::BackendKind,
-) -> k8s_gateway_api::GrpcRoute {
-    use k8s::{policy::httproute::*, Time};
+) -> gateway::GRPCRoute {
     let (group, kind) = match backend {
         super::BackendKind::Service => ("core".to_string(), "Service".to_string()),
         super::BackendKind::Egress => {
@@ -184,69 +183,66 @@ fn mk_route(
         }
     };
 
-    k8s_gateway_api::GrpcRoute {
+    gateway::GRPCRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
             creation_timestamp: Some(Time(Utc::now())),
             ..Default::default()
         },
-        spec: k8s_gateway_api::GrpcRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![ParentReference {
+        spec: gateway::GRPCRouteSpec {
+            parent_refs: Some(vec![gateway::GRPCRouteParentRefs {
+                group: Some(group.clone()),
+                kind: Some(kind.clone()),
+                namespace: Some(ns.to_string()),
+                name: parent.to_string(),
+                section_name: None,
+                port: Some(port.into()),
+            }]),
+            hostnames: None,
+            rules: Some(vec![gateway::GRPCRouteRules {
+                name: None,
+                matches: Some(vec![gateway::GRPCRouteRulesMatches {
+                    headers: None,
+                    method: Some(gateway::GRPCRouteRulesMatchesMethod {
+                        method: Some("Test".to_string()),
+                        service: Some("io.linkerd.Testing".to_string()),
+                        r#type: Some(gateway::GRPCRouteRulesMatchesMethodType::Exact),
+                    }),
+                }]),
+                filters: None,
+                backend_refs: Some(vec![gateway::GRPCRouteRulesBackendRefs {
+                    filters: None,
+                    weight: None,
+                    group: Some(group.clone()),
+                    kind: Some(kind.clone()),
+                    namespace: Some(ns.to_string()),
+                    name: backend_name.to_string(),
+                    port: Some(port.into()),
+                }]),
+                ..Default::default()
+            }]),
+        },
+        status: Some(gateway::GRPCRouteStatus {
+            parents: vec![gateway::GRPCRouteStatusParents {
+                parent_ref: gateway::GRPCRouteStatusParentsParentRef {
                     group: Some(group.clone()),
                     kind: Some(kind.clone()),
                     namespace: Some(ns.to_string()),
                     name: parent.to_string(),
                     section_name: None,
-                    port: Some(port),
+                    port: Some(port.into()),
+                },
+                controller_name: POLICY_CONTROLLER_NAME.to_string(),
+                conditions: Some(vec![k8s::Condition {
+                    last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
+                    message: "".to_string(),
+                    observed_generation: None,
+                    reason: "Accepted".to_string(),
+                    status: "True".to_string(),
+                    type_: "Accepted".to_string(),
                 }]),
-            },
-            hostnames: None,
-            rules: Some(vec![k8s_gateway_api::GrpcRouteRule {
-                matches: Some(vec![k8s_gateway_api::GrpcRouteMatch {
-                    headers: None,
-                    method: Some(k8s_gateway_api::GrpcMethodMatch::Exact {
-                        method: Some("Test".to_string()),
-                        service: Some("io.linkerd.Testing".to_string()),
-                    }),
-                }]),
-                filters: None,
-                backend_refs: Some(vec![k8s_gateway_api::GrpcRouteBackendRef {
-                    filters: None,
-                    weight: None,
-                    inner: BackendObjectReference {
-                        group: Some(group.clone()),
-                        kind: Some(kind.clone()),
-                        namespace: Some(ns.to_string()),
-                        name: backend_name.to_string(),
-                        port: Some(port),
-                    },
-                }]),
-            }]),
-        },
-        status: Some(k8s_gateway_api::GrpcRouteStatus {
-            inner: RouteStatus {
-                parents: vec![k8s::gateway::RouteParentStatus {
-                    parent_ref: ParentReference {
-                        group: Some(group.clone()),
-                        kind: Some(kind.clone()),
-                        namespace: Some(ns.to_string()),
-                        name: parent.to_string(),
-                        section_name: None,
-                        port: Some(port),
-                    },
-                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![k8s::Condition {
-                        last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
-                        message: "".to_string(),
-                        observed_generation: None,
-                        reason: "Accepted".to_string(),
-                        status: "True".to_string(),
-                        type_: "Accepted".to_string(),
-                    }],
-                }],
-            },
+            }],
         }),
     }
 }

@@ -11,7 +11,7 @@ pub mod web;
 
 use kube::runtime::wait::Condition;
 use linkerd_policy_controller_k8s_api::{
-    self as k8s,
+    self as k8s, gateway,
     policy::{httproute::ParentReference, EgressNetwork, TrafficPolicy},
     ResourceExt,
 };
@@ -623,7 +623,7 @@ pub fn assert_resource_meta(
 pub fn mk_route(
     ns: &str,
     name: &str,
-    parent_refs: Option<Vec<k8s::policy::httproute::ParentReference>>,
+    parent_refs: Option<Vec<k8s::policy::httproute::HTTPRouteParentRefs>>,
 ) -> k8s::policy::HttpRoute {
     use k8s::policy::httproute as api;
     api::HttpRoute {
@@ -633,7 +633,7 @@ pub fn mk_route(
             ..Default::default()
         },
         spec: api::HttpRouteSpec {
-            inner: api::CommonRouteSpec { parent_refs },
+            parent_refs,
             hostnames: None,
             rules: Some(vec![]),
         },
@@ -642,15 +642,17 @@ pub fn mk_route(
 }
 
 pub fn find_route_condition<'a>(
-    statuses: impl IntoIterator<Item = &'a k8s_gateway_api::RouteParentStatus>,
+    statuses: impl IntoIterator<Item = &'a gateway::httproutes::HTTPRouteStatus>,
     parent_name: &'static str,
 ) -> Option<&'a k8s::Condition> {
     statuses
         .into_iter()
-        .find(|route_status| route_status.parent_ref.name == parent_name)
+        .flat_map(|status| status.parents.iter())
+        .find(|parent| parent.parent_ref.name == parent_name)
         .expect("route must have at least one status set")
         .conditions
         .iter()
+        .flatten()
         .find(|cond| cond.type_ == "Accepted")
 }
 

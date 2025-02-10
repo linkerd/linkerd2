@@ -12,35 +12,6 @@ mod http;
 mod tcp;
 mod tls;
 
-fn make_parent_status(
-    namespace: impl ToString,
-    name: impl ToString,
-    type_: impl ToString,
-    status: impl ToString,
-    reason: impl ToString,
-) -> k8s_gateway_api::RouteParentStatus {
-    let condition = k8s_core_api::Condition {
-        message: "".to_string(),
-        type_: type_.to_string(),
-        observed_generation: None,
-        reason: reason.to_string(),
-        status: status.to_string(),
-        last_transition_time: k8s_core_api::Time(DateTime::<Utc>::MIN_UTC),
-    };
-    k8s_gateway_api::RouteParentStatus {
-        conditions: vec![condition],
-        parent_ref: k8s_gateway_api::ParentReference {
-            port: None,
-            section_name: None,
-            name: name.to_string(),
-            kind: Some("Server".to_string()),
-            namespace: Some(namespace.to_string()),
-            group: Some(POLICY_API_GROUP.to_string()),
-        },
-        controller_name: POLICY_CONTROLLER_NAME.to_string(),
-    }
-}
-
 fn make_service(
     namespace: impl ToString,
     name: impl ToString,

@@ -66,7 +66,7 @@ fn target(t: LocalTargetRef) -> Result<Target> {
         t if t.targets_kind::<k8s::policy::Server>() => Ok(Target::Server(t.name)),
         t if t.targets_kind::<k8s::Namespace>() => Ok(Target::Namespace),
         t if t.targets_kind::<k8s::policy::HttpRoute>()
-            || t.targets_kind::<k8s_gateway_api::HttpRoute>() =>
+            || t.targets_kind::<k8s_gateway_api::httproutes::HTTPRoute>() =>
         {
             Ok(Target::HttpRoute(GroupKindName {
                 group: t.group.unwrap_or_default().into(),
@@ -74,7 +74,7 @@ fn target(t: LocalTargetRef) -> Result<Target> {
                 name: t.name.into(),
             }))
         }
-        t if t.targets_kind::<k8s_gateway_api::GrpcRoute>() => {
+        t if t.targets_kind::<k8s_gateway_api::grpcroutes::GRPCRoute>() => {
             Ok(Target::GrpcRoute(GroupKindName {
                 group: t.group.unwrap_or_default().into(),
                 kind: t.kind.into(),

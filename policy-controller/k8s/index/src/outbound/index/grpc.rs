@@ -1,20 +1,25 @@
+use std::num::NonZeroU16;
 use std::time;
 
-use super::http::{convert_backend, convert_gateway_filter};
-use super::{parse_duration, parse_timeouts, ResourceInfo, ResourceRef};
+use super::{
+    parse_duration, parse_timeouts, ResourceInfo, ResourceKind, ResourcePort, ResourceRef,
+};
 use crate::{routes, ClusterInfo};
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Result};
 use kube::ResourceExt;
 use linkerd_policy_controller_core::outbound::{
-    GrpcRetryCondition, GrpcRoute, OutboundRoute, RouteRetry, RouteTimeouts,
+    Backend, Filter, GrpcRetryCondition, GrpcRoute, OutboundRoute, RouteRetry, RouteTimeouts,
+    WeightedEgressNetwork, WeightedService,
 };
 use linkerd_policy_controller_core::{outbound::OutboundRouteRule, routes::GrpcRouteMatch};
-use linkerd_policy_controller_k8s_api::{gateway, Time};
+use linkerd_policy_controller_k8s_api::{
+    gateway::grpcroutes as gateway, policy, Resource, Service, Time,
+};
 
 pub(super) fn convert_route(
     ns: &str,
-    route: gateway::GrpcRoute,
+    route: gateway::GRPCRoute,
     cluster: &ClusterInfo,
     resource_info: &HashMap<ResourceRef, ResourceInfo>,
 ) -> Result<GrpcRoute> {
@@ -57,7 +62,7 @@ pub(super) fn convert_route(
 
 fn convert_rule(
     ns: &str,
-    rule: gateway::GrpcRouteRule,
+    rule: gateway::GRPCRouteRules,
     cluster: &ClusterInfo,
     resource_info: &HashMap<ResourceRef, ResourceInfo>,
     timeouts: RouteTimeouts,
@@ -81,7 +86,7 @@ fn convert_rule(
         .filters
         .into_iter()
         .flatten()
-        .map(convert_gateway_filter)
+        .map(convert_filter)
         .collect::<Result<_>>()?;
 
     Ok(OutboundRouteRule {
@@ -91,6 +96,131 @@ fn convert_rule(
         retry,
         filters,
     })
+}
+
+pub(super) fn convert_backend(
+    ns: &str,
+    backend: gateway::GRPCRouteRulesBackendRefs,
+    cluster: &ClusterInfo,
+    resources: &HashMap<ResourceRef, ResourceInfo>,
+) -> Option<Backend> {
+    let backend_kind = match backend_kind(&backend) {
+        Some(backend_kind) => backend_kind,
+        None => {
+            return Some(Backend::Invalid {
+                weight: backend.weight.unwrap_or(1) as u32,
+                message: format!(
+                    "unsupported backend type {group} {kind}",
+                    group = backend.group.as_deref().unwrap_or("core"),
+                    kind = backend.kind.as_deref().unwrap_or("<empty>"),
+                ),
+            });
+        }
+    };
+
+    let filters = backend.filters;
+
+    let backend_ref = ResourceRef {
+        name: backend.name.clone(),
+        namespace: backend.namespace.unwrap_or_else(|| ns.to_string()),
+        kind: backend_kind.clone(),
+    };
+
+    let name = backend.name;
+    let weight = backend.weight.unwrap_or(1) as u32;
+
+    let filters = match filters
+        .into_iter()
+        .flatten()
+        .map(convert_backend_filter)
+        .collect::<Result<_>>()
+    {
+        Ok(filters) => filters,
+        Err(error) => {
+            return Some(Backend::Invalid {
+                weight: backend.weight.unwrap_or(1) as u32,
+                message: format!("unsupported backend filter: {error}"),
+            });
+        }
+    };
+
+    let port = backend
+        .port
+        .and_then(|p| p.try_into().ok())
+        .and_then(|p: u16| NonZeroU16::try_from(p).ok());
+
+    match backend_kind {
+        ResourceKind::Service => {
+            // The gateway API dictates:
+            //
+            // Port is required when the referent is a Kubernetes Service.
+            let port = match port {
+                Some(port) => port,
+                None => {
+                    return Some(Backend::Invalid {
+                        weight,
+                        message: format!("missing port for backend Service {name}"),
+                    })
+                }
+            };
+
+            Some(Backend::Service(WeightedService {
+                weight: weight as u32,
+                authority: cluster.service_dns_authority(&backend_ref.namespace, &name, port),
+                name,
+                namespace: backend_ref.namespace.to_string(),
+                port,
+                filters,
+                exists: resources.contains_key(&backend_ref),
+            }))
+        }
+        ResourceKind::EgressNetwork => Some(Backend::EgressNetwork(WeightedEgressNetwork {
+            weight: weight.into(),
+            name,
+            namespace: backend_ref.namespace.to_string(),
+            port,
+            filters,
+            exists: resources.contains_key(&backend_ref),
+        })),
+    }
+}
+
+pub(crate) fn convert_filter(filter: gateway::GRPCRouteRulesFilters) -> Result<Filter> {
+    if let Some(request_header_modifier) = filter.request_header_modifier {
+        let filter = routes::grpc::request_header_modifier(request_header_modifier)?;
+        return Ok(Filter::RequestHeaderModifier(filter));
+    }
+    if let Some(response_header_modifier) = filter.response_header_modifier {
+        let filter = routes::grpc::response_header_modifier(response_header_modifier)?;
+        return Ok(Filter::ResponseHeaderModifier(filter));
+    }
+    if let Some(_request_mirror) = filter.request_mirror {
+        bail!("RequestMirror filter is not supported")
+    }
+    if let Some(_extension_ref) = filter.extension_ref {
+        bail!("ExtensionRef filter is not supported")
+    }
+    bail!("unknown filter")
+}
+
+pub(crate) fn convert_backend_filter(
+    filter: gateway::GRPCRouteRulesBackendRefsFilters,
+) -> Result<Filter> {
+    if let Some(request_header_modifier) = filter.request_header_modifier {
+        let filter = routes::grpc::backend_request_header_modifier(request_header_modifier)?;
+        return Ok(Filter::RequestHeaderModifier(filter));
+    }
+    if let Some(response_header_modifier) = filter.response_header_modifier {
+        let filter = routes::grpc::backend_response_header_modifier(response_header_modifier)?;
+        return Ok(Filter::ResponseHeaderModifier(filter));
+    }
+    if let Some(_request_mirror) = filter.request_mirror {
+        bail!("RequestMirror filter is not supported")
+    }
+    if let Some(_extension_ref) = filter.extension_ref {
+        bail!("ExtensionRef filter is not supported")
+    }
+    bail!("unknown filter")
 }
 
 pub fn parse_grpc_retry(
@@ -143,4 +273,85 @@ pub fn parse_grpc_retry(
         timeout,
         conditions,
     }))
+}
+
+pub(super) fn route_accepted_by_resource_port(
+    route_status: Option<&gateway::GRPCRouteStatus>,
+    resource_port: &ResourcePort,
+) -> bool {
+    let (kind, group) = match resource_port.kind {
+        ResourceKind::Service => (Service::kind(&()), Service::group(&())),
+        ResourceKind::EgressNetwork => (
+            policy::EgressNetwork::kind(&()),
+            policy::EgressNetwork::group(&()),
+        ),
+    };
+    let mut group = &*group;
+    if group.is_empty() {
+        group = "core";
+    }
+    route_status
+        .map(|status| status.parents.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .any(|parent_status| {
+            let port_matches = match parent_status.parent_ref.port {
+                Some(port) => port == resource_port.port.get() as i32,
+                None => true,
+            };
+            let mut parent_group = parent_status.parent_ref.group.as_deref().unwrap_or("core");
+            if parent_group.is_empty() {
+                parent_group = "core";
+            }
+            resource_port.name == parent_status.parent_ref.name
+                && Some(kind.as_ref()) == parent_status.parent_ref.kind.as_deref()
+                && group == parent_group
+                && port_matches
+                && parent_status
+                    .conditions
+                    .iter()
+                    .flatten()
+                    .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
+        })
+}
+
+pub fn route_accepted_by_service(
+    route_status: Option<&gateway::GRPCRouteStatus>,
+    service: &str,
+) -> bool {
+    let mut service_group = &*Service::group(&());
+    if service_group.is_empty() {
+        service_group = "core";
+    }
+    route_status
+        .map(|status| status.parents.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .any(|parent_status| {
+            let mut parent_group = parent_status.parent_ref.group.as_deref().unwrap_or("core");
+            if parent_group.is_empty() {
+                parent_group = "core";
+            }
+            parent_status.parent_ref.name == service
+                && parent_status.parent_ref.kind.as_deref() == Some(Service::kind(&()).as_ref())
+                && parent_group == service_group
+                && parent_status
+                    .conditions
+                    .iter()
+                    .flatten()
+                    .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
+        })
+}
+
+pub(crate) fn backend_kind(backend: &gateway::GRPCRouteRulesBackendRefs) -> Option<ResourceKind> {
+    let group = backend.group.as_deref();
+    // Backends default to `Service` if no kind is specified.
+    let kind = backend.kind.as_deref().unwrap_or("Service");
+    if super::is_service(group, kind) {
+        Some(ResourceKind::Service)
+    } else if super::is_egress_network(group, kind) {
+        Some(ResourceKind::EgressNetwork)
+    } else {
+        None
+    }
 }

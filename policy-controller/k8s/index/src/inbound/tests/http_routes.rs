@@ -4,7 +4,12 @@ use linkerd_policy_controller_core::{
     routes::{HttpRouteMatch, Method, PathMatch},
     POLICY_CONTROLLER_NAME,
 };
-use linkerd_policy_controller_k8s_api::policy;
+use linkerd_policy_controller_k8s_api::{
+    gateway::httproutes::{
+        HTTPRouteRulesMatchesMethod, HTTPRouteRulesMatchesPath, HTTPRouteRulesMatchesPathType,
+    },
+    policy,
+};
 
 const POLICY_API_GROUP: &str = "policy.linkerd.io";
 
@@ -221,25 +226,24 @@ fn mk_route(
             ..Default::default()
         },
         spec: HttpRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![ParentReference {
-                    group: Some(POLICY_API_GROUP.to_string()),
-                    kind: Some("Server".to_string()),
-                    namespace: None,
-                    name: server.to_string(),
-                    section_name: None,
-                    port: None,
-                }]),
-            },
+            parent_refs: Some(vec![HTTPRouteParentRefs {
+                group: Some(POLICY_API_GROUP.to_string()),
+                kind: Some("Server".to_string()),
+                namespace: None,
+                name: server.to_string(),
+                section_name: None,
+                port: None,
+            }]),
             hostnames: None,
             rules: Some(vec![HttpRouteRule {
-                matches: Some(vec![HttpRouteMatch {
-                    path: Some(HttpPathMatch::PathPrefix {
-                        value: "/foo/bar".to_string(),
+                matches: Some(vec![HTTPRouteRulesMatches {
+                    path: Some(HTTPRouteRulesMatchesPath {
+                        value: Some("/foo/bar".to_string()),
+                        r#type: Some(HTTPRouteRulesMatchesPathType::PathPrefix),
                     }),
                     headers: None,
                     query_params: None,
-                    method: Some("GET".to_string()),
+                    method: Some(HTTPRouteRulesMatchesMethod::Get),
                 }]),
                 filters: None,
                 backend_refs: None,
@@ -247,9 +251,9 @@ fn mk_route(
             }]),
         },
         status: Some(k8s::policy::httproute::HttpRouteStatus {
-            inner: k8s::gateway::RouteStatus {
-                parents: vec![k8s::gateway::RouteParentStatus {
-                    parent_ref: k8s::gateway::ParentReference {
+            inner: k8s::gateway::httproutes::HTTPRouteStatus {
+                parents: vec![k8s::gateway::httproutes::HTTPRouteStatusParents {
+                    parent_ref: k8s::gateway::httproutes::HTTPRouteStatusParentsParentRef {
                         group: Some(POLICY_API_GROUP.to_string()),
                         kind: Some("Server".to_string()),
                         namespace: None,
@@ -258,14 +262,14 @@ fn mk_route(
                         port: None,
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![k8s::Condition {
+                    conditions: Some(vec![k8s::Condition {
                         last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
                         message: "".to_string(),
                         observed_generation: None,
                         reason: "Accepted".to_string(),
                         status: "True".to_string(),
                         type_: "Accepted".to_string(),
-                    }],
+                    }]),
                 }],
             },
         }),

@@ -1,4 +1,3 @@
-use super::make_parent_status;
 use crate::{
     index::{
         accepted, backend_not_found, invalid_backend_kind, no_matching_parent, resolved_refs,
@@ -12,11 +11,39 @@ use chrono::{DateTime, Utc};
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{routes::GroupKindName, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{
-    self as k8s_core_api, gateway as k8s_gateway_api, policy as linkerd_k8s_api, Resource,
-    ResourceExt,
+    self as k8s, gateway::grpcroutes as gateway, policy, Resource, ResourceExt,
 };
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
+
+fn make_parent_status(
+    namespace: impl ToString,
+    name: impl ToString,
+    type_: impl ToString,
+    status: impl ToString,
+    reason: impl ToString,
+) -> gateway::GRPCRouteStatusParents {
+    let condition = k8s::Condition {
+        message: "".to_string(),
+        type_: type_.to_string(),
+        observed_generation: None,
+        reason: reason.to_string(),
+        status: status.to_string(),
+        last_transition_time: k8s::Time(DateTime::<Utc>::MIN_UTC),
+    };
+    gateway::GRPCRouteStatusParents {
+        conditions: Some(vec![condition]),
+        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+            port: None,
+            section_name: None,
+            name: name.to_string(),
+            kind: Some("Server".to_string()),
+            namespace: Some(namespace.to_string()),
+            group: Some(POLICY_API_GROUP.to_string()),
+        },
+        controller_name: POLICY_CONTROLLER_NAME.to_string(),
+    }
+}
 
 #[test]
 fn route_with_valid_service_backends() {
@@ -48,7 +75,7 @@ fn route_with_valid_service_backends() {
     index.write().apply(backend2.clone());
 
     // Apply the route.
-    let parent = k8s_gateway_api::ParentReference {
+    let parent = gateway::GRPCRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -59,8 +86,8 @@ fn route_with_valid_service_backends() {
     let id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::GrpcRoute::group(&()),
-            kind: k8s_gateway_api::GrpcRoute::kind(&()),
+            group: gateway::GRPCRoute::group(&()),
+            kind: gateway::GRPCRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
@@ -68,25 +95,21 @@ fn route_with_valid_service_backends() {
         &id,
         parent.clone(),
         Some(vec![
-            k8s_gateway_api::GrpcRouteBackendRef {
-                inner: k8s_gateway_api::BackendObjectReference {
-                    group: Some("core".to_string()),
-                    kind: Some("Service".to_string()),
-                    name: backend1.name_unchecked(),
-                    namespace: backend1.namespace(),
-                    port: Some(8080),
-                },
+            gateway::GRPCRouteRulesBackendRefs {
+                group: Some("core".to_string()),
+                kind: Some("Service".to_string()),
+                name: backend1.name_unchecked(),
+                namespace: backend1.namespace(),
+                port: Some(8080),
                 weight: None,
                 filters: None,
             },
-            k8s_gateway_api::GrpcRouteBackendRef {
-                inner: k8s_gateway_api::BackendObjectReference {
-                    group: Some("core".to_string()),
-                    kind: Some("Service".to_string()),
-                    name: backend2.name_unchecked(),
-                    namespace: backend2.namespace(),
-                    port: Some(8080),
-                },
+            gateway::GRPCRouteRulesBackendRefs {
+                group: Some("core".to_string()),
+                kind: Some("Service".to_string()),
+                name: backend2.name_unchecked(),
+                namespace: backend2.namespace(),
+                port: Some(8080),
                 filters: None,
                 weight: None,
             },
@@ -98,10 +121,17 @@ fn route_with_valid_service_backends() {
     let accepted_condition = accepted();
     // All backends exist and can be resolved.
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent,
+    let parent_status = gateway::GRPCRouteStatusParents {
+        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+            group: Some("core".to_string()),
+            kind: Some("Service".to_string()),
+            namespace: parent.namespace,
+            name: parent.name,
+            section_name: None,
+            port: Some(8080),
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
     let status = make_status(vec![parent_status]);
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -145,15 +175,15 @@ fn route_with_valid_egress_network_backend() {
     let id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::GrpcRoute::group(&()),
-            kind: k8s_gateway_api::GrpcRoute::kind(&()),
+            group: gateway::GRPCRoute::group(&()),
+            kind: gateway::GRPCRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
     let route = make_route(
         &id,
         parent.clone(),
-        Some(vec![k8s_gateway_api::GrpcRouteBackendRef {
+        Some(vec![gateway::GRPCRouteRulesBackendRefs {
             inner: k8s_gateway_api::BackendObjectReference {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("EgressNetwork".to_string()),
@@ -171,7 +201,7 @@ fn route_with_valid_egress_network_backend() {
     let accepted_condition = accepted();
     // All backends exist and can be resolved.
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
+    let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: parent,
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![accepted_condition, backend_condition],
@@ -222,8 +252,8 @@ fn route_with_invalid_service_backend() {
     let id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::GrpcRoute::group(&()),
-            kind: k8s_gateway_api::GrpcRoute::kind(&()),
+            group: gateway::GRPCRoute::group(&()),
+            kind: gateway::GRPCRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
@@ -231,7 +261,7 @@ fn route_with_invalid_service_backend() {
         &id,
         parent.clone(),
         Some(vec![
-            k8s_gateway_api::GrpcRouteBackendRef {
+            gateway::GRPCRouteRulesBackendRefs {
                 inner: k8s_gateway_api::BackendObjectReference {
                     group: Some("core".to_string()),
                     kind: Some("Service".to_string()),
@@ -242,7 +272,7 @@ fn route_with_invalid_service_backend() {
                 filters: None,
                 weight: None,
             },
-            k8s_gateway_api::GrpcRouteBackendRef {
+            gateway::GRPCRouteRulesBackendRefs {
                 inner: k8s_gateway_api::BackendObjectReference {
                     group: Some("core".to_string()),
                     kind: Some("Service".to_string()),
@@ -261,7 +291,7 @@ fn route_with_invalid_service_backend() {
     let accepted_condition = accepted();
     // One of the backends does not exist so the status should be BackendNotFound.
     let backend_condition = backend_not_found();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
+    let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: parent,
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![accepted_condition, backend_condition],
@@ -312,15 +342,15 @@ fn route_with_egress_network_backend_different_from_parent() {
     let id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::GrpcRoute::group(&()),
-            kind: k8s_gateway_api::GrpcRoute::kind(&()),
+            group: gateway::GRPCRoute::group(&()),
+            kind: gateway::GRPCRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
     let route = make_route(
         &id,
         parent.clone(),
-        Some(vec![k8s_gateway_api::GrpcRouteBackendRef {
+        Some(vec![gateway::GRPCRouteRulesBackendRefs {
             inner: k8s_gateway_api::BackendObjectReference {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("EgressNetwork".to_string()),
@@ -339,7 +369,7 @@ fn route_with_egress_network_backend_different_from_parent() {
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
     );
-    let parent_status = k8s_gateway_api::RouteParentStatus {
+    let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: parent,
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![accepted_condition, backend_condition],
@@ -390,15 +420,15 @@ fn route_with_egress_network_backend_and_service_parent() {
     let id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::GrpcRoute::group(&()),
-            kind: k8s_gateway_api::GrpcRoute::kind(&()),
+            group: gateway::GRPCRoute::group(&()),
+            kind: gateway::GRPCRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
     let route = make_route(
         &id,
         parent.clone(),
-        Some(vec![k8s_gateway_api::GrpcRouteBackendRef {
+        Some(vec![gateway::GRPCRouteRulesBackendRefs {
             inner: k8s_gateway_api::BackendObjectReference {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("EgressNetwork".to_string()),
@@ -417,7 +447,7 @@ fn route_with_egress_network_backend_and_service_parent() {
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
     );
-    let parent_status = k8s_gateway_api::RouteParentStatus {
+    let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: parent,
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![accepted_condition, backend_condition],
@@ -468,15 +498,15 @@ fn route_with_egress_network_parent_and_service_backend() {
     let id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::GrpcRoute::group(&()),
-            kind: k8s_gateway_api::GrpcRoute::kind(&()),
+            group: gateway::GRPCRoute::group(&()),
+            kind: gateway::GRPCRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
     let route = make_route(
         &id,
         parent.clone(),
-        Some(vec![k8s_gateway_api::GrpcRouteBackendRef {
+        Some(vec![gateway::GRPCRouteRulesBackendRefs {
             inner: k8s_gateway_api::BackendObjectReference {
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
@@ -493,7 +523,7 @@ fn route_with_egress_network_parent_and_service_backend() {
     // Create the expected update.
     let accepted_condition = accepted();
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
+    let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: parent,
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![accepted_condition, backend_condition],
@@ -529,8 +559,8 @@ fn route_accepted_after_server_create() {
         namespace: "ns-0".to_string(),
         gkn: GroupKindName {
             name: "route-foo".into(),
-            kind: k8s_gateway_api::GrpcRoute::kind(&()),
-            group: k8s_gateway_api::GrpcRoute::group(&()),
+            kind: gateway::GRPCRoute::kind(&()),
+            group: gateway::GRPCRoute::group(&()),
         },
     };
     let parent = k8s_gateway_api::ParentReference {
@@ -609,8 +639,8 @@ fn route_accepted_after_egress_network_create() {
     let id = NamespaceGroupKindName {
         namespace: "ns-0".to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::GrpcRoute::group(&()),
-            kind: k8s_gateway_api::GrpcRoute::kind(&()),
+            group: gateway::GRPCRoute::group(&()),
+            kind: gateway::GRPCRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
@@ -630,7 +660,7 @@ fn route_accepted_after_egress_network_create() {
     // Create the expected update.
     let accepted_condition = no_matching_parent();
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
+    let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: parent.clone(),
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![accepted_condition, backend_condition.clone()],
@@ -651,7 +681,7 @@ fn route_accepted_after_egress_network_create() {
 
     // Create the expected update.
     let accepted_condition = accepted();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
+    let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: parent,
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![accepted_condition, backend_condition],
@@ -703,8 +733,8 @@ fn route_rejected_after_server_delete() {
         namespace: "ns-0".to_string(),
         gkn: GroupKindName {
             name: "route-foo".into(),
-            kind: k8s_gateway_api::GrpcRoute::kind(&()),
-            group: k8s_gateway_api::GrpcRoute::group(&()),
+            kind: gateway::GRPCRoute::kind(&()),
+            group: gateway::GRPCRoute::group(&()),
         },
     };
     let parent = k8s_gateway_api::ParentReference {
@@ -782,8 +812,8 @@ fn route_rejected_after_egress_network_delete() {
     let id = NamespaceGroupKindName {
         namespace: "ns-0".to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::GrpcRoute::group(&()),
-            kind: k8s_gateway_api::GrpcRoute::kind(&()),
+            group: gateway::GRPCRoute::group(&()),
+            kind: gateway::GRPCRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
@@ -803,7 +833,7 @@ fn route_rejected_after_egress_network_delete() {
     // Create the expected update.
     let accepted_condition = accepted();
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
+    let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: parent.clone(),
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![accepted_condition, backend_condition.clone()],
@@ -829,7 +859,7 @@ fn route_rejected_after_egress_network_delete() {
 
     // Create the expected update.
     let rejected_condition = no_matching_parent();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
+    let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: parent.clone(),
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![rejected_condition, backend_condition.clone()],
@@ -880,23 +910,21 @@ fn service_route_type_conflict() {
     let http_id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::HttpRoute::group(&()),
-            kind: k8s_gateway_api::HttpRoute::kind(&()),
+            group: gateway::HTTPRoute::group(&()),
+            kind: gateway::HTTPRoute::kind(&()),
             name: "httproute-foo".into(),
         },
     };
-    let http_route = k8s_gateway_api::HttpRoute {
+    let http_route = gateway::HTTPRoute {
         status: None,
-        metadata: k8s_core_api::ObjectMeta {
+        metadata: k8s::ObjectMeta {
             name: Some(http_id.gkn.name.to_string()),
             namespace: Some(http_id.namespace.clone()),
-            creation_timestamp: Some(k8s_core_api::Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(Utc::now())),
             ..Default::default()
         },
-        spec: k8s_gateway_api::HttpRouteSpec {
-            inner: k8s_gateway_api::CommonRouteSpec {
-                parent_refs: Some(vec![parent.clone()]),
-            },
+        spec: gateway::HTTPRouteSpec {
+            parent_refs: Some(vec![parent.clone()]),
             hostnames: None,
             rules: Some(vec![]),
         },
@@ -907,7 +935,7 @@ fn service_route_type_conflict() {
     let accepted_condition = accepted();
     // No backends were specified, so we have vacuously resolved them all.
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
+    let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: parent.clone(),
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![accepted_condition.clone(), backend_condition.clone()],
@@ -922,8 +950,8 @@ fn service_route_type_conflict() {
     let grpc_id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::GrpcRoute::group(&()),
-            kind: k8s_gateway_api::GrpcRoute::kind(&()),
+            group: gateway::GRPCRoute::group(&()),
+            kind: gateway::GRPCRoute::kind(&()),
             name: "grpcroute-foo".into(),
         },
     };
@@ -933,9 +961,9 @@ fn service_route_type_conflict() {
     // Two expected updates: HTTPRoute should be rejected and GRPCRoute should be accepted
     for _ in 0..2 {
         let update = updates_rx.try_recv().unwrap();
-        if update.id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&()) {
+        if update.id.gkn.kind == gateway::HTTPRoute::kind(&()) {
             let conflict_condition = route_conflicted();
-            let parent_status = k8s_gateway_api::RouteParentStatus {
+            let parent_status = gateway::GRPCRouteStatusParents {
                 parent_ref: parent.clone(),
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
                 conditions: vec![conflict_condition, backend_condition.clone()],
@@ -944,7 +972,7 @@ fn service_route_type_conflict() {
             let patch = crate::index::make_patch(&http_id, status).unwrap();
             assert_eq!(patch, update.patch);
         } else {
-            let parent_status = k8s_gateway_api::RouteParentStatus {
+            let parent_status = gateway::GRPCRouteStatusParents {
                 parent_ref: parent.clone(),
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
                 conditions: vec![accepted_condition.clone(), backend_condition.clone()],
@@ -993,20 +1021,20 @@ fn egress_network_route_type_conflict() {
     let http_id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::HttpRoute::group(&()),
-            kind: k8s_gateway_api::HttpRoute::kind(&()),
+            group: gateway::HTTPRoute::group(&()),
+            kind: gateway::HTTPRoute::kind(&()),
             name: "httproute-foo".into(),
         },
     };
-    let http_route = k8s_gateway_api::HttpRoute {
+    let http_route = gateway::HTTPRoute {
         status: None,
-        metadata: k8s_core_api::ObjectMeta {
+        metadata: k8s::ObjectMeta {
             name: Some(http_id.gkn.name.to_string()),
             namespace: Some(http_id.namespace.clone()),
-            creation_timestamp: Some(k8s_core_api::Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(Utc::now())),
             ..Default::default()
         },
-        spec: k8s_gateway_api::HttpRouteSpec {
+        spec: gateway::HTTPRouteSpec {
             inner: k8s_gateway_api::CommonRouteSpec {
                 parent_refs: Some(vec![parent.clone()]),
             },
@@ -1020,7 +1048,7 @@ fn egress_network_route_type_conflict() {
     let accepted_condition = accepted();
     // No backends were specified, so we have vacuously resolved them all.
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
+    let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: parent.clone(),
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![accepted_condition.clone(), backend_condition.clone()],
@@ -1035,8 +1063,8 @@ fn egress_network_route_type_conflict() {
     let grpc_id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::GrpcRoute::group(&()),
-            kind: k8s_gateway_api::GrpcRoute::kind(&()),
+            group: gateway::GRPCRoute::group(&()),
+            kind: gateway::GRPCRoute::kind(&()),
             name: "grpcroute-foo".into(),
         },
     };
@@ -1046,9 +1074,9 @@ fn egress_network_route_type_conflict() {
     // Two expected updates: HTTPRoute should be rejected and GRPCRoute should be accepted
     for _ in 0..2 {
         let update = updates_rx.try_recv().unwrap();
-        if update.id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&()) {
+        if update.id.gkn.kind == gateway::HTTPRoute::kind(&()) {
             let conflict_condition = route_conflicted();
-            let parent_status = k8s_gateway_api::RouteParentStatus {
+            let parent_status = gateway::GRPCRouteStatusParents {
                 parent_ref: parent.clone(),
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
                 conditions: vec![conflict_condition, backend_condition.clone()],
@@ -1057,7 +1085,7 @@ fn egress_network_route_type_conflict() {
             let patch = crate::index::make_patch(&http_id, status).unwrap();
             assert_eq!(patch, update.patch);
         } else {
-            let parent_status = k8s_gateway_api::RouteParentStatus {
+            let parent_status = gateway::GRPCRouteStatusParents {
                 parent_ref: parent.clone(),
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
                 conditions: vec![accepted_condition.clone(), backend_condition.clone()],
@@ -1074,26 +1102,26 @@ fn egress_network_route_type_conflict() {
 
 fn make_route(
     id: &NamespaceGroupKindName,
-    parent: k8s_gateway_api::ParentReference,
-    backends: Option<Vec<k8s_gateway_api::GrpcRouteBackendRef>>,
-) -> k8s_gateway_api::GrpcRoute {
-    k8s_gateway_api::GrpcRoute {
+    parent: gateway::GRPCRouteParentRefs,
+    backends: Option<Vec<gateway::GRPCRouteRulesBackendRefs>>,
+) -> gateway::GRPCRoute {
+    gateway::GRPCRoute {
         status: None,
-        metadata: k8s_core_api::ObjectMeta {
+        metadata: k8s::ObjectMeta {
             name: Some(id.gkn.name.to_string()),
             namespace: Some(id.namespace.clone()),
-            creation_timestamp: Some(k8s_core_api::Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(Utc::now())),
             ..Default::default()
         },
-        spec: k8s_gateway_api::GrpcRouteSpec {
+        spec: gateway::GRPCRouteSpec {
             inner: k8s_gateway_api::CommonRouteSpec {
                 parent_refs: Some(vec![parent]),
             },
             hostnames: None,
-            rules: Some(vec![k8s_gateway_api::GrpcRouteRule {
+            rules: Some(vec![gateway::GRPCRouteRule {
                 filters: None,
                 backend_refs: backends,
-                matches: Some(vec![k8s_gateway_api::GrpcRouteMatch {
+                matches: Some(vec![gateway::GRPCRouteMatch {
                     headers: None,
                     method: Some(k8s_gateway_api::GrpcMethodMatch::Exact {
                         method: Some("MakeRoute".to_string()),
@@ -1105,10 +1133,8 @@ fn make_route(
     }
 }
 
-fn make_status(
-    parents: Vec<k8s_gateway_api::RouteParentStatus>,
-) -> k8s_gateway_api::GrpcRouteStatus {
-    k8s_gateway_api::GrpcRouteStatus {
+fn make_status(parents: Vec<gateway::GRPCRouteStatusParents>) -> gateway::GRPCRouteStatus {
+    gateway::GRPCRouteStatus {
         inner: k8s_gateway_api::RouteStatus { parents },
     }
 }
