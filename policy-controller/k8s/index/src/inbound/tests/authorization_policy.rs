@@ -492,20 +492,21 @@ fn mk_http_route(
             ..Default::default()
         },
         spec: k8s::policy::HttpRouteSpec {
-            inner: k8s_gateway_api::CommonRouteSpec {
-                parent_refs: Some(vec![k8s_gateway_api::ParentReference {
-                    group: Some("policy.linkerd.io".to_string()),
-                    kind: Some("Server".to_string()),
-                    namespace: Some(ns.to_string()),
-                    name: server.to_string(),
-                    section_name: None,
-                    port: None,
-                }]),
-            },
+            parent_refs: Some(vec![k8s_gateway_api::httproutes::HTTPRouteParentRefs {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: Some("Server".to_string()),
+                namespace: Some(ns.to_string()),
+                name: server.to_string(),
+                section_name: None,
+                port: None,
+            }]),
             rules: Some(vec![k8s::policy::httproute::HttpRouteRule {
-                matches: Some(vec![k8s::policy::httproute::HttpRouteMatch {
-                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
-                        value: "/foo".to_string(),
+                matches: Some(vec![k8s::policy::httproute::HTTPRouteRulesMatches {
+                    path: Some(k8s_gateway_api::httproutes::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo".to_string()),
+                        r#type: Some(
+                            k8s_gateway_api::httproutes::HTTPRouteRulesMatchesPathType::PathPrefix,
+                        ),
                     }),
                     ..Default::default()
                 }]),
@@ -516,17 +517,17 @@ fn mk_http_route(
             ..Default::default()
         },
         status: Some(k8s::policy::httproute::HttpRouteStatus {
-            inner: k8s_gateway_api::RouteStatus {
-                parents: vec![k8s_gateway_api::RouteParentStatus {
-                    conditions: vec![metav1::Condition {
+            inner: k8s_gateway_api::httproutes::HTTPRouteStatus {
+                parents: vec![k8s_gateway_api::httproutes::HTTPRouteStatusParents {
+                    conditions: Some(vec![metav1::Condition {
                         type_: "Accepted".to_string(),
                         status: "True".to_string(),
                         message: String::new(),
                         reason: String::new(),
                         last_transition_time: metav1::Time(chrono::Utc::now()),
                         observed_generation: None,
-                    }],
-                    parent_ref: k8s_gateway_api::ParentReference {
+                    }]),
+                    parent_ref: k8s_gateway_api::httproutes::HTTPRouteStatusParentsParentRef {
                         group: Some("policy.linkerd.io".to_string()),
                         kind: Some("Server".to_string()),
                         namespace: Some(ns.to_string()),

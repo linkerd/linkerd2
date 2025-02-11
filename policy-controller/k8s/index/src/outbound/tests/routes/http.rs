@@ -4,7 +4,7 @@ use linkerd_policy_controller_core::{
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
-use linkerd_policy_controller_k8s_api::gateway::BackendRef;
+use linkerd_policy_controller_k8s_api::gateway::httproutes as gateway;
 use tracing::Level;
 
 use super::super::*;
@@ -195,38 +195,33 @@ fn mk_route(
             ..Default::default()
         },
         spec: HttpRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![ParentReference {
-                    group: Some(group.clone()),
-                    kind: Some(kind.clone()),
-                    namespace: Some(ns.to_string()),
-                    name: parent.to_string(),
-                    section_name: None,
-                    port: Some(port),
-                }]),
-            },
+            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                group: Some(group.clone()),
+                kind: Some(kind.clone()),
+                namespace: Some(ns.to_string()),
+                name: parent.to_string(),
+                section_name: None,
+                port: Some(port.into()),
+            }]),
             hostnames: None,
             rules: Some(vec![HttpRouteRule {
-                matches: Some(vec![HttpRouteMatch {
-                    path: Some(HttpPathMatch::PathPrefix {
-                        value: "/foo/bar".to_string(),
+                matches: Some(vec![gateway::HTTPRouteRulesMatches {
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo/bar".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
                     }),
                     headers: None,
                     query_params: None,
-                    method: Some("GET".to_string()),
+                    method: Some(gateway::HTTPRouteRulesMatchesMethod::Get),
                 }]),
                 filters: None,
-                backend_refs: Some(vec![HttpBackendRef {
-                    backend_ref: Some(BackendRef {
-                        weight: None,
-                        inner: BackendObjectReference {
-                            group: Some(group.clone()),
-                            kind: Some(kind.clone()),
-                            namespace: Some(ns.to_string()),
-                            name: backend_name.to_string(),
-                            port: Some(port),
-                        },
-                    }),
+                backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                    weight: None,
+                    group: Some(group.clone()),
+                    kind: Some(kind.clone()),
+                    namespace: Some(ns.to_string()),
+                    name: backend_name.to_string(),
+                    port: Some(port.into()),
                     filters: None,
                 }]),
                 timeouts: None,
@@ -234,24 +229,24 @@ fn mk_route(
         },
         status: Some(HttpRouteStatus {
             inner: RouteStatus {
-                parents: vec![k8s::gateway::RouteParentStatus {
-                    parent_ref: ParentReference {
+                parents: vec![gateway::HTTPRouteStatusParents {
+                    parent_ref: gateway::HTTPRouteStatusParentsParentRef {
                         group: Some(group),
                         kind: Some(kind),
                         namespace: Some(ns.to_string()),
                         name: parent.to_string(),
                         section_name: None,
-                        port: Some(port),
+                        port: Some(port.into()),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![k8s::Condition {
+                    conditions: Some(vec![k8s::Condition {
                         last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
                         message: "".to_string(),
                         observed_generation: None,
                         reason: "Accepted".to_string(),
                         status: "True".to_string(),
                         type_: "Accepted".to_string(),
-                    }],
+                    }]),
                 }],
             },
         }),

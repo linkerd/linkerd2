@@ -7,7 +7,7 @@ pub mod labels;
 pub mod policy;
 
 pub use self::labels::Labels;
-pub use k8s_gateway_api as gateway;
+pub use gateway_api::apis::experimental as gateway;
 pub use k8s_openapi::{
     api::{
         self,

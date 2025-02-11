@@ -418,6 +418,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e60eed09d8c01d3cee5b7d30acb059b76614c918fa0f992e0dd6eeb10daad6f"
 
 [[package]]
+name = "delegate"
+version = "0.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "297806318ef30ad066b15792a8372858020ae3ca2e414ee6c2133b1eb9e9e945"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -634,6 +645,23 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
+]
+
+[[package]]
+name = "gateway-api"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdca285b86710063162382f6d688fb67918fa8a231cb9248c817f53ddcb53491"
+dependencies = [
+ "delegate",
+ "k8s-openapi",
+ "kube",
+ "once_cell",
+ "regex-lite",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -1066,18 +1094,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "k8s-gateway-api"
-version = "0.16.0"
-source = "git+https://github.com/linkerd/k8s-gateway-api-rs#4a71642699c90f118f550475a9bb4af78948cbd9"
-dependencies = [
- "k8s-openapi",
- "kube",
- "schemars",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "k8s-openapi"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1345,8 +1361,8 @@ dependencies = [
 name = "linkerd-policy-controller-k8s-api"
 version = "0.1.0"
 dependencies = [
+ "gateway-api",
  "ipnet",
- "k8s-gateway-api",
  "k8s-openapi",
  "kube",
  "schemars",
@@ -1444,11 +1460,11 @@ dependencies = [
  "anyhow",
  "bytes",
  "futures",
+ "gateway-api",
  "http-body-util",
  "hyper",
  "hyper-util",
  "ipnet",
- "k8s-gateway-api",
  "k8s-openapi",
  "kube",
  "linkerd-policy-controller-core",
@@ -1962,6 +1978,12 @@ dependencies = [
  "memchr",
  "regex-syntax 0.8.5",
 ]
+
+[[package]]
+name = "regex-lite"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53a49587ad06b26609c52e423de037e7f57f20d53535d66e08c695f347df952a"
 
 [[package]]
 name = "regex-syntax"

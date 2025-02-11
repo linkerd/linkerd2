@@ -4,7 +4,7 @@ use crate::{
     grpc,
     index::{self, ports::parse_portset, ClusterInfo, DefaultPolicy},
     index_list::IndexList,
-    k8s::{self, gateway as k8s_gateway_api},
+    k8s::{self, gateway},
     status, InboundDiscover, OutboundDiscover,
 };
 use anyhow::{bail, Result};
@@ -288,9 +288,9 @@ impl Args {
             );
         }
 
-        if api_resource_exists::<k8s_gateway_api::HttpRoute>(&runtime.client()).await {
+        if api_resource_exists::<gateway::httproutes::HTTPRoute>(&runtime.client()).await {
             let gateway_http_routes =
-                runtime.watch_all::<k8s_gateway_api::HttpRoute>(watcher::Config::default());
+                runtime.watch_all::<gateway::httproutes::HTTPRoute>(watcher::Config::default());
             tokio::spawn(
                 kubert::index::namespaced(http_routes_indexes, gateway_http_routes)
                     .instrument(info_span!("httproutes.gateway.networking.k8s.io")),
@@ -301,9 +301,9 @@ impl Args {
             );
         }
 
-        if api_resource_exists::<k8s_gateway_api::GrpcRoute>(&runtime.client()).await {
+        if api_resource_exists::<gateway::grpcroutes::GRPCRoute>(&runtime.client()).await {
             let gateway_grpc_routes =
-                runtime.watch_all::<k8s_gateway_api::GrpcRoute>(watcher::Config::default());
+                runtime.watch_all::<gateway::grpcroutes::GRPCRoute>(watcher::Config::default());
             let gateway_grpc_routes_indexes = IndexList::new(outbound_index.clone())
                 .push(inbound_index.clone())
                 .push(status_index.clone())
@@ -318,9 +318,9 @@ impl Args {
             );
         }
 
-        if api_resource_exists::<k8s_gateway_api::TlsRoute>(&runtime.client()).await {
+        if api_resource_exists::<gateway::tlsroutes::TLSRoute>(&runtime.client()).await {
             let tls_routes =
-                runtime.watch_all::<k8s_gateway_api::TlsRoute>(watcher::Config::default());
+                runtime.watch_all::<gateway::tlsroutes::TLSRoute>(watcher::Config::default());
             let tls_routes_indexes = IndexList::new(status_index.clone())
                 .push(outbound_index.clone())
                 .shared();
@@ -334,9 +334,9 @@ impl Args {
             );
         }
 
-        if api_resource_exists::<k8s_gateway_api::TcpRoute>(&runtime.client()).await {
+        if api_resource_exists::<gateway::tcproutes::TCPRoute>(&runtime.client()).await {
             let tcp_routes =
-                runtime.watch_all::<k8s_gateway_api::TcpRoute>(watcher::Config::default());
+                runtime.watch_all::<gateway::tcproutes::TCPRoute>(watcher::Config::default());
             let tcp_routes_indexes = IndexList::new(status_index.clone())
                 .push(outbound_index.clone())
                 .shared();
