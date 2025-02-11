@@ -35,7 +35,7 @@ impl HttpRouteResource {
     pub(crate) fn status(&self) -> Option<&gateway::httproutes::HTTPRouteStatus> {
         match self {
             Self::LinkerdHttp(route) => route.status.as_ref().map(|status| &status.inner),
-            Self::GatewayHttp(route) => route.status.as_ref().map(|status| status),
+            Self::GatewayHttp(route) => route.status.as_ref(),
         }
     }
 

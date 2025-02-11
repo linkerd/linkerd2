@@ -37,7 +37,7 @@ impl TryFrom<grpcroutes::GRPCRoute> for RouteBinding<GrpcRoute> {
 
         let statuses = route
             .status
-            .map_or_else(Vec::new, |status| Status::collect_from_grpc(status));
+            .map_or_else(Vec::new, Status::collect_from_grpc);
 
         Ok(RouteBinding {
             parents,

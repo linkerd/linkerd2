@@ -37,7 +37,7 @@ impl TryFrom<gateway::HTTPRoute> for RouteBinding<HttpRoute> {
 
         let statuses = route
             .status
-            .map_or_else(Vec::new, |status| Status::collect_from_http(status));
+            .map_or_else(Vec::new, Status::collect_from_http);
 
         Ok(RouteBinding {
             parents,

@@ -1,29 +1,14 @@
 #[cfg(test)]
 use crate::{
-    index::{GRPCRouteRef, HTTPRouteRef},
-    resource_id::NamespaceGroupKindName,
+    index::{GRPCRouteRef, HTTPRouteRef, SharedIndex, TCPRouteRef, TLSRouteRef},
+    resource_id::{NamespaceGroupKindName, ResourceId},
     routes,
-};
-
-use crate::{
-    index::{accepted, in_cluster_net_overlap, SharedIndex, TCPRouteRef, TLSRouteRef},
-    resource_id::NamespaceGroupKindName,
     tests::default_cluster_networks,
     Index, IndexMetrics,
 };
-use crate::{resource_id::ResourceId, Index};
-use ahash::HashMap;
 use chrono::{DateTime, Utc};
-use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::routes::GroupKindName;
-use linkerd_policy_controller_core::routes::GroupKindName;
-use linkerd_policy_controller_k8s_api::{
-    self as k8s_core_api,
-    policy::{self as linkerd_k8s_api, EgressNetworkStatus},
-    Resource,
-};
 use linkerd_policy_controller_k8s_api::{gateway, Resource};
-use std::vec;
 use std::{sync::Arc, vec};
 use tokio::sync::{mpsc, watch};
 
@@ -356,6 +341,8 @@ fn tls_route_no_conflict(p: ParentRefType) {
 }
 
 fn tcp_route_conflict_grpc(p: ParentRefType) {
+    let index = make_index();
+
     let parent = match p {
         ParentRefType::Service => routes::ParentReference::Service(
             ResourceId::new("ns".to_string(), "service".to_string()),
@@ -368,7 +355,7 @@ fn tcp_route_conflict_grpc(p: ParentRefType) {
         ),
     };
 
-    let known_routes: HashMap<_, _> = vec![(
+    index.write().update_grpc_route(
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
@@ -377,23 +364,21 @@ fn tcp_route_conflict_grpc(p: ParentRefType) {
                 name: "grpc-1".into(),
             },
         },
-        RouteRef {
+        &GRPCRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
         },
-    )]
-    .into_iter()
-    .collect();
+    );
 
-    assert!(parent_has_conflicting_routes(
-        &mut known_routes.iter(),
-        &parent,
-        "TCPRoute"
-    ));
+    assert!(index
+        .read()
+        .parent_has_conflicting_routes(&parent, "TCPRoute"));
 }
 
 fn tcp_route_conflict_http(p: ParentRefType) {
+    let index = make_index();
+
     let parent = match p {
         ParentRefType::Service => routes::ParentReference::Service(
             ResourceId::new("ns".to_string(), "service".to_string()),
@@ -406,7 +391,7 @@ fn tcp_route_conflict_http(p: ParentRefType) {
         ),
     };
 
-    let known_routes: HashMap<_, _> = vec![(
+    index.write().update_http_route(
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
@@ -415,23 +400,21 @@ fn tcp_route_conflict_http(p: ParentRefType) {
                 name: "http-1".into(),
             },
         },
-        RouteRef {
+        &HTTPRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
         },
-    )]
-    .into_iter()
-    .collect();
+    );
 
-    assert!(parent_has_conflicting_routes(
-        &mut known_routes.iter(),
-        &parent,
-        "TCPRoute"
-    ));
+    assert!(index
+        .read()
+        .parent_has_conflicting_routes(&parent, "TCPRoute"));
 }
 
 fn tcp_route_conflict_tls(p: ParentRefType) {
+    let index = make_index();
+
     let parent = match p {
         ParentRefType::Service => routes::ParentReference::Service(
             ResourceId::new("ns".to_string(), "service".to_string()),
@@ -444,7 +427,7 @@ fn tcp_route_conflict_tls(p: ParentRefType) {
         ),
     };
 
-    let known_routes: HashMap<_, _> = vec![(
+    index.write().update_tls_route(
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
@@ -453,23 +436,21 @@ fn tcp_route_conflict_tls(p: ParentRefType) {
                 name: "tls-1".into(),
             },
         },
-        RouteRef {
+        &TLSRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
         },
-    )]
-    .into_iter()
-    .collect();
+    );
 
-    assert!(parent_has_conflicting_routes(
-        &mut known_routes.iter(),
-        &parent,
-        "TCPRoute"
-    ));
+    assert!(index
+        .read()
+        .parent_has_conflicting_routes(&parent, "TCPRoute"));
 }
 
 fn tcp_route_no_conflict(p: ParentRefType) {
+    let index = make_index();
+
     let parent = match p {
         ParentRefType::Service => routes::ParentReference::Service(
             ResourceId::new("ns".to_string(), "service".to_string()),
@@ -482,7 +463,7 @@ fn tcp_route_no_conflict(p: ParentRefType) {
         ),
     };
 
-    let known_routes: HashMap<_, _> = vec![(
+    index.write().update_tcp_route(
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
@@ -491,20 +472,16 @@ fn tcp_route_no_conflict(p: ParentRefType) {
                 name: "tcp-1".into(),
             },
         },
-        RouteRef {
+        &TCPRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
         },
-    )]
-    .into_iter()
-    .collect();
+    );
 
-    assert!(!parent_has_conflicting_routes(
-        &mut known_routes.iter(),
-        &parent,
-        "TCPRoute"
-    ));
+    assert!(!index
+        .read()
+        .parent_has_conflicting_routes(&parent, "TCPRoute"));
 }
 
 #[test]

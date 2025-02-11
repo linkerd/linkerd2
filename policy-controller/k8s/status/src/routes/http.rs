@@ -18,7 +18,7 @@ pub(crate) fn make_backends(
 
 pub(crate) fn make_parents(
     namespace: &str,
-    parents: &Vec<gateway::HTTPRouteParentRefs>,
+    parents: &[gateway::HTTPRouteParentRefs],
 ) -> Vec<ParentReference> {
     parents
         .iter()

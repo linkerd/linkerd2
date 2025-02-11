@@ -546,7 +546,7 @@ impl Index {
     // attach to has any routes attached that are in conflict with the one
     // that we are about to attach. This is done following the logs outlined in:
     // https://gateway-api.sigs.k8s.io/geps/gep-1426/#route-types
-    pub fn parent_has_conflicting_routes<'p>(
+    pub fn parent_has_conflicting_routes(
         &self,
         parent_ref: &routes::ParentReference,
         candidate_kind: &str,

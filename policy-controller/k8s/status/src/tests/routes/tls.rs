@@ -1,4 +1,3 @@
-use super::make_parent_status;
 use crate::{
     index::{
         accepted, backend_not_found, invalid_backend_kind, no_matching_parent, resolved_refs,
@@ -12,11 +11,39 @@ use chrono::{DateTime, Utc};
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{routes::GroupKindName, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{
-    self as k8s_core_api, gateway as k8s_gateway_api, policy as linkerd_k8s_api, Resource,
-    ResourceExt,
+    self as k8s, gateway::tlsroutes as gateway, policy, Resource, ResourceExt,
 };
 use std::{sync::Arc, vec};
 use tokio::sync::{mpsc, watch};
+
+pub(crate) fn make_parent_status(
+    namespace: impl ToString,
+    name: impl ToString,
+    type_: impl ToString,
+    status: impl ToString,
+    reason: impl ToString,
+) -> gateway::TLSRouteStatusParents {
+    let condition = k8s::Condition {
+        message: "".to_string(),
+        type_: type_.to_string(),
+        observed_generation: None,
+        reason: reason.to_string(),
+        status: status.to_string(),
+        last_transition_time: k8s::Time(DateTime::<Utc>::MIN_UTC),
+    };
+    gateway::TLSRouteStatusParents {
+        conditions: Some(vec![condition]),
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            port: None,
+            section_name: None,
+            name: name.to_string(),
+            kind: Some("Server".to_string()),
+            namespace: Some(namespace.to_string()),
+            group: Some(POLICY_API_GROUP.to_string()),
+        },
+        controller_name: POLICY_CONTROLLER_NAME.to_string(),
+    }
+}
 
 #[test]
 fn route_with_valid_service_backends() {
@@ -48,7 +75,7 @@ fn route_with_valid_service_backends() {
     index.write().apply(backend2.clone());
 
     // Apply the route.
-    let parent = k8s_gateway_api::ParentReference {
+    let parent = gateway::TLSRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -59,8 +86,8 @@ fn route_with_valid_service_backends() {
     let id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::TlsRoute::group(&()),
-            kind: k8s_gateway_api::TlsRoute::kind(&()),
+            group: gateway::TLSRoute::group(&()),
+            kind: gateway::TLSRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
@@ -68,24 +95,20 @@ fn route_with_valid_service_backends() {
         &id,
         parent.clone(),
         vec![
-            k8s_gateway_api::BackendRef {
-                inner: k8s_gateway_api::BackendObjectReference {
-                    group: Some("core".to_string()),
-                    kind: Some("Service".to_string()),
-                    name: backend1.name_unchecked(),
-                    namespace: backend1.namespace(),
-                    port: Some(8080),
-                },
+            gateway::TLSRouteRulesBackendRefs {
+                group: Some("core".to_string()),
+                kind: Some("Service".to_string()),
+                name: backend1.name_unchecked(),
+                namespace: backend1.namespace(),
+                port: Some(8080),
                 weight: None,
             },
-            k8s_gateway_api::BackendRef {
-                inner: k8s_gateway_api::BackendObjectReference {
-                    group: Some("core".to_string()),
-                    kind: Some("Service".to_string()),
-                    name: backend2.name_unchecked(),
-                    namespace: backend2.namespace(),
-                    port: Some(8080),
-                },
+            gateway::TLSRouteRulesBackendRefs {
+                group: Some("core".to_string()),
+                kind: Some("Service".to_string()),
+                name: backend2.name_unchecked(),
+                namespace: backend2.namespace(),
+                port: Some(8080),
                 weight: None,
             },
         ],
@@ -96,12 +119,21 @@ fn route_with_valid_service_backends() {
     let accepted_condition = accepted();
     // All backends exist and can be resolved.
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent,
+    let parent_status = gateway::TLSRouteStatusParents {
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            group: parent.group,
+            kind: parent.kind,
+            name: parent.name,
+            namespace: parent.namespace,
+            port: parent.port,
+            section_name: parent.section_name,
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
@@ -132,7 +164,7 @@ fn route_with_valid_egress_network_backend() {
     index.write().apply(parent.clone());
 
     // Apply the route.
-    let parent = k8s_gateway_api::ParentReference {
+    let parent = gateway::TLSRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -143,22 +175,20 @@ fn route_with_valid_egress_network_backend() {
     let id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::TlsRoute::group(&()),
-            kind: k8s_gateway_api::TlsRoute::kind(&()),
+            group: gateway::TLSRoute::group(&()),
+            kind: gateway::TLSRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
     let route = make_route(
         &id,
         parent.clone(),
-        vec![k8s_gateway_api::BackendRef {
-            inner: k8s_gateway_api::BackendObjectReference {
-                group: Some("policy.linkerd.io".to_string()),
-                kind: Some("EgressNetwork".to_string()),
-                name: parent.name.clone(),
-                namespace: parent.namespace.clone(),
-                port: Some(8080),
-            },
+        vec![gateway::TLSRouteRulesBackendRefs {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: Some("EgressNetwork".to_string()),
+            name: parent.name.clone(),
+            namespace: parent.namespace.clone(),
+            port: Some(8080),
             weight: None,
         }],
     );
@@ -168,12 +198,21 @@ fn route_with_valid_egress_network_backend() {
     let accepted_condition = accepted();
     // All backends exist and can be resolved.
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent,
+    let parent_status = gateway::TLSRouteStatusParents {
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            group: parent.group,
+            kind: parent.kind,
+            name: parent.name,
+            namespace: parent.namespace,
+            port: parent.port,
+            section_name: parent.section_name,
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
@@ -208,7 +247,7 @@ fn route_with_invalid_service_backend() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = k8s_gateway_api::ParentReference {
+    let parent = gateway::TLSRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -219,8 +258,8 @@ fn route_with_invalid_service_backend() {
     let id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::TlsRoute::group(&()),
-            kind: k8s_gateway_api::TlsRoute::kind(&()),
+            group: gateway::TLSRoute::group(&()),
+            kind: gateway::TLSRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
@@ -228,24 +267,20 @@ fn route_with_invalid_service_backend() {
         &id,
         parent.clone(),
         vec![
-            k8s_gateway_api::BackendRef {
-                inner: k8s_gateway_api::BackendObjectReference {
-                    group: Some("core".to_string()),
-                    kind: Some("Service".to_string()),
-                    name: backend.name_unchecked(),
-                    namespace: backend.namespace(),
-                    port: Some(8080),
-                },
+            gateway::TLSRouteRulesBackendRefs {
+                group: Some("core".to_string()),
+                kind: Some("Service".to_string()),
+                name: backend.name_unchecked(),
+                namespace: backend.namespace(),
+                port: Some(8080),
                 weight: None,
             },
-            k8s_gateway_api::BackendRef {
-                inner: k8s_gateway_api::BackendObjectReference {
-                    group: Some("core".to_string()),
-                    kind: Some("Service".to_string()),
-                    name: "nonexistant-backend".to_string(),
-                    namespace: backend.namespace(),
-                    port: Some(8080),
-                },
+            gateway::TLSRouteRulesBackendRefs {
+                group: Some("core".to_string()),
+                kind: Some("Service".to_string()),
+                name: "nonexistant-backend".to_string(),
+                namespace: backend.namespace(),
+                port: Some(8080),
                 weight: None,
             },
         ],
@@ -256,12 +291,21 @@ fn route_with_invalid_service_backend() {
     let accepted_condition = accepted();
     // One of the backends does not exist so the status should be BackendNotFound.
     let backend_condition = backend_not_found();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent,
+    let parent_status = gateway::TLSRouteStatusParents {
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            group: parent.group,
+            kind: parent.kind,
+            name: parent.name,
+            namespace: parent.namespace,
+            port: parent.port,
+            section_name: parent.section_name,
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
@@ -296,7 +340,7 @@ fn route_with_egress_network_backend_different_from_parent() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = k8s_gateway_api::ParentReference {
+    let parent = gateway::TLSRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -307,22 +351,20 @@ fn route_with_egress_network_backend_different_from_parent() {
     let id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::TlsRoute::group(&()),
-            kind: k8s_gateway_api::TlsRoute::kind(&()),
+            group: gateway::TLSRoute::group(&()),
+            kind: gateway::TLSRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
     let route = make_route(
         &id,
         parent.clone(),
-        vec![k8s_gateway_api::BackendRef {
-            inner: k8s_gateway_api::BackendObjectReference {
-                group: Some("policy.linkerd.io".to_string()),
-                kind: Some("EgressNetwork".to_string()),
-                name: backend.name_unchecked(),
-                namespace: backend.namespace(),
-                port: Some(8080),
-            },
+        vec![gateway::TLSRouteRulesBackendRefs {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: Some("EgressNetwork".to_string()),
+            name: backend.name_unchecked(),
+            namespace: backend.namespace(),
+            port: Some(8080),
             weight: None,
         }],
     );
@@ -333,12 +375,21 @@ fn route_with_egress_network_backend_different_from_parent() {
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
     );
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent,
+    let parent_status = gateway::TLSRouteStatusParents {
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            group: parent.group,
+            kind: parent.kind,
+            name: parent.name,
+            namespace: parent.namespace,
+            port: parent.port,
+            section_name: parent.section_name,
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
@@ -373,7 +424,7 @@ fn route_with_egress_network_backend_and_service_parent() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = k8s_gateway_api::ParentReference {
+    let parent = gateway::TLSRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -384,22 +435,20 @@ fn route_with_egress_network_backend_and_service_parent() {
     let id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::TlsRoute::group(&()),
-            kind: k8s_gateway_api::TlsRoute::kind(&()),
+            group: gateway::TLSRoute::group(&()),
+            kind: gateway::TLSRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
     let route = make_route(
         &id,
         parent.clone(),
-        vec![k8s_gateway_api::BackendRef {
-            inner: k8s_gateway_api::BackendObjectReference {
-                group: Some("policy.linkerd.io".to_string()),
-                kind: Some("EgressNetwork".to_string()),
-                name: backend.name_unchecked(),
-                namespace: backend.namespace(),
-                port: Some(8080),
-            },
+        vec![gateway::TLSRouteRulesBackendRefs {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: Some("EgressNetwork".to_string()),
+            name: backend.name_unchecked(),
+            namespace: backend.namespace(),
+            port: Some(8080),
             weight: None,
         }],
     );
@@ -410,12 +459,21 @@ fn route_with_egress_network_backend_and_service_parent() {
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
     );
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent,
+    let parent_status = gateway::TLSRouteStatusParents {
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            group: parent.group,
+            kind: parent.kind,
+            name: parent.name,
+            namespace: parent.namespace,
+            port: parent.port,
+            section_name: parent.section_name,
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
@@ -450,7 +508,7 @@ fn route_with_egress_network_parent_and_service_backend() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = k8s_gateway_api::ParentReference {
+    let parent = gateway::TLSRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -461,22 +519,20 @@ fn route_with_egress_network_parent_and_service_backend() {
     let id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::TlsRoute::group(&()),
-            kind: k8s_gateway_api::TlsRoute::kind(&()),
+            group: gateway::TLSRoute::group(&()),
+            kind: gateway::TLSRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
     let route = make_route(
         &id,
         parent.clone(),
-        vec![k8s_gateway_api::BackendRef {
-            inner: k8s_gateway_api::BackendObjectReference {
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: backend.name_unchecked(),
-                namespace: backend.namespace(),
-                port: Some(8080),
-            },
+        vec![gateway::TLSRouteRulesBackendRefs {
+            group: Some("core".to_string()),
+            kind: Some("Service".to_string()),
+            name: backend.name_unchecked(),
+            namespace: backend.namespace(),
+            port: Some(8080),
             weight: None,
         }],
     );
@@ -485,12 +541,21 @@ fn route_with_egress_network_parent_and_service_backend() {
     // Create the expected update.
     let accepted_condition = accepted();
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent,
+    let parent_status = gateway::TLSRouteStatusParents {
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            group: parent.group,
+            kind: parent.kind,
+            name: parent.name,
+            namespace: parent.namespace,
+            port: parent.port,
+            section_name: parent.section_name,
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
@@ -521,11 +586,11 @@ fn route_accepted_after_server_create() {
         namespace: "ns-0".to_string(),
         gkn: GroupKindName {
             name: "route-foo".into(),
-            kind: k8s_gateway_api::TlsRoute::kind(&()),
-            group: k8s_gateway_api::TlsRoute::group(&()),
+            kind: gateway::TLSRoute::kind(&()),
+            group: gateway::TLSRoute::group(&()),
         },
     };
-    let parent = k8s_gateway_api::ParentReference {
+    let parent = gateway::TLSRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("Server".to_string()),
         namespace: None,
@@ -546,7 +611,9 @@ fn route_accepted_after_server_create() {
         "False",
         "NoMatchingParent",
     );
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The first update will be that the TLSRoute is not accepted because the
@@ -562,14 +629,16 @@ fn route_accepted_after_server_create() {
         8080,
         Some(("app", "app-0")),
         Some(("app", "app-0")),
-        Some(linkerd_k8s_api::server::ProxyProtocol::Http2),
+        Some(policy::server::ProxyProtocol::Http2),
     );
     index.write().apply(server);
 
     // Create the expected update.
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The second update will be that the TCPRoute is accepted because the
@@ -601,12 +670,12 @@ fn route_accepted_after_egress_network_create() {
     let id = NamespaceGroupKindName {
         namespace: "ns-0".to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::TlsRoute::group(&()),
-            kind: k8s_gateway_api::TlsRoute::kind(&()),
+            group: gateway::TLSRoute::group(&()),
+            kind: gateway::TLSRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
-    let parent = linkerd_k8s_api::httproute::ParentReference {
+    let parent = gateway::TLSRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: Some("ns-0".to_string()),
@@ -622,13 +691,22 @@ fn route_accepted_after_egress_network_create() {
     // Create the expected update.
     let accepted_condition = no_matching_parent();
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent.clone(),
+    let parent_status = gateway::TLSRouteStatusParents {
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            group: parent.group.clone(),
+            kind: parent.kind.clone(),
+            name: parent.name.clone(),
+            namespace: parent.namespace.clone(),
+            port: parent.port,
+            section_name: parent.section_name.clone(),
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition.clone()],
+        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
     };
 
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The first update will be that the TLSRoute is not accepted because the
@@ -643,13 +721,22 @@ fn route_accepted_after_egress_network_create() {
 
     // Create the expected update.
     let accepted_condition = accepted();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent,
+    let parent_status = gateway::TLSRouteStatusParents {
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            group: parent.group,
+            kind: parent.kind,
+            name: parent.name,
+            namespace: parent.namespace,
+            port: parent.port,
+            section_name: parent.section_name,
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
 
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The second update will be that the TLSRoute is accepted because the
@@ -683,7 +770,7 @@ fn route_rejected_after_server_delete() {
         8080,
         Some(("app", "app-0")),
         Some(("app", "app-0")),
-        Some(linkerd_k8s_api::server::ProxyProtocol::Http2),
+        Some(policy::server::ProxyProtocol::Http2),
     );
     index.write().apply(server);
 
@@ -695,11 +782,11 @@ fn route_rejected_after_server_delete() {
         namespace: "ns-0".to_string(),
         gkn: GroupKindName {
             name: "route-foo".into(),
-            kind: k8s_gateway_api::TlsRoute::kind(&()),
-            group: k8s_gateway_api::TlsRoute::group(&()),
+            kind: gateway::TLSRoute::kind(&()),
+            group: gateway::TLSRoute::group(&()),
         },
     };
-    let parent = k8s_gateway_api::ParentReference {
+    let parent = gateway::TLSRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("Server".to_string()),
         namespace: None,
@@ -715,7 +802,9 @@ fn route_rejected_after_server_delete() {
     // Create the expected update.
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The second update will be that the TLSRoutes is accepted because the
@@ -726,7 +815,7 @@ fn route_rejected_after_server_delete() {
 
     {
         let mut index = index.write();
-        <Index as IndexNamespacedResource<linkerd_k8s_api::Server>>::delete(
+        <Index as IndexNamespacedResource<policy::Server>>::delete(
             &mut index,
             "ns-0".to_string(),
             "srv-8080".to_string(),
@@ -736,7 +825,9 @@ fn route_rejected_after_server_delete() {
     // Create the expected update.
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The third update will be that the TLSRoutes is not accepted because the
@@ -774,12 +865,12 @@ fn route_rejected_after_egress_network_delete() {
     let id = NamespaceGroupKindName {
         namespace: "ns-0".to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::TlsRoute::group(&()),
-            kind: k8s_gateway_api::TlsRoute::kind(&()),
+            group: gateway::TLSRoute::group(&()),
+            kind: gateway::TLSRoute::kind(&()),
             name: "route-foo".into(),
         },
     };
-    let parent = linkerd_k8s_api::httproute::ParentReference {
+    let parent = gateway::TLSRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: Some("ns-0".to_string()),
@@ -795,13 +886,22 @@ fn route_rejected_after_egress_network_delete() {
     // Create the expected update.
     let accepted_condition = accepted();
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent.clone(),
+    let parent_status = gateway::TLSRouteStatusParents {
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            group: parent.group.clone(),
+            kind: parent.kind.clone(),
+            name: parent.name.clone(),
+            namespace: parent.namespace.clone(),
+            port: parent.port,
+            section_name: parent.section_name.clone(),
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition.clone()],
+        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
     };
 
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The second update will be that the TLSRoute is accepted because the
@@ -812,7 +912,7 @@ fn route_rejected_after_egress_network_delete() {
 
     {
         let mut index = index.write();
-        <Index as IndexNamespacedResource<linkerd_k8s_api::EgressNetwork>>::delete(
+        <Index as IndexNamespacedResource<policy::EgressNetwork>>::delete(
             &mut index,
             "ns-0".to_string(),
             "egress".to_string(),
@@ -821,13 +921,22 @@ fn route_rejected_after_egress_network_delete() {
 
     // Create the expected update.
     let rejected_condition = no_matching_parent();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent.clone(),
+    let parent_status = gateway::TLSRouteStatusParents {
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            group: parent.group.clone(),
+            kind: parent.kind.clone(),
+            name: parent.name.clone(),
+            namespace: parent.namespace.clone(),
+            port: parent.port,
+            section_name: parent.section_name.clone(),
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![rejected_condition, backend_condition.clone()],
+        conditions: Some(vec![rejected_condition, backend_condition.clone()]),
     };
 
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The third update will be that the TLSRoute is not accepted because the
@@ -859,7 +968,7 @@ fn service_route_type_conflict() {
     let parent = super::make_service("ns-0", "svc");
     index.write().apply(parent.clone());
 
-    let parent = k8s_gateway_api::ParentReference {
+    let parent = gateway::TLSRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -872,23 +981,28 @@ fn service_route_type_conflict() {
     let tcp_id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::TcpRoute::group(&()),
-            kind: k8s_gateway_api::TcpRoute::kind(&()),
+            group: k8s::gateway::tcproutes::TCPRoute::group(&()),
+            kind: k8s::gateway::tcproutes::TCPRoute::kind(&()),
             name: "tcproute-foo".into(),
         },
     };
-    let tcp_route = k8s_gateway_api::TcpRoute {
+    let tcp_route = k8s::gateway::tcproutes::TCPRoute {
         status: None,
-        metadata: k8s_core_api::ObjectMeta {
+        metadata: k8s::ObjectMeta {
             name: Some(tcp_id.gkn.name.to_string()),
             namespace: Some(tcp_id.namespace.clone()),
-            creation_timestamp: Some(k8s_core_api::Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(Utc::now())),
             ..Default::default()
         },
-        spec: k8s_gateway_api::TcpRouteSpec {
-            inner: k8s_gateway_api::CommonRouteSpec {
-                parent_refs: Some(vec![parent.clone()]),
-            },
+        spec: k8s::gateway::tcproutes::TCPRouteSpec {
+            parent_refs: Some(vec![k8s::gateway::tcproutes::TCPRouteParentRefs {
+                group: parent.group.clone(),
+                kind: parent.kind.clone(),
+                name: parent.name.clone(),
+                namespace: parent.namespace.clone(),
+                port: parent.port,
+                section_name: parent.section_name.clone(),
+            }]),
             rules: vec![],
         },
     };
@@ -898,12 +1012,21 @@ fn service_route_type_conflict() {
     let accepted_condition = accepted();
     // No backends were specified, so we have vacuously resolved them all.
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent.clone(),
+    let parent_status = gateway::TLSRouteStatusParents {
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            group: parent.group.clone(),
+            kind: parent.kind.clone(),
+            name: parent.name.clone(),
+            namespace: parent.namespace.clone(),
+            port: parent.port,
+            section_name: parent.section_name.clone(),
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition.clone(), backend_condition.clone()],
+        conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
     };
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&tcp_id, status).unwrap();
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(tcp_id, update.id);
@@ -913,8 +1036,8 @@ fn service_route_type_conflict() {
     let tls_id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::TlsRoute::group(&()),
-            kind: k8s_gateway_api::TlsRoute::kind(&()),
+            group: gateway::TLSRoute::group(&()),
+            kind: gateway::TLSRoute::kind(&()),
             name: "tlsroute-foo".into(),
         },
     };
@@ -924,23 +1047,41 @@ fn service_route_type_conflict() {
     // Two expected updates: TCPRoute should be rejected and TLSRoute should be accepted
     for _ in 0..2 {
         let update = updates_rx.try_recv().unwrap();
-        if update.id.gkn.kind == k8s_gateway_api::TcpRoute::kind(&()) {
+        if update.id.gkn.kind == k8s::gateway::tcproutes::TCPRoute::kind(&()) {
             let conflict_condition = route_conflicted();
-            let parent_status = k8s_gateway_api::RouteParentStatus {
-                parent_ref: parent.clone(),
+            let parent_status = gateway::TLSRouteStatusParents {
+                parent_ref: gateway::TLSRouteStatusParentsParentRef {
+                    group: parent.group.clone(),
+                    kind: parent.kind.clone(),
+                    name: parent.name.clone(),
+                    namespace: parent.namespace.clone(),
+                    port: parent.port,
+                    section_name: parent.section_name.clone(),
+                },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: vec![conflict_condition, backend_condition.clone()],
+                conditions: Some(vec![conflict_condition, backend_condition.clone()]),
             };
-            let status = make_status(vec![parent_status]);
+            let status = gateway::TLSRouteStatus {
+                parents: vec![parent_status],
+            };
             let patch = crate::index::make_patch(&tcp_id, status).unwrap();
             assert_eq!(patch, update.patch);
         } else {
-            let parent_status = k8s_gateway_api::RouteParentStatus {
-                parent_ref: parent.clone(),
+            let parent_status = gateway::TLSRouteStatusParents {
+                parent_ref: gateway::TLSRouteStatusParentsParentRef {
+                    group: parent.group.clone(),
+                    kind: parent.kind.clone(),
+                    name: parent.name.clone(),
+                    namespace: parent.namespace.clone(),
+                    port: parent.port,
+                    section_name: parent.section_name.clone(),
+                },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: vec![accepted_condition.clone(), backend_condition.clone()],
+                conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
             };
-            let status = make_status(vec![parent_status]);
+            let status = gateway::TLSRouteStatus {
+                parents: vec![parent_status],
+            };
             let patch = crate::index::make_patch(&tls_id, status).unwrap();
             assert_eq!(patch, update.patch);
         }
@@ -971,7 +1112,7 @@ fn egress_network_route_type_conflict() {
     let parent = super::make_egress_network("ns-0", "egress", accepted());
     index.write().apply(parent.clone());
 
-    let parent = k8s_gateway_api::ParentReference {
+    let parent = gateway::TLSRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -984,23 +1125,28 @@ fn egress_network_route_type_conflict() {
     let tcp_id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::TcpRoute::group(&()),
-            kind: k8s_gateway_api::TcpRoute::kind(&()),
+            group: k8s::gateway::tcproutes::TCPRoute::group(&()),
+            kind: k8s::gateway::tcproutes::TCPRoute::kind(&()),
             name: "tcproute-foo".into(),
         },
     };
-    let tcp_route = k8s_gateway_api::TcpRoute {
+    let tcp_route = k8s::gateway::tcproutes::TCPRoute {
         status: None,
-        metadata: k8s_core_api::ObjectMeta {
+        metadata: k8s::ObjectMeta {
             name: Some(tcp_id.gkn.name.to_string()),
             namespace: Some(tcp_id.namespace.clone()),
-            creation_timestamp: Some(k8s_core_api::Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(Utc::now())),
             ..Default::default()
         },
-        spec: k8s_gateway_api::TcpRouteSpec {
-            inner: k8s_gateway_api::CommonRouteSpec {
-                parent_refs: Some(vec![parent.clone()]),
-            },
+        spec: k8s::gateway::tcproutes::TCPRouteSpec {
+            parent_refs: Some(vec![k8s::gateway::tcproutes::TCPRouteParentRefs {
+                group: parent.group.clone(),
+                kind: parent.kind.clone(),
+                name: parent.name.clone(),
+                namespace: parent.namespace.clone(),
+                port: parent.port,
+                section_name: parent.section_name.clone(),
+            }]),
             rules: vec![],
         },
     };
@@ -1010,12 +1156,21 @@ fn egress_network_route_type_conflict() {
     let accepted_condition = accepted();
     // No backends were specified, so we have vacuously resolved them all.
     let backend_condition = resolved_refs();
-    let parent_status = k8s_gateway_api::RouteParentStatus {
-        parent_ref: parent.clone(),
+    let parent_status = gateway::TLSRouteStatusParents {
+        parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            group: parent.group.clone(),
+            kind: parent.kind.clone(),
+            name: parent.name.clone(),
+            namespace: parent.namespace.clone(),
+            port: parent.port,
+            section_name: parent.section_name.clone(),
+        },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition.clone(), backend_condition.clone()],
+        conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
     };
-    let status = make_status(vec![parent_status]);
+    let status = gateway::TLSRouteStatus {
+        parents: vec![parent_status],
+    };
     let patch = crate::index::make_patch(&tcp_id, status).unwrap();
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(tcp_id, update.id);
@@ -1025,8 +1180,8 @@ fn egress_network_route_type_conflict() {
     let tls_id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s_gateway_api::TlsRoute::group(&()),
-            kind: k8s_gateway_api::TlsRoute::kind(&()),
+            group: gateway::TLSRoute::group(&()),
+            kind: gateway::TLSRoute::kind(&()),
             name: "tlsroute-foo".into(),
         },
     };
@@ -1036,23 +1191,41 @@ fn egress_network_route_type_conflict() {
     // Two expected updates: TCP should be rejected and TLSRoute should be accepted
     for _ in 0..2 {
         let update = updates_rx.try_recv().unwrap();
-        if update.id.gkn.kind == k8s_gateway_api::TcpRoute::kind(&()) {
+        if update.id.gkn.kind == k8s::gateway::tcproutes::TCPRoute::kind(&()) {
             let conflict_condition = route_conflicted();
-            let parent_status = k8s_gateway_api::RouteParentStatus {
-                parent_ref: parent.clone(),
+            let parent_status = gateway::TLSRouteStatusParents {
+                parent_ref: gateway::TLSRouteStatusParentsParentRef {
+                    group: parent.group.clone(),
+                    kind: parent.kind.clone(),
+                    name: parent.name.clone(),
+                    namespace: parent.namespace.clone(),
+                    port: parent.port,
+                    section_name: parent.section_name.clone(),
+                },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: vec![conflict_condition, backend_condition.clone()],
+                conditions: Some(vec![conflict_condition, backend_condition.clone()]),
             };
-            let status = make_status(vec![parent_status]);
+            let status = gateway::TLSRouteStatus {
+                parents: vec![parent_status],
+            };
             let patch = crate::index::make_patch(&tcp_id, status).unwrap();
             assert_eq!(patch, update.patch);
         } else {
-            let parent_status = k8s_gateway_api::RouteParentStatus {
-                parent_ref: parent.clone(),
+            let parent_status = gateway::TLSRouteStatusParents {
+                parent_ref: gateway::TLSRouteStatusParentsParentRef {
+                    group: parent.group.clone(),
+                    kind: parent.kind.clone(),
+                    name: parent.name.clone(),
+                    namespace: parent.namespace.clone(),
+                    port: parent.port,
+                    section_name: parent.section_name.clone(),
+                },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: vec![accepted_condition.clone(), backend_condition.clone()],
+                conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
             };
-            let status = make_status(vec![parent_status]);
+            let status = gateway::TLSRouteStatus {
+                parents: vec![parent_status],
+            };
             let patch = crate::index::make_patch(&tls_id, status).unwrap();
             assert_eq!(patch, update.patch);
         }
@@ -1064,33 +1237,24 @@ fn egress_network_route_type_conflict() {
 
 fn make_route(
     id: &NamespaceGroupKindName,
-    parent: k8s_gateway_api::ParentReference,
-    backends: Vec<k8s_gateway_api::BackendRef>,
-) -> k8s_gateway_api::TlsRoute {
-    k8s_gateway_api::TlsRoute {
+    parent: gateway::TLSRouteParentRefs,
+    backends: Vec<gateway::TLSRouteRulesBackendRefs>,
+) -> gateway::TLSRoute {
+    gateway::TLSRoute {
         status: None,
-        metadata: k8s_core_api::ObjectMeta {
+        metadata: k8s::ObjectMeta {
             name: Some(id.gkn.name.to_string()),
             namespace: Some(id.namespace.clone()),
-            creation_timestamp: Some(k8s_core_api::Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(Utc::now())),
             ..Default::default()
         },
-        spec: k8s_gateway_api::TlsRouteSpec {
-            inner: k8s_gateway_api::CommonRouteSpec {
-                parent_refs: Some(vec![parent]),
-            },
+        spec: gateway::TLSRouteSpec {
+            parent_refs: Some(vec![parent]),
             hostnames: None,
-            rules: vec![k8s_gateway_api::TlsRouteRule {
-                backend_refs: backends,
+            rules: vec![gateway::TLSRouteRules {
+                name: None,
+                backend_refs: Some(backends),
             }],
         },
-    }
-}
-
-fn make_status(
-    parents: Vec<k8s_gateway_api::RouteParentStatus>,
-) -> k8s_gateway_api::TlsRouteStatus {
-    k8s_gateway_api::TlsRouteStatus {
-        inner: k8s_gateway_api::RouteStatus { parents },
     }
 }

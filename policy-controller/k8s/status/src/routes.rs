@@ -1,6 +1,4 @@
 use crate::resource_id::ResourceId;
-use anyhow::Result;
-use linkerd_policy_controller_k8s_api::{self as k8s_core_api, gateway, policy as linkerd_k8s_api};
 
 pub(crate) mod grpc;
 pub(crate) mod http;

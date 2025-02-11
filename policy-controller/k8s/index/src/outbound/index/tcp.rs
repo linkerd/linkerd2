@@ -87,7 +87,7 @@ pub(super) fn convert_backend(
             };
 
             Some(Backend::Service(WeightedService {
-                weight: weight.into(),
+                weight,
                 authority: cluster.service_dns_authority(&backend_ref.namespace, &name, port),
                 name,
                 namespace: backend_ref.namespace.to_string(),
@@ -97,7 +97,7 @@ pub(super) fn convert_backend(
             }))
         }
         ResourceKind::EgressNetwork => Some(Backend::EgressNetwork(WeightedEgressNetwork {
-            weight: weight.into(),
+            weight,
             name,
             namespace: backend_ref.namespace.to_string(),
             port,
