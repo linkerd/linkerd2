@@ -13,13 +13,14 @@ use linkerd2_proxy_api::{
 };
 use linkerd_policy_controller_core::{
     outbound::{
-        DiscoverOutboundPolicy, ExternalPolicyStream, Kind, OutboundDiscoverTarget, OutboundPolicy,
-        OutboundPolicyStream, ParentInfo, ResourceTarget, Route, WeightedEgressNetwork,
-        WeightedService,
+        AppProtocol, DiscoverOutboundPolicy, ExternalPolicyStream, Kind, OutboundDiscoverTarget,
+        OutboundPolicy, OutboundPolicyStream, ParentInfo, ResourceTarget, Route,
+        WeightedEgressNetwork, WeightedService,
     },
     routes::GroupKindNamespaceName,
 };
 use std::{net::SocketAddr, num::NonZeroU16, str::FromStr, sync::Arc, time};
+use tracing::{info, warn};
 
 mod grpc;
 mod http;
@@ -372,35 +373,72 @@ fn to_proto(
 ) -> outbound::OutboundPolicy {
     let backend: outbound::Backend = default_backend(&policy, original_dst);
 
-    let kind = if policy.opaque {
-        outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
-            routes: vec![default_outbound_opaq_route(backend, &policy.parent_info)],
-        })
-    } else {
-        let accrual = policy.accrual.map(|accrual| outbound::FailureAccrual {
-            kind: Some(match accrual {
-                linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
+    let accrual = policy.accrual.map(|accrual| outbound::FailureAccrual {
+        kind: Some(match accrual {
+            linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
+                max_failures,
+                backoff,
+            } => outbound::failure_accrual::Kind::ConsecutiveFailures(
+                outbound::failure_accrual::ConsecutiveFailures {
                     max_failures,
-                    backoff,
-                } => outbound::failure_accrual::Kind::ConsecutiveFailures(
-                    outbound::failure_accrual::ConsecutiveFailures {
-                        max_failures,
-                        backoff: Some(outbound::ExponentialBackoff {
-                            min_backoff: convert_duration("min_backoff", backoff.min_penalty),
-                            max_backoff: convert_duration("max_backoff", backoff.max_penalty),
-                            jitter_ratio: backoff.jitter,
-                        }),
-                    },
-                ),
-            }),
-        });
+                    backoff: Some(outbound::ExponentialBackoff {
+                        min_backoff: convert_duration("min_backoff", backoff.min_penalty),
+                        max_backoff: convert_duration("max_backoff", backoff.max_penalty),
+                        jitter_ratio: backoff.jitter,
+                    }),
+                },
+            ),
+        }),
+    });
 
-        let mut grpc_routes = policy.grpc_routes.clone().into_iter().collect::<Vec<_>>();
-        let mut http_routes = policy.http_routes.clone().into_iter().collect::<Vec<_>>();
-        let mut tls_routes = policy.tls_routes.clone().into_iter().collect::<Vec<_>>();
-        let mut tcp_routes = policy.tcp_routes.clone().into_iter().collect::<Vec<_>>();
+    let mut grpc_routes = policy.grpc_routes.clone().into_iter().collect::<Vec<_>>();
+    let mut http_routes = policy.http_routes.clone().into_iter().collect::<Vec<_>>();
+    let mut tls_routes = policy.tls_routes.clone().into_iter().collect::<Vec<_>>();
+    let mut tcp_routes = policy.tcp_routes.clone().into_iter().collect::<Vec<_>>();
 
-        if !grpc_routes.is_empty() {
+    let kind = match (policy.opaque, &policy.app_protocol) {
+        (true, _) | (_, Some(AppProtocol::Opaque)) => {
+            outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
+                routes: vec![default_outbound_opaq_route(backend, &policy.parent_info)],
+            })
+        }
+        (_, Some(AppProtocol::Http1)) => {
+            http_routes.sort_by(timestamp_then_name);
+            http::http1_only_protocol(
+                backend,
+                http_routes.into_iter(),
+                accrual,
+                policy.http_retry.clone(),
+                policy.timeouts.clone(),
+                allow_l5d_request_headers,
+                &policy.parent_info,
+                original_dst,
+            )
+        }
+        (_, Some(AppProtocol::Http2)) => {
+            http_routes.sort_by(timestamp_then_name);
+            http::http2_only_protocol(
+                backend,
+                http_routes.into_iter(),
+                accrual,
+                policy.http_retry.clone(),
+                policy.timeouts.clone(),
+                allow_l5d_request_headers,
+                &policy.parent_info,
+                original_dst,
+            )
+        }
+        (_, Some(AppProtocol::Tcp)) => {
+            tcp_routes.sort_by(timestamp_then_name);
+            tcp::protocol(
+                backend,
+                tcp_routes.into_iter(),
+                &policy.parent_info,
+                original_dst,
+            )
+        }
+        (_, Some(AppProtocol::Grpc)) => {
+            let mut grpc_routes = policy.grpc_routes.clone().into_iter().collect::<Vec<_>>();
             grpc_routes.sort_by(timestamp_then_name);
             grpc::protocol(
                 backend,
@@ -412,19 +450,8 @@ fn to_proto(
                 &policy.parent_info,
                 original_dst,
             )
-        } else if !http_routes.is_empty() {
-            http_routes.sort_by(timestamp_then_name);
-            http::protocol(
-                backend,
-                http_routes.into_iter(),
-                accrual,
-                policy.http_retry.clone(),
-                policy.timeouts.clone(),
-                allow_l5d_request_headers,
-                &policy.parent_info,
-                original_dst,
-            )
-        } else if !tls_routes.is_empty() {
+        }
+        (_, Some(AppProtocol::Tls)) => {
             tls_routes.sort_by(timestamp_then_name);
             tls::protocol(
                 backend,
@@ -432,26 +459,65 @@ fn to_proto(
                 &policy.parent_info,
                 original_dst,
             )
-        } else if !tcp_routes.is_empty() {
-            tcp_routes.sort_by(timestamp_then_name);
-            tcp::protocol(
-                backend,
-                tcp_routes.into_iter(),
-                &policy.parent_info,
-                original_dst,
-            )
-        } else {
-            http_routes.sort_by(timestamp_then_name);
-            http::protocol(
-                backend,
-                http_routes.into_iter(),
-                accrual,
-                policy.http_retry.clone(),
-                policy.timeouts.clone(),
-                allow_l5d_request_headers,
-                &policy.parent_info,
-                original_dst,
-            )
+        }
+        (_, Some(AppProtocol::Unknown(_)) | None) => {
+            if let Some(AppProtocol::Unknown(protocol)) = &policy.app_protocol {
+                warn!(resource = ?policy.parent_info, port = policy.port.get(), "Unknown appProtocol \"{protocol}\"");
+            }
+
+            if !grpc_routes.is_empty() {
+                grpc_routes.sort_by(timestamp_then_name);
+                grpc::protocol(
+                    backend,
+                    grpc_routes.into_iter(),
+                    accrual,
+                    policy.grpc_retry.clone(),
+                    policy.timeouts.clone(),
+                    allow_l5d_request_headers,
+                    &policy.parent_info,
+                    original_dst,
+                )
+            } else if !http_routes.is_empty() {
+                http_routes.sort_by(timestamp_then_name);
+                http::protocol(
+                    backend,
+                    http_routes.into_iter(),
+                    accrual,
+                    policy.http_retry.clone(),
+                    policy.timeouts.clone(),
+                    allow_l5d_request_headers,
+                    &policy.parent_info,
+                    original_dst,
+                )
+            } else if !tls_routes.is_empty() {
+                tls_routes.sort_by(timestamp_then_name);
+                tls::protocol(
+                    backend,
+                    tls_routes.into_iter(),
+                    &policy.parent_info,
+                    original_dst,
+                )
+            } else if !tcp_routes.is_empty() {
+                tcp_routes.sort_by(timestamp_then_name);
+                tcp::protocol(
+                    backend,
+                    tcp_routes.into_iter(),
+                    &policy.parent_info,
+                    original_dst,
+                )
+            } else {
+                http_routes.sort_by(timestamp_then_name);
+                http::protocol(
+                    backend,
+                    http_routes.into_iter(),
+                    accrual,
+                    policy.http_retry.clone(),
+                    policy.timeouts.clone(),
+                    allow_l5d_request_headers,
+                    &policy.parent_info,
+                    original_dst,
+                )
+            }
         }
     };
 
@@ -474,6 +540,12 @@ fn to_proto(
             ..Default::default()
         })),
     };
+
+    info!(
+        ?metadata,
+        ?policy.app_protocol,
+        "created outbound policy"
+    );
 
     outbound::OutboundPolicy {
         metadata: Some(metadata),
