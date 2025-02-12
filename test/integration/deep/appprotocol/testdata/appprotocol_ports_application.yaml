@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: http1-pod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: http1-pod
+  template:
+    metadata:
+      labels:
+        app: http1-pod
+      annotations:
+        linkerd.io/inject: "enabled"
+    spec:
+      containers:
+      - name: app
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--response-text=http1-pod"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-http1-pod
+  labels:
+    app: svc-http1-pod
+spec:
+  selector:
+    app: http1-pod
+  clusterIP: None
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    appProtocol: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: http2-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: http2-service
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: "enabled"
+      labels:
+        app: http2-service
+    spec:
+      containers:
+      - name: app
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--h2-server-port=8080"
+        - "--response-text=http2-service"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-http2-service
+  labels:
+    app: svc-http2-service
+spec:
+  selector:
+    app: http2-service
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    appProtocol: kubernetes.io/h2c
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opaque-pod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opaque-pod
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: opaque-pod
+    spec:
+      containers:
+      - name: app
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--response-text=opaque-pod"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-opaque-pod
+  labels:
+    app: svc-opaque-pod
+spec:
+  selector:
+    app: opaque-pod
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    appProtocol: linkerd.io/opaque

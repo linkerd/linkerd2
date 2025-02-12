@@ -196,7 +196,7 @@ pub(super) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
     cluster: &ClusterInfo,
     resources: &HashMap<ResourceRef, ResourceInfo>,
 ) -> Option<Backend> {
-    let backend = backend.into();
+    let backend: gateway::HttpBackendRef = backend.into();
     let filters = backend.filters;
     let backend = backend.backend_ref?;
 
