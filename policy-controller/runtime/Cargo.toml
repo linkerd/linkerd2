@@ -23,7 +23,7 @@ k8s-openapi = { workspace = true }
 http-body-util = "0.1"
 hyper = { version = "1", features = ["http1", "http2", "server"] }
 ipnet = { version = "2", default-features = false }
-openssl = { version = "0.10.68", optional = true }
+openssl = { version = "0.10.70", optional = true }
 parking_lot = "0.12"
 prometheus-client = { workspace = true }
 serde = "1"

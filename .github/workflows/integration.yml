@@ -10,7 +10,7 @@ env:
   CARGO_NET_RETRY: 10
   DOCKER_REGISTRY: ghcr.io/linkerd
   GH_ANNOTATION: true
-  K3D_VERSION: v5.7.5
+  K3D_VERSION: v5.8.1
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
   YQ_VERSION: v4.44.5
@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@d6e91a2266cdb9d62096cebf1e8546899c6aa18f
+      - uses: tj-actions/changed-files@dcc7a0cba800f454d79fff4b993e8c3555bcc0a8
         id: core
         with:
           files: |
@@ -164,7 +164,7 @@ jobs:
       matrix:
         k8s:
           - v1.22
-          - v1.31
+          - v1.32
     steps:
       - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
         env:
@@ -316,7 +316,7 @@ jobs:
       matrix:
         k8s:
           - v1.22
-          - v1.31
+          - v1.32
     steps:
       - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
         env:

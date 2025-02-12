@@ -17,6 +17,7 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -50,6 +51,7 @@ type (
 		recordEvent  func(parent runtime.Object, eventType, reason, message string)
 
 		expectedName, issuerPathCrt, issuerPathKey string
+		issuerCertTTL                              time.Time
 	}
 
 	// Validator implementors accept a bearer token, validates it, and returns a
@@ -92,6 +94,14 @@ func (svc *Service) updateIssuer(newIssuer tls.Issuer) {
 	svc.issuerMutex.Unlock()
 }
 
+func (svc *Service) getIssuerCertTTL() float64 {
+	if svc.issuerCertTTL.IsZero() {
+		log.Warn("Issuer certificate not ready: cannot get TTL")
+		return float64(0)
+	}
+	return time.Until(svc.issuerCertTTL).Seconds()
+}
+
 // Run reads from the issuer and error channels and reloads the issuer certs when necessary
 func (svc *Service) Run(issuerEvent <-chan struct{}, issuerError <-chan error) {
 	for {
@@ -131,13 +141,38 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 		return nil, fmt.Errorf("failed to verify issuer certificate: it must be an intermediate-CA, but it is not")
 	}
 
+	svc.issuerCertTTL = creds.Certificate.NotAfter
+
 	log.Debugf("Loaded issuer cert: %s", creds.EncodeCertificatePEM())
+	now := time.Now().Unix()
+	log.WithFields(log.Fields{
+		"invalid_after":      creds.Certificate.NotAfter.Unix(),
+		"process_clock_time": now,
+		"ttl_seconds":        creds.Certificate.NotAfter.Unix() - now,
+	}).Info("Issuer cert loaded")
 	return tls.NewCA(*creds, *svc.validity), nil
+}
+
+func (svc *Service) registerCertExpirationMetrics() {
+	// register a metric for the expiration of the issuer cert
+	issuerCertExpireGauge := prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "issuer_cert_ttl_seconds",
+		Help: "The remaining seconds until the issuer certificate expires",
+	}, svc.getIssuerCertTTL)
+	if err := prometheus.Register(issuerCertExpireGauge); err != nil {
+		var are prometheus.AlreadyRegisteredError
+		if errors.As(err, &are) {
+			log.Warn("issuer_cert_ttl_seconds metric already registered")
+		} else {
+			log.WithError(err).Error("failed to register issuer_cert_ttl_seconds metric")
+		}
+	}
+	// TODO: register a metric for the expiration of the trust anchor cert with the lowest TTL
 }
 
 // NewService creates a new identity service.
 func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(parent runtime.Object, eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
-	return &Service{
+	svc := &Service{
 		pb.UnimplementedIdentityServer{},
 		validator,
 		trustAnchors,
@@ -148,7 +183,10 @@ func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.
 		expectedName,
 		issuerPathCrt,
 		issuerPathKey,
+		time.Time{},
 	}
+	svc.registerCertExpirationMetrics()
+	return svc
 }
 
 // Register registers an identity service implementation in the provided gRPC

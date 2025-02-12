@@ -48,6 +48,14 @@ const tpl = `[
   },
   {
     "op": "add",
+    "path": "/spec/{{.ProxyPath}}/env/-",
+    "value": {
+      "name": "LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES",
+      "value": "k8s.pod.uid=$(_pod_uid)\nk8s.container.name=$(_pod_containerName)"
+    }
+  },
+  {
+    "op": "add",
     "path": "/spec/{{.ProxyPath}}/volumeMounts/-",
     "value": {
       "mountPath": "var/run/linkerd/podinfo",
