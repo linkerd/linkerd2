@@ -53,8 +53,8 @@ fn grpc_route_no_conflict(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::grpcroutes::GRPCRoute::group(&()),
-                kind: gateway::grpcroutes::GRPCRoute::kind(&()),
+                group: gateway::GRPCRoute::group(&()),
+                kind: gateway::GRPCRoute::kind(&()),
                 name: "grpc-1".into(),
             },
         },
@@ -68,8 +68,8 @@ fn grpc_route_no_conflict(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::httproutes::HTTPRoute::group(&()),
-                kind: gateway::httproutes::HTTPRoute::kind(&()),
+                group: gateway::HTTPRoute::group(&()),
+                kind: gateway::HTTPRoute::kind(&()),
                 name: "http-1".into(),
             },
         },
@@ -83,8 +83,8 @@ fn grpc_route_no_conflict(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::tlsroutes::TLSRoute::group(&()),
-                kind: gateway::tlsroutes::TLSRoute::kind(&()),
+                group: gateway::TLSRoute::group(&()),
+                kind: gateway::TLSRoute::kind(&()),
                 name: "tls-1".into(),
             },
         },
@@ -98,8 +98,8 @@ fn grpc_route_no_conflict(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::tcproutes::TCPRoute::group(&()),
-                kind: gateway::tcproutes::TCPRoute::kind(&()),
+                group: gateway::TCPRoute::group(&()),
+                kind: gateway::TCPRoute::kind(&()),
                 name: "tcp-1".into(),
             },
         },
@@ -134,8 +134,8 @@ fn http_route_conflict_grpc(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::grpcroutes::GRPCRoute::group(&()),
-                kind: gateway::grpcroutes::GRPCRoute::kind(&()),
+                group: gateway::GRPCRoute::group(&()),
+                kind: gateway::GRPCRoute::kind(&()),
                 name: "grpc-1".into(),
             },
         },
@@ -170,8 +170,8 @@ fn http_route_no_conflict(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::httproutes::HTTPRoute::group(&()),
-                kind: gateway::httproutes::HTTPRoute::kind(&()),
+                group: gateway::HTTPRoute::group(&()),
+                kind: gateway::HTTPRoute::kind(&()),
                 name: "http-1".into(),
             },
         },
@@ -185,8 +185,8 @@ fn http_route_no_conflict(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::tlsroutes::TLSRoute::group(&()),
-                kind: gateway::tlsroutes::TLSRoute::kind(&()),
+                group: gateway::TLSRoute::group(&()),
+                kind: gateway::TLSRoute::kind(&()),
                 name: "tls-1".into(),
             },
         },
@@ -200,8 +200,8 @@ fn http_route_no_conflict(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::tcproutes::TCPRoute::group(&()),
-                kind: gateway::tcproutes::TCPRoute::kind(&()),
+                group: gateway::TCPRoute::group(&()),
+                kind: gateway::TCPRoute::kind(&()),
                 name: "tcp-1".into(),
             },
         },
@@ -236,8 +236,8 @@ fn tls_route_conflict_http(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::httproutes::HTTPRoute::group(&()),
-                kind: gateway::httproutes::HTTPRoute::kind(&()),
+                group: gateway::HTTPRoute::group(&()),
+                kind: gateway::HTTPRoute::kind(&()),
                 name: "http-1".into(),
             },
         },
@@ -272,8 +272,8 @@ fn tls_route_conflict_grpc(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::grpcroutes::GRPCRoute::group(&()),
-                kind: gateway::grpcroutes::GRPCRoute::kind(&()),
+                group: gateway::GRPCRoute::group(&()),
+                kind: gateway::GRPCRoute::kind(&()),
                 name: "grpc-1".into(),
             },
         },
@@ -308,8 +308,8 @@ fn tls_route_no_conflict(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::tlsroutes::TLSRoute::group(&()),
-                kind: gateway::tlsroutes::TLSRoute::kind(&()),
+                group: gateway::TLSRoute::group(&()),
+                kind: gateway::TLSRoute::kind(&()),
                 name: "tls-1".into(),
             },
         },
@@ -323,8 +323,8 @@ fn tls_route_no_conflict(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::tcproutes::TCPRoute::group(&()),
-                kind: gateway::tcproutes::TCPRoute::kind(&()),
+                group: gateway::TCPRoute::group(&()),
+                kind: gateway::TCPRoute::kind(&()),
                 name: "tcp-1".into(),
             },
         },
@@ -359,8 +359,8 @@ fn tcp_route_conflict_grpc(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::grpcroutes::GRPCRoute::group(&()),
-                kind: gateway::grpcroutes::GRPCRoute::kind(&()),
+                group: gateway::GRPCRoute::group(&()),
+                kind: gateway::GRPCRoute::kind(&()),
                 name: "grpc-1".into(),
             },
         },
@@ -395,8 +395,8 @@ fn tcp_route_conflict_http(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::httproutes::HTTPRoute::group(&()),
-                kind: gateway::httproutes::HTTPRoute::kind(&()),
+                group: gateway::HTTPRoute::group(&()),
+                kind: gateway::HTTPRoute::kind(&()),
                 name: "http-1".into(),
             },
         },
@@ -431,8 +431,8 @@ fn tcp_route_conflict_tls(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::tlsroutes::TLSRoute::group(&()),
-                kind: gateway::tlsroutes::TLSRoute::kind(&()),
+                group: gateway::TLSRoute::group(&()),
+                kind: gateway::TLSRoute::kind(&()),
                 name: "tls-1".into(),
             },
         },
@@ -467,8 +467,8 @@ fn tcp_route_no_conflict(p: ParentRefType) {
         NamespaceGroupKindName {
             namespace: "default".to_string(),
             gkn: GroupKindName {
-                group: gateway::tcproutes::TCPRoute::group(&()),
-                kind: gateway::tcproutes::TCPRoute::kind(&()),
+                group: gateway::TCPRoute::group(&()),
+                kind: gateway::TCPRoute::kind(&()),
                 name: "tcp-1".into(),
             },
         },

@@ -7,7 +7,7 @@ pub mod http;
 #[derive(Debug, Clone)]
 pub(crate) enum HttpRouteResource {
     LinkerdHttp(policy::HttpRoute),
-    GatewayHttp(gateway::httproutes::HTTPRoute),
+    GatewayHttp(gateway::HTTPRoute),
 }
 
 impl HttpRouteResource {
@@ -25,16 +25,16 @@ impl HttpRouteResource {
         }
     }
 
-    pub(crate) fn parent_refs(&self) -> &Option<Vec<gateway::httproutes::HTTPRouteParentRefs>> {
+    pub(crate) fn parent_refs(&self) -> &Option<Vec<gateway::HTTPRouteParentRefs>> {
         match self {
             Self::LinkerdHttp(route) => &route.spec.parent_refs,
-            Self::GatewayHttp(route) => &route.spec.parent_refs,
+            Self::GatewayHttp(route) => &route.spec.inner.parent_refs,
         }
     }
 
-    pub(crate) fn status(&self) -> Option<&gateway::httproutes::HTTPRouteStatus> {
+    pub(crate) fn status(&self) -> Option<&gateway::HTTPRouteStatus> {
         match self {
-            Self::LinkerdHttp(route) => route.status.as_ref().map(|status| &status.inner),
+            Self::LinkerdHttp(route) => route.status.as_ref(),
             Self::GatewayHttp(route) => route.status.as_ref(),
         }
     }

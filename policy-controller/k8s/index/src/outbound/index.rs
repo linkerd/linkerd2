@@ -15,7 +15,7 @@ use linkerd_policy_controller_core::{
     routes::GroupKindNamespaceName,
 };
 use linkerd_policy_controller_k8s_api::{
-    gateway as k8s_gateway_api,
+    gateway,
     policy::{self as linkerd_k8s_api, Cidr},
     ResourceExt, Service,
 };
@@ -149,60 +149,52 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HttpRoute> for Inde
     }
 }
 
-impl kubert::index::IndexNamespacedResource<k8s_gateway_api::httproutes::HTTPRoute> for Index {
-    fn apply(&mut self, route: k8s_gateway_api::httproutes::HTTPRoute) {
+impl kubert::index::IndexNamespacedResource<gateway::HTTPRoute> for Index {
+    fn apply(&mut self, route: gateway::HTTPRoute) {
         self.apply_http(HttpRouteResource::GatewayHttp(route))
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let gknn = name
-            .gkn::<k8s_gateway_api::httproutes::HTTPRoute>()
-            .namespaced(namespace);
+        let gknn = name.gkn::<gateway::HTTPRoute>().namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete_http_route(&gknn);
         }
     }
 }
 
-impl kubert::index::IndexNamespacedResource<k8s_gateway_api::grpcroutes::GRPCRoute> for Index {
-    fn apply(&mut self, route: k8s_gateway_api::grpcroutes::GRPCRoute) {
+impl kubert::index::IndexNamespacedResource<gateway::GRPCRoute> for Index {
+    fn apply(&mut self, route: gateway::GRPCRoute) {
         self.apply_grpc(route)
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let gknn = name
-            .gkn::<k8s_gateway_api::grpcroutes::GRPCRoute>()
-            .namespaced(namespace);
+        let gknn = name.gkn::<gateway::GRPCRoute>().namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete_grpc_route(&gknn);
         }
     }
 }
 
-impl kubert::index::IndexNamespacedResource<k8s_gateway_api::tlsroutes::TLSRoute> for Index {
-    fn apply(&mut self, route: k8s_gateway_api::tlsroutes::TLSRoute) {
+impl kubert::index::IndexNamespacedResource<gateway::TLSRoute> for Index {
+    fn apply(&mut self, route: gateway::TLSRoute) {
         self.apply_tls(route)
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let gknn = name
-            .gkn::<k8s_gateway_api::tlsroutes::TLSRoute>()
-            .namespaced(namespace);
+        let gknn = name.gkn::<gateway::TLSRoute>().namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete_tls_route(&gknn);
         }
     }
 }
 
-impl kubert::index::IndexNamespacedResource<k8s_gateway_api::tcproutes::TCPRoute> for Index {
-    fn apply(&mut self, route: k8s_gateway_api::tcproutes::TCPRoute) {
+impl kubert::index::IndexNamespacedResource<gateway::TCPRoute> for Index {
+    fn apply(&mut self, route: gateway::TCPRoute) {
         self.apply_tcp(route)
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let gknn = name
-            .gkn::<k8s_gateway_api::tcproutes::TCPRoute>()
-            .namespaced(namespace);
+        let gknn = name.gkn::<gateway::TCPRoute>().namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete_tcp_route(&gknn);
         }
@@ -537,12 +529,12 @@ impl Index {
         });
     }
 
-    fn apply_grpc(&mut self, route: k8s_gateway_api::grpcroutes::GRPCRoute) {
+    fn apply_grpc(&mut self, route: gateway::GRPCRoute) {
         tracing::debug!(name = route.name_unchecked(), "indexing grpcroute");
 
         // For each parent_ref, create a namespace index for it if it doesn't
         // already exist.
-        for parent_ref in route.spec.parent_refs.iter().flatten() {
+        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
             let ns = parent_ref
                 .namespace
                 .clone()
@@ -573,12 +565,12 @@ impl Index {
         }
     }
 
-    fn apply_tls(&mut self, route: k8s_gateway_api::tlsroutes::TLSRoute) {
+    fn apply_tls(&mut self, route: gateway::TLSRoute) {
         tracing::debug!(name = route.name_unchecked(), "indexing tlsroute");
 
         // For each parent_ref, create a namespace index for it if it doesn't
         // already exist.
-        for parent_ref in route.spec.parent_refs.iter().flatten() {
+        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
             let ns = parent_ref
                 .namespace
                 .clone()
@@ -609,12 +601,12 @@ impl Index {
         }
     }
 
-    fn apply_tcp(&mut self, route: k8s_gateway_api::tcproutes::TCPRoute) {
+    fn apply_tcp(&mut self, route: gateway::TCPRoute) {
         tracing::debug!(name = route.name_unchecked(), "indexing tcproute");
 
         // For each parent_ref, create a namespace index for it if it doesn't
         // already exist.
-        for parent_ref in route.spec.parent_refs.iter().flatten() {
+        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
             let ns = parent_ref
                 .namespace
                 .clone()
@@ -698,10 +690,7 @@ impl Namespace {
                 continue;
             }
 
-            let port = parent_ref
-                .port
-                .and_then(|p| p.try_into().ok())
-                .and_then(NonZeroU16::new);
+            let port = parent_ref.port.and_then(NonZeroU16::new);
 
             if let Some(port) = port {
                 let resource_port = ResourcePort {
@@ -762,7 +751,7 @@ impl Namespace {
 
     fn apply_grpc_route(
         &mut self,
-        route: k8s_gateway_api::grpcroutes::GRPCRoute,
+        route: gateway::GRPCRoute,
         cluster_info: &ClusterInfo,
         resource_info: &HashMap<ResourceRef, ResourceInfo>,
     ) {
@@ -785,7 +774,7 @@ impl Namespace {
 
         tracing::debug!(?outbound_route);
 
-        for parent_ref in route.spec.parent_refs.iter().flatten() {
+        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
             let parent_kind = if is_parent_service(&parent_ref.kind, &parent_ref.group) {
                 ResourceKind::Service
             } else if is_parent_egress_network(&parent_ref.kind, &parent_ref.group) {
@@ -799,16 +788,7 @@ impl Namespace {
                 continue;
             }
 
-            let port = parent_ref
-                .port
-                .and_then(|p| match p.try_into() {
-                    Ok(port) => Some(port),
-                    Err(error) => {
-                        tracing::error!(%error, "parent_ref port is out of bounds");
-                        None
-                    }
-                })
-                .and_then(NonZeroU16::new);
+            let port = parent_ref.port.and_then(NonZeroU16::new);
 
             if let Some(port) = port {
                 let port = ResourcePort {
@@ -869,7 +849,7 @@ impl Namespace {
 
     fn apply_tls_route(
         &mut self,
-        route: k8s_gateway_api::tlsroutes::TLSRoute,
+        route: gateway::TLSRoute,
         cluster_info: &ClusterInfo,
         resource_info: &HashMap<ResourceRef, ResourceInfo>,
     ) {
@@ -890,7 +870,7 @@ impl Namespace {
             .namespaced(route.namespace().expect("Route must have namespace"));
         let status = route.status.as_ref();
 
-        for parent_ref in route.spec.parent_refs.iter().flatten() {
+        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
             let parent_kind = if is_parent_service(&parent_ref.kind, &parent_ref.group) {
                 ResourceKind::Service
             } else if is_parent_egress_network(&parent_ref.kind, &parent_ref.group) {
@@ -904,10 +884,7 @@ impl Namespace {
                 continue;
             }
 
-            let port = parent_ref
-                .port
-                .and_then(|p| p.try_into().ok())
-                .and_then(NonZeroU16::new);
+            let port = parent_ref.port.and_then(NonZeroU16::new);
 
             if let Some(port) = port {
                 let port = ResourcePort {
@@ -968,7 +945,7 @@ impl Namespace {
 
     fn apply_tcp_route(
         &mut self,
-        route: k8s_gateway_api::tcproutes::TCPRoute,
+        route: gateway::TCPRoute,
         cluster_info: &ClusterInfo,
         resource_info: &HashMap<ResourceRef, ResourceInfo>,
     ) {
@@ -989,7 +966,7 @@ impl Namespace {
             .namespaced(route.namespace().expect("Route must have namespace"));
         let status = route.status.as_ref();
 
-        for parent_ref in route.spec.parent_refs.iter().flatten() {
+        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
             let parent_kind = if is_parent_service(&parent_ref.kind, &parent_ref.group) {
                 ResourceKind::Service
             } else if is_parent_egress_network(&parent_ref.kind, &parent_ref.group) {
@@ -1003,10 +980,7 @@ impl Namespace {
                 continue;
             }
 
-            let port = parent_ref
-                .port
-                .and_then(|p| p.try_into().ok())
-                .and_then(NonZeroU16::new);
+            let port = parent_ref.port.and_then(NonZeroU16::new);
 
             if let Some(port) = port {
                 let port = ResourcePort {

@@ -112,10 +112,10 @@ pub(crate) struct RouteRef<S> {
     pub(crate) statuses: Vec<S>,
 }
 
-pub(crate) type HTTPRouteRef = RouteRef<gateway::httproutes::HTTPRouteStatus>;
-pub(crate) type GRPCRouteRef = RouteRef<gateway::grpcroutes::GRPCRouteStatus>;
-pub(crate) type TLSRouteRef = RouteRef<gateway::tlsroutes::TLSRouteStatus>;
-pub(crate) type TCPRouteRef = RouteRef<gateway::tcproutes::TCPRouteStatus>;
+pub(crate) type HTTPRouteRef = RouteRef<gateway::HTTPRouteStatus>;
+pub(crate) type GRPCRouteRef = RouteRef<gateway::GRPCRouteStatus>;
+pub(crate) type TLSRouteRef = RouteRef<gateway::TLSRouteStatus>;
+pub(crate) type TCPRouteRef = RouteRef<gateway::TCPRouteStatus>;
 
 #[derive(Clone, PartialEq, Debug)]
 struct HttpLocalRateLimitPolicyRef {
@@ -276,14 +276,14 @@ impl Controller {
                     if is_leader {
                         if id.is_a::<policy::HttpRoute>() {
                             self.patch::<policy::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.is_a::<gateway::httproutes::HTTPRoute>() {
-                            self.patch::<gateway::httproutes::HTTPRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.is_a::<gateway::grpcroutes::GRPCRoute>() {
-                            self.patch::<gateway::grpcroutes::GRPCRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.is_a::<gateway::tcproutes::TCPRoute>() {
-                            self.patch::<gateway::tcproutes::TCPRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.is_a::<gateway::tlsroutes::TLSRoute>() {
-                            self.patch::<gateway::tlsroutes::TLSRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.is_a::<gateway::HTTPRoute>() {
+                            self.patch::<gateway::HTTPRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.is_a::<gateway::GRPCRoute>() {
+                            self.patch::<gateway::GRPCRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.is_a::<gateway::TCPRoute>() {
+                            self.patch::<gateway::TCPRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.is_a::<gateway::TLSRoute>() {
+                            self.patch::<gateway::TLSRoute>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.is_a::<policy::HttpLocalRateLimitPolicy>() {
                             self.patch::<policy::HttpLocalRateLimitPolicy>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.is_a::<policy::EgressNetwork>() {
@@ -551,10 +551,10 @@ impl Index {
         parent_ref: &routes::ParentReference,
         candidate_kind: &str,
     ) -> bool {
-        let grpc_kind = gateway::grpcroutes::GRPCRoute::kind(&());
-        let http_kind = gateway::httproutes::HTTPRoute::kind(&());
-        let tls_kind = gateway::tlsroutes::TLSRoute::kind(&());
-        let tcp_kind = gateway::tcproutes::TCPRoute::kind(&());
+        let grpc_kind = gateway::GRPCRoute::kind(&());
+        let http_kind = gateway::HTTPRoute::kind(&());
+        let tls_kind = gateway::TLSRoute::kind(&());
+        let tcp_kind = gateway::TCPRoute::kind(&());
 
         if *candidate_kind == grpc_kind {
             false
@@ -649,12 +649,12 @@ impl Index {
         id: &NamespaceGroupKindName,
         parent_ref: &routes::ParentReference,
         backend_condition: k8s::Condition,
-    ) -> Option<gateway::grpcroutes::GRPCRouteStatusParents> {
+    ) -> Option<gateway::GRPCRouteStatusParents> {
         match parent_ref {
             routes::ParentReference::Server(server) => {
                 let condition = self.parent_condition_server(server, id, parent_ref);
-                Some(gateway::grpcroutes::GRPCRouteStatusParents {
-                    parent_ref: gateway::grpcroutes::GRPCRouteStatusParentsParentRef {
+                Some(gateway::GRPCRouteStatusParents {
+                    parent_ref: gateway::GRPCRouteStatusParentsParentRef {
                         group: Some(POLICY_API_GROUP.to_string()),
                         kind: Some("Server".to_string()),
                         namespace: Some(server.namespace.clone()),
@@ -663,14 +663,14 @@ impl Index {
                         port: None,
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: Some(vec![condition]),
+                    conditions: vec![condition],
                 })
             }
 
             routes::ParentReference::Service(service, port) => {
                 let condition = self.parent_condition_service(service, id, parent_ref);
-                Some(gateway::grpcroutes::GRPCRouteStatusParents {
-                    parent_ref: gateway::grpcroutes::GRPCRouteStatusParentsParentRef {
+                Some(gateway::GRPCRouteStatusParents {
+                    parent_ref: gateway::GRPCRouteStatusParentsParentRef {
                         group: Some("core".to_string()),
                         kind: Some("Service".to_string()),
                         namespace: Some(service.namespace.clone()),
@@ -679,14 +679,14 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: Some(vec![condition, backend_condition]),
+                    conditions: vec![condition, backend_condition],
                 })
             }
 
             routes::ParentReference::EgressNetwork(egress_net, port) => {
                 let condition = self.parent_condition_egress_network(egress_net, id, parent_ref);
-                Some(gateway::grpcroutes::GRPCRouteStatusParents {
-                    parent_ref: gateway::grpcroutes::GRPCRouteStatusParentsParentRef {
+                Some(gateway::GRPCRouteStatusParents {
+                    parent_ref: gateway::GRPCRouteStatusParentsParentRef {
                         group: Some("policy.linkerd.io".to_string()),
                         kind: Some("EgressNetwork".to_string()),
                         namespace: Some(egress_net.namespace.clone()),
@@ -695,7 +695,7 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: Some(vec![condition, backend_condition]),
+                    conditions: vec![condition, backend_condition],
                 })
             }
             routes::ParentReference::UnknownKind => None,
@@ -707,12 +707,12 @@ impl Index {
         id: &NamespaceGroupKindName,
         parent_ref: &routes::ParentReference,
         backend_condition: k8s::Condition,
-    ) -> Option<gateway::httproutes::HTTPRouteStatusParents> {
+    ) -> Option<gateway::HTTPRouteStatusParents> {
         match parent_ref {
             routes::ParentReference::Server(server) => {
                 let condition = self.parent_condition_server(server, id, parent_ref);
-                Some(gateway::httproutes::HTTPRouteStatusParents {
-                    parent_ref: gateway::httproutes::HTTPRouteStatusParentsParentRef {
+                Some(gateway::HTTPRouteStatusParents {
+                    parent_ref: gateway::HTTPRouteStatusParentsParentRef {
                         group: Some(POLICY_API_GROUP.to_string()),
                         kind: Some("Server".to_string()),
                         namespace: Some(server.namespace.clone()),
@@ -721,14 +721,14 @@ impl Index {
                         port: None,
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: Some(vec![condition]),
+                    conditions: vec![condition],
                 })
             }
 
             routes::ParentReference::Service(service, port) => {
                 let condition = self.parent_condition_service(service, id, parent_ref);
-                Some(gateway::httproutes::HTTPRouteStatusParents {
-                    parent_ref: gateway::httproutes::HTTPRouteStatusParentsParentRef {
+                Some(gateway::HTTPRouteStatusParents {
+                    parent_ref: gateway::HTTPRouteStatusParentsParentRef {
                         group: Some("core".to_string()),
                         kind: Some("Service".to_string()),
                         namespace: Some(service.namespace.clone()),
@@ -737,14 +737,14 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: Some(vec![condition, backend_condition]),
+                    conditions: vec![condition, backend_condition],
                 })
             }
 
             routes::ParentReference::EgressNetwork(egress_net, port) => {
                 let condition = self.parent_condition_egress_network(egress_net, id, parent_ref);
-                Some(gateway::httproutes::HTTPRouteStatusParents {
-                    parent_ref: gateway::httproutes::HTTPRouteStatusParentsParentRef {
+                Some(gateway::HTTPRouteStatusParents {
+                    parent_ref: gateway::HTTPRouteStatusParentsParentRef {
                         group: Some("policy.linkerd.io".to_string()),
                         kind: Some("EgressNetwork".to_string()),
                         namespace: Some(egress_net.namespace.clone()),
@@ -753,7 +753,7 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: Some(vec![condition, backend_condition]),
+                    conditions: vec![condition, backend_condition],
                 })
             }
             routes::ParentReference::UnknownKind => None,
@@ -765,12 +765,12 @@ impl Index {
         id: &NamespaceGroupKindName,
         parent_ref: &routes::ParentReference,
         backend_condition: k8s::Condition,
-    ) -> Option<gateway::tlsroutes::TLSRouteStatusParents> {
+    ) -> Option<gateway::TLSRouteStatusParents> {
         match parent_ref {
             routes::ParentReference::Server(server) => {
                 let condition = self.parent_condition_server(server, id, parent_ref);
-                Some(gateway::tlsroutes::TLSRouteStatusParents {
-                    parent_ref: gateway::tlsroutes::TLSRouteStatusParentsParentRef {
+                Some(gateway::TLSRouteStatusParents {
+                    parent_ref: gateway::TLSRouteStatusParentsParentRef {
                         group: Some(POLICY_API_GROUP.to_string()),
                         kind: Some("Server".to_string()),
                         namespace: Some(server.namespace.clone()),
@@ -779,14 +779,14 @@ impl Index {
                         port: None,
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: Some(vec![condition]),
+                    conditions: vec![condition],
                 })
             }
 
             routes::ParentReference::Service(service, port) => {
                 let condition = self.parent_condition_service(service, id, parent_ref);
-                Some(gateway::tlsroutes::TLSRouteStatusParents {
-                    parent_ref: gateway::tlsroutes::TLSRouteStatusParentsParentRef {
+                Some(gateway::TLSRouteStatusParents {
+                    parent_ref: gateway::TLSRouteStatusParentsParentRef {
                         group: Some("core".to_string()),
                         kind: Some("Service".to_string()),
                         namespace: Some(service.namespace.clone()),
@@ -795,14 +795,14 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: Some(vec![condition, backend_condition]),
+                    conditions: vec![condition, backend_condition],
                 })
             }
 
             routes::ParentReference::EgressNetwork(egress_net, port) => {
                 let condition = self.parent_condition_egress_network(egress_net, id, parent_ref);
-                Some(gateway::tlsroutes::TLSRouteStatusParents {
-                    parent_ref: gateway::tlsroutes::TLSRouteStatusParentsParentRef {
+                Some(gateway::TLSRouteStatusParents {
+                    parent_ref: gateway::TLSRouteStatusParentsParentRef {
                         group: Some("policy.linkerd.io".to_string()),
                         kind: Some("EgressNetwork".to_string()),
                         namespace: Some(egress_net.namespace.clone()),
@@ -811,7 +811,7 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: Some(vec![condition, backend_condition]),
+                    conditions: vec![condition, backend_condition],
                 })
             }
             routes::ParentReference::UnknownKind => None,
@@ -823,12 +823,12 @@ impl Index {
         id: &NamespaceGroupKindName,
         parent_ref: &routes::ParentReference,
         backend_condition: k8s::Condition,
-    ) -> Option<gateway::tcproutes::TCPRouteStatusParents> {
+    ) -> Option<gateway::TCPRouteStatusParents> {
         match parent_ref {
             routes::ParentReference::Server(server) => {
                 let condition = self.parent_condition_server(server, id, parent_ref);
-                Some(gateway::tcproutes::TCPRouteStatusParents {
-                    parent_ref: gateway::tcproutes::TCPRouteStatusParentsParentRef {
+                Some(gateway::TCPRouteStatusParents {
+                    parent_ref: gateway::TCPRouteStatusParentsParentRef {
                         group: Some(POLICY_API_GROUP.to_string()),
                         kind: Some("Server".to_string()),
                         namespace: Some(server.namespace.clone()),
@@ -837,14 +837,14 @@ impl Index {
                         port: None,
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: Some(vec![condition]),
+                    conditions: vec![condition],
                 })
             }
 
             routes::ParentReference::Service(service, port) => {
                 let condition = self.parent_condition_service(service, id, parent_ref);
-                Some(gateway::tcproutes::TCPRouteStatusParents {
-                    parent_ref: gateway::tcproutes::TCPRouteStatusParentsParentRef {
+                Some(gateway::TCPRouteStatusParents {
+                    parent_ref: gateway::TCPRouteStatusParentsParentRef {
                         group: Some("core".to_string()),
                         kind: Some("Service".to_string()),
                         namespace: Some(service.namespace.clone()),
@@ -853,14 +853,14 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: Some(vec![condition, backend_condition]),
+                    conditions: vec![condition, backend_condition],
                 })
             }
 
             routes::ParentReference::EgressNetwork(egress_net, port) => {
                 let condition = self.parent_condition_egress_network(egress_net, id, parent_ref);
-                Some(gateway::tcproutes::TCPRouteStatusParents {
-                    parent_ref: gateway::tcproutes::TCPRouteStatusParentsParentRef {
+                Some(gateway::TCPRouteStatusParents {
+                    parent_ref: gateway::TCPRouteStatusParentsParentRef {
                         group: Some("policy.linkerd.io".to_string()),
                         kind: Some("EgressNetwork".to_string()),
                         namespace: Some(egress_net.namespace.clone()),
@@ -869,7 +869,7 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: Some(vec![condition, backend_condition]),
+                    conditions: vec![condition, backend_condition],
                 })
             }
             routes::ParentReference::UnknownKind => None,
@@ -928,7 +928,7 @@ impl Index {
         let unowned_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.parents.clone())
+            .flat_map(|status| status.inner.parents.clone())
             .filter(|status| status.controller_name != POLICY_CONTROLLER_NAME);
 
         // Compute a status for each parent_ref which has a kind we support.
@@ -941,14 +941,16 @@ impl Index {
         let route_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.parents.clone())
+            .flat_map(|status| status.inner.parents.clone())
             .collect::<Vec<_>>();
         if eq_time_insensitive_http_route_parent_statuses(&all_statuses, &route_statuses) {
             return None;
         }
 
-        let status = gateway::httproutes::HTTPRouteStatus {
-            parents: all_statuses,
+        let status = gateway::HTTPRouteStatus {
+            inner: gateway::RouteStatus {
+                parents: all_statuses,
+            },
         };
 
         make_patch(id, status)
@@ -964,7 +966,7 @@ impl Index {
         let unowned_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.parents.clone())
+            .flat_map(|status| status.inner.parents.clone())
             .filter(|status| status.controller_name != POLICY_CONTROLLER_NAME);
 
         // Compute a status for each parent_ref which has a kind we support.
@@ -977,15 +979,17 @@ impl Index {
         let route_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.parents.clone())
+            .flat_map(|status| status.inner.parents.clone())
             .collect::<Vec<_>>();
 
         if eq_time_insensitive_grpc_route_parent_statuses(&all_statuses, &route_statuses) {
             return None;
         }
 
-        let status = gateway::grpcroutes::GRPCRouteStatus {
-            parents: all_statuses,
+        let status = gateway::GRPCRouteStatus {
+            inner: gateway::RouteStatus {
+                parents: all_statuses,
+            },
         };
 
         make_patch(id, status)
@@ -1001,7 +1005,7 @@ impl Index {
         let unowned_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.parents.clone())
+            .flat_map(|status| status.inner.parents.clone())
             .filter(|status| status.controller_name != POLICY_CONTROLLER_NAME);
 
         // Compute a status for each parent_ref which has a kind we support.
@@ -1014,15 +1018,17 @@ impl Index {
         let route_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.parents.clone())
+            .flat_map(|status| status.inner.parents.clone())
             .collect::<Vec<_>>();
 
         if eq_time_insensitive_tls_route_parent_statuses(&all_statuses, &route_statuses) {
             return None;
         }
 
-        let status = gateway::tlsroutes::TLSRouteStatus {
-            parents: all_statuses,
+        let status = gateway::TLSRouteStatus {
+            inner: gateway::RouteStatus {
+                parents: all_statuses,
+            },
         };
 
         make_patch(id, status)
@@ -1038,7 +1044,7 @@ impl Index {
         let unowned_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.parents.clone())
+            .flat_map(|status| status.inner.parents.clone())
             .filter(|status| status.controller_name != POLICY_CONTROLLER_NAME);
 
         // Compute a status for each parent_ref which has a kind we support.
@@ -1051,15 +1057,17 @@ impl Index {
         let route_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.parents.clone())
+            .flat_map(|status| status.inner.parents.clone())
             .collect::<Vec<_>>();
 
         if eq_time_insensitive_tcp_route_parent_statuses(&all_statuses, &route_statuses) {
             return None;
         }
 
-        let status = gateway::tcproutes::TCPRouteStatus {
-            parents: all_statuses,
+        let status = gateway::TCPRouteStatus {
+            inner: gateway::RouteStatus {
+                parents: all_statuses,
+            },
         };
 
         make_patch(id, status)
@@ -1367,7 +1375,9 @@ impl kubert::index::IndexNamespacedResource<policy::HttpRoute> for Index {
         let route = HTTPRouteRef {
             parents,
             backends,
-            statuses: vec![gateway::httproutes::HTTPRouteStatus { parents: statuses }],
+            statuses: vec![gateway::HTTPRouteStatus {
+                inner: gateway::RouteStatus { parents: statuses },
+            }],
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1395,8 +1405,8 @@ impl kubert::index::IndexNamespacedResource<policy::HttpRoute> for Index {
     // to handle resets specially.
 }
 
-impl kubert::index::IndexNamespacedResource<gateway::httproutes::HTTPRoute> for Index {
-    fn apply(&mut self, resource: gateway::httproutes::HTTPRoute) {
+impl kubert::index::IndexNamespacedResource<gateway::HTTPRoute> for Index {
+    fn apply(&mut self, resource: gateway::HTTPRoute) {
         let namespace = resource
             .namespace()
             .expect("HTTPRoute must have a namespace");
@@ -1404,15 +1414,17 @@ impl kubert::index::IndexNamespacedResource<gateway::httproutes::HTTPRoute> for 
         let id = NamespaceGroupKindName {
             namespace: namespace.clone(),
             gkn: GroupKindName {
-                group: gateway::httproutes::HTTPRoute::group(&()),
-                kind: gateway::httproutes::HTTPRoute::kind(&()),
+                group: gateway::HTTPRoute::group(&()),
+                kind: gateway::HTTPRoute::kind(&()),
                 name: name.into(),
             },
         };
 
         // Create the route parents
-        let parents =
-            routes::http::make_parents(&namespace, &resource.spec.parent_refs.unwrap_or_default());
+        let parents = routes::http::make_parents(
+            &namespace,
+            &resource.spec.inner.parent_refs.unwrap_or_default(),
+        );
 
         // Create the route backends
         let backends = routes::http::make_backends(
@@ -1429,7 +1441,7 @@ impl kubert::index::IndexNamespacedResource<gateway::httproutes::HTTPRoute> for 
         let statuses = resource
             .status
             .into_iter()
-            .flat_map(|status| status.parents)
+            .flat_map(|status| status.inner.parents)
             .collect();
 
         // Construct route and insert into the index; if the HTTPRoute is
@@ -1437,7 +1449,9 @@ impl kubert::index::IndexNamespacedResource<gateway::httproutes::HTTPRoute> for 
         let route = RouteRef {
             parents,
             backends,
-            statuses: vec![gateway::httproutes::HTTPRouteStatus { parents: statuses }],
+            statuses: vec![gateway::HTTPRouteStatus {
+                inner: gateway::RouteStatus { parents: statuses },
+            }],
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1453,8 +1467,8 @@ impl kubert::index::IndexNamespacedResource<gateway::httproutes::HTTPRoute> for 
         let id = NamespaceGroupKindName {
             namespace,
             gkn: GroupKindName {
-                group: gateway::httproutes::HTTPRoute::group(&()),
-                kind: gateway::httproutes::HTTPRoute::kind(&()),
+                group: gateway::HTTPRoute::group(&()),
+                kind: gateway::HTTPRoute::kind(&()),
                 name: name.into(),
             },
         };
@@ -1465,8 +1479,8 @@ impl kubert::index::IndexNamespacedResource<gateway::httproutes::HTTPRoute> for 
     // to handle resets specially.
 }
 
-impl kubert::index::IndexNamespacedResource<gateway::grpcroutes::GRPCRoute> for Index {
-    fn apply(&mut self, resource: gateway::grpcroutes::GRPCRoute) {
+impl kubert::index::IndexNamespacedResource<gateway::GRPCRoute> for Index {
+    fn apply(&mut self, resource: gateway::GRPCRoute) {
         let namespace = resource
             .namespace()
             .expect("GRPCRoute must have a namespace");
@@ -1475,14 +1489,16 @@ impl kubert::index::IndexNamespacedResource<gateway::grpcroutes::GRPCRoute> for 
             namespace: namespace.clone(),
             gkn: GroupKindName {
                 name: name.into(),
-                kind: gateway::grpcroutes::GRPCRoute::kind(&()),
-                group: gateway::grpcroutes::GRPCRoute::group(&()),
+                kind: gateway::GRPCRoute::kind(&()),
+                group: gateway::GRPCRoute::group(&()),
             },
         };
 
         // Create the route parents
-        let parents =
-            routes::grpc::make_parents(&namespace, &resource.spec.parent_refs.unwrap_or_default());
+        let parents = routes::grpc::make_parents(
+            &namespace,
+            &resource.spec.inner.parent_refs.unwrap_or_default(),
+        );
 
         // Create the route backends
         let backends = routes::grpc::make_backends(
@@ -1499,7 +1515,7 @@ impl kubert::index::IndexNamespacedResource<gateway::grpcroutes::GRPCRoute> for 
         let statuses = resource
             .status
             .into_iter()
-            .flat_map(|status| status.parents)
+            .flat_map(|status| status.inner.parents)
             .collect();
 
         // Construct route and insert into the index; if the GRPCRoute is
@@ -1507,7 +1523,9 @@ impl kubert::index::IndexNamespacedResource<gateway::grpcroutes::GRPCRoute> for 
         let route = RouteRef {
             parents,
             backends,
-            statuses: vec![gateway::grpcroutes::GRPCRouteStatus { parents: statuses }],
+            statuses: vec![gateway::GRPCRouteStatus {
+                inner: gateway::RouteStatus { parents: statuses },
+            }],
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1524,8 +1542,8 @@ impl kubert::index::IndexNamespacedResource<gateway::grpcroutes::GRPCRoute> for 
             namespace,
             gkn: GroupKindName {
                 name: name.into(),
-                kind: gateway::grpcroutes::GRPCRoute::kind(&()),
-                group: gateway::grpcroutes::GRPCRoute::group(&()),
+                kind: gateway::GRPCRoute::kind(&()),
+                group: gateway::GRPCRoute::group(&()),
             },
         };
         self.grpc_route_refs.remove(&id);
@@ -1535,8 +1553,8 @@ impl kubert::index::IndexNamespacedResource<gateway::grpcroutes::GRPCRoute> for 
     // to handle resets specially.
 }
 
-impl kubert::index::IndexNamespacedResource<gateway::tlsroutes::TLSRoute> for Index {
-    fn apply(&mut self, resource: gateway::tlsroutes::TLSRoute) {
+impl kubert::index::IndexNamespacedResource<gateway::TLSRoute> for Index {
+    fn apply(&mut self, resource: gateway::TLSRoute) {
         let namespace = resource
             .namespace()
             .expect("TlsRoute must have a namespace");
@@ -1544,15 +1562,17 @@ impl kubert::index::IndexNamespacedResource<gateway::tlsroutes::TLSRoute> for In
         let id = NamespaceGroupKindName {
             namespace: namespace.clone(),
             gkn: GroupKindName {
-                group: gateway::tlsroutes::TLSRoute::group(&()),
-                kind: gateway::tlsroutes::TLSRoute::kind(&()),
+                group: gateway::TLSRoute::group(&()),
+                kind: gateway::TLSRoute::kind(&()),
                 name: name.into(),
             },
         };
 
         // Create the route parents
-        let parents =
-            routes::tls::make_parents(&namespace, &resource.spec.parent_refs.unwrap_or_default());
+        let parents = routes::tls::make_parents(
+            &namespace,
+            &resource.spec.inner.parent_refs.unwrap_or_default(),
+        );
 
         // Create the route backends
         let backends = routes::tls::make_backends(
@@ -1561,14 +1581,13 @@ impl kubert::index::IndexNamespacedResource<gateway::tlsroutes::TLSRoute> for In
                 .spec
                 .rules
                 .into_iter()
-                .flat_map(|rule| rule.backend_refs)
-                .flatten(),
+                .flat_map(|rule| rule.backend_refs),
         );
 
         let statuses = resource
             .status
             .into_iter()
-            .flat_map(|status| status.parents)
+            .flat_map(|status| status.inner.parents)
             .collect();
 
         // Construct route and insert into the index; if the TLSRoute is
@@ -1576,7 +1595,9 @@ impl kubert::index::IndexNamespacedResource<gateway::tlsroutes::TLSRoute> for In
         let route = RouteRef {
             parents,
             backends,
-            statuses: vec![gateway::tlsroutes::TLSRouteStatus { parents: statuses }],
+            statuses: vec![gateway::TLSRouteStatus {
+                inner: gateway::RouteStatus { parents: statuses },
+            }],
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1592,8 +1613,8 @@ impl kubert::index::IndexNamespacedResource<gateway::tlsroutes::TLSRoute> for In
         let id = NamespaceGroupKindName {
             namespace,
             gkn: GroupKindName {
-                group: gateway::tlsroutes::TLSRoute::group(&()),
-                kind: gateway::tlsroutes::TLSRoute::kind(&()),
+                group: gateway::TLSRoute::group(&()),
+                kind: gateway::TLSRoute::kind(&()),
                 name: name.into(),
             },
         };
@@ -1604,8 +1625,8 @@ impl kubert::index::IndexNamespacedResource<gateway::tlsroutes::TLSRoute> for In
     // to handle resets specially.
 }
 
-impl kubert::index::IndexNamespacedResource<gateway::tcproutes::TCPRoute> for Index {
-    fn apply(&mut self, resource: gateway::tcproutes::TCPRoute) {
+impl kubert::index::IndexNamespacedResource<gateway::TCPRoute> for Index {
+    fn apply(&mut self, resource: gateway::TCPRoute) {
         let namespace = resource
             .namespace()
             .expect("TcpRoute must have a namespace");
@@ -1613,15 +1634,17 @@ impl kubert::index::IndexNamespacedResource<gateway::tcproutes::TCPRoute> for In
         let id = NamespaceGroupKindName {
             namespace: namespace.clone(),
             gkn: GroupKindName {
-                group: gateway::tcproutes::TCPRoute::group(&()),
-                kind: gateway::tcproutes::TCPRoute::kind(&()),
+                group: gateway::TCPRoute::group(&()),
+                kind: gateway::TCPRoute::kind(&()),
                 name: name.into(),
             },
         };
 
         // Create the route parents
-        let parents =
-            routes::tcp::make_parents(&namespace, &resource.spec.parent_refs.unwrap_or_default());
+        let parents = routes::tcp::make_parents(
+            &namespace,
+            &resource.spec.inner.parent_refs.unwrap_or_default(),
+        );
 
         // Create the route backends
         let backends = routes::tcp::make_backends(
@@ -1630,14 +1653,13 @@ impl kubert::index::IndexNamespacedResource<gateway::tcproutes::TCPRoute> for In
                 .spec
                 .rules
                 .into_iter()
-                .flat_map(|rule| rule.backend_refs)
-                .flatten(),
+                .flat_map(|rule| rule.backend_refs),
         );
 
         let statuses = resource
             .status
             .into_iter()
-            .flat_map(|status| status.parents)
+            .flat_map(|status| status.inner.parents)
             .collect();
 
         // Construct route and insert into the index; if the TCPRoute is
@@ -1645,7 +1667,9 @@ impl kubert::index::IndexNamespacedResource<gateway::tcproutes::TCPRoute> for In
         let route = RouteRef {
             parents,
             backends,
-            statuses: vec![gateway::tcproutes::TCPRouteStatus { parents: statuses }],
+            statuses: vec![gateway::TCPRouteStatus {
+                inner: gateway::RouteStatus { parents: statuses },
+            }],
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1661,8 +1685,8 @@ impl kubert::index::IndexNamespacedResource<gateway::tcproutes::TCPRoute> for In
         let id = NamespaceGroupKindName {
             namespace,
             gkn: GroupKindName {
-                group: gateway::tcproutes::TCPRoute::group(&()),
-                kind: gateway::tcproutes::TCPRoute::kind(&()),
+                group: gateway::TCPRoute::group(&()),
+                kind: gateway::TCPRoute::kind(&()),
                 name: name.into(),
             },
         };
@@ -1945,8 +1969,8 @@ pub(crate) fn invalid_backend_kind(message: &str) -> k8s::Condition {
 }
 
 pub(crate) fn eq_time_insensitive_http_route_parent_statuses(
-    left: &[gateway::httproutes::HTTPRouteStatusParents],
-    right: &[gateway::httproutes::HTTPRouteStatusParents],
+    left: &[gateway::HTTPRouteStatusParents],
+    right: &[gateway::HTTPRouteStatusParents],
 ) -> bool {
     if left.len() != right.len() {
         return false;
@@ -1971,18 +1995,14 @@ pub(crate) fn eq_time_insensitive_http_route_parent_statuses(
 
     // Compare each element in sorted order
     left_sorted.iter().zip(right_sorted.iter()).all(|(l, r)| {
-        let cond_eq = match (&l.conditions, &r.conditions) {
-            (Some(l), Some(r)) => eq_time_insensitive_conditions(l.as_ref(), r.as_ref()),
-            (None, None) => true,
-            _ => false,
-        };
+        let cond_eq = eq_time_insensitive_conditions(&l.conditions, &r.conditions);
         l.parent_ref == r.parent_ref && l.controller_name == r.controller_name && cond_eq
     })
 }
 
 pub(crate) fn eq_time_insensitive_grpc_route_parent_statuses(
-    left: &[gateway::grpcroutes::GRPCRouteStatusParents],
-    right: &[gateway::grpcroutes::GRPCRouteStatusParents],
+    left: &[gateway::GRPCRouteStatusParents],
+    right: &[gateway::GRPCRouteStatusParents],
 ) -> bool {
     if left.len() != right.len() {
         return false;
@@ -2007,18 +2027,14 @@ pub(crate) fn eq_time_insensitive_grpc_route_parent_statuses(
 
     // Compare each element in sorted order
     left_sorted.iter().zip(right_sorted.iter()).all(|(l, r)| {
-        let cond_eq = match (&l.conditions, &r.conditions) {
-            (Some(l), Some(r)) => eq_time_insensitive_conditions(l.as_ref(), r.as_ref()),
-            (None, None) => true,
-            _ => false,
-        };
+        let cond_eq = eq_time_insensitive_conditions(&l.conditions, &r.conditions);
         l.parent_ref == r.parent_ref && l.controller_name == r.controller_name && cond_eq
     })
 }
 
 pub(crate) fn eq_time_insensitive_tls_route_parent_statuses(
-    left: &[gateway::tlsroutes::TLSRouteStatusParents],
-    right: &[gateway::tlsroutes::TLSRouteStatusParents],
+    left: &[gateway::TLSRouteStatusParents],
+    right: &[gateway::TLSRouteStatusParents],
 ) -> bool {
     if left.len() != right.len() {
         return false;
@@ -2043,18 +2059,14 @@ pub(crate) fn eq_time_insensitive_tls_route_parent_statuses(
 
     // Compare each element in sorted order
     left_sorted.iter().zip(right_sorted.iter()).all(|(l, r)| {
-        let cond_eq = match (&l.conditions, &r.conditions) {
-            (Some(l), Some(r)) => eq_time_insensitive_conditions(l.as_ref(), r.as_ref()),
-            (None, None) => true,
-            _ => false,
-        };
+        let cond_eq = eq_time_insensitive_conditions(&l.conditions, &r.conditions);
         l.parent_ref == r.parent_ref && l.controller_name == r.controller_name && cond_eq
     })
 }
 
 pub(crate) fn eq_time_insensitive_tcp_route_parent_statuses(
-    left: &[gateway::tcproutes::TCPRouteStatusParents],
-    right: &[gateway::tcproutes::TCPRouteStatusParents],
+    left: &[gateway::TCPRouteStatusParents],
+    right: &[gateway::TCPRouteStatusParents],
 ) -> bool {
     if left.len() != right.len() {
         return false;
@@ -2079,11 +2091,7 @@ pub(crate) fn eq_time_insensitive_tcp_route_parent_statuses(
 
     // Compare each element in sorted order
     left_sorted.iter().zip(right_sorted.iter()).all(|(l, r)| {
-        let cond_eq = match (&l.conditions, &r.conditions) {
-            (Some(l), Some(r)) => eq_time_insensitive_conditions(l.as_ref(), r.as_ref()),
-            (None, None) => true,
-            _ => false,
-        };
+        let cond_eq = eq_time_insensitive_conditions(&l.conditions, &r.conditions);
         l.parent_ref == r.parent_ref && l.controller_name == r.controller_name && cond_eq
     })
 }

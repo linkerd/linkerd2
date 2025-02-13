@@ -67,7 +67,7 @@ impl<R> RouteBinding<R> {
 impl ParentRef {
     pub(crate) fn collect_from_http(
         route_ns: Option<&str>,
-        parent_refs: Option<Vec<gateway::httproutes::HTTPRouteParentRefs>>,
+        parent_refs: Option<Vec<gateway::HTTPRouteParentRefs>>,
     ) -> Result<Vec<Self>, InvalidParentRef> {
         let parents = parent_refs
             .into_iter()
@@ -80,7 +80,7 @@ impl ParentRef {
 
     fn from_http_parent_ref(
         route_ns: Option<&str>,
-        parent_ref: gateway::httproutes::HTTPRouteParentRefs,
+        parent_ref: gateway::HTTPRouteParentRefs,
     ) -> Option<Result<Self, InvalidParentRef>> {
         // Skip parent refs that don't target a `Server` resource.
         if !policy::httproute::parent_ref_targets_kind::<policy::Server>(&parent_ref)
@@ -89,7 +89,7 @@ impl ParentRef {
             return None;
         }
 
-        let gateway::httproutes::HTTPRouteParentRefs {
+        let gateway::HTTPRouteParentRefs {
             group: _,
             kind: _,
             namespace,
@@ -113,7 +113,7 @@ impl ParentRef {
 
     pub(crate) fn collect_from_grpc(
         route_ns: Option<&str>,
-        parent_refs: Option<Vec<gateway::grpcroutes::GRPCRouteParentRefs>>,
+        parent_refs: Option<Vec<gateway::GRPCRouteParentRefs>>,
     ) -> Result<Vec<Self>, InvalidParentRef> {
         let parents = parent_refs
             .into_iter()
@@ -126,7 +126,7 @@ impl ParentRef {
 
     fn from_grpc_parent_ref(
         route_ns: Option<&str>,
-        parent_ref: gateway::grpcroutes::GRPCRouteParentRefs,
+        parent_ref: gateway::GRPCRouteParentRefs,
     ) -> Option<Result<Self, InvalidParentRef>> {
         // Skip parent refs that don't target a `Server` resource.
         if !policy::grpcroute::parent_ref_targets_kind::<policy::Server>(&parent_ref)
@@ -135,7 +135,7 @@ impl ParentRef {
             return None;
         }
 
-        let gateway::grpcroutes::GRPCRouteParentRefs {
+        let gateway::GRPCRouteParentRefs {
             group: _,
             kind: _,
             namespace,
@@ -159,8 +159,9 @@ impl ParentRef {
 }
 
 impl Status {
-    pub fn collect_from_http(status: gateway::httproutes::HTTPRouteStatus) -> Vec<Self> {
+    pub fn collect_from_http(status: gateway::HTTPRouteStatus) -> Vec<Self> {
         status
+            .inner
             .parents
             .iter()
             .filter(|status| status.controller_name == POLICY_CONTROLLER_NAME)
@@ -168,9 +169,7 @@ impl Status {
             .collect::<Vec<_>>()
     }
 
-    fn from_http_parent_status(
-        status: &gateway::httproutes::HTTPRouteStatusParents,
-    ) -> Option<Self> {
+    fn from_http_parent_status(status: &gateway::HTTPRouteStatusParents) -> Option<Self> {
         // Only match parent statuses that belong to resources of
         // `kind: Server`.
         match status.parent_ref.kind.as_deref() {
@@ -181,7 +180,6 @@ impl Status {
         let conditions = status
             .conditions
             .iter()
-            .flatten()
             .filter_map(|condition| {
                 let type_ = match condition.type_.as_ref() {
                     "Accepted" => ConditionType::Accepted,
@@ -208,8 +206,9 @@ impl Status {
         })
     }
 
-    pub fn collect_from_grpc(status: gateway::grpcroutes::GRPCRouteStatus) -> Vec<Self> {
+    pub fn collect_from_grpc(status: gateway::GRPCRouteStatus) -> Vec<Self> {
         status
+            .inner
             .parents
             .iter()
             .filter(|status| status.controller_name == POLICY_CONTROLLER_NAME)
@@ -217,9 +216,7 @@ impl Status {
             .collect::<Vec<_>>()
     }
 
-    fn from_grpc_parent_status(
-        status: &gateway::grpcroutes::GRPCRouteStatusParents,
-    ) -> Option<Self> {
+    fn from_grpc_parent_status(status: &gateway::GRPCRouteStatusParents) -> Option<Self> {
         // Only match parent statuses that belong to resources of
         // `kind: Server`.
         match status.parent_ref.kind.as_deref() {
@@ -230,7 +227,6 @@ impl Status {
         let conditions = status
             .conditions
             .iter()
-            .flatten()
             .filter_map(|condition| {
                 let type_ = match condition.type_.as_ref() {
                     "Accepted" => ConditionType::Accepted,

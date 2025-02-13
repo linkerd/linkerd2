@@ -31,14 +31,10 @@ impl NamespaceGroupKindName {
             (POLICY_API_GROUP, "EgressNetwork") => {
                 Ok(linkerd_k8s_api::EgressNetwork::api_version(&()))
             }
-            (GATEWAY_API_GROUP, "HTTPRoute") => {
-                Ok(gateway::httproutes::HTTPRoute::api_version(&()))
-            }
-            (GATEWAY_API_GROUP, "GRPCRoute") => {
-                Ok(gateway::grpcroutes::GRPCRoute::api_version(&()))
-            }
-            (GATEWAY_API_GROUP, "TCPRoute") => Ok(gateway::tcproutes::TCPRoute::api_version(&())),
-            (GATEWAY_API_GROUP, "TLSRoute") => Ok(gateway::tlsroutes::TLSRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "HTTPRoute") => Ok(gateway::HTTPRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "GRPCRoute") => Ok(gateway::GRPCRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "TCPRoute") => Ok(gateway::TCPRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "TLSRoute") => Ok(gateway::TLSRoute::api_version(&())),
             (group, kind) => {
                 anyhow::bail!("unknown group + kind combination: ({}, {})", group, kind)
             }

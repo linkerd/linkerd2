@@ -1,6 +1,6 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use linkerd_policy_controller_core::routes;
-use linkerd_policy_controller_k8s_api::gateway::grpcroutes as gateway;
+use linkerd_policy_controller_k8s_api::gateway;
 
 pub fn try_match(
     gateway::GRPCRouteRulesMatches { headers, method }: gateway::GRPCRouteRulesMatches,
@@ -8,37 +8,27 @@ pub fn try_match(
     let headers = headers
         .into_iter()
         .flatten()
-        .map(header_match)
+        .map(super::http::header_match)
         .collect::<Result<_>>()?;
 
-    let method = method
-        .map(|value| {
-            if value.r#type == Some(gateway::GRPCRouteRulesMatchesMethodType::RegularExpression) {
-                bail!(
-                    "unsupported GRPCRoute method match type: {:?}",
-                    value.r#type
-                );
-            }
-            Ok(routes::GrpcMethodMatch {
-                method: value.method,
-                service: value.service,
-            })
-        })
-        .transpose()?;
+    let method = method.map(|value| match value {
+        gateway::GrpcMethodMatch::Exact { method, service }
+        | gateway::GrpcMethodMatch::RegularExpression { method, service } => {
+            routes::GrpcMethodMatch { method, service }
+        }
+    });
 
     Ok(routes::GrpcRouteMatch { headers, method })
 }
 
-pub fn header_match(
-    header_match: gateway::GRPCRouteRulesMatchesHeaders,
-) -> Result<routes::HeaderMatch> {
-    match header_match.r#type {
-        Some(gateway::GRPCRouteRulesMatchesHeadersType::Exact) | None => Ok(
-            routes::HeaderMatch::Exact(header_match.name.parse()?, header_match.value.parse()?),
-        ),
-        Some(gateway::GRPCRouteRulesMatchesHeadersType::RegularExpression) => Ok(
-            routes::HeaderMatch::Regex(header_match.name.parse()?, header_match.value.parse()?),
-        ),
+pub fn header_match(header_match: gateway::GrpcHeaderMatch) -> Result<routes::HeaderMatch> {
+    match header_match {
+        gateway::GrpcHeaderMatch::Exact { name, value } => {
+            Ok(routes::HeaderMatch::Exact(name.parse()?, value.parse()?))
+        }
+        gateway::GrpcHeaderMatch::RegularExpression { name, value } => {
+            Ok(routes::HeaderMatch::Regex(name.parse()?, value.parse()?))
+        }
     }
 }
 

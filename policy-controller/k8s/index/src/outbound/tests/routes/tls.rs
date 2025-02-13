@@ -4,7 +4,7 @@ use linkerd_policy_controller_core::{
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
-use linkerd_policy_controller_k8s_api::{gateway::tlsroutes as gateway, Time};
+use linkerd_policy_controller_k8s_api::{gateway, Time};
 use tracing::Level;
 
 use super::super::*;
@@ -185,47 +185,52 @@ fn mk_route(
             ..Default::default()
         },
         spec: gateway::TLSRouteSpec {
-            parent_refs: Some(vec![gateway::TLSRouteParentRefs {
-                group: Some(group.clone()),
-                kind: Some(kind.clone()),
-                namespace: Some(ns.to_string()),
-                name: parent.to_string(),
-                section_name: None,
-                port: Some(port.into()),
-            }]),
-            hostnames: None,
-            rules: vec![gateway::TLSRouteRules {
-                name: None,
-                backend_refs: Some(vec![gateway::TLSRouteRulesBackendRefs {
-                    weight: None,
-                    group: Some(group.clone()),
-                    kind: Some(kind.clone()),
-                    namespace: Some(ns.to_string()),
-                    name: backend_name.to_string(),
-                    port: Some(port.into()),
-                }]),
-            }],
-        },
-        status: Some(gateway::TLSRouteStatus {
-            parents: vec![gateway::TLSRouteStatusParents {
-                parent_ref: gateway::TLSRouteStatusParentsParentRef {
+            inner: gateway::CommonRouteSpec {
+                parent_refs: Some(vec![gateway::TLSRouteParentRefs {
                     group: Some(group.clone()),
                     kind: Some(kind.clone()),
                     namespace: Some(ns.to_string()),
                     name: parent.to_string(),
                     section_name: None,
                     port: Some(port.into()),
-                },
-                controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![k8s::Condition {
-                    last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
-                    message: "".to_string(),
-                    observed_generation: None,
-                    reason: "Accepted".to_string(),
-                    status: "True".to_string(),
-                    type_: "Accepted".to_string(),
                 }]),
+            },
+            hostnames: None,
+            rules: vec![gateway::TLSRouteRules {
+                backend_refs: vec![gateway::TLSRouteRulesBackendRefs {
+                    weight: None,
+                    inner: gateway::BackendObjectReference {
+                        group: Some(group.clone()),
+                        kind: Some(kind.clone()),
+                        namespace: Some(ns.to_string()),
+                        name: backend_name.to_string(),
+                        port: Some(port.into()),
+                    },
+                }],
             }],
+        },
+        status: Some(gateway::TLSRouteStatus {
+            inner: gateway::RouteStatus {
+                parents: vec![gateway::TLSRouteStatusParents {
+                    parent_ref: gateway::TLSRouteStatusParentsParentRef {
+                        group: Some(group.clone()),
+                        kind: Some(kind.clone()),
+                        namespace: Some(ns.to_string()),
+                        name: parent.to_string(),
+                        section_name: None,
+                        port: Some(port.into()),
+                    },
+                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
+                    conditions: vec![k8s::Condition {
+                        last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
+                        message: "".to_string(),
+                        observed_generation: None,
+                        reason: "Accepted".to_string(),
+                        status: "True".to_string(),
+                        type_: "Accepted".to_string(),
+                    }],
+                }],
+            },
         }),
     }
 }

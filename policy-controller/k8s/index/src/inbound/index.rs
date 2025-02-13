@@ -27,7 +27,8 @@ use linkerd_policy_controller_core::{
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
 };
 use linkerd_policy_controller_k8s_api::{
-    self as k8s, gateway as k8s_gateway_api, policy::server::Port, policy::server::Selector,
+    self as k8s, gateway,
+    policy::server::{Port, Selector},
     ResourceExt,
 };
 use parking_lot::RwLock;
@@ -365,7 +366,7 @@ impl Index {
         self.ns_with_reindex(ns, |ns| ns.policy.http_routes.remove(&gkn).is_some())
     }
 
-    fn apply_grpc_route(&mut self, route: k8s_gateway_api::grpcroutes::GRPCRoute) {
+    fn apply_grpc_route(&mut self, route: gateway::GRPCRoute) {
         let ns = route.namespace().expect("GrpcRoute must have a namespace");
         let name = route.name_unchecked();
         let gkn = route.gkn();
@@ -385,7 +386,7 @@ impl Index {
     #[tracing::instrument(skip_all)]
     fn reset_grpc_route(
         &mut self,
-        routes: Vec<k8s_gateway_api::grpcroutes::GRPCRoute>,
+        routes: Vec<gateway::GRPCRoute>,
         deleted: HashMap<String, HashSet<String>>,
     ) {
         // Aggregate all of the updates by namespace so that we only reindex
@@ -412,7 +413,7 @@ impl Index {
         for (ns, names) in deleted.into_iter() {
             let removed = names
                 .into_iter()
-                .map(|name| name.gkn::<k8s_gateway_api::grpcroutes::GRPCRoute>())
+                .map(|name| name.gkn::<gateway::GRPCRoute>())
                 .collect();
             updates_by_ns.entry(ns).or_default().removed = removed;
         }
@@ -1041,38 +1042,38 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     }
 }
 
-impl kubert::index::IndexNamespacedResource<k8s_gateway_api::httproutes::HTTPRoute> for Index {
-    fn apply(&mut self, route: k8s_gateway_api::httproutes::HTTPRoute) {
+impl kubert::index::IndexNamespacedResource<gateway::HTTPRoute> for Index {
+    fn apply(&mut self, route: gateway::HTTPRoute) {
         self.apply_http_route(route)
     }
 
     fn delete(&mut self, ns: String, name: String) {
-        let gkn = name.gkn::<k8s_gateway_api::httproutes::HTTPRoute>();
+        let gkn = name.gkn::<gateway::HTTPRoute>();
         self.delete_http_route(ns, gkn)
     }
 
     fn reset(
         &mut self,
-        routes: Vec<k8s_gateway_api::httproutes::HTTPRoute>,
+        routes: Vec<gateway::HTTPRoute>,
         deleted: HashMap<String, HashSet<String>>,
     ) {
         self.reset_http_route(routes, deleted)
     }
 }
 
-impl kubert::index::IndexNamespacedResource<k8s_gateway_api::grpcroutes::GRPCRoute> for Index {
-    fn apply(&mut self, route: k8s_gateway_api::grpcroutes::GRPCRoute) {
+impl kubert::index::IndexNamespacedResource<gateway::GRPCRoute> for Index {
+    fn apply(&mut self, route: gateway::GRPCRoute) {
         self.apply_grpc_route(route)
     }
 
     fn delete(&mut self, ns: String, name: String) {
-        let gkn = name.gkn::<k8s_gateway_api::grpcroutes::GRPCRoute>();
+        let gkn = name.gkn::<gateway::GRPCRoute>();
         self.delete_grpc_route(ns, gkn)
     }
 
     fn reset(
         &mut self,
-        routes: Vec<k8s_gateway_api::grpcroutes::GRPCRoute>,
+        routes: Vec<gateway::GRPCRoute>,
         deleted: HashMap<String, HashSet<String>>,
     ) {
         self.reset_grpc_route(routes, deleted)

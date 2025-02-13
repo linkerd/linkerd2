@@ -4,7 +4,7 @@ use linkerd_policy_controller_core::{
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
-use linkerd_policy_controller_k8s_api::{gateway::grpcroutes as gateway, Time};
+use linkerd_policy_controller_k8s_api::{gateway, Time};
 use tracing::Level;
 
 use super::super::*;
@@ -191,58 +191,62 @@ fn mk_route(
             ..Default::default()
         },
         spec: gateway::GRPCRouteSpec {
-            parent_refs: Some(vec![gateway::GRPCRouteParentRefs {
-                group: Some(group.clone()),
-                kind: Some(kind.clone()),
-                namespace: Some(ns.to_string()),
-                name: parent.to_string(),
-                section_name: None,
-                port: Some(port.into()),
-            }]),
-            hostnames: None,
-            rules: Some(vec![gateway::GRPCRouteRules {
-                name: None,
-                matches: Some(vec![gateway::GRPCRouteRulesMatches {
-                    headers: None,
-                    method: Some(gateway::GRPCRouteRulesMatchesMethod {
-                        method: Some("Test".to_string()),
-                        service: Some("io.linkerd.Testing".to_string()),
-                        r#type: Some(gateway::GRPCRouteRulesMatchesMethodType::Exact),
-                    }),
-                }]),
-                filters: None,
-                backend_refs: Some(vec![gateway::GRPCRouteRulesBackendRefs {
-                    filters: None,
-                    weight: None,
-                    group: Some(group.clone()),
-                    kind: Some(kind.clone()),
-                    namespace: Some(ns.to_string()),
-                    name: backend_name.to_string(),
-                    port: Some(port.into()),
-                }]),
-                ..Default::default()
-            }]),
-        },
-        status: Some(gateway::GRPCRouteStatus {
-            parents: vec![gateway::GRPCRouteStatusParents {
-                parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+            inner: gateway::CommonRouteSpec {
+                parent_refs: Some(vec![gateway::GRPCRouteParentRefs {
                     group: Some(group.clone()),
                     kind: Some(kind.clone()),
                     namespace: Some(ns.to_string()),
                     name: parent.to_string(),
                     section_name: None,
                     port: Some(port.into()),
-                },
-                controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![k8s::Condition {
-                    last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
-                    message: "".to_string(),
-                    observed_generation: None,
-                    reason: "Accepted".to_string(),
-                    status: "True".to_string(),
-                    type_: "Accepted".to_string(),
                 }]),
-            }],
+            },
+            hostnames: None,
+            rules: Some(vec![gateway::GRPCRouteRules {
+                matches: Some(vec![gateway::GRPCRouteRulesMatches {
+                    headers: None,
+                    method: Some(gateway::GrpcMethodMatch::Exact {
+                        method: Some("Test".to_string()),
+                        service: Some("io.linkerd.Testing".to_string()),
+                    }),
+                }]),
+                filters: None,
+                backend_refs: Some(vec![gateway::GRPCRouteRulesBackendRefs {
+                    filters: None,
+                    weight: None,
+                    inner: gateway::BackendObjectReference {
+                        group: Some(group.clone()),
+                        kind: Some(kind.clone()),
+                        namespace: Some(ns.to_string()),
+                        name: backend_name.to_string(),
+                        port: Some(port.into()),
+                    },
+                }]),
+                ..Default::default()
+            }]),
+        },
+        status: Some(gateway::GRPCRouteStatus {
+            inner: gateway::RouteStatus {
+                parents: vec![gateway::GRPCRouteStatusParents {
+                    parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+                        group: Some(group.clone()),
+                        kind: Some(kind.clone()),
+                        namespace: Some(ns.to_string()),
+                        name: parent.to_string(),
+                        section_name: None,
+                        port: Some(port.into()),
+                    },
+                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
+                    conditions: vec![k8s::Condition {
+                        last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
+                        message: "".to_string(),
+                        observed_generation: None,
+                        reason: "Accepted".to_string(),
+                        status: "True".to_string(),
+                        type_: "Accepted".to_string(),
+                    }],
+                }],
+            },
         }),
     }
 }

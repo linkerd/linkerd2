@@ -6,7 +6,7 @@ use linkerd_policy_controller_core::{
     inbound::{Filter, HttpRoute, InboundRoute, InboundRouteRule},
     routes::HttpRouteMatch,
 };
-use linkerd_policy_controller_k8s_api::{self as k8s, gateway::httproutes as gateway, policy};
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy};
 
 impl TryFrom<gateway::HTTPRoute> for RouteBinding<HttpRoute> {
     type Error = Error;
@@ -14,7 +14,7 @@ impl TryFrom<gateway::HTTPRoute> for RouteBinding<HttpRoute> {
     fn try_from(route: gateway::HTTPRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
         let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
-        let parents = ParentRef::collect_from_http(route_ns, route.spec.parent_refs)?;
+        let parents = ParentRef::collect_from_http(route_ns, route.spec.inner.parent_refs)?;
         let hostnames = route
             .spec
             .hostnames
@@ -81,7 +81,7 @@ impl TryFrom<policy::HttpRoute> for RouteBinding<HttpRoute> {
 
         let statuses = route
             .status
-            .map_or_else(Vec::new, |status| Status::collect_from_http(status.inner));
+            .map_or_else(Vec::new, Status::collect_from_http);
 
         Ok(RouteBinding {
             parents,
@@ -117,28 +117,37 @@ fn try_http_rule<F>(
 }
 
 fn try_gateway_filter(filter: gateway::HTTPRouteRulesFilters) -> Result<Filter> {
-    if let Some(request_header_modifier) = filter.request_header_modifier {
-        let filter = crate::routes::http::request_header_modifier(request_header_modifier)?;
-        return Ok(Filter::RequestHeaderModifier(filter));
-    }
-    if let Some(response_header_modifier) = filter.response_header_modifier {
-        let filter = crate::routes::http::response_header_modifier(response_header_modifier)?;
-        return Ok(Filter::ResponseHeaderModifier(filter));
-    }
-    if let Some(request_redirect) = filter.request_redirect {
-        let filter = crate::routes::http::req_redirect(request_redirect)?;
-        return Ok(Filter::RequestRedirect(filter));
-    }
-    if let Some(_request_mirror) = filter.request_mirror {
-        bail!("RequestMirror filter is not supported")
-    }
-    if let Some(_url_rewrite) = filter.url_rewrite {
-        bail!("URLRewrite filter is not supported")
-    }
-    if let Some(_extension_ref) = filter.extension_ref {
-        bail!("ExtensionRef filter is not supported")
-    }
-    bail!("No filter specified");
+    let filter = match filter {
+        gateway::HTTPRouteRulesFilters::RequestHeaderModifier {
+            request_header_modifier,
+        } => {
+            let filter = crate::routes::http::request_header_modifier(request_header_modifier)?;
+            Filter::RequestHeaderModifier(filter)
+        }
+
+        gateway::HTTPRouteRulesFilters::ResponseHeaderModifier {
+            response_header_modifier,
+        } => {
+            let filter = crate::routes::http::response_header_modifier(response_header_modifier)?;
+            Filter::ResponseHeaderModifier(filter)
+        }
+
+        gateway::HTTPRouteRulesFilters::RequestRedirect { request_redirect } => {
+            let filter = crate::routes::http::req_redirect(request_redirect)?;
+            Filter::RequestRedirect(filter)
+        }
+
+        gateway::HTTPRouteRulesFilters::RequestMirror { .. } => {
+            bail!("RequestMirror filter is not supported")
+        }
+        gateway::HTTPRouteRulesFilters::URLRewrite { .. } => {
+            bail!("URLRewrite filter is not supported")
+        }
+        gateway::HTTPRouteRulesFilters::ExtensionRef { .. } => {
+            bail!("ExtensionRef filter is not supported")
+        }
+    };
+    Ok(filter)
 }
 
 fn try_policy_filter(filter: policy::httproute::HttpRouteFilter) -> Result<Filter> {

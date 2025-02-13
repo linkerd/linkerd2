@@ -6,15 +6,15 @@ use linkerd_policy_controller_core::{
     inbound::{Filter, GrpcRoute, InboundRoute, InboundRouteRule},
     routes::GrpcRouteMatch,
 };
-use linkerd_policy_controller_k8s_api::{self as k8s, gateway::grpcroutes};
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway};
 
-impl TryFrom<grpcroutes::GRPCRoute> for RouteBinding<GrpcRoute> {
+impl TryFrom<gateway::GRPCRoute> for RouteBinding<GrpcRoute> {
     type Error = Error;
 
-    fn try_from(route: grpcroutes::GRPCRoute) -> Result<Self, Self::Error> {
+    fn try_from(route: gateway::GRPCRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
         let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
-        let parents = ParentRef::collect_from_grpc(route_ns, route.spec.parent_refs)?;
+        let parents = ParentRef::collect_from_grpc(route_ns, route.spec.inner.parent_refs)?;
         let hostnames = route
             .spec
             .hostnames
@@ -29,7 +29,7 @@ impl TryFrom<grpcroutes::GRPCRoute> for RouteBinding<GrpcRoute> {
             .into_iter()
             .flatten()
             .map(
-                |grpcroutes::GRPCRouteRules {
+                |gateway::GRPCRouteRules {
                      matches, filters, ..
                  }| { try_grpc_rule(matches, filters, try_grpc_filter) },
             )
@@ -53,7 +53,7 @@ impl TryFrom<grpcroutes::GRPCRoute> for RouteBinding<GrpcRoute> {
 }
 
 fn try_grpc_rule<F>(
-    matches: Option<Vec<grpcroutes::GRPCRouteRulesMatches>>,
+    matches: Option<Vec<gateway::GRPCRouteRulesMatches>>,
     filters: Option<Vec<F>>,
     try_filter: impl Fn(F) -> Result<Filter>,
 ) -> Result<InboundRouteRule<GrpcRouteMatch>> {
@@ -72,24 +72,27 @@ fn try_grpc_rule<F>(
     Ok(InboundRouteRule { matches, filters })
 }
 
-fn try_grpc_filter(filter: grpcroutes::GRPCRouteRulesFilters) -> Result<Filter> {
-    if let Some(request_header_modifier) = filter.request_header_modifier {
-        let filter = crate::routes::grpc::request_header_modifier(request_header_modifier)?;
-        return Ok(Filter::RequestHeaderModifier(filter));
-    }
+fn try_grpc_filter(filter: gateway::GRPCRouteRulesFilters) -> Result<Filter> {
+    let filter = match filter {
+        gateway::GRPCRouteRulesFilters::RequestHeaderModifier {
+            request_header_modifier,
+        } => {
+            let filter = crate::routes::grpc::request_header_modifier(request_header_modifier)?;
+            Filter::RequestHeaderModifier(filter)
+        }
 
-    if let Some(response_header_modifier) = filter.response_header_modifier {
-        let filter = crate::routes::grpc::response_header_modifier(response_header_modifier)?;
-        return Ok(Filter::ResponseHeaderModifier(filter));
-    }
-
-    if let Some(_request_mirror) = filter.request_mirror {
-        bail!("RequestMirror filter is not supported")
-    }
-
-    if let Some(_extension_ref) = filter.extension_ref {
-        bail!("ExtensionRef filter is not supported")
-    }
-
-    bail!("No filter specified");
+        gateway::GRPCRouteRulesFilters::ResponseHeaderModifier {
+            response_header_modifier,
+        } => {
+            let filter = crate::routes::grpc::request_header_modifier(response_header_modifier)?;
+            Filter::ResponseHeaderModifier(filter)
+        }
+        gateway::GRPCRouteRulesFilters::RequestMirror { .. } => {
+            bail!("RequestMirror filter is not supported")
+        }
+        gateway::GRPCRouteRulesFilters::ExtensionRef { .. } => {
+            bail!("ExtensionRef filter is not supported")
+        }
+    };
+    Ok(filter)
 }

@@ -1,9 +1,4 @@
-use gateway_api::apis::experimental::httproutes::HTTPRouteRulesFiltersRequestRedirect;
-pub use gateway_api::apis::experimental::httproutes::{
-    HTTPRouteParentRefs, HTTPRouteRulesBackendRefs, HTTPRouteRulesFiltersRequestHeaderModifier,
-    HTTPRouteRulesFiltersResponseHeaderModifier, HTTPRouteRulesFiltersUrlRewrite,
-    HTTPRouteRulesMatches, HTTPRouteStatus, HTTPRouteStatus as RouteStatus,
-};
+use crate::gateway::{self, HTTPRouteStatus};
 
 /// HTTPRoute provides a way to route HTTP requests. This includes the
 /// capability to match requests by hostname, path, header, or query param.
@@ -23,7 +18,7 @@ pub use gateway_api::apis::experimental::httproutes::{
     version = "v1beta3",
     kind = "HTTPRoute",
     root = "HttpRoute",
-    status = "HttpRouteStatus",
+    status = "HTTPRouteStatus",
     namespaced
 )]
 pub struct HttpRouteSpec {
@@ -33,7 +28,7 @@ pub struct HttpRouteSpec {
         skip_serializing_if = "Option::is_none",
         rename = "parentRefs"
     )]
-    pub parent_refs: Option<Vec<HTTPRouteParentRefs>>,
+    pub parent_refs: Option<Vec<gateway::HTTPRouteParentRefs>>,
 
     /// Hostnames defines a set of hostname that should match against the HTTP
     /// Host header to select a HTTPRoute to process the request. This matches
@@ -107,7 +102,7 @@ pub struct HttpRouteRule {
     ///
     /// When no rules matching a request have been successfully attached to the
     /// parent a request is coming from, a HTTP 404 status code MUST be returned.
-    pub matches: Option<Vec<HTTPRouteRulesMatches>>,
+    pub matches: Option<Vec<gateway::HTTPRouteRulesMatches>>,
 
     /// Filters define the filters that are applied to requests that match this
     /// rule.
@@ -155,7 +150,7 @@ pub struct HttpRouteRule {
     /// Support: Custom for any other resource
     ///
     /// Support for weight: Core
-    pub backend_refs: Option<Vec<HTTPRouteRulesBackendRefs>>,
+    pub backend_refs: Option<Vec<gateway::HTTPRouteRulesBackendRefs>>,
 
     /// Timeouts defines the timeouts that can be configured for an HTTP request.
     ///
@@ -178,7 +173,7 @@ pub enum HttpRouteFilter {
     /// Support: Core
     #[serde(rename_all = "camelCase")]
     RequestHeaderModifier {
-        request_header_modifier: HTTPRouteRulesFiltersRequestHeaderModifier,
+        request_header_modifier: gateway::HTTPRouteRulesFiltersRequestHeaderModifier,
     },
 
     /// ResponseHeaderModifier defines a schema for a filter that modifies response
@@ -187,7 +182,7 @@ pub enum HttpRouteFilter {
     /// Support: Extended
     #[serde(rename_all = "camelCase")]
     ResponseHeaderModifier {
-        response_header_modifier: HTTPRouteRulesFiltersResponseHeaderModifier,
+        response_header_modifier: gateway::HTTPRouteRulesFiltersResponseHeaderModifier,
     },
 
     /// RequestRedirect defines a schema for a filter that responds to the
@@ -196,16 +191,8 @@ pub enum HttpRouteFilter {
     /// Support: Core
     #[serde(rename_all = "camelCase")]
     RequestRedirect {
-        request_redirect: HTTPRouteRulesFiltersRequestRedirect,
+        request_redirect: gateway::HTTPRouteRulesFiltersRequestRedirect,
     },
-}
-
-/// HTTPRouteStatus defines the observed state of HTTPRoute.
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-pub struct HttpRouteStatus {
-    /// Common route status information.
-    #[serde(flatten)]
-    pub inner: RouteStatus,
 }
 
 /// HTTPRouteTimeouts defines timeouts that can be configured for an HTTPRoute.
@@ -238,7 +225,7 @@ pub struct HttpRouteTimeouts {
     pub backend_request: Option<crate::duration::K8sDuration>,
 }
 
-pub fn parent_ref_targets_kind<T>(parent_ref: &HTTPRouteParentRefs) -> bool
+pub fn parent_ref_targets_kind<T>(parent_ref: &gateway::HTTPRouteParentRefs) -> bool
 where
     T: kube::Resource,
     T::DynamicType: Default,
@@ -251,14 +238,21 @@ where
     super::targets_kind::<T>(parent_ref.group.as_deref(), kind)
 }
 
-pub fn backend_ref_targets_kind<T>(backend_ref: &HTTPRouteRulesBackendRefs) -> bool
+pub fn backend_ref_targets_kind<T>(backend_ref: &gateway::HTTPRouteRulesBackendRefs) -> bool
 where
     T: kube::Resource,
     T::DynamicType: Default,
 {
     // Default kind is assumed to be service for backend ref objects
     super::targets_kind::<T>(
-        backend_ref.group.as_deref(),
-        backend_ref.kind.as_deref().unwrap_or("Service"),
+        backend_ref
+            .backend_ref
+            .as_ref()
+            .and_then(|br| br.inner.group.as_deref()),
+        backend_ref
+            .backend_ref
+            .as_ref()
+            .and_then(|br| br.inner.kind.as_deref())
+            .unwrap_or("Service"),
     )
 }

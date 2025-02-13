@@ -13,12 +13,10 @@ use futures::prelude::*;
 use k8s::{api::apps::v1::Deployment, Client, ObjectMeta, Resource};
 use k8s_openapi::api::coordination::v1 as coordv1;
 use kube::{api::PatchParams, runtime::watcher};
+use kubert::LeaseManager;
 use prometheus_client::registry::Registry;
 use std::{net::SocketAddr, sync::Arc};
-use tokio::{
-    sync::{mpsc, watch},
-    time::Duration,
-};
+use tokio::{sync::mpsc, time::Duration};
 use tonic::transport::Server;
 use tracing::{info, info_span, instrument, Instrument};
 
@@ -181,20 +179,18 @@ impl Args {
 
         let hostname =
             std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
+        let params = kubert::lease::ClaimParams {
+            lease_duration: LEASE_DURATION,
+            renew_grace_period: RENEW_GRACE_PERIOD,
+        };
 
-        let claims = init_lease(
-            &runtime,
+        let lease = init_lease(
+            runtime.client(),
+            &control_plane_namespace,
             &policy_deployment_name,
-            kubert::LeaseParams {
-                name: LEASE_NAME.to_string(),
-                namespace: control_plane_namespace.clone(),
-                claimant: hostname.clone(),
-                lease_duration: LEASE_DURATION,
-                renew_grace_period: RENEW_GRACE_PERIOD,
-                field_manager: Some("policy-controller".into()),
-            },
         )
         .await?;
+        let (claims, _task) = lease.spawn(hostname.clone(), params).await?;
 
         // Build the status index which will maintain information necessary for
         // updating the status field of policy resources.
@@ -288,9 +284,9 @@ impl Args {
             );
         }
 
-        if api_resource_exists::<gateway::httproutes::HTTPRoute>(&runtime.client()).await {
+        if api_resource_exists::<gateway::HTTPRoute>(&runtime.client()).await {
             let gateway_http_routes =
-                runtime.watch_all::<gateway::httproutes::HTTPRoute>(watcher::Config::default());
+                runtime.watch_all::<gateway::HTTPRoute>(watcher::Config::default());
             tokio::spawn(
                 kubert::index::namespaced(http_routes_indexes, gateway_http_routes)
                     .instrument(info_span!("httproutes.gateway.networking.k8s.io")),
@@ -301,9 +297,9 @@ impl Args {
             );
         }
 
-        if api_resource_exists::<gateway::grpcroutes::GRPCRoute>(&runtime.client()).await {
+        if api_resource_exists::<gateway::GRPCRoute>(&runtime.client()).await {
             let gateway_grpc_routes =
-                runtime.watch_all::<gateway::grpcroutes::GRPCRoute>(watcher::Config::default());
+                runtime.watch_all::<gateway::GRPCRoute>(watcher::Config::default());
             let gateway_grpc_routes_indexes = IndexList::new(outbound_index.clone())
                 .push(inbound_index.clone())
                 .push(status_index.clone())
@@ -318,9 +314,8 @@ impl Args {
             );
         }
 
-        if api_resource_exists::<gateway::tlsroutes::TLSRoute>(&runtime.client()).await {
-            let tls_routes =
-                runtime.watch_all::<gateway::tlsroutes::TLSRoute>(watcher::Config::default());
+        if api_resource_exists::<gateway::TLSRoute>(&runtime.client()).await {
+            let tls_routes = runtime.watch_all::<gateway::TLSRoute>(watcher::Config::default());
             let tls_routes_indexes = IndexList::new(status_index.clone())
                 .push(outbound_index.clone())
                 .shared();
@@ -334,9 +329,8 @@ impl Args {
             );
         }
 
-        if api_resource_exists::<gateway::tcproutes::TCPRoute>(&runtime.client()).await {
-            let tcp_routes =
-                runtime.watch_all::<gateway::tcproutes::TCPRoute>(watcher::Config::default());
+        if api_resource_exists::<gateway::TCPRoute>(&runtime.client()).await {
+            let tcp_routes = runtime.watch_all::<gateway::TCPRoute>(watcher::Config::default());
             let tcp_routes_indexes = IndexList::new(status_index.clone())
                 .push(outbound_index.clone())
                 .shared();
@@ -467,62 +461,60 @@ async fn grpc(
     Ok(())
 }
 
-async fn init_lease<T>(
-    runtime: &kubert::Runtime<T>,
-    deployment_name: &str,
-    params: kubert::LeaseParams,
-) -> Result<watch::Receiver<Arc<kubert::lease::Claim>>> {
+async fn init_lease(client: Client, ns: &str, deployment_name: &str) -> Result<LeaseManager> {
     // Fetch the policy-controller deployment so that we can use it as an owner
     // reference of the Lease.
-    let api = k8s::Api::<Deployment>::namespaced(runtime.client(), &params.namespace);
+    let api = k8s::Api::<Deployment>::namespaced(client.clone(), ns);
     let deployment = api.get(deployment_name).await?;
 
-    let lease = coordv1::Lease {
-        metadata: ObjectMeta {
-            name: Some(params.name.clone()),
-            namespace: Some(params.namespace.clone()),
-            // Specifying a resource version of "0" means that we will
-            // only create the Lease if it does not already exist.
-            resource_version: Some("0".to_string()),
-            owner_references: Some(vec![deployment.controller_owner_ref(&()).unwrap()]),
-            labels: Some(
-                [
-                    (
-                        "linkerd.io/control-plane-component".to_string(),
-                        "destination".to_string(),
-                    ),
-                    (
-                        "linkerd.io/control-plane-ns".to_string(),
-                        params.namespace.clone(),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-            ),
-            ..Default::default()
-        },
-        spec: None,
+    let api = k8s::Api::namespaced(client, ns);
+    let params = PatchParams {
+        field_manager: Some("policy-controller".to_string()),
+        ..Default::default()
     };
-    match k8s::Api::<coordv1::Lease>::namespaced(runtime.client(), &params.namespace)
+    match api
         .patch(
             LEASE_NAME,
-            &PatchParams {
-                field_manager: params.field_manager.clone().map(Into::into),
-                ..Default::default()
-            },
-            &kube::api::Patch::Apply(lease),
+            &params,
+            &kube::api::Patch::Apply(coordv1::Lease {
+                metadata: ObjectMeta {
+                    name: Some(LEASE_NAME.to_string()),
+                    namespace: Some(ns.to_string()),
+                    // Specifying a resource version of "0" means that we will
+                    // only create the Lease if it does not already exist.
+                    resource_version: Some("0".to_string()),
+                    owner_references: Some(vec![deployment.controller_owner_ref(&()).unwrap()]),
+                    labels: Some(
+                        [
+                            (
+                                "linkerd.io/control-plane-component".to_string(),
+                                "destination".to_string(),
+                            ),
+                            ("linkerd.io/control-plane-ns".to_string(), ns.to_string()),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    ),
+                    ..Default::default()
+                },
+                spec: None,
+            }),
         )
         .await
     {
         Ok(lease) => tracing::info!(?lease, "Created Lease resource"),
         Err(k8s::Error::Api(_)) => tracing::debug!("Lease already exists, no need to create it"),
         Err(error) => {
+            tracing::error!(%error, "Failed to create Lease resource");
             return Err(error.into());
         }
     };
-
-    let (claim, _task) = runtime.spawn_lease(params).await?;
-    Ok(claim)
+    // Create the lease manager used for trying to claim the policy
+    // controller write lease.
+    // todo: Do we need to use LeaseManager::field_manager here?
+    kubert::lease::LeaseManager::init(api, LEASE_NAME)
+        .await
+        .map_err(Into::into)
 }
 
 async fn api_resource_exists<T>(client: &Client) -> bool

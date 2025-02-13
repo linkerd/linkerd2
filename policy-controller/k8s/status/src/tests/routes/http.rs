@@ -10,9 +10,7 @@ use crate::{
 use chrono::{DateTime, Utc};
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{routes::GroupKindName, POLICY_CONTROLLER_NAME};
-use linkerd_policy_controller_k8s_api::{
-    self as k8s, gateway::httproutes as gateway, policy, Resource, ResourceExt,
-};
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy, Resource, ResourceExt};
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
 
@@ -32,7 +30,7 @@ pub(crate) fn make_parent_status(
         last_transition_time: k8s::Time(DateTime::<Utc>::MIN_UTC),
     };
     gateway::HTTPRouteStatusParents {
-        conditions: Some(vec![condition]),
+        conditions: vec![condition],
         parent_ref: gateway::HTTPRouteStatusParentsParentRef {
             port: None,
             section_name: None,
@@ -101,10 +99,12 @@ fn linkerd_route_with_no_backends() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -169,10 +169,12 @@ fn gateway_route_with_no_backends() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -233,21 +235,29 @@ fn linkerd_route_with_valid_service_backends() {
         parent.clone(),
         Some(vec![
             gateway::HTTPRouteRulesBackendRefs {
-                weight: None,
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: backend1.name_unchecked(),
-                namespace: backend1.namespace(),
-                port: Some(8080),
+                backend_ref: Some(gateway::BackendRef {
+                    weight: None,
+                    inner: gateway::BackendObjectReference {
+                        group: Some("core".to_string()),
+                        kind: Some("Service".to_string()),
+                        name: backend1.name_unchecked(),
+                        namespace: backend1.namespace(),
+                        port: Some(8080),
+                    },
+                }),
                 filters: None,
             },
             gateway::HTTPRouteRulesBackendRefs {
-                weight: None,
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: backend2.name_unchecked(),
-                namespace: backend2.namespace(),
-                port: Some(8080),
+                backend_ref: Some(gateway::BackendRef {
+                    weight: None,
+                    inner: gateway::BackendObjectReference {
+                        group: Some("core".to_string()),
+                        kind: Some("Service".to_string()),
+                        name: backend2.name_unchecked(),
+                        namespace: backend2.namespace(),
+                        port: Some(8080),
+                    },
+                }),
                 filters: None,
             },
         ]),
@@ -268,10 +278,12 @@ fn linkerd_route_with_valid_service_backends() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -322,12 +334,16 @@ fn linkerd_route_with_valid_egress_networks_backends() {
         &id,
         parent.clone(),
         Some(vec![gateway::HTTPRouteRulesBackendRefs {
-            weight: None,
-            group: Some("policy.linkerd.io".to_string()),
-            kind: Some("EgressNetwork".to_string()),
-            name: parent.name.clone(),
-            namespace: parent.namespace.clone(),
-            port: Some(8080),
+            backend_ref: Some(gateway::BackendRef {
+                weight: None,
+                inner: gateway::BackendObjectReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("EgressNetwork".to_string()),
+                    name: parent.name.clone(),
+                    namespace: parent.namespace.clone(),
+                    port: Some(8080),
+                },
+            }),
             filters: None,
         }]),
     );
@@ -347,10 +363,12 @@ fn linkerd_route_with_valid_egress_networks_backends() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch: linkerd_policy_controller_k8s_api::Patch<serde_json::Value> =
         crate::index::make_patch(&id, status).unwrap();
@@ -412,21 +430,29 @@ fn gateway_route_with_valid_service_backends() {
         parent.clone(),
         Some(vec![
             gateway::HTTPRouteRulesBackendRefs {
-                weight: None,
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: backend1.name_unchecked(),
-                namespace: backend1.namespace(),
-                port: Some(8080),
+                backend_ref: Some(gateway::BackendRef {
+                    weight: None,
+                    inner: gateway::BackendObjectReference {
+                        group: Some("core".to_string()),
+                        kind: Some("Service".to_string()),
+                        name: backend1.name_unchecked(),
+                        namespace: backend1.namespace(),
+                        port: Some(8080),
+                    },
+                }),
                 filters: None,
             },
             gateway::HTTPRouteRulesBackendRefs {
-                weight: None,
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: backend2.name_unchecked(),
-                namespace: backend2.namespace(),
-                port: Some(8080),
+                backend_ref: Some(gateway::BackendRef {
+                    weight: None,
+                    inner: gateway::BackendObjectReference {
+                        group: Some("core".to_string()),
+                        kind: Some("Service".to_string()),
+                        name: backend2.name_unchecked(),
+                        namespace: backend2.namespace(),
+                        port: Some(8080),
+                    },
+                }),
                 filters: None,
             },
         ]),
@@ -447,10 +473,12 @@ fn gateway_route_with_valid_service_backends() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -502,12 +530,16 @@ fn gateway_route_with_valid_egress_networks_backends() {
         &id,
         parent.clone(),
         Some(vec![gateway::HTTPRouteRulesBackendRefs {
-            weight: None,
-            group: Some("policy.linkerd.io".to_string()),
-            kind: Some("EgressNetwork".to_string()),
-            name: parent.name.clone(),
-            namespace: parent.namespace.clone(),
-            port: Some(8080),
+            backend_ref: Some(gateway::BackendRef {
+                weight: None,
+                inner: gateway::BackendObjectReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("EgressNetwork".to_string()),
+                    name: parent.name.clone(),
+                    namespace: parent.namespace.clone(),
+                    port: Some(8080),
+                },
+            }),
             filters: None,
         }]),
     );
@@ -527,10 +559,12 @@ fn gateway_route_with_valid_egress_networks_backends() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -587,21 +621,29 @@ fn linkerd_route_with_invalid_service_backend() {
         parent.clone(),
         Some(vec![
             gateway::HTTPRouteRulesBackendRefs {
-                weight: None,
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: backend.name_unchecked(),
-                namespace: backend.namespace(),
-                port: Some(8080),
+                backend_ref: Some(gateway::BackendRef {
+                    weight: None,
+                    inner: gateway::BackendObjectReference {
+                        group: Some("core".to_string()),
+                        kind: Some("Service".to_string()),
+                        name: backend.name_unchecked(),
+                        namespace: backend.namespace(),
+                        port: Some(8080),
+                    },
+                }),
                 filters: None,
             },
             gateway::HTTPRouteRulesBackendRefs {
-                weight: None,
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: "nonexistent-backend".to_string(),
-                namespace: backend.namespace(),
-                port: Some(8080),
+                backend_ref: Some(gateway::BackendRef {
+                    weight: None,
+                    inner: gateway::BackendObjectReference {
+                        group: Some("core".to_string()),
+                        kind: Some("Service".to_string()),
+                        name: "nonexistent-backend".to_string(),
+                        namespace: backend.namespace(),
+                        port: Some(8080),
+                    },
+                }),
                 filters: None,
             },
         ]),
@@ -622,10 +664,12 @@ fn linkerd_route_with_invalid_service_backend() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -681,12 +725,16 @@ fn linkerd_route_with_egress_network_backend_different_from_parent() {
         &id,
         parent.clone(),
         Some(vec![gateway::HTTPRouteRulesBackendRefs {
-            group: Some("policy.linkerd.io".to_string()),
-            kind: Some("EgressNetwork".to_string()),
-            name: backend.name_unchecked(),
-            namespace: backend.namespace(),
-            port: Some(8080),
-            weight: None,
+            backend_ref: Some(gateway::BackendRef {
+                inner: gateway::BackendObjectReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("EgressNetwork".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
+                weight: None,
+            }),
             filters: None,
         }]),
     );
@@ -707,10 +755,12 @@ fn linkerd_route_with_egress_network_backend_different_from_parent() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -767,12 +817,16 @@ fn linkerd_route_with_egress_network_backend_and_service_parent() {
         &id,
         parent.clone(),
         Some(vec![gateway::HTTPRouteRulesBackendRefs {
-            group: Some("policy.linkerd.io".to_string()),
-            kind: Some("EgressNetwork".to_string()),
-            name: backend.name_unchecked(),
-            namespace: backend.namespace(),
-            port: Some(8080),
-            weight: None,
+            backend_ref: Some(gateway::BackendRef {
+                inner: gateway::BackendObjectReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("EgressNetwork".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
+                weight: None,
+            }),
             filters: None,
         }]),
     );
@@ -793,10 +847,12 @@ fn linkerd_route_with_egress_network_backend_and_service_parent() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -853,12 +909,16 @@ fn linkerd_route_with_egress_network_parent_and_service_backend() {
         &id,
         parent.clone(),
         Some(vec![gateway::HTTPRouteRulesBackendRefs {
-            group: Some("core".to_string()),
-            kind: Some("Service".to_string()),
-            name: backend.name_unchecked(),
-            namespace: backend.namespace(),
-            port: Some(8080),
-            weight: None,
+            backend_ref: Some(gateway::BackendRef {
+                inner: gateway::BackendObjectReference {
+                    group: Some("core".to_string()),
+                    kind: Some("Service".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
+                weight: None,
+            }),
             filters: None,
         }]),
     );
@@ -877,10 +937,12 @@ fn linkerd_route_with_egress_network_parent_and_service_backend() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -937,21 +999,29 @@ fn gateway_route_with_invalid_service_backend() {
         parent.clone(),
         Some(vec![
             gateway::HTTPRouteRulesBackendRefs {
-                weight: None,
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: backend.name_unchecked(),
-                namespace: backend.namespace(),
-                port: Some(8080),
+                backend_ref: Some(gateway::BackendRef {
+                    weight: None,
+                    inner: gateway::BackendObjectReference {
+                        group: Some("core".to_string()),
+                        kind: Some("Service".to_string()),
+                        name: backend.name_unchecked(),
+                        namespace: backend.namespace(),
+                        port: Some(8080),
+                    },
+                }),
                 filters: None,
             },
             gateway::HTTPRouteRulesBackendRefs {
-                weight: None,
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: "nonexistent-backend".to_string(),
-                namespace: backend.namespace(),
-                port: Some(8080),
+                backend_ref: Some(gateway::BackendRef {
+                    weight: None,
+                    inner: gateway::BackendObjectReference {
+                        group: Some("core".to_string()),
+                        kind: Some("Service".to_string()),
+                        name: "nonexistent-backend".to_string(),
+                        namespace: backend.namespace(),
+                        port: Some(8080),
+                    },
+                }),
                 filters: None,
             },
         ]),
@@ -972,10 +1042,12 @@ fn gateway_route_with_invalid_service_backend() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1031,12 +1103,16 @@ fn gateway_route_with_egress_network_backend_different_from_parent() {
         &id,
         parent.clone(),
         Some(vec![gateway::HTTPRouteRulesBackendRefs {
-            group: Some("policy.linkerd.io".to_string()),
-            kind: Some("EgressNetwork".to_string()),
-            name: backend.name_unchecked(),
-            namespace: backend.namespace(),
-            port: Some(8080),
-            weight: None,
+            backend_ref: Some(gateway::BackendRef {
+                inner: gateway::BackendObjectReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("EgressNetwork".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
+                weight: None,
+            }),
             filters: None,
         }]),
     );
@@ -1057,10 +1133,12 @@ fn gateway_route_with_egress_network_backend_different_from_parent() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1117,12 +1195,16 @@ fn gateway_route_with_egress_network_backend_and_service_parent() {
         &id,
         parent.clone(),
         Some(vec![gateway::HTTPRouteRulesBackendRefs {
-            group: Some("policy.linkerd.io".to_string()),
-            kind: Some("EgressNetwork".to_string()),
-            name: backend.name_unchecked(),
-            namespace: backend.namespace(),
-            port: Some(8080),
-            weight: None,
+            backend_ref: Some(gateway::BackendRef {
+                inner: gateway::BackendObjectReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("EgressNetwork".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
+                weight: None,
+            }),
             filters: None,
         }]),
     );
@@ -1143,10 +1225,12 @@ fn gateway_route_with_egress_network_backend_and_service_parent() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1203,12 +1287,16 @@ fn gateway_route_with_egress_network_parent_and_service_backend() {
         &id,
         parent.clone(),
         Some(vec![gateway::HTTPRouteRulesBackendRefs {
-            group: Some("core".to_string()),
-            kind: Some("Service".to_string()),
-            name: backend.name_unchecked(),
-            namespace: backend.namespace(),
-            port: Some(8080),
-            weight: None,
+            backend_ref: Some(gateway::BackendRef {
+                inner: gateway::BackendObjectReference {
+                    group: Some("core".to_string()),
+                    kind: Some("Service".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
+                weight: None,
+            }),
             filters: None,
         }]),
     );
@@ -1227,10 +1315,12 @@ fn gateway_route_with_egress_network_parent_and_service_backend() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1288,7 +1378,9 @@ fn linkerd_route_accepted_after_server_create() {
         "NoMatchingParent",
     );
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1313,7 +1405,9 @@ fn linkerd_route_accepted_after_server_create() {
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1377,11 +1471,13 @@ fn linkerd_route_accepted_after_egress_network_create() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
+        conditions: vec![accepted_condition, backend_condition.clone()],
     };
 
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1407,11 +1503,13 @@ fn linkerd_route_accepted_after_egress_network_create() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
 
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1471,7 +1569,9 @@ fn gateway_route_accepted_after_server_create() {
         "NoMatchingParent",
     );
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1496,7 +1596,9 @@ fn gateway_route_accepted_after_server_create() {
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1560,11 +1662,13 @@ fn gateway_route_accepted_after_egress_network_create() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![rejected_condition, backend_condition.clone()]),
+        conditions: vec![rejected_condition, backend_condition.clone()],
     };
 
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1590,11 +1694,13 @@ fn gateway_route_accepted_after_egress_network_create() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
 
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1662,7 +1768,9 @@ fn linkerd_route_rejected_after_server_delete() {
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1685,7 +1793,9 @@ fn linkerd_route_rejected_after_server_delete() {
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1755,11 +1865,13 @@ fn linkerd_route_rejected_after_egress_network_delete() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
+        conditions: vec![accepted_condition, backend_condition.clone()],
     };
 
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1790,11 +1902,13 @@ fn linkerd_route_rejected_after_egress_network_delete() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![rejected_condition, backend_condition.clone()]),
+        conditions: vec![rejected_condition, backend_condition.clone()],
     };
 
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1862,7 +1976,9 @@ fn gateway_route_rejected_after_server_delete() {
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1885,7 +2001,9 @@ fn gateway_route_rejected_after_server_delete() {
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1955,11 +2073,13 @@ fn gateway_route_rejected_after_egress_network_delete() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
+        conditions: vec![accepted_condition, backend_condition.clone()],
     };
 
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1990,11 +2110,13 @@ fn gateway_route_rejected_after_egress_network_delete() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![rejected_condition, backend_condition.clone()]),
+        conditions: vec![rejected_condition, backend_condition.clone()],
     };
 
     let status = gateway::HTTPRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -2023,13 +2145,12 @@ fn make_linkerd_route(
             hostnames: None,
             rules: Some(vec![policy::httproute::HttpRouteRule {
                 matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
-                        value: Some("/foo/bar".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
+                    path: Some(gateway::HttpPathMatch::PathPrefix {
+                        value: "/foo/bar".to_string(),
                     }),
                     headers: None,
                     query_params: None,
-                    method: Some(gateway::HTTPRouteRulesMatchesMethod::Get),
+                    method: Some(gateway::http_method::GET.to_string()),
                 }]),
                 filters: None,
                 backend_refs: backends,
@@ -2054,7 +2175,9 @@ fn make_gateway_route(
             ..Default::default()
         },
         spec: gateway::HTTPRouteSpec {
-            parent_refs: Some(vec![parent]),
+            inner: gateway::CommonRouteSpec {
+                parent_refs: Some(vec![parent]),
+            },
             hostnames: None,
             rules: Some(vec![gateway::HTTPRouteRules {
                 filters: None,
@@ -2062,13 +2185,11 @@ fn make_gateway_route(
                 matches: Some(vec![gateway::HTTPRouteRulesMatches {
                     headers: None,
                     query_params: None,
-                    method: Some(gateway::HTTPRouteRulesMatchesMethod::Get),
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
-                        value: Some("/foo/bar".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
+                    method: Some(gateway::http_method::GET.to_string()),
+                    path: Some(gateway::HttpPathMatch::PathPrefix {
+                        value: "/foo/bar".to_string(),
                     }),
                 }]),
-                ..Default::default()
             }]),
         },
     }

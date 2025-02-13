@@ -1,7 +1,7 @@
 use anyhow::Result;
 use linkerd_policy_controller_core::routes::GroupKindName;
 use linkerd_policy_controller_k8s_api::{
-    self as k8s, gateway as k8s_gateway_api,
+    self as k8s, gateway,
     policy::{LocalTargetRef, NamespacedTargetRef},
     ServiceAccount,
 };
@@ -66,7 +66,7 @@ fn target(t: LocalTargetRef) -> Result<Target> {
         t if t.targets_kind::<k8s::policy::Server>() => Ok(Target::Server(t.name)),
         t if t.targets_kind::<k8s::Namespace>() => Ok(Target::Namespace),
         t if t.targets_kind::<k8s::policy::HttpRoute>()
-            || t.targets_kind::<k8s_gateway_api::httproutes::HTTPRoute>() =>
+            || t.targets_kind::<gateway::HTTPRoute>() =>
         {
             Ok(Target::HttpRoute(GroupKindName {
                 group: t.group.unwrap_or_default().into(),
@@ -74,13 +74,11 @@ fn target(t: LocalTargetRef) -> Result<Target> {
                 name: t.name.into(),
             }))
         }
-        t if t.targets_kind::<k8s_gateway_api::grpcroutes::GRPCRoute>() => {
-            Ok(Target::GrpcRoute(GroupKindName {
-                group: t.group.unwrap_or_default().into(),
-                kind: t.kind.into(),
-                name: t.name.into(),
-            }))
-        }
+        t if t.targets_kind::<gateway::GRPCRoute>() => Ok(Target::GrpcRoute(GroupKindName {
+            group: t.group.unwrap_or_default().into(),
+            kind: t.kind.into(),
+            name: t.name.into(),
+        })),
         _ => anyhow::bail!(
             "unsupported authorization target type: {}",
             t.canonical_kind()

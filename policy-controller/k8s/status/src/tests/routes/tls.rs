@@ -10,9 +10,7 @@ use crate::{
 use chrono::{DateTime, Utc};
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{routes::GroupKindName, POLICY_CONTROLLER_NAME};
-use linkerd_policy_controller_k8s_api::{
-    self as k8s, gateway::tlsroutes as gateway, policy, Resource, ResourceExt,
-};
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy, Resource, ResourceExt};
 use std::{sync::Arc, vec};
 use tokio::sync::{mpsc, watch};
 
@@ -32,7 +30,7 @@ pub(crate) fn make_parent_status(
         last_transition_time: k8s::Time(DateTime::<Utc>::MIN_UTC),
     };
     gateway::TLSRouteStatusParents {
-        conditions: Some(vec![condition]),
+        conditions: vec![condition],
         parent_ref: gateway::TLSRouteStatusParentsParentRef {
             port: None,
             section_name: None,
@@ -96,19 +94,23 @@ fn route_with_valid_service_backends() {
         parent.clone(),
         vec![
             gateway::TLSRouteRulesBackendRefs {
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: backend1.name_unchecked(),
-                namespace: backend1.namespace(),
-                port: Some(8080),
+                inner: gateway::BackendObjectReference {
+                    group: Some("core".to_string()),
+                    kind: Some("Service".to_string()),
+                    name: backend1.name_unchecked(),
+                    namespace: backend1.namespace(),
+                    port: Some(8080),
+                },
                 weight: None,
             },
             gateway::TLSRouteRulesBackendRefs {
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: backend2.name_unchecked(),
-                namespace: backend2.namespace(),
-                port: Some(8080),
+                inner: gateway::BackendObjectReference {
+                    group: Some("core".to_string()),
+                    kind: Some("Service".to_string()),
+                    name: backend2.name_unchecked(),
+                    namespace: backend2.namespace(),
+                    port: Some(8080),
+                },
                 weight: None,
             },
         ],
@@ -129,10 +131,12 @@ fn route_with_valid_service_backends() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -184,11 +188,13 @@ fn route_with_valid_egress_network_backend() {
         &id,
         parent.clone(),
         vec![gateway::TLSRouteRulesBackendRefs {
-            group: Some("policy.linkerd.io".to_string()),
-            kind: Some("EgressNetwork".to_string()),
-            name: parent.name.clone(),
-            namespace: parent.namespace.clone(),
-            port: Some(8080),
+            inner: gateway::BackendObjectReference {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: Some("EgressNetwork".to_string()),
+                name: parent.name.clone(),
+                namespace: parent.namespace.clone(),
+                port: Some(8080),
+            },
             weight: None,
         }],
     );
@@ -208,10 +214,12 @@ fn route_with_valid_egress_network_backend() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -268,19 +276,23 @@ fn route_with_invalid_service_backend() {
         parent.clone(),
         vec![
             gateway::TLSRouteRulesBackendRefs {
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: backend.name_unchecked(),
-                namespace: backend.namespace(),
-                port: Some(8080),
+                inner: gateway::BackendObjectReference {
+                    group: Some("core".to_string()),
+                    kind: Some("Service".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
                 weight: None,
             },
             gateway::TLSRouteRulesBackendRefs {
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: "nonexistant-backend".to_string(),
-                namespace: backend.namespace(),
-                port: Some(8080),
+                inner: gateway::BackendObjectReference {
+                    group: Some("core".to_string()),
+                    kind: Some("Service".to_string()),
+                    name: "nonexistant-backend".to_string(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
                 weight: None,
             },
         ],
@@ -301,10 +313,12 @@ fn route_with_invalid_service_backend() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -360,11 +374,13 @@ fn route_with_egress_network_backend_different_from_parent() {
         &id,
         parent.clone(),
         vec![gateway::TLSRouteRulesBackendRefs {
-            group: Some("policy.linkerd.io".to_string()),
-            kind: Some("EgressNetwork".to_string()),
-            name: backend.name_unchecked(),
-            namespace: backend.namespace(),
-            port: Some(8080),
+            inner: gateway::BackendObjectReference {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: Some("EgressNetwork".to_string()),
+                name: backend.name_unchecked(),
+                namespace: backend.namespace(),
+                port: Some(8080),
+            },
             weight: None,
         }],
     );
@@ -385,10 +401,12 @@ fn route_with_egress_network_backend_different_from_parent() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -444,11 +462,13 @@ fn route_with_egress_network_backend_and_service_parent() {
         &id,
         parent.clone(),
         vec![gateway::TLSRouteRulesBackendRefs {
-            group: Some("policy.linkerd.io".to_string()),
-            kind: Some("EgressNetwork".to_string()),
-            name: backend.name_unchecked(),
-            namespace: backend.namespace(),
-            port: Some(8080),
+            inner: gateway::BackendObjectReference {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: Some("EgressNetwork".to_string()),
+                name: backend.name_unchecked(),
+                namespace: backend.namespace(),
+                port: Some(8080),
+            },
             weight: None,
         }],
     );
@@ -469,10 +489,12 @@ fn route_with_egress_network_backend_and_service_parent() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -528,11 +550,13 @@ fn route_with_egress_network_parent_and_service_backend() {
         &id,
         parent.clone(),
         vec![gateway::TLSRouteRulesBackendRefs {
-            group: Some("core".to_string()),
-            kind: Some("Service".to_string()),
-            name: backend.name_unchecked(),
-            namespace: backend.namespace(),
-            port: Some(8080),
+            inner: gateway::BackendObjectReference {
+                group: Some("core".to_string()),
+                kind: Some("Service".to_string()),
+                name: backend.name_unchecked(),
+                namespace: backend.namespace(),
+                port: Some(8080),
+            },
             weight: None,
         }],
     );
@@ -551,10 +575,12 @@ fn route_with_egress_network_parent_and_service_backend() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -612,7 +638,9 @@ fn route_accepted_after_server_create() {
         "NoMatchingParent",
     );
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -637,7 +665,9 @@ fn route_accepted_after_server_create() {
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -701,11 +731,13 @@ fn route_accepted_after_egress_network_create() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
+        conditions: vec![accepted_condition, backend_condition.clone()],
     };
 
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -731,11 +763,13 @@ fn route_accepted_after_egress_network_create() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
 
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -803,7 +837,9 @@ fn route_rejected_after_server_delete() {
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -826,7 +862,9 @@ fn route_rejected_after_server_delete() {
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -896,11 +934,13 @@ fn route_rejected_after_egress_network_delete() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
+        conditions: vec![accepted_condition, backend_condition.clone()],
     };
 
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -931,11 +971,13 @@ fn route_rejected_after_egress_network_delete() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![rejected_condition, backend_condition.clone()]),
+        conditions: vec![rejected_condition, backend_condition.clone()],
     };
 
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -981,12 +1023,12 @@ fn service_route_type_conflict() {
     let tcp_id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s::gateway::tcproutes::TCPRoute::group(&()),
-            kind: k8s::gateway::tcproutes::TCPRoute::kind(&()),
+            group: gateway::TCPRoute::group(&()),
+            kind: gateway::TCPRoute::kind(&()),
             name: "tcproute-foo".into(),
         },
     };
-    let tcp_route = k8s::gateway::tcproutes::TCPRoute {
+    let tcp_route = gateway::TCPRoute {
         status: None,
         metadata: k8s::ObjectMeta {
             name: Some(tcp_id.gkn.name.to_string()),
@@ -994,15 +1036,17 @@ fn service_route_type_conflict() {
             creation_timestamp: Some(k8s::Time(Utc::now())),
             ..Default::default()
         },
-        spec: k8s::gateway::tcproutes::TCPRouteSpec {
-            parent_refs: Some(vec![k8s::gateway::tcproutes::TCPRouteParentRefs {
-                group: parent.group.clone(),
-                kind: parent.kind.clone(),
-                name: parent.name.clone(),
-                namespace: parent.namespace.clone(),
-                port: parent.port,
-                section_name: parent.section_name.clone(),
-            }]),
+        spec: gateway::TCPRouteSpec {
+            inner: gateway::CommonRouteSpec {
+                parent_refs: Some(vec![gateway::TCPRouteParentRefs {
+                    group: parent.group.clone(),
+                    kind: parent.kind.clone(),
+                    name: parent.name.clone(),
+                    namespace: parent.namespace.clone(),
+                    port: parent.port,
+                    section_name: parent.section_name.clone(),
+                }]),
+            },
             rules: vec![],
         },
     };
@@ -1022,10 +1066,12 @@ fn service_route_type_conflict() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
+        conditions: vec![accepted_condition.clone(), backend_condition.clone()],
     };
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&tcp_id, status).unwrap();
     let update = updates_rx.try_recv().unwrap();
@@ -1047,7 +1093,7 @@ fn service_route_type_conflict() {
     // Two expected updates: TCPRoute should be rejected and TLSRoute should be accepted
     for _ in 0..2 {
         let update = updates_rx.try_recv().unwrap();
-        if update.id.gkn.kind == k8s::gateway::tcproutes::TCPRoute::kind(&()) {
+        if update.id.gkn.kind == gateway::TCPRoute::kind(&()) {
             let conflict_condition = route_conflicted();
             let parent_status = gateway::TLSRouteStatusParents {
                 parent_ref: gateway::TLSRouteStatusParentsParentRef {
@@ -1059,10 +1105,12 @@ fn service_route_type_conflict() {
                     section_name: parent.section_name.clone(),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![conflict_condition, backend_condition.clone()]),
+                conditions: vec![conflict_condition, backend_condition.clone()],
             };
             let status = gateway::TLSRouteStatus {
-                parents: vec![parent_status],
+                inner: gateway::RouteStatus {
+                    parents: vec![parent_status],
+                },
             };
             let patch = crate::index::make_patch(&tcp_id, status).unwrap();
             assert_eq!(patch, update.patch);
@@ -1077,10 +1125,12 @@ fn service_route_type_conflict() {
                     section_name: parent.section_name.clone(),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
+                conditions: vec![accepted_condition.clone(), backend_condition.clone()],
             };
             let status = gateway::TLSRouteStatus {
-                parents: vec![parent_status],
+                inner: gateway::RouteStatus {
+                    parents: vec![parent_status],
+                },
             };
             let patch = crate::index::make_patch(&tls_id, status).unwrap();
             assert_eq!(patch, update.patch);
@@ -1125,12 +1175,12 @@ fn egress_network_route_type_conflict() {
     let tcp_id = NamespaceGroupKindName {
         namespace: parent.namespace.as_deref().unwrap().to_string(),
         gkn: GroupKindName {
-            group: k8s::gateway::tcproutes::TCPRoute::group(&()),
-            kind: k8s::gateway::tcproutes::TCPRoute::kind(&()),
+            group: gateway::TCPRoute::group(&()),
+            kind: gateway::TCPRoute::kind(&()),
             name: "tcproute-foo".into(),
         },
     };
-    let tcp_route = k8s::gateway::tcproutes::TCPRoute {
+    let tcp_route = gateway::TCPRoute {
         status: None,
         metadata: k8s::ObjectMeta {
             name: Some(tcp_id.gkn.name.to_string()),
@@ -1138,15 +1188,17 @@ fn egress_network_route_type_conflict() {
             creation_timestamp: Some(k8s::Time(Utc::now())),
             ..Default::default()
         },
-        spec: k8s::gateway::tcproutes::TCPRouteSpec {
-            parent_refs: Some(vec![k8s::gateway::tcproutes::TCPRouteParentRefs {
-                group: parent.group.clone(),
-                kind: parent.kind.clone(),
-                name: parent.name.clone(),
-                namespace: parent.namespace.clone(),
-                port: parent.port,
-                section_name: parent.section_name.clone(),
-            }]),
+        spec: gateway::TCPRouteSpec {
+            inner: gateway::CommonRouteSpec {
+                parent_refs: Some(vec![gateway::TCPRouteParentRefs {
+                    group: parent.group.clone(),
+                    kind: parent.kind.clone(),
+                    name: parent.name.clone(),
+                    namespace: parent.namespace.clone(),
+                    port: parent.port,
+                    section_name: parent.section_name.clone(),
+                }]),
+            },
             rules: vec![],
         },
     };
@@ -1166,10 +1218,12 @@ fn egress_network_route_type_conflict() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
+        conditions: vec![accepted_condition.clone(), backend_condition.clone()],
     };
     let status = gateway::TLSRouteStatus {
-        parents: vec![parent_status],
+        inner: gateway::RouteStatus {
+            parents: vec![parent_status],
+        },
     };
     let patch = crate::index::make_patch(&tcp_id, status).unwrap();
     let update = updates_rx.try_recv().unwrap();
@@ -1191,7 +1245,7 @@ fn egress_network_route_type_conflict() {
     // Two expected updates: TCP should be rejected and TLSRoute should be accepted
     for _ in 0..2 {
         let update = updates_rx.try_recv().unwrap();
-        if update.id.gkn.kind == k8s::gateway::tcproutes::TCPRoute::kind(&()) {
+        if update.id.gkn.kind == gateway::TCPRoute::kind(&()) {
             let conflict_condition = route_conflicted();
             let parent_status = gateway::TLSRouteStatusParents {
                 parent_ref: gateway::TLSRouteStatusParentsParentRef {
@@ -1203,10 +1257,12 @@ fn egress_network_route_type_conflict() {
                     section_name: parent.section_name.clone(),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![conflict_condition, backend_condition.clone()]),
+                conditions: vec![conflict_condition, backend_condition.clone()],
             };
             let status = gateway::TLSRouteStatus {
-                parents: vec![parent_status],
+                inner: gateway::RouteStatus {
+                    parents: vec![parent_status],
+                },
             };
             let patch = crate::index::make_patch(&tcp_id, status).unwrap();
             assert_eq!(patch, update.patch);
@@ -1221,10 +1277,12 @@ fn egress_network_route_type_conflict() {
                     section_name: parent.section_name.clone(),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
+                conditions: vec![accepted_condition.clone(), backend_condition.clone()],
             };
             let status = gateway::TLSRouteStatus {
-                parents: vec![parent_status],
+                inner: gateway::RouteStatus {
+                    parents: vec![parent_status],
+                },
             };
             let patch = crate::index::make_patch(&tls_id, status).unwrap();
             assert_eq!(patch, update.patch);
@@ -1249,11 +1307,12 @@ fn make_route(
             ..Default::default()
         },
         spec: gateway::TLSRouteSpec {
-            parent_refs: Some(vec![parent]),
+            inner: gateway::CommonRouteSpec {
+                parent_refs: Some(vec![parent]),
+            },
             hostnames: None,
             rules: vec![gateway::TLSRouteRules {
-                name: None,
-                backend_refs: Some(backends),
+                backend_refs: backends,
             }],
         },
     }

@@ -7,9 +7,7 @@ use anyhow::{bail, Result};
 use linkerd_policy_controller_core::outbound::{
     Backend, TcpRouteRule, TlsRoute, WeightedEgressNetwork, WeightedService,
 };
-use linkerd_policy_controller_k8s_api::{
-    gateway::tlsroutes as gateway, policy, Resource, Service, Time,
-};
+use linkerd_policy_controller_k8s_api::{gateway, policy, Resource, Service, Time};
 
 pub(super) fn convert_route(
     ns: &str,
@@ -35,7 +33,6 @@ pub(super) fn convert_route(
         .backend_refs
         .clone()
         .into_iter()
-        .flatten()
         .filter_map(|b| convert_backend(ns, b, cluster, resource_info))
         .collect();
 
@@ -61,25 +58,25 @@ pub(super) fn convert_backend(
                 weight: backend.weight.unwrap_or(1) as u32,
                 message: format!(
                     "unsupported backend type {group} {kind}",
-                    group = backend.group.as_deref().unwrap_or("core"),
-                    kind = backend.kind.as_deref().unwrap_or("<empty>"),
+                    group = backend.inner.group.as_deref().unwrap_or("core"),
+                    kind = backend.inner.kind.as_deref().unwrap_or("<empty>"),
                 ),
             });
         }
     };
 
     let backend_ref = ResourceRef {
-        name: backend.name.clone(),
-        namespace: backend.namespace.unwrap_or_else(|| ns.to_string()),
+        name: backend.inner.name.clone(),
+        namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
         kind: backend_kind.clone(),
     };
 
-    let name = backend.name;
+    let name = backend.inner.name;
     let weight = backend.weight.unwrap_or(1) as u32;
 
     let port = backend
+        .inner
         .port
-        .and_then(|p| p.try_into().ok())
         .and_then(|p: u16| NonZeroU16::try_from(p).ok());
 
     match backend_kind {
@@ -134,12 +131,12 @@ pub(super) fn route_accepted_by_resource_port(
         group = "core";
     }
     route_status
-        .map(|status| status.parents.as_slice())
+        .map(|status| status.inner.parents.as_slice())
         .unwrap_or_default()
         .iter()
         .any(|parent_status| {
             let port_matches = match parent_status.parent_ref.port {
-                Some(port) => port == resource_port.port.get() as i32,
+                Some(port) => port == resource_port.port.get(),
                 None => true,
             };
             let mut parent_group = parent_status.parent_ref.group.as_deref().unwrap_or("core");
@@ -153,7 +150,6 @@ pub(super) fn route_accepted_by_resource_port(
                 && parent_status
                     .conditions
                     .iter()
-                    .flatten()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
 }
@@ -167,7 +163,7 @@ pub fn route_accepted_by_service(
         service_group = "core";
     }
     route_status
-        .map(|status| status.parents.as_slice())
+        .map(|status| status.inner.parents.as_slice())
         .unwrap_or_default()
         .iter()
         .any(|parent_status| {
@@ -181,15 +177,14 @@ pub fn route_accepted_by_service(
                 && parent_status
                     .conditions
                     .iter()
-                    .flatten()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
 }
 
 pub(crate) fn backend_kind(backend: &gateway::TLSRouteRulesBackendRefs) -> Option<ResourceKind> {
-    let group = backend.group.as_deref();
+    let group = backend.inner.group.as_deref();
     // Backends default to `Service` if no kind is specified.
-    let kind = backend.kind.as_deref().unwrap_or("Service");
+    let kind = backend.inner.kind.as_deref().unwrap_or("Service");
     if super::is_service(group, kind) {
         Some(ResourceKind::Service)
     } else if super::is_egress_network(group, kind) {
