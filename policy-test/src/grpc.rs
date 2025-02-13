@@ -4,7 +4,6 @@
 //! forwarding to connect to a running instance.
 
 use anyhow::Result;
-use futures::{future, prelude::*};
 pub use linkerd2_proxy_api::*;
 use linkerd2_proxy_api::{
     inbound::inbound_server_policies_client::InboundServerPoliciesClient,
@@ -106,7 +105,7 @@ pub struct OutboundPolicyClient {
 
 #[derive(Debug)]
 struct GrpcHttp {
-    tx: hyper::client::conn::http2::SendRequest<tonic::body::BoxBody>,
+    tx: hyper::client::conn::SendRequest<tonic::body::BoxBody>,
 }
 
 async fn get_policy_controller_pod(client: &kube::Client) -> Result<String> {
@@ -323,21 +322,19 @@ impl GrpcHttp {
     where
         I: io::AsyncRead + io::AsyncWrite + Unpin + Send + 'static,
     {
-        let (tx, conn) =
-            hyper::client::conn::http2::Builder::new(hyper_util::rt::TokioExecutor::new())
-                .handshake(hyper_util::rt::TokioIo::new(io))
-                .await?;
+        let (tx, conn) = hyper::client::conn::Builder::new()
+            .http2_only(true)
+            .handshake(io)
+            .await?;
         tokio::spawn(conn);
         Ok(Self { tx })
     }
 }
 
-type Body = hyper::body::Incoming;
-
-impl tower::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp {
-    type Response = hyper::Response<Body>;
+impl hyper::service::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp {
+    type Response = hyper::Response<hyper::Body>;
     type Error = hyper::Error;
-    type Future = future::BoxFuture<'static, Result<hyper::Response<Body>, hyper::Error>>;
+    type Future = hyper::client::conn::ResponseFuture;
 
     fn poll_ready(
         &mut self,
@@ -358,9 +355,7 @@ impl tower::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp {
         );
         parts.uri = hyper::Uri::from_parts(uri).unwrap();
 
-        self.tx
-            .send_request(hyper::Request::from_parts(parts, body))
-            .boxed()
+        self.tx.call(hyper::Request::from_parts(parts, body))
     }
 }
 

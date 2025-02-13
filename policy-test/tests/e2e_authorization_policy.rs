@@ -1,6 +1,6 @@
 use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api::{
-    self as k8s,
+    self as k8s, gateway,
     policy::{LocalTargetRef, NamespacedTargetRef},
 };
 use linkerd_policy_test::{
@@ -649,20 +649,18 @@ fn http_route(name: &str, ns: &str, server_name: &str, path: &str) -> k8s::polic
             ..Default::default()
         },
         spec: k8s::policy::HttpRouteSpec {
-            inner: k8s::policy::httproute::CommonRouteSpec {
-                parent_refs: Some(vec![k8s_gateway_api::ParentReference {
-                    group: Some("policy.linkerd.io".to_string()),
-                    kind: Some("Server".to_string()),
-                    namespace: Some(ns.to_string()),
-                    name: server_name.to_string(),
-                    section_name: None,
-                    port: None,
-                }]),
-            },
+            parent_refs: Some(vec![k8s_gateway_api::ParentReference {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: Some("Server".to_string()),
+                namespace: Some(ns.to_string()),
+                name: server_name.to_string(),
+                section_name: None,
+                port: None,
+            }]),
             hostnames: None,
             rules: Some(vec![k8s::policy::httproute::HttpRouteRule {
-                matches: Some(vec![k8s::policy::httproute::HttpRouteMatch {
-                    path: Some(k8s::policy::httproute::HttpPathMatch::Exact {
+                matches: Some(vec![gateway::HttpRouteMatch {
+                    path: Some(gateway::HttpPathMatch::Exact {
                         value: path.to_string(),
                     }),
                     ..Default::default()

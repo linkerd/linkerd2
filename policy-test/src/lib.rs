@@ -10,11 +10,7 @@ pub mod test_route;
 pub mod web;
 
 use kube::runtime::wait::Condition;
-use linkerd_policy_controller_k8s_api::{
-    self as k8s, gateway,
-    policy::{httproute::ParentReference, EgressNetwork, TrafficPolicy},
-    ResourceExt,
-};
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy, ResourceExt};
 use maplit::{btreemap, convert_args};
 use test_route::TestRoute;
 use tokio::time;
@@ -29,7 +25,7 @@ pub enum LinkerdInject {
 #[derive(Clone, Debug)]
 pub enum Resource {
     Service(k8s::Service),
-    EgressNetwork(k8s::policy::EgressNetwork),
+    EgressNetwork(policy::EgressNetwork),
 }
 
 /// Creates a cluster-scoped resource.
@@ -179,7 +175,7 @@ pub async fn create_ready_pod(client: &kube::Client, pod: k8s::Pod) -> k8s::Pod 
         ip = %pod
             .status.as_ref().expect("pod must have a status")
             .pod_ips.as_ref().unwrap()[0]
-            .ip,
+            .ip.as_deref().expect("pod ip must be set"),
         containers = ?pod
             .spec.as_ref().expect("pod must have a spec")
             .containers.iter().map(|c| &*c.name).collect::<Vec<_>>(),
@@ -235,16 +231,19 @@ pub async fn await_gateway_route_status(
     client: &kube::Client,
     ns: &str,
     name: &str,
-) -> k8s::policy::httproute::RouteStatus {
-    use k8s::gateway as api;
-    let route_status = await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
-        obj.and_then(|route| route.status.as_ref()).is_some()
-    })
+) -> gateway::HTTPRouteStatus {
+    let route_status = await_condition(
+        client,
+        ns,
+        name,
+        |obj: Option<&gateway::HTTPRoute>| -> bool {
+            obj.and_then(|route| route.status.as_ref()).is_some()
+        },
+    )
     .await
     .expect("must fetch route")
     .status
-    .expect("route must contain a status representation")
-    .inner;
+    .expect("route must contain a status representation");
     tracing::trace!(?route_status, name, ns, "got route status");
     route_status
 }
@@ -254,12 +253,12 @@ pub async fn await_egress_net_status(
     client: &kube::Client,
     ns: &str,
     name: &str,
-) -> k8s::policy::egress_network::EgressNetworkStatus {
+) -> policy::egress_network::EgressNetworkStatus {
     let egress_net_status = await_condition(
         client,
         ns,
         name,
-        |obj: Option<&k8s::policy::EgressNetwork>| -> bool {
+        |obj: Option<&policy::EgressNetwork>| -> bool {
             obj.and_then(|en| en.status.as_ref()).is_some()
         },
     )
@@ -277,12 +276,12 @@ pub async fn await_grpc_route_status(
     client: &kube::Client,
     ns: &str,
     name: &str,
-) -> k8s::gateway::GrpcRouteStatus {
+) -> gateway::GRPCRouteStatus {
     let route_status = await_condition(
         client,
         ns,
         name,
-        |obj: Option<&k8s::gateway::GrpcRoute>| -> bool {
+        |obj: Option<&gateway::GRPCRoute>| -> bool {
             obj.and_then(|route| route.status.as_ref()).is_some()
         },
     )
@@ -300,12 +299,12 @@ pub async fn await_tls_route_status(
     client: &kube::Client,
     ns: &str,
     name: &str,
-) -> k8s::gateway::TlsRouteStatus {
+) -> gateway::TLSRouteStatus {
     let route_status = await_condition(
         client,
         ns,
         name,
-        |obj: Option<&k8s::gateway::TlsRoute>| -> bool {
+        |obj: Option<&gateway::TLSRoute>| -> bool {
             obj.and_then(|route| route.status.as_ref()).is_some()
         },
     )
@@ -323,12 +322,12 @@ pub async fn await_tcp_route_status(
     client: &kube::Client,
     ns: &str,
     name: &str,
-) -> k8s::gateway::TcpRouteStatus {
+) -> gateway::TCPRouteStatus {
     let route_status = await_condition(
         client,
         ns,
         name,
-        |obj: Option<&k8s::gateway::TcpRoute>| -> bool {
+        |obj: Option<&gateway::TCPRoute>| -> bool {
             obj.and_then(|route| route.status.as_ref()).is_some()
         },
     )
@@ -354,15 +353,15 @@ pub fn endpoints_ready(obj: Option<&k8s::Endpoints>) -> bool {
 }
 
 pub fn egress_network_traffic_policy_is(
-    policy: TrafficPolicy,
-) -> impl Condition<EgressNetwork> + 'static {
-    move |egress_net: Option<&EgressNetwork>| {
+    traffic_policy: policy::TrafficPolicy,
+) -> impl Condition<policy::EgressNetwork> + 'static {
+    move |egress_net: Option<&policy::EgressNetwork>| {
         if let Some(egress_net) = &egress_net {
             return egress_net
                 .status
                 .as_ref()
                 .map_or(false, |s| is_status_accepted(&s.conditions))
-                && egress_net.spec.traffic_policy == policy;
+                && egress_net.spec.traffic_policy == traffic_policy;
         }
         false
     }
@@ -468,7 +467,11 @@ pub async fn create_service(
 }
 
 /// Creates an egress network resource.
-pub async fn create_egress_network(client: &kube::Client, ns: &str, name: &str) -> EgressNetwork {
+pub async fn create_egress_network(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> policy::EgressNetwork {
     let en = mk_egress_net(ns, name);
     create(client, en).await
 }
@@ -495,7 +498,7 @@ pub async fn create_opaque_egress_network(
     ns: &str,
     name: &str,
     port: i32,
-) -> k8s::policy::EgressNetwork {
+) -> policy::EgressNetwork {
     let egress = mk_egress_net(ns, name);
     let egress = annotate_egress_net(
         egress,
@@ -523,7 +526,7 @@ pub async fn create_annotated_egress_network(
     ns: &str,
     name: &str,
     annotations: std::collections::BTreeMap<String, String>,
-) -> k8s::policy::EgressNetwork {
+) -> policy::EgressNetwork {
     let enet = annotate_egress_net(mk_egress_net(ns, name), annotations);
     create(client, enet).await
 }
@@ -545,9 +548,9 @@ where
 }
 
 pub fn annotate_egress_net<K, V>(
-    mut egress_net: k8s::policy::EgressNetwork,
+    mut egress_net: policy::EgressNetwork,
     annotations: impl IntoIterator<Item = (K, V)>,
-) -> k8s::policy::EgressNetwork
+) -> policy::EgressNetwork
 where
     K: ToString,
     V: ToString,
@@ -578,16 +581,16 @@ pub fn mk_service(ns: &str, name: &str, port: i32) -> k8s::Service {
     }
 }
 
-pub fn mk_egress_net(ns: &str, name: &str) -> k8s::policy::EgressNetwork {
-    k8s::policy::EgressNetwork {
+pub fn mk_egress_net(ns: &str, name: &str) -> policy::EgressNetwork {
+    policy::EgressNetwork {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
             ..Default::default()
         },
-        spec: k8s::policy::EgressNetworkSpec {
+        spec: policy::EgressNetworkSpec {
             networks: None,
-            traffic_policy: k8s::policy::egress_network::TrafficPolicy::Allow,
+            traffic_policy: policy::egress_network::TrafficPolicy::Allow,
         },
         status: None,
     }
@@ -596,7 +599,7 @@ pub fn mk_egress_net(ns: &str, name: &str) -> k8s::policy::EgressNetwork {
 #[track_caller]
 pub fn assert_resource_meta(
     meta: &Option<grpc::meta::Metadata>,
-    parent_ref: ParentReference,
+    parent_ref: gateway::HTTPRouteParentRefs,
     port: u16,
 ) {
     println!("meta: {:?}", meta);
@@ -623,16 +626,16 @@ pub fn assert_resource_meta(
 pub fn mk_route(
     ns: &str,
     name: &str,
-    parent_refs: Option<Vec<k8s::policy::httproute::HTTPRouteParentRefs>>,
-) -> k8s::policy::HttpRoute {
-    use k8s::policy::httproute as api;
+    parent_refs: Option<Vec<gateway::HTTPRouteParentRefs>>,
+) -> policy::HttpRoute {
+    use policy::httproute as api;
     api::HttpRoute {
         metadata: kube::api::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
             ..Default::default()
         },
-        spec: api::HttpRouteSpec {
+        spec: policy::HttpRouteSpec {
             parent_refs,
             hostnames: None,
             rules: Some(vec![]),
@@ -642,17 +645,15 @@ pub fn mk_route(
 }
 
 pub fn find_route_condition<'a>(
-    statuses: impl IntoIterator<Item = &'a gateway::httproutes::HTTPRouteStatus>,
+    statuses: impl IntoIterator<Item = &'a k8s_gateway_api::RouteParentStatus>,
     parent_name: &'static str,
 ) -> Option<&'a k8s::Condition> {
     statuses
         .into_iter()
-        .flat_map(|status| status.parents.iter())
-        .find(|parent| parent.parent_ref.name == parent_name)
+        .find(|route_status| route_status.parent_ref.name == parent_name)
         .expect("route must have at least one status set")
         .conditions
         .iter()
-        .flatten()
         .find(|cond| cond.type_ == "Accepted")
 }
 
@@ -768,11 +769,15 @@ pub async fn await_service_account(client: &kube::Client, ns: &str, name: &str) 
             .expect("serviceaccounts watch must not fail");
         tracing::info!(?ev);
         match ev {
-            kube::runtime::watcher::Event::InitApply(sa)
-            | kube::runtime::watcher::Event::Apply(sa)
-                if sa.name_unchecked() == name =>
-            {
-                return
+            kube::runtime::watcher::Event::Restarted(sas) => {
+                if sas.iter().any(|sa| sa.name_unchecked() == name) {
+                    return;
+                }
+            }
+            kube::runtime::watcher::Event::Applied(sa) => {
+                if sa.name_unchecked() == name {
+                    return;
+                }
             }
             _ => {}
         }
@@ -793,8 +798,11 @@ pub fn random_suffix(len: usize) -> String {
         .collect()
 }
 
-pub fn egress_network_parent_ref(ns: impl ToString, port: Option<u16>) -> ParentReference {
-    ParentReference {
+pub fn egress_network_parent_ref(
+    ns: impl ToString,
+    port: Option<u16>,
+) -> gateway::HTTPRouteParentRefs {
+    gateway::HTTPRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: Some(ns.to_string()),

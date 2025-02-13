@@ -192,7 +192,7 @@ fn mk_route(
                     namespace: Some(ns.to_string()),
                     name: parent.to_string(),
                     section_name: None,
-                    port: Some(port.into()),
+                    port: Some(port),
                 }]),
             },
             rules: vec![gateway::TCPRouteRules {
@@ -203,7 +203,7 @@ fn mk_route(
                         kind: Some(kind.clone()),
                         namespace: Some(ns.to_string()),
                         name: backend_name.to_string(),
-                        port: Some(port.into()),
+                        port: Some(port),
                     },
                 }],
             }],
@@ -217,7 +217,7 @@ fn mk_route(
                         namespace: Some(ns.to_string()),
                         name: parent.to_string(),
                         section_name: None,
-                        port: Some(port.into()),
+                        port: Some(port),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
                     conditions: vec![k8s::Condition {

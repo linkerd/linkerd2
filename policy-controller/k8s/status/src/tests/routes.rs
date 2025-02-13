@@ -1,10 +1,4 @@
-use linkerd_policy_controller_k8s_api::{
-    self as k8s_core_api, gateway as k8s_gateway_api, policy as linkerd_k8s_api,
-};
-
-use crate::index::POLICY_API_GROUP;
-use chrono::{DateTime, Utc};
-use linkerd_policy_controller_core::POLICY_CONTROLLER_NAME;
+use linkerd_policy_controller_k8s_api::{self as k8s_core_api, policy as linkerd_k8s_api};
 
 mod grpc;
 mod helpers;
