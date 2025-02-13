@@ -94,17 +94,7 @@ pub(crate) fn convert_redirect_filter(
     }: RequestRedirectFilter,
 ) -> proto::RequestRedirect {
     proto::RequestRedirect {
-        scheme: scheme.map(|ref s| {
-            if let Some(s) = http_types::scheme::Registered::from_str_name(s.as_str()) {
-                http_types::Scheme {
-                    r#type: Some(http_types::scheme::Type::Registered(s.into())),
-                }
-            } else {
-                http_types::Scheme {
-                    r#type: Some(http_types::scheme::Type::Unregistered(s.to_string())),
-                }
-            }
-        }),
+        scheme: scheme.map(|ref s| s.into()),
         host: host.unwrap_or_default(),
         path: path.map(|pm| proto::PathModifier {
             replace: Some(match pm {
