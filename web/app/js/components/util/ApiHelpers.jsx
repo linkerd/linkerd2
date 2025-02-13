@@ -57,7 +57,8 @@ export const apiErrorPropType = PropTypes.shape({
 });
 
 const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
-  let metricsWindow = sessionStorage.getItem('metricsWindow') || defaultMetricsWindow;
+  const sessionMetricsWindow = sessionStorage.getItem('metricsWindow');
+  let metricsWindow = (storedValue && validMetricsWindows[sessionMetricsWindow]) ? sessionMetricsWindow : defaultMetricsWindow;
   const podsPath = '/api/pods';
   const servicesPath = '/api/services';
   const edgesPath = '/api/edges';
