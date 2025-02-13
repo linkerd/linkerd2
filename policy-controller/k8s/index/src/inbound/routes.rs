@@ -65,22 +65,22 @@ impl<R> RouteBinding<R> {
 }
 
 impl ParentRef {
-    pub(crate) fn collect_from(
+    pub(crate) fn collect_from_http(
         route_ns: Option<&str>,
-        parent_refs: Option<Vec<gateway::ParentReference>>,
+        parent_refs: Option<Vec<gateway::HTTPRouteParentRefs>>,
     ) -> Result<Vec<Self>, InvalidParentRef> {
         let parents = parent_refs
             .into_iter()
             .flatten()
-            .filter_map(|parent_ref| Self::from_parent_ref(route_ns, parent_ref))
+            .filter_map(|parent_ref| Self::from_http_parent_ref(route_ns, parent_ref))
             .collect::<Result<Vec<_>, InvalidParentRef>>()?;
 
         Ok(parents)
     }
 
-    fn from_parent_ref(
+    fn from_http_parent_ref(
         route_ns: Option<&str>,
-        parent_ref: gateway::ParentReference,
+        parent_ref: gateway::HTTPRouteParentRefs,
     ) -> Option<Result<Self, InvalidParentRef>> {
         // Skip parent refs that don't target a `Server` resource.
         if !policy::httproute::parent_ref_targets_kind::<policy::Server>(&parent_ref)
@@ -89,7 +89,53 @@ impl ParentRef {
             return None;
         }
 
-        let gateway::ParentReference {
+        let gateway::HTTPRouteParentRefs {
+            group: _,
+            kind: _,
+            namespace,
+            name,
+            section_name,
+            port,
+        } = parent_ref;
+
+        if namespace.is_some() && namespace.as_deref() != route_ns {
+            return Some(Err(InvalidParentRef::ServerInAnotherNamespace));
+        }
+        if port.is_some() {
+            return Some(Err(InvalidParentRef::SpecifiesPort));
+        }
+        if section_name.is_some() {
+            return Some(Err(InvalidParentRef::SpecifiesSection));
+        }
+
+        Some(Ok(ParentRef::Server(name)))
+    }
+
+    pub(crate) fn collect_from_grpc(
+        route_ns: Option<&str>,
+        parent_refs: Option<Vec<gateway::GRPCRouteParentRefs>>,
+    ) -> Result<Vec<Self>, InvalidParentRef> {
+        let parents = parent_refs
+            .into_iter()
+            .flatten()
+            .filter_map(|parent_ref| Self::from_grpc_parent_ref(route_ns, parent_ref))
+            .collect::<Result<Vec<_>, InvalidParentRef>>()?;
+
+        Ok(parents)
+    }
+
+    fn from_grpc_parent_ref(
+        route_ns: Option<&str>,
+        parent_ref: gateway::GRPCRouteParentRefs,
+    ) -> Option<Result<Self, InvalidParentRef>> {
+        // Skip parent refs that don't target a `Server` resource.
+        if !policy::grpcroute::parent_ref_targets_kind::<policy::Server>(&parent_ref)
+            || parent_ref.name.is_empty()
+        {
+            return None;
+        }
+
+        let gateway::GRPCRouteParentRefs {
             group: _,
             kind: _,
             namespace,
@@ -113,16 +159,64 @@ impl ParentRef {
 }
 
 impl Status {
-    pub fn collect_from(status: gateway::RouteStatus) -> Vec<Self> {
+    pub fn collect_from_http(status: gateway::HTTPRouteStatus) -> Vec<Self> {
         status
+            .inner
             .parents
             .iter()
             .filter(|status| status.controller_name == POLICY_CONTROLLER_NAME)
-            .filter_map(Self::from_parent_status)
+            .filter_map(Self::from_http_parent_status)
             .collect::<Vec<_>>()
     }
 
-    fn from_parent_status(status: &gateway::RouteParentStatus) -> Option<Self> {
+    fn from_http_parent_status(status: &gateway::HTTPRouteStatusParents) -> Option<Self> {
+        // Only match parent statuses that belong to resources of
+        // `kind: Server`.
+        match status.parent_ref.kind.as_deref() {
+            Some("Server") => (),
+            _ => return None,
+        }
+
+        let conditions = status
+            .conditions
+            .iter()
+            .filter_map(|condition| {
+                let type_ = match condition.type_.as_ref() {
+                    "Accepted" => ConditionType::Accepted,
+                    condition_type => {
+                        tracing::warn!(%status.parent_ref.name, %condition_type, "Unexpected condition type found in parent status");
+                        return None;
+                    }
+                };
+                let status = match condition.status.as_ref() {
+                    "True" => true,
+                    "False" => false,
+                    condition_status => {
+                        tracing::warn!(%status.parent_ref.name, %type_, %condition_status, "Unexpected condition status found in parent status");
+                        return None
+                    },
+                };
+                Some(Condition { type_, status })
+            })
+            .collect();
+
+        Some(Status {
+            parent: ParentRef::Server(status.parent_ref.name.to_string()),
+            conditions,
+        })
+    }
+
+    pub fn collect_from_grpc(status: gateway::GRPCRouteStatus) -> Vec<Self> {
+        status
+            .inner
+            .parents
+            .iter()
+            .filter(|status| status.controller_name == POLICY_CONTROLLER_NAME)
+            .filter_map(Self::from_grpc_parent_status)
+            .collect::<Vec<_>>()
+    }
+
+    fn from_grpc_parent_status(status: &gateway::GRPCRouteStatusParents) -> Option<Self> {
         // Only match parent statuses that belong to resources of
         // `kind: Server`.
         match status.parent_ref.kind.as_deref() {

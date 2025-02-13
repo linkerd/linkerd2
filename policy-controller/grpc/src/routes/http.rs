@@ -1,4 +1,4 @@
-use linkerd2_proxy_api::http_route;
+use linkerd2_proxy_api::{http_route, http_types};
 use linkerd_policy_controller_core::routes::{
     FailureInjectorFilter, HeaderMatch, HttpRouteMatch, PathMatch, QueryParamMatch,
 };
@@ -53,7 +53,17 @@ pub(crate) fn convert_match(
         headers,
         path,
         query_params,
-        method: method.map(Into::into),
+        method: method.map(|m| {
+            if let Some(m) = http_types::http_method::Registered::from_str_name(m.as_str()) {
+                http_types::HttpMethod {
+                    r#type: Some(http_types::http_method::Type::Registered(m.into())),
+                }
+            } else {
+                http_types::HttpMethod {
+                    r#type: Some(http_types::http_method::Type::Unregistered(m.to_string())),
+                }
+            }
+        }),
     }
 }
 

@@ -4,7 +4,7 @@ use linkerd_policy_controller_core::{
     routes::{HttpRouteMatch, Method, PathMatch},
     POLICY_CONTROLLER_NAME,
 };
-use linkerd_policy_controller_k8s_api::policy;
+use linkerd_policy_controller_k8s_api::{gateway, policy};
 
 const POLICY_API_GROUP: &str = "policy.linkerd.io";
 
@@ -221,20 +221,18 @@ fn mk_route(
             ..Default::default()
         },
         spec: HttpRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![ParentReference {
-                    group: Some(POLICY_API_GROUP.to_string()),
-                    kind: Some("Server".to_string()),
-                    namespace: None,
-                    name: server.to_string(),
-                    section_name: None,
-                    port: None,
-                }]),
-            },
+            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                group: Some(POLICY_API_GROUP.to_string()),
+                kind: Some("Server".to_string()),
+                namespace: None,
+                name: server.to_string(),
+                section_name: None,
+                port: None,
+            }]),
             hostnames: None,
             rules: Some(vec![HttpRouteRule {
-                matches: Some(vec![HttpRouteMatch {
-                    path: Some(HttpPathMatch::PathPrefix {
+                matches: Some(vec![gateway::HTTPRouteRulesMatches {
+                    path: Some(gateway::HttpPathMatch::PathPrefix {
                         value: "/foo/bar".to_string(),
                     }),
                     headers: None,
@@ -246,10 +244,10 @@ fn mk_route(
                 timeouts: None,
             }]),
         },
-        status: Some(k8s::policy::httproute::HttpRouteStatus {
-            inner: k8s::gateway::RouteStatus {
-                parents: vec![k8s::gateway::RouteParentStatus {
-                    parent_ref: k8s::gateway::ParentReference {
+        status: Some(gateway::HTTPRouteStatus {
+            inner: gateway::RouteStatus {
+                parents: vec![gateway::HTTPRouteStatusParents {
+                    parent_ref: gateway::HTTPRouteStatusParentsParentRef {
                         group: Some(POLICY_API_GROUP.to_string()),
                         kind: Some("Server".to_string()),
                         namespace: None,
