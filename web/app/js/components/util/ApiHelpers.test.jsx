@@ -57,6 +57,41 @@ describe('ApiHelpers', () => {
     });
   });
 
+  describe('getMetricsWindow and setMetricsWindow (with session storage)', () => {
+    beforeEach(() => {
+      sessionStorage.removeItem('metricsWindow');
+    });
+  
+    it('should return the default metricsWindow when no session value exists', () => {
+      expect(sessionStorage.getItem('metricsWindow')).to.be.null;
+      expect(api.getMetricsWindow()).to.equal('1m');
+    });
+
+    it('should update the metricsWindow on valid window inputs', () => {
+      sessionStorage.setItem('metricsWindow', '10s');
+      expect(sessionStorage.getItem('metricsWindow')).to.equal('10s');
+      expect(api.getMetricsWindow()).to.equal('10s');
+  
+      sessionStorage.setItem('metricsWindow', '1m');
+      expect(sessionStorage.getItem('metricsWindow')).to.equal('1m');
+      expect(api.getMetricsWindow()).to.equal('1m');
+  
+      sessionStorage.setItem('metricsWindow', '10m');
+      expect(sessionStorage.getItem('metricsWindow')).to.equal('10m');
+      expect(api.getMetricsWindow()).to.equal('10m');
+  
+      sessionStorage.setItem('metricsWindow', '1h');
+      expect(sessionStorage.getItem('metricsWindow')).to.equal('1h');
+      expect(api.getMetricsWindow()).to.equal('1h');
+    });
+  
+    it('should not change metricsWindow on invalid window values', () => {
+      sessionStorage.setItem('metricsWindow', '1s');
+      expect(sessionStorage.getItem('metricsWindow')).to.equal('1s');
+      expect(api.getMetricsWindow()).to.equal('1m');
+    });
+  });
+
   describe('PrefixedLink', () => {
     it('respects default values', () => {
       api = ApiHelpers('/my/path/prefix/linkerd-web:/foo');
