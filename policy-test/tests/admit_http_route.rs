@@ -1,18 +1,16 @@
-use linkerd_policy_controller_k8s_api::{self as api, policy::httproute::*};
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy};
 use linkerd_policy_test::{admission, egress_network_parent_ref};
 
 #[tokio::test(flavor = "current_thread")]
 async fn accepts_valid() {
-    admission::accepts(|ns| HttpRoute {
-        metadata: api::ObjectMeta {
+    admission::accepts(|ns| policy::HttpRoute {
+        metadata: k8s::ObjectMeta {
             namespace: Some(ns.clone()),
             name: Some("test".to_string()),
             ..Default::default()
         },
-        spec: HttpRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![server_parent_ref(ns)]),
-            },
+        spec: policy::HttpRouteSpec {
+            parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
             rules: Some(rules()),
         },
@@ -23,16 +21,14 @@ async fn accepts_valid() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn accepts_valid_egress_network() {
-    admission::accepts(|ns| HttpRoute {
-        metadata: api::ObjectMeta {
+    admission::accepts(|ns| policy::HttpRoute {
+        metadata: k8s::ObjectMeta {
             namespace: Some(ns.clone()),
             name: Some("test".to_string()),
             ..Default::default()
         },
-        spec: HttpRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![egress_network_parent_ref(ns, Some(555))]),
-            },
+        spec: policy::HttpRouteSpec {
+            parent_refs: Some(vec![egress_network_parent_ref(ns, Some(555))]),
             hostnames: None,
             rules: Some(rules()),
         },
@@ -43,16 +39,14 @@ async fn accepts_valid_egress_network() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn rejects_egress_network_parent_with_no_port() {
-    admission::rejects(|ns| HttpRoute {
-        metadata: api::ObjectMeta {
+    admission::rejects(|ns| policy::HttpRoute {
+        metadata: k8s::ObjectMeta {
             namespace: Some(ns.clone()),
             name: Some("test".to_string()),
             ..Default::default()
         },
-        spec: HttpRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![egress_network_parent_ref(ns, None)]),
-            },
+        spec: policy::HttpRouteSpec {
+            parent_refs: Some(vec![egress_network_parent_ref(ns, None)]),
             hostnames: None,
             rules: Some(rules()),
         },
@@ -63,19 +57,17 @@ async fn rejects_egress_network_parent_with_no_port() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn rejects_relative_path_match() {
-    admission::rejects(|ns| HttpRoute {
+    admission::rejects(|ns| policy::HttpRoute {
         metadata: meta(&ns),
-        spec: HttpRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![server_parent_ref(ns)]),
-            },
+        spec: policy::HttpRouteSpec {
+            parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
-            rules: Some(vec![HttpRouteRule {
-                matches: Some(vec![HttpRouteMatch {
-                    path: Some(HttpPathMatch::Exact {
+            rules: Some(vec![policy::httproute::HttpRouteRule {
+                matches: Some(vec![gateway::HttpRouteMatch {
+                    path: Some(gateway::HttpPathMatch::Exact {
                         value: "foo/bar".to_string(),
                     }),
-                    ..HttpRouteMatch::default()
+                    ..gateway::HttpRouteMatch::default()
                 }]),
                 filters: None,
                 backend_refs: None,
@@ -89,25 +81,23 @@ async fn rejects_relative_path_match() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn rejects_relative_redirect_path() {
-    admission::rejects(|ns| HttpRoute {
+    admission::rejects(|ns| policy::HttpRoute {
         metadata: meta(&ns),
-        spec: HttpRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![server_parent_ref(ns)]),
-            },
+        spec: policy::HttpRouteSpec {
+            parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
-            rules: Some(vec![HttpRouteRule {
-                matches: Some(vec![HttpRouteMatch {
-                    path: Some(HttpPathMatch::Exact {
+            rules: Some(vec![policy::httproute::HttpRouteRule {
+                matches: Some(vec![gateway::HttpRouteMatch {
+                    path: Some(gateway::HttpPathMatch::Exact {
                         value: "/foo".to_string(),
                     }),
-                    ..HttpRouteMatch::default()
+                    ..gateway::HttpRouteMatch::default()
                 }]),
-                filters: Some(vec![HttpRouteFilter::RequestRedirect {
-                    request_redirect: HttpRequestRedirectFilter {
+                filters: Some(vec![policy::httproute::HttpRouteFilter::RequestRedirect {
+                    request_redirect: gateway::HttpRequestRedirectFilter {
                         scheme: None,
                         hostname: None,
-                        path: Some(HttpPathModifier::ReplaceFullPath {
+                        path: Some(gateway::HttpPathModifier::ReplaceFullPath {
                             replace_full_path: "foo/bar".to_string(),
                         }),
                         port: None,
@@ -123,8 +113,8 @@ async fn rejects_relative_redirect_path() {
     .await;
 }
 
-fn server_parent_ref(ns: impl ToString) -> ParentReference {
-    ParentReference {
+fn server_parent_ref(ns: impl ToString) -> gateway::HTTPRouteParentRefs {
+    gateway::HTTPRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("Server".to_string()),
         namespace: Some(ns.to_string()),
@@ -134,21 +124,21 @@ fn server_parent_ref(ns: impl ToString) -> ParentReference {
     }
 }
 
-fn meta(ns: impl ToString) -> api::ObjectMeta {
-    api::ObjectMeta {
+fn meta(ns: impl ToString) -> k8s::ObjectMeta {
+    k8s::ObjectMeta {
         namespace: Some(ns.to_string()),
         name: Some("test".to_string()),
         ..Default::default()
     }
 }
 
-fn rules() -> Vec<HttpRouteRule> {
-    vec![HttpRouteRule {
-        matches: Some(vec![HttpRouteMatch {
-            path: Some(HttpPathMatch::Exact {
+fn rules() -> Vec<policy::httproute::HttpRouteRule> {
+    vec![policy::httproute::HttpRouteRule {
+        matches: Some(vec![gateway::HttpRouteMatch {
+            path: Some(gateway::HttpPathMatch::Exact {
                 value: "/foo".to_string(),
             }),
-            ..HttpRouteMatch::default()
+            ..gateway::HttpRouteMatch::default()
         }]),
         filters: None,
         backend_refs: None,

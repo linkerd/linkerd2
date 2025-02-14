@@ -1,8 +1,7 @@
-use k8s_gateway_api::{self as gateway, BackendRef, ParentReference};
 use k8s_openapi::Resource;
 use linkerd2_proxy_api::{meta, meta::Metadata, outbound};
 use linkerd_policy_controller_k8s_api::{
-    self as k8s, policy, Condition, Resource as _, ResourceExt,
+    self as k8s, gateway, policy, Condition, Resource as _, ResourceExt,
 };
 
 use crate::outbound_api::{detect_http_routes, grpc_routes, tcp_routes, tls_routes};
@@ -23,13 +22,13 @@ pub trait TestRoute:
 
     fn make_route(
         ns: impl ToString,
-        parents: Vec<ParentReference>,
-        rules: Vec<Vec<BackendRef>>,
+        parents: Vec<gateway::HTTPRouteParentRefs>,
+        rules: Vec<Vec<gateway::HTTPRouteRulesBackendRefs>>,
     ) -> Self;
     fn routes<F>(config: &outbound::OutboundPolicy, f: F)
     where
         F: Fn(&[Self::Route]);
-    fn parents_mut(&mut self) -> Vec<&mut ParentReference>;
+    fn parents_mut(&mut self) -> Vec<&mut gateway::HTTPRouteParentRefs>;
     fn extract_meta(route: &Self::Route) -> &Metadata;
     fn backend_filters(backend: &Self::Backend) -> Vec<&Self::Filter>;
     fn rules_first_available(route: &Self::Route) -> Vec<Vec<&Self::Backend>>;
@@ -64,57 +63,54 @@ pub trait TestParent:
     fn make_parent(ns: impl ToString) -> Self;
     fn make_backend(ns: impl ToString) -> Option<Self>;
     fn conditions(&self) -> Vec<&Condition>;
-    fn obj_ref(&self) -> ParentReference;
-    fn backend_ref(&self, port: u16) -> gateway::BackendRef {
+    fn obj_ref(&self) -> gateway::HTTPRouteParentRefs;
+    fn backend_ref(&self, port: u16) -> gateway::HTTPRouteRulesBackendRefs {
         let dt = Default::default();
-        gateway::BackendRef {
-            weight: None,
-            inner: gateway::BackendObjectReference {
-                group: Some(Self::group(&dt).to_string()),
-                kind: Some(Self::kind(&dt).to_string()),
-                name: self.name_unchecked(),
-                namespace: self.namespace(),
-                port: Some(port),
-            },
+        gateway::HTTPRouteRulesBackendRefs {
+            backend_ref: Some(gateway::BackendRef {
+                weight: None,
+                inner: gateway::BackendObjectReference {
+                    group: Some(Self::group(&dt).to_string()),
+                    kind: Some(Self::kind(&dt).to_string()),
+                    name: self.name_unchecked(),
+                    namespace: self.namespace(),
+                    port: Some(port),
+                },
+            }),
+            filters: None,
         }
     }
     fn ip(&self) -> &str;
 }
 
-impl TestRoute for gateway::HttpRoute {
+impl TestRoute for gateway::HTTPRoute {
     type Route = outbound::HttpRoute;
     type Backend = outbound::http_route::RouteBackend;
     type Filter = outbound::http_route::Filter;
 
     fn make_route(
         ns: impl ToString,
-        parents: Vec<ParentReference>,
-        rules: Vec<Vec<BackendRef>>,
+        parents: Vec<gateway::HTTPRouteParentRefs>,
+        rules: Vec<Vec<gateway::HTTPRouteRulesBackendRefs>>,
     ) -> Self {
         let rules = rules
             .into_iter()
             .map(|backends| {
-                let backends = backends
-                    .into_iter()
-                    .map(|backend| gateway::HttpBackendRef {
-                        backend_ref: Some(backend),
-                        filters: None,
-                    })
-                    .collect();
-                gateway::HttpRouteRule {
+                let backends = backends.into_iter().collect();
+                gateway::HTTPRouteRules {
                     matches: Some(vec![]),
                     filters: None,
                     backend_refs: Some(backends),
                 }
             })
             .collect();
-        gateway::HttpRoute {
+        gateway::HTTPRoute {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
                 name: Some("foo-route".to_string()),
                 ..Default::default()
             },
-            spec: gateway::HttpRouteSpec {
+            spec: gateway::HTTPRouteSpec {
                 inner: gateway::CommonRouteSpec {
                     parent_refs: Some(parents),
                 },
@@ -202,7 +198,7 @@ impl TestRoute for gateway::HttpRoute {
         )
     }
 
-    fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
+    fn parents_mut(&mut self) -> Vec<&mut gateway::HTTPRouteParentRefs> {
         self.spec
             .inner
             .parent_refs
@@ -220,19 +216,13 @@ impl TestRoute for policy::HttpRoute {
 
     fn make_route(
         ns: impl ToString,
-        parents: Vec<ParentReference>,
-        rules: Vec<Vec<BackendRef>>,
+        parents: Vec<gateway::HTTPRouteParentRefs>,
+        rules: Vec<Vec<gateway::HTTPRouteRulesBackendRefs>>,
     ) -> Self {
         let rules = rules
             .into_iter()
             .map(|backends| {
-                let backends = backends
-                    .into_iter()
-                    .map(|backend| gateway::HttpBackendRef {
-                        backend_ref: Some(backend),
-                        filters: None,
-                    })
-                    .collect();
+                let backends = backends.into_iter().collect();
                 policy::httproute::HttpRouteRule {
                     matches: Some(vec![]),
                     filters: None,
@@ -248,9 +238,7 @@ impl TestRoute for policy::HttpRoute {
                 ..Default::default()
             },
             spec: policy::HttpRouteSpec {
-                inner: gateway::CommonRouteSpec {
-                    parent_refs: Some(parents),
-                },
+                parent_refs: Some(parents),
                 hostnames: None,
                 rules: Some(rules),
             },
@@ -335,14 +323,8 @@ impl TestRoute for policy::HttpRoute {
         )
     }
 
-    fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
-        self.spec
-            .inner
-            .parent_refs
-            .as_mut()
-            .unwrap()
-            .iter_mut()
-            .collect()
+    fn parents_mut(&mut self) -> Vec<&mut gateway::HTTPRouteParentRefs> {
+        self.spec.parent_refs.as_mut().unwrap().iter_mut().collect()
     }
 }
 
@@ -353,18 +335,23 @@ impl TestRoute for gateway::GrpcRoute {
 
     fn make_route(
         ns: impl ToString,
-        parents: Vec<ParentReference>,
-        rules: Vec<Vec<BackendRef>>,
+        parents: Vec<gateway::HTTPRouteParentRefs>,
+        rules: Vec<Vec<gateway::HTTPRouteRulesBackendRefs>>,
     ) -> Self {
         let rules = rules
             .into_iter()
             .map(|backends| {
                 let backends = backends
                     .into_iter()
-                    .map(|backend| gateway::GrpcRouteBackendRef {
-                        filters: None,
-                        inner: backend.inner,
-                        weight: None,
+                    .map(|br| gateway::GRPCRouteRulesBackendRefs {
+                        inner: br.backend_ref.clone().unwrap().inner,
+                        filters: br.filters.map(|filters| {
+                            filters
+                                .into_iter()
+                                .map(http_filter_to_grpc_filter)
+                                .collect()
+                        }),
+                        weight: br.backend_ref.unwrap().weight,
                     })
                     .collect();
                 gateway::GrpcRouteRule {
@@ -468,7 +455,7 @@ impl TestRoute for gateway::GrpcRoute {
         )
     }
 
-    fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
+    fn parents_mut(&mut self) -> Vec<&mut gateway::HTTPRouteParentRefs> {
         self.spec
             .inner
             .parent_refs
@@ -479,6 +466,27 @@ impl TestRoute for gateway::GrpcRoute {
     }
 }
 
+fn http_filter_to_grpc_filter(
+    filter: gateway::HTTPRouteRulesFilters,
+) -> gateway::GRPCRouteRulesFilters {
+    match filter {
+        gateway::HttpRouteFilter::RequestHeaderModifier {
+            request_header_modifier,
+        } => gateway::GRPCRouteRulesFilters::RequestHeaderModifier {
+            request_header_modifier,
+        },
+        gateway::HttpRouteFilter::ResponseHeaderModifier {
+            response_header_modifier,
+        } => gateway::GRPCRouteRulesFilters::ResponseHeaderModifier {
+            response_header_modifier,
+        },
+        gateway::HttpRouteFilter::RequestMirror { request_mirror } => {
+            gateway::GRPCRouteRulesFilters::RequestMirror { request_mirror }
+        }
+        _ => panic!("unsupported HTTPFilter: {:?}", filter),
+    }
+}
+
 impl TestRoute for gateway::TlsRoute {
     type Route = outbound::TlsRoute;
     type Backend = outbound::tls_route::RouteBackend;
@@ -486,13 +494,16 @@ impl TestRoute for gateway::TlsRoute {
 
     fn make_route(
         ns: impl ToString,
-        parents: Vec<ParentReference>,
-        rules: Vec<Vec<BackendRef>>,
+        parents: Vec<gateway::HTTPRouteParentRefs>,
+        rules: Vec<Vec<gateway::HTTPRouteRulesBackendRefs>>,
     ) -> Self {
         let rules = rules
             .into_iter()
             .map(|backends| gateway::TlsRouteRule {
-                backend_refs: backends,
+                backend_refs: backends
+                    .into_iter()
+                    .filter_map(|br| br.backend_ref)
+                    .collect(),
             })
             .collect();
         gateway::TlsRoute {
@@ -589,7 +600,7 @@ impl TestRoute for gateway::TlsRoute {
         )
     }
 
-    fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
+    fn parents_mut(&mut self) -> Vec<&mut gateway::HTTPRouteParentRefs> {
         self.spec
             .inner
             .parent_refs
@@ -607,13 +618,16 @@ impl TestRoute for gateway::TcpRoute {
 
     fn make_route(
         ns: impl ToString,
-        parents: Vec<ParentReference>,
-        rules: Vec<Vec<BackendRef>>,
+        parents: Vec<gateway::HTTPRouteParentRefs>,
+        rules: Vec<Vec<gateway::HTTPRouteRulesBackendRefs>>,
     ) -> Self {
         let rules = rules
             .into_iter()
             .map(|backends| gateway::TcpRouteRule {
-                backend_refs: backends,
+                backend_refs: backends
+                    .into_iter()
+                    .filter_map(|br| br.backend_ref)
+                    .collect(),
             })
             .collect();
         gateway::TcpRoute {
@@ -709,7 +723,7 @@ impl TestRoute for gateway::TcpRoute {
         )
     }
 
-    fn parents_mut(&mut self) -> Vec<&mut ParentReference> {
+    fn parents_mut(&mut self) -> Vec<&mut gateway::HTTPRouteParentRefs> {
         self.spec
             .inner
             .parent_refs
@@ -769,8 +783,8 @@ impl TestParent for k8s::Service {
             .collect()
     }
 
-    fn obj_ref(&self) -> ParentReference {
-        ParentReference {
+    fn obj_ref(&self) -> gateway::HTTPRouteParentRefs {
+        gateway::HTTPRouteParentRefs {
             kind: Some(k8s::Service::KIND.to_string()),
             name: self.name_unchecked(),
             namespace: self.namespace(),
@@ -809,8 +823,8 @@ impl TestParent for policy::EgressNetwork {
         self.status.as_ref().unwrap().conditions.iter().collect()
     }
 
-    fn obj_ref(&self) -> ParentReference {
-        ParentReference {
+    fn obj_ref(&self) -> gateway::HTTPRouteParentRefs {
+        gateway::HTTPRouteParentRefs {
             kind: Some(policy::EgressNetwork::kind(&()).to_string()),
             name: self.name_unchecked(),
             namespace: self.namespace(),

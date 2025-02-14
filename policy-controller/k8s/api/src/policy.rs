@@ -1,5 +1,6 @@
 pub mod authorization_policy;
 pub mod egress_network;
+pub mod grpcroute;
 pub mod httproute;
 pub mod meshtls_authentication;
 mod network;
@@ -8,6 +9,8 @@ pub mod ratelimit_policy;
 pub mod server;
 pub mod server_authorization;
 pub mod target_ref;
+pub mod tcproute;
+pub mod tlsroute;
 
 pub use self::{
     authorization_policy::{AuthorizationPolicy, AuthorizationPolicySpec},

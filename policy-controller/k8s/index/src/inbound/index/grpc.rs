@@ -1,19 +1,20 @@
 use crate::inbound::routes::{ParentRef, RouteBinding, Status};
+use crate::routes::grpc::try_match;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
 use linkerd_policy_controller_core::{
     inbound::{Filter, GrpcRoute, InboundRoute, InboundRouteRule},
-    routes::{GrpcMethodMatch, GrpcRouteMatch},
+    routes::GrpcRouteMatch,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway};
 
-impl TryFrom<gateway::GrpcRoute> for RouteBinding<GrpcRoute> {
+impl TryFrom<gateway::GRPCRoute> for RouteBinding<GrpcRoute> {
     type Error = Error;
 
-    fn try_from(route: gateway::GrpcRoute) -> Result<Self, Self::Error> {
+    fn try_from(route: gateway::GRPCRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
         let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
-        let parents = ParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
+        let parents = ParentRef::collect_from_grpc(route_ns, route.spec.inner.parent_refs)?;
         let hostnames = route
             .spec
             .hostnames
@@ -28,7 +29,7 @@ impl TryFrom<gateway::GrpcRoute> for RouteBinding<GrpcRoute> {
             .into_iter()
             .flatten()
             .map(
-                |gateway::GrpcRouteRule {
+                |gateway::GRPCRouteRules {
                      matches, filters, ..
                  }| { try_grpc_rule(matches, filters, try_grpc_filter) },
             )
@@ -36,7 +37,7 @@ impl TryFrom<gateway::GrpcRoute> for RouteBinding<GrpcRoute> {
 
         let statuses = route
             .status
-            .map_or_else(Vec::new, |status| Status::collect_from(status.inner));
+            .map_or_else(Vec::new, Status::collect_from_grpc);
 
         Ok(RouteBinding {
             parents,
@@ -51,37 +52,15 @@ impl TryFrom<gateway::GrpcRoute> for RouteBinding<GrpcRoute> {
     }
 }
 
-pub fn try_grpc_match(
-    gateway::GrpcRouteMatch { headers, method }: gateway::GrpcRouteMatch,
-) -> Result<GrpcRouteMatch> {
-    let headers = headers
-        .into_iter()
-        .flatten()
-        .map(crate::routes::http::header_match)
-        .collect::<Result<_>>()?;
-
-    let method = match method {
-        Some(gateway::GrpcMethodMatch::Exact { method, service }) => {
-            Some(GrpcMethodMatch { method, service })
-        }
-        Some(gateway::GrpcMethodMatch::RegularExpression { .. }) => {
-            bail!("Regular expression gRPC method match is not supported")
-        }
-        None => None,
-    };
-
-    Ok(GrpcRouteMatch { headers, method })
-}
-
 fn try_grpc_rule<F>(
-    matches: Option<Vec<gateway::GrpcRouteMatch>>,
+    matches: Option<Vec<gateway::GRPCRouteRulesMatches>>,
     filters: Option<Vec<F>>,
     try_filter: impl Fn(F) -> Result<Filter>,
 ) -> Result<InboundRouteRule<GrpcRouteMatch>> {
     let matches = matches
         .into_iter()
         .flatten()
-        .map(try_grpc_match)
+        .map(try_match)
         .collect::<Result<_>>()?;
 
     let filters = filters
@@ -93,25 +72,25 @@ fn try_grpc_rule<F>(
     Ok(InboundRouteRule { matches, filters })
 }
 
-fn try_grpc_filter(filter: gateway::GrpcRouteFilter) -> Result<Filter> {
+fn try_grpc_filter(filter: gateway::GRPCRouteRulesFilters) -> Result<Filter> {
     let filter = match filter {
-        gateway::GrpcRouteFilter::RequestHeaderModifier {
+        gateway::GRPCRouteRulesFilters::RequestHeaderModifier {
             request_header_modifier,
         } => {
-            let filter = crate::routes::http::header_modifier(request_header_modifier)?;
+            let filter = crate::routes::grpc::request_header_modifier(request_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
         }
 
-        gateway::GrpcRouteFilter::ResponseHeaderModifier {
+        gateway::GRPCRouteRulesFilters::ResponseHeaderModifier {
             response_header_modifier,
         } => {
-            let filter = crate::routes::http::header_modifier(response_header_modifier)?;
+            let filter = crate::routes::grpc::request_header_modifier(response_header_modifier)?;
             Filter::ResponseHeaderModifier(filter)
         }
-        gateway::GrpcRouteFilter::RequestMirror { .. } => {
+        gateway::GRPCRouteRulesFilters::RequestMirror { .. } => {
             bail!("RequestMirror filter is not supported")
         }
-        gateway::GrpcRouteFilter::ExtensionRef { .. } => {
+        gateway::GRPCRouteRulesFilters::ExtensionRef { .. } => {
             bail!("ExtensionRef filter is not supported")
         }
     };

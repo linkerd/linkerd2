@@ -1,7 +1,7 @@
 use futures::prelude::*;
 use kube::ResourceExt;
 use linkerd_policy_controller_core::{Ipv4Net, Ipv6Net};
-use linkerd_policy_controller_k8s_api as k8s;
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway};
 use linkerd_policy_test::{
     assert_default_all_unauthenticated_labels, assert_is_default_all_unauthenticated,
     assert_protocol_detect, await_condition, create, create_ready_pod, grpc, with_temp_ns,
@@ -694,20 +694,18 @@ fn mk_admin_route(ns: &str, name: &str) -> k8s::policy::HttpRoute {
             ..Default::default()
         },
         spec: api::HttpRouteSpec {
-            inner: api::CommonRouteSpec {
-                parent_refs: Some(vec![api::ParentReference {
-                    group: Some("policy.linkerd.io".to_string()),
-                    kind: Some("Server".to_string()),
-                    namespace: None,
-                    name: "linkerd-admin".to_string(),
-                    section_name: None,
-                    port: None,
-                }]),
-            },
+            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: Some("Server".to_string()),
+                namespace: None,
+                name: "linkerd-admin".to_string(),
+                section_name: None,
+                port: None,
+            }]),
             hostnames: None,
             rules: Some(vec![api::HttpRouteRule {
-                matches: Some(vec![api::HttpRouteMatch {
-                    path: Some(api::HttpPathMatch::Exact {
+                matches: Some(vec![gateway::HttpRouteMatch {
+                    path: Some(gateway::HttpPathMatch::Exact {
                         value: "/metrics".to_string(),
                     }),
                     headers: None,
@@ -735,20 +733,18 @@ fn mk_admin_route_with_path(ns: &str, name: &str, path: &str) -> k8s::policy::Ht
             ..Default::default()
         },
         spec: api::HttpRouteSpec {
-            inner: api::CommonRouteSpec {
-                parent_refs: Some(vec![api::ParentReference {
-                    group: Some("policy.linkerd.io".to_string()),
-                    kind: Some("Server".to_string()),
-                    namespace: None,
-                    name: "linkerd-admin".to_string(),
-                    section_name: None,
-                    port: None,
-                }]),
-            },
+            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: Some("Server".to_string()),
+                namespace: None,
+                name: "linkerd-admin".to_string(),
+                section_name: None,
+                port: None,
+            }]),
             hostnames: None,
             rules: Some(vec![api::HttpRouteRule {
-                matches: Some(vec![api::HttpRouteMatch {
-                    path: Some(api::HttpPathMatch::Exact {
+                matches: Some(vec![gateway::HttpRouteMatch {
+                    path: Some(gateway::HttpPathMatch::Exact {
                         value: path.to_string(),
                     }),
                     headers: None,
