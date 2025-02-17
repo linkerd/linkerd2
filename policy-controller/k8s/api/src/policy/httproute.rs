@@ -1,9 +1,4 @@
-pub use k8s_gateway_api::{
-    BackendObjectReference, CommonRouteSpec, Hostname, HttpBackendRef, HttpHeader, HttpHeaderMatch,
-    HttpHeaderName, HttpMethod, HttpPathMatch, HttpPathModifier, HttpQueryParamMatch,
-    HttpRequestHeaderFilter, HttpRequestRedirectFilter, HttpRouteMatch, LocalObjectReference,
-    ParentReference, RouteStatus,
-};
+use crate::gateway::{self, HTTPRouteStatus};
 
 /// HTTPRoute provides a way to route HTTP requests. This includes the
 /// capability to match requests by hostname, path, header, or query param.
@@ -23,13 +18,17 @@ pub use k8s_gateway_api::{
     version = "v1beta3",
     kind = "HTTPRoute",
     root = "HttpRoute",
-    status = "HttpRouteStatus",
+    status = "HTTPRouteStatus",
     namespaced
 )]
 pub struct HttpRouteSpec {
     /// Common route information.
-    #[serde(flatten)]
-    pub inner: CommonRouteSpec,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "parentRefs"
+    )]
+    pub parent_refs: Option<Vec<gateway::HTTPRouteParentRefs>>,
 
     /// Hostnames defines a set of hostname that should match against the HTTP
     /// Host header to select a HTTPRoute to process the request. This matches
@@ -38,7 +37,7 @@ pub struct HttpRouteSpec {
     /// 1. IPs are not allowed.
     /// 2. A hostname may be prefixed with a wildcard label (`*.`). The wildcard
     ///    label must appear by itself as the first label.
-    pub hostnames: Option<Vec<Hostname>>,
+    pub hostnames: Option<Vec<String>>,
 
     /// Rules are a list of HTTP matchers, filters and actions.
     pub rules: Option<Vec<HttpRouteRule>>,
@@ -47,9 +46,7 @@ pub struct HttpRouteSpec {
 /// HTTPRouteRule defines semantics for matching an HTTP request based on
 /// conditions (matches), processing it (filters), and forwarding the request to
 /// an API object (backendRefs).
-#[derive(
-    Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HttpRouteRule {
     /// Matches define conditions used for matching the rule against incoming
@@ -105,7 +102,7 @@ pub struct HttpRouteRule {
     ///
     /// When no rules matching a request have been successfully attached to the
     /// parent a request is coming from, a HTTP 404 status code MUST be returned.
-    pub matches: Option<Vec<HttpRouteMatch>>,
+    pub matches: Option<Vec<gateway::HTTPRouteRulesMatches>>,
 
     /// Filters define the filters that are applied to requests that match this
     /// rule.
@@ -153,7 +150,7 @@ pub struct HttpRouteRule {
     /// Support: Custom for any other resource
     ///
     /// Support for weight: Core
-    pub backend_refs: Option<Vec<HttpBackendRef>>,
+    pub backend_refs: Option<Vec<gateway::HTTPRouteRulesBackendRefs>>,
 
     /// Timeouts defines the timeouts that can be configured for an HTTP request.
     ///
@@ -167,9 +164,7 @@ pub struct HttpRouteRule {
 /// Some examples include request or response modification, implementing
 /// authentication strategies, rate-limiting, and traffic shaping. API
 /// guarantee/conformance is defined based on the type of the filter.
-#[derive(
-    Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 #[serde(tag = "type", rename_all = "PascalCase")]
 pub enum HttpRouteFilter {
     /// RequestHeaderModifier defines a schema for a filter that modifies request
@@ -178,7 +173,7 @@ pub enum HttpRouteFilter {
     /// Support: Core
     #[serde(rename_all = "camelCase")]
     RequestHeaderModifier {
-        request_header_modifier: HttpRequestHeaderFilter,
+        request_header_modifier: gateway::HTTPRouteRulesFiltersRequestHeaderModifier,
     },
 
     /// ResponseHeaderModifier defines a schema for a filter that modifies response
@@ -187,7 +182,7 @@ pub enum HttpRouteFilter {
     /// Support: Extended
     #[serde(rename_all = "camelCase")]
     ResponseHeaderModifier {
-        response_header_modifier: HttpRequestHeaderFilter,
+        response_header_modifier: gateway::HTTPRouteRulesFiltersResponseHeaderModifier,
     },
 
     /// RequestRedirect defines a schema for a filter that responds to the
@@ -196,16 +191,8 @@ pub enum HttpRouteFilter {
     /// Support: Core
     #[serde(rename_all = "camelCase")]
     RequestRedirect {
-        request_redirect: HttpRequestRedirectFilter,
+        request_redirect: gateway::HTTPRouteRulesFiltersRequestRedirect,
     },
-}
-
-/// HTTPRouteStatus defines the observed state of HTTPRoute.
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-pub struct HttpRouteStatus {
-    /// Common route status information.
-    #[serde(flatten)]
-    pub inner: RouteStatus,
 }
 
 /// HTTPRouteTimeouts defines timeouts that can be configured for an HTTPRoute.
@@ -238,7 +225,7 @@ pub struct HttpRouteTimeouts {
     pub backend_request: Option<crate::duration::K8sDuration>,
 }
 
-pub fn parent_ref_targets_kind<T>(parent_ref: &ParentReference) -> bool
+pub fn parent_ref_targets_kind<T>(parent_ref: &gateway::HTTPRouteParentRefs) -> bool
 where
     T: kube::Resource,
     T::DynamicType: Default,
@@ -251,14 +238,21 @@ where
     super::targets_kind::<T>(parent_ref.group.as_deref(), kind)
 }
 
-pub fn backend_ref_targets_kind<T>(backend_ref: &BackendObjectReference) -> bool
+pub fn backend_ref_targets_kind<T>(backend_ref: &gateway::HTTPRouteRulesBackendRefs) -> bool
 where
     T: kube::Resource,
     T::DynamicType: Default,
 {
     // Default kind is assumed to be service for backend ref objects
     super::targets_kind::<T>(
-        backend_ref.group.as_deref(),
-        backend_ref.kind.as_deref().unwrap_or("Service"),
+        backend_ref
+            .backend_ref
+            .as_ref()
+            .and_then(|br| br.inner.group.as_deref()),
+        backend_ref
+            .backend_ref
+            .as_ref()
+            .and_then(|br| br.inner.kind.as_deref())
+            .unwrap_or("Service"),
     )
 }

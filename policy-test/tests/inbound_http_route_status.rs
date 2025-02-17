@@ -1,5 +1,5 @@
 use kube::ResourceExt;
-use linkerd_policy_controller_k8s_api as k8s;
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway};
 use linkerd_policy_test::{
     await_condition, create, find_route_condition, mk_route, update, with_temp_ns,
 };
@@ -25,7 +25,7 @@ async fn inbound_accepted_parent() {
             },
         };
         let server = create(&client, server).await;
-        let srv_ref = vec![k8s::policy::httproute::ParentReference {
+        let srv_ref = vec![gateway::HTTPRouteParentRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: server.namespace(),
@@ -39,6 +39,7 @@ async fn inbound_accepted_parent() {
         // Wait until route is updated with a status
         let statuses = await_route_status(&client, &ns, "test-accepted-route")
             .await
+            .inner
             .parents;
 
         let route_status = statuses
@@ -68,7 +69,7 @@ async fn inbound_multiple_parents() {
     with_temp_ns(|client, ns| async move {
         // Exercise accepted test with a valid, and an invalid parent reference
         let srv_refs = vec![
-            k8s::policy::httproute::ParentReference {
+            gateway::HTTPRouteParentRefs {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("Server".to_string()),
                 namespace: Some(ns.clone()),
@@ -76,7 +77,7 @@ async fn inbound_multiple_parents() {
                 section_name: None,
                 port: None,
             },
-            k8s::policy::httproute::ParentReference {
+            gateway::HTTPRouteParentRefs {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("Server".to_string()),
                 namespace: Some(ns.clone()),
@@ -113,6 +114,7 @@ async fn inbound_multiple_parents() {
         // Wait until route is updated with a status
         let parent_status = await_route_status(&client, &ns, "test-multiple-parents-route")
             .await
+            .inner
             .parents;
 
         // Find status for invalid parent and extract the condition
@@ -152,7 +154,7 @@ async fn inbound_no_parent_ref_patch() {
             },
         };
         let server = create(&client, server).await;
-        let srv_ref = vec![k8s::policy::httproute::ParentReference {
+        let srv_ref = vec![gateway::HTTPRouteParentRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: server.namespace(),
@@ -172,7 +174,7 @@ async fn inbound_no_parent_ref_patch() {
         let status = await_route_status(&client, &ns, "test-no-parent-refs-route").await;
         // If timeout has elapsed, then route did not receive a status patch
         assert!(
-            status.parents.len() == 1,
+            status.inner.parents.len() == 1,
             "HTTPRoute Status should have 1 parent status"
         );
 
@@ -204,7 +206,7 @@ async fn inbound_accepted_reconcile_no_parent() {
         // Given a route with a nonexistent parentReference, we expect to have an
         // 'Accepted' condition with 'False' as a status.
         let server_name = "test-reconcile-inbound-server";
-        let srv_ref = vec![k8s::policy::httproute::ParentReference {
+        let srv_ref = vec![gateway::HTTPRouteParentRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: Some(ns.clone()),
@@ -218,7 +220,7 @@ async fn inbound_accepted_reconcile_no_parent() {
         )
         .await;
         let route_status = await_route_status(&client, &ns, "test-reconcile-inbound-route").await;
-        let cond = find_route_condition(&route_status.parents, server_name)
+        let cond = find_route_condition(&route_status.inner.parents, server_name)
             .expect("must have at least one 'Accepted' condition set for parent");
         // Test when parent ref does not exist we get Accepted { False }.
         assert_eq!(cond.status, "False");
@@ -294,7 +296,7 @@ async fn inbound_accepted_reconcile_parent_delete() {
         create(&client, server).await;
 
         // Create parentReference and route
-        let srv_ref = vec![k8s::policy::httproute::ParentReference {
+        let srv_ref = vec![gateway::HTTPRouteParentRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: Some(ns.clone()),
@@ -308,7 +310,7 @@ async fn inbound_accepted_reconcile_parent_delete() {
         )
         .await;
         let route_status = await_route_status(&client, &ns, "test-reconcile-delete-route").await;
-        let cond = find_route_condition(&route_status.parents, server_name)
+        let cond = find_route_condition(&route_status.inner.parents, server_name)
             .expect("must have at least one 'Accepted' condition");
         assert_eq!(cond.status, "True");
         assert_eq!(cond.reason, "Accepted");
@@ -355,7 +357,7 @@ async fn await_route_status(
     client: &kube::Client,
     ns: &str,
     name: &str,
-) -> k8s::policy::httproute::RouteStatus {
+) -> gateway::HTTPRouteStatus {
     use k8s::policy::httproute as api;
     let route_status = await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
         obj.and_then(|route| route.status.as_ref()).is_some()
@@ -366,5 +368,7 @@ async fn await_route_status(
     .expect("route must contain a status representation")
     .inner;
     tracing::trace!(?route_status, name, ns, "got route status");
-    route_status
+    gateway::HTTPRouteStatus {
+        inner: route_status,
+    }
 }

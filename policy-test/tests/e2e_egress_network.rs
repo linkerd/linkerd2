@@ -1,4 +1,4 @@
-use linkerd_policy_controller_k8s_api as k8s;
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway};
 use linkerd_policy_test::{
     assert_status_accepted, await_condition, await_egress_net_status, await_gateway_route_status,
     await_tcp_route_status, await_tls_route_status, create, create_ready_pod, curl,
@@ -198,7 +198,7 @@ async fn explicit_allow_http_route() {
                 },
                 spec: k8s::gateway::HttpRouteSpec {
                     inner: k8s::gateway::CommonRouteSpec {
-                        parent_refs: Some(vec![k8s::policy::httproute::ParentReference {
+                        parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
                             namespace: None,
                             name: "egress".to_string(),
                             port: Some(80),
@@ -209,8 +209,8 @@ async fn explicit_allow_http_route() {
                     },
                     hostnames: None,
                     rules: Some(vec![k8s::gateway::HttpRouteRule {
-                        matches: Some(vec![k8s::policy::httproute::HttpRouteMatch {
-                            path: Some(k8s::policy::httproute::HttpPathMatch::Exact {
+                        matches: Some(vec![gateway::HttpRouteMatch {
+                            path: Some(gateway::HttpPathMatch::Exact {
                                 value: "/get".to_string(),
                             }),
                             ..Default::default()
@@ -614,7 +614,7 @@ async fn routing_back_to_cluster_tls_route() {
                 },
                 spec: k8s_gateway_api::TlsRouteSpec {
                     inner: k8s_gateway_api::CommonRouteSpec {
-                        parent_refs: Some(vec![k8s::policy::httproute::ParentReference {
+                        parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
                             namespace: None,
                             name: "egress".to_string(),
                             port: Some(443),

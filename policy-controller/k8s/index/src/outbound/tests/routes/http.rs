@@ -4,7 +4,7 @@ use linkerd_policy_controller_core::{
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
-use linkerd_policy_controller_k8s_api::gateway::BackendRef;
+use linkerd_policy_controller_k8s_api::gateway;
 use tracing::Level;
 
 use super::super::*;
@@ -195,31 +195,29 @@ fn mk_route(
             ..Default::default()
         },
         spec: HttpRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![ParentReference {
-                    group: Some(group.clone()),
-                    kind: Some(kind.clone()),
-                    namespace: Some(ns.to_string()),
-                    name: parent.to_string(),
-                    section_name: None,
-                    port: Some(port),
-                }]),
-            },
+            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                group: Some(group.clone()),
+                kind: Some(kind.clone()),
+                namespace: Some(ns.to_string()),
+                name: parent.to_string(),
+                section_name: None,
+                port: Some(port),
+            }]),
             hostnames: None,
             rules: Some(vec![HttpRouteRule {
-                matches: Some(vec![HttpRouteMatch {
-                    path: Some(HttpPathMatch::PathPrefix {
+                matches: Some(vec![gateway::HTTPRouteRulesMatches {
+                    path: Some(gateway::HttpPathMatch::Exact {
                         value: "/foo/bar".to_string(),
                     }),
                     headers: None,
                     query_params: None,
-                    method: Some("GET".to_string()),
+                    method: Some(gateway::http_method::GET.to_string()),
                 }]),
                 filters: None,
-                backend_refs: Some(vec![HttpBackendRef {
-                    backend_ref: Some(BackendRef {
+                backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                    backend_ref: Some(gateway::BackendRef {
                         weight: None,
-                        inner: BackendObjectReference {
+                        inner: gateway::BackendObjectReference {
                             group: Some(group.clone()),
                             kind: Some(kind.clone()),
                             namespace: Some(ns.to_string()),
@@ -232,10 +230,10 @@ fn mk_route(
                 timeouts: None,
             }]),
         },
-        status: Some(HttpRouteStatus {
-            inner: RouteStatus {
-                parents: vec![k8s::gateway::RouteParentStatus {
-                    parent_ref: ParentReference {
+        status: Some(gateway::HTTPRouteStatus {
+            inner: gateway::RouteStatus {
+                parents: vec![gateway::HTTPRouteStatusParents {
+                    parent_ref: gateway::HTTPRouteStatusParentsParentRef {
                         group: Some(group),
                         kind: Some(kind),
                         namespace: Some(ns.to_string()),
