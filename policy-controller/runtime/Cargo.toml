@@ -19,11 +19,11 @@ async-trait = "0.1"
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
 k8s-openapi = { workspace = true }
-hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
+hyper = { workspace = true, features = ["http1", "http2", "runtime", "server"] }
 ipnet = { version = "2", default-features = false }
 openssl = { version = "0.10.71", optional = true }
 parking_lot = "0.12"
-prometheus-client = { version = "0.22.3", default-features = false }
+prometheus-client = { workspace = true, default-features = false }
 serde = "1"
 serde_json = "1"
 thiserror = "2"
@@ -65,6 +65,6 @@ version = "1"
 features = ["macros", "parking_lot", "rt", "rt-multi-thread", "signal"]
 
 [dependencies.tonic]
-version = "0.10"
+workspace = true
 default-features = false
 features = ["transport"]

@@ -11,6 +11,6 @@ anyhow = "1"
 async-trait = "0.1"
 chrono = { version = "0.4.39", default-features = false }
 futures = { version = "0.3", default-features = false, features = ["std"] }
-http = "0.2"
+http = { workspace = true }
 ipnet = "2"
 regex = "1"

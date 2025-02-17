@@ -7,10 +7,10 @@ publish = false
 
 [dependencies]
 anyhow = "1"
-hyper = { version = "0.14", features = ["client", "http2"] }
+hyper = { workspace = true, features = ["client", "http2"] }
 futures = { version = "0.3", default-features = false }
 ipnet = "2"
-k8s-gateway-api = "0.16"
+k8s-gateway-api = { workspace = true }
 k8s-openapi = { workspace = true }
 linkerd-policy-controller-core = { path = "../policy-controller/core" }
 linkerd-policy-controller-k8s-api = { path = "../policy-controller/k8s/api" }
@@ -20,7 +20,7 @@ rand = "0.9"
 serde = "1"
 serde_json = "1"
 schemars = "0.8"
-tonic = { version = "0.10", default-features = false }
+tonic = { workspace = true }
 tokio = { version = "1", features = ["macros", "rt"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -31,7 +31,7 @@ default-features = false
 features = ["client", "openssl-tls", "runtime", "ws"]
 
 [dependencies.linkerd2-proxy-api]
-version = "0.15"
+workspace = true
 features = ["inbound", "outbound"]
 
 [dev-dependencies]

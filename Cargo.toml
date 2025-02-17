@@ -15,6 +15,21 @@ members = [
 lto = "thin"
 
 [workspace.dependencies]
+http = "0.2"
+hyper = { version = "0.14" }
 k8s-openapi = { version = "0.20", features = ["v1_22"] }
 kube = { version = "0.87.1", default-features = false }
 kubert = { version = "0.22", default-features = false }
+prometheus-client = { version = "0.22", default-features = false }
+tonic = { version = "0.10", default-features = false }
+
+[workspace.dependencies.k8s-gateway-api]
+version = "0.16"
+features = ["experimental"]
+
+[workspace.dependencies.linkerd2-proxy-api]
+version = "0.15"
+features = [
+    "inbound",
+    "outbound",
+]
