@@ -168,9 +168,11 @@ impl Args {
             prom.sub_registry_with_prefix("inbound_index"),
             inbound_index.clone(),
         );
+        let rt_metrics = kubert::RuntimeMetrics::register(prom.sub_registry_with_prefix("kube"));
 
         let mut runtime = kubert::Runtime::builder()
             .with_log(log_level, log_format)
+            .with_metrics(rt_metrics)
             .with_admin(admin.into_builder().with_prometheus(prom))
             .with_client(client)
             .with_optional_server(server)
