@@ -9,6 +9,7 @@ mod args;
 mod index_list;
 mod validation;
 
+mod lease;
 pub use self::args::Args;
 
 use std::num::NonZeroU16;
