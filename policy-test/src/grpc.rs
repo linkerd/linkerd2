@@ -332,12 +332,10 @@ impl GrpcHttp {
     }
 }
 
-type Body = hyper::body::Incoming;
-
 impl tower::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp {
-    type Response = hyper::Response<Body>;
+    type Response = hyper::Response<hyper::body::Incoming>;
     type Error = hyper::Error;
-    type Future = future::BoxFuture<'static, Result<hyper::Response<Body>, hyper::Error>>;
+    type Future = future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(
         &mut self,
