@@ -6,7 +6,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use chrono::{offset::Utc, DateTime};
 use futures::prelude::*;
-use std::{net::IpAddr, num::NonZeroU16, pin::Pin, time};
+use std::{net::IpAddr, num::NonZeroU16, pin::Pin, str::FromStr, sync::Arc, time};
 
 mod policy;
 mod target;
@@ -41,6 +41,24 @@ pub type HttpRoute = OutboundRoute<HttpRouteMatch, HttpRetryCondition>;
 pub type GrpcRoute = OutboundRoute<GrpcRouteMatch, GrpcRetryCondition>;
 
 pub type RouteSet<T> = HashMap<GroupKindNamespaceName, T>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AppProtocol {
+    Opaque,
+    Unknown(Arc<str>),
+}
+
+impl FromStr for AppProtocol {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let protocol = match s.to_ascii_lowercase().as_str() {
+            "linkerd.io/tcp" | "linkerd.io/opaque" => AppProtocol::Opaque,
+            protocol => AppProtocol::Unknown(Arc::from(protocol)),
+        };
+        Ok(protocol)
+    }
+}
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum TrafficPolicy {
