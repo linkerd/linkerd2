@@ -15,11 +15,15 @@ import (
 
 var TestHelper *testutil.TestHelper
 
-var opaquePortsClientTemplate = template.Must(template.New("appprotocol_client.yaml").ParseFiles("testdata/appprotocol_client.yaml"))
+var appProtocolClientTemplate = template.Must(template.New("appprotocol_client.yaml").ParseFiles("testdata/appprotocol_client.yaml"))
 
 var (
 	opaqueApp = "opaque"
 	opaqueSC  = "slow-cooker-opaque"
+	http1App  = "http1"
+	http1SC   = "slow-cooker-http1"
+	http2App  = "http2"
+	http2SC   = "slow-cooker-http2"
 )
 
 type testCase struct {
@@ -45,6 +49,8 @@ func TestMain(m *testing.M) {
 // to the deployment template opaque_ports_client.yaml.
 type clientTemplateArgs struct {
 	ServiceCookerOpaqueTargetHost string
+	ServiceCookerHttp1TargetHost  string
+	ServiceCookerHttp2TargetHost  string
 }
 
 func serviceName(n string) string {
@@ -55,25 +61,25 @@ func serviceName(n string) string {
 /// TEST EXECUTION ///
 //////////////////////
 
-func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
+func TestAppProtocolCalledByServiceTarget(t *testing.T) {
 	ctx := context.Background()
-	TestHelper.WithDataPlaneNamespace(ctx, "opaque-ports-called-by-service-name-test", map[string]string{}, t, func(t *testing.T, opaquePortsNs string) {
+	TestHelper.WithDataPlaneNamespace(ctx, "appProtocol-called-by-service-name-test", map[string]string{}, t, func(t *testing.T, appProtocolNs string) {
 		checks := func(c ...check) []check { return c }
 
-		if err := deployApplications(opaquePortsNs); err != nil {
+		if err := deployApplications(appProtocolNs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy applications", err)
 		}
-		waitForAppDeploymentReady(t, opaquePortsNs)
+		waitForAppDeploymentReady(t, appProtocolNs)
 
 		tmplArgs := clientTemplateArgs{
 			ServiceCookerOpaqueTargetHost: serviceName(opaqueApp),
 		}
-		if err := deployTemplate(opaquePortsNs, opaquePortsClientTemplate, tmplArgs); err != nil {
+		if err := deployTemplate(appProtocolNs, appProtocolClientTemplate, tmplArgs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
 		}
-		waitForClientDeploymentReady(t, opaquePortsNs)
+		waitForClientDeploymentReady(t, appProtocolNs)
 
-		runTests(ctx, t, opaquePortsNs, []testCase{
+		runTests(ctx, t, appProtocolNs, []testCase{
 			{
 				name:   "calling a meshed service when appProtocol is linkerd.io/opaque on receiving service",
 				scName: opaqueSC,
@@ -85,29 +91,53 @@ func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 		})
+		runTests(ctx, t, appProtocolNs, []testCase{
+			{
+				name:   "calling a meshed service when appProtocol is http on receiving service",
+				scName: http1SC,
+				scChecks: checks(
+					hasNoOutboundHTTPRequest,
+					hasOutboundTCPWithTLSAndAuthority,
+				),
+				appName:   http1App,
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
+			},
+		})
+		runTests(ctx, t, appProtocolNs, []testCase{
+			{
+				name:   "calling a meshed service when appProtocol is kubernetes.io/h2c on receiving service",
+				scName: http2SC,
+				scChecks: checks(
+					hasNoOutboundHTTPRequest,
+					hasOutboundTCPWithTLSAndAuthority,
+				),
+				appName:   http2App,
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
+			},
+		})
 	})
 }
 
-func TestOpaquePortsCalledByPodTarget(t *testing.T) {
+func TestAppProtocolCalledByPodTarget(t *testing.T) {
 	ctx := context.Background()
-	TestHelper.WithDataPlaneNamespace(ctx, "opaque-ports-called-by-pod-ip-test", map[string]string{}, t, func(t *testing.T, opaquePortsNs string) {
+	TestHelper.WithDataPlaneNamespace(ctx, "appProtocol-called-by-pod-ip-test", map[string]string{}, t, func(t *testing.T, appProtocolNs string) {
 
-		if err := deployApplications(opaquePortsNs); err != nil {
+		if err := deployApplications(appProtocolNs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy applications", err)
 		}
-		waitForAppDeploymentReady(t, opaquePortsNs)
+		waitForAppDeploymentReady(t, appProtocolNs)
 
-		tmplArgs, err := templateArgsPodIP(ctx, opaquePortsNs)
+		tmplArgs, err := templateArgsPodIP(ctx, appProtocolNs)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "failed to fetch pod IPs", err)
 		}
 
-		if err := deployTemplate(opaquePortsNs, opaquePortsClientTemplate, tmplArgs); err != nil {
+		if err := deployTemplate(appProtocolNs, appProtocolClientTemplate, tmplArgs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
 		}
-		waitForClientDeploymentReady(t, opaquePortsNs)
+		waitForClientDeploymentReady(t, appProtocolNs)
 
-		runTests(ctx, t, opaquePortsNs, []testCase{
+		runTests(ctx, t, appProtocolNs, []testCase{
 			{
 				name:   "calling a meshed service when appProtocol is linkerd.io/opaque on receiving service",
 				scName: opaqueSC,
@@ -121,12 +151,52 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 		})
+		runTests(ctx, t, appProtocolNs, []testCase{
+			{
+				name:   "calling a meshed service when appProtocol is http on receiving service",
+				scName: http1SC,
+				scChecks: checks(
+					// We call pods directly, so annotation on a service is ignored.
+					hasOutboundHTTPRequestWithTLS,
+					// No authority here, because we are calling the pod directly.
+					hasOutboundTCPWithTLSAndNoAuthority,
+				),
+				appName:   http1App,
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
+			},
+		})
+		runTests(ctx, t, appProtocolNs, []testCase{
+			{
+				name:   "calling a meshed service when appProtocol is kubernetes.io/h2c on receiving service",
+				scName: http2SC,
+				scChecks: checks(
+					// We call pods directly, so annotation on a service is ignored.
+					hasOutboundHTTPRequestWithTLS,
+					// No authority here, because we are calling the pod directly.
+					hasOutboundTCPWithTLSAndNoAuthority,
+				),
+				appName:   http2App,
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
+			},
+		})
 	})
 }
 
 func waitForAppDeploymentReady(t *testing.T, appProtocolNs string) {
 	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
 		opaqueApp: {
+			Namespace: appProtocolNs,
+			Replicas:  1,
+		},
+	})
+	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
+		http1App: {
+			Namespace: appProtocolNs,
+			Replicas:  1,
+		},
+	})
+	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
+		http2App: {
 			Namespace: appProtocolNs,
 			Replicas:  1,
 		},
@@ -140,6 +210,18 @@ func waitForClientDeploymentReady(t *testing.T, appProtocolNs string) {
 			Replicas:  1,
 		},
 	})
+	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
+		http1SC: {
+			Namespace: appProtocolNs,
+			Replicas:  1,
+		},
+	})
+	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
+		http2SC: {
+			Namespace: appProtocolNs,
+			Replicas:  1,
+		},
+	})
 }
 
 func templateArgsPodIP(ctx context.Context, ns string) (clientTemplateArgs, error) {
@@ -147,8 +229,18 @@ func templateArgsPodIP(ctx context.Context, ns string) (clientTemplateArgs, erro
 	if err != nil {
 		return clientTemplateArgs{}, fmt.Errorf("failed to fetch pod IP for %q: %w", opaqueApp, err)
 	}
+	http1PodIP, err := getPodIPByAppLabel(ctx, ns, http1App)
+	if err != nil {
+		return clientTemplateArgs{}, fmt.Errorf("failed to fetch pod IP for %q: %w", http1App, err)
+	}
+	http2PodIP, err := getPodIPByAppLabel(ctx, ns, http2App)
+	if err != nil {
+		return clientTemplateArgs{}, fmt.Errorf("failed to fetch pod IP for %q: %w", http2App, err)
+	}
 	return clientTemplateArgs{
 		ServiceCookerOpaqueTargetHost: opaquePodIP,
+		ServiceCookerHttp1TargetHost:  http1PodIP,
+		ServiceCookerHttp2TargetHost:  http2PodIP,
 	}, nil
 }
 
@@ -175,20 +267,20 @@ func runTests(ctx context.Context, t *testing.T, ns string, tcs []testCase) {
 	}
 }
 
-func checkPodMetrics(ctx context.Context, opaquePortsNs string, podAppLabel string, checks []check) error {
-	pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": podAppLabel})
+func checkPodMetrics(ctx context.Context, appProtocolNs string, podAppLabel string, checks []check) error {
+	pods, err := TestHelper.GetPods(ctx, appProtocolNs, map[string]string{"app": podAppLabel})
 	if err != nil {
 		return fmt.Errorf("error getting pods for label 'app: %q': %w", podAppLabel, err)
 	}
 	if len(pods) == 0 {
 		return fmt.Errorf("no pods found for label 'app: %q'", podAppLabel)
 	}
-	metrics, err := getPodMetrics(pods[0], opaquePortsNs)
+	metrics, err := getPodMetrics(pods[0], appProtocolNs)
 	if err != nil {
 		return fmt.Errorf("error getting metrics for pod %q: %w", pods[0].Name, err)
 	}
 	for _, check := range checks {
-		if err := check(metrics, opaquePortsNs); err != nil {
+		if err := check(metrics, appProtocolNs); err != nil {
 			return fmt.Errorf("validation of pod metrics failed: %w", err)
 		}
 	}
