@@ -1445,7 +1445,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tonic",
- "tower 0.4.13",
+ "tower 0.5.2",
  "tracing",
 ]
 
@@ -1476,7 +1476,7 @@ dependencies = [
  "tokio",
  "tokio-test",
  "tonic",
- "tower 0.4.13",
+ "tower 0.5.2",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1484,7 +1484,7 @@ dependencies = [
 [[package]]
 name = "linkerd2-proxy-api"
 version = "0.15.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=ver%2Fdeps-http#eefd13348f239251139f577e878d583464f27be1"
+source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=main#66abbf3838063c1812229d17c6949ad0a2e188de"
 dependencies = [
  "http",
  "ipnet",

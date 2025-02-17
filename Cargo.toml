@@ -27,7 +27,7 @@ features = ["experimental"]
 
 [workspace.dependencies.linkerd2-proxy-api]
 git = "https://github.com/linkerd/linkerd2-proxy-api"
-branch = "ver/deps-http"
+branch = "main"
 features = [
     "inbound",
     "outbound",
