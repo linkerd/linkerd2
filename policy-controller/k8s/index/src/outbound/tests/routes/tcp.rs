@@ -4,7 +4,7 @@ use linkerd_policy_controller_core::{
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
-use linkerd_policy_controller_k8s_api::gateway as k8s_gateway_api;
+use linkerd_policy_controller_k8s_api::{gateway, Time};
 use tracing::Level;
 
 use super::super::*;
@@ -49,8 +49,8 @@ fn backend_service() {
         let backend = policy
             .tcp_routes
             .get(&GroupKindNamespaceName {
-                group: k8s_gateway_api::TcpRoute::group(&()),
-                kind: k8s_gateway_api::TcpRoute::kind(&()),
+                group: gateway::TCPRoute::group(&()),
+                kind: gateway::TCPRoute::kind(&()),
                 namespace: "ns".into(),
                 name: "route".into(),
             })
@@ -79,8 +79,8 @@ fn backend_service() {
         let backend = policy
             .tcp_routes
             .get(&GroupKindNamespaceName {
-                group: k8s_gateway_api::TcpRoute::group(&()),
-                kind: k8s_gateway_api::TcpRoute::kind(&()),
+                group: gateway::TCPRoute::group(&()),
+                kind: gateway::TCPRoute::kind(&()),
                 namespace: "ns".into(),
                 name: "route".into(),
             })
@@ -140,8 +140,8 @@ fn backend_egress_network() {
         let backend = policy
             .tcp_routes
             .get(&GroupKindNamespaceName {
-                group: k8s_gateway_api::TcpRoute::group(&()),
-                kind: k8s_gateway_api::TcpRoute::kind(&()),
+                group: gateway::TCPRoute::group(&()),
+                kind: gateway::TCPRoute::kind(&()),
                 namespace: "ns".into(),
                 name: "route".into(),
             })
@@ -169,8 +169,7 @@ fn mk_route(
     parent: impl ToString,
     backend_name: impl ToString,
     backend: super::BackendKind,
-) -> k8s_gateway_api::TcpRoute {
-    use k8s::{policy::httproute::*, Time};
+) -> gateway::TCPRoute {
     let (group, kind) = match backend {
         super::BackendKind::Service => ("core".to_string(), "Service".to_string()),
         super::BackendKind::Egress => {
@@ -178,16 +177,16 @@ fn mk_route(
         }
     };
 
-    k8s_gateway_api::TcpRoute {
+    gateway::TCPRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
             creation_timestamp: Some(Time(Utc::now())),
             ..Default::default()
         },
-        spec: k8s_gateway_api::TcpRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![ParentReference {
+        spec: gateway::TCPRouteSpec {
+            inner: gateway::CommonRouteSpec {
+                parent_refs: Some(vec![gateway::TCPRouteParentRefs {
                     group: Some(group.clone()),
                     kind: Some(kind.clone()),
                     namespace: Some(ns.to_string()),
@@ -196,10 +195,10 @@ fn mk_route(
                     port: Some(port),
                 }]),
             },
-            rules: vec![k8s_gateway_api::TcpRouteRule {
-                backend_refs: vec![k8s_gateway_api::BackendRef {
+            rules: vec![gateway::TCPRouteRules {
+                backend_refs: vec![gateway::TCPRouteRulesBackendRefs {
                     weight: None,
-                    inner: BackendObjectReference {
+                    inner: gateway::BackendObjectReference {
                         group: Some(group.clone()),
                         kind: Some(kind.clone()),
                         namespace: Some(ns.to_string()),
@@ -209,10 +208,10 @@ fn mk_route(
                 }],
             }],
         },
-        status: Some(k8s_gateway_api::TcpRouteStatus {
-            inner: RouteStatus {
-                parents: vec![k8s::gateway::RouteParentStatus {
-                    parent_ref: ParentReference {
+        status: Some(gateway::TCPRouteStatus {
+            inner: gateway::RouteStatus {
+                parents: vec![gateway::TCPRouteStatusParents {
+                    parent_ref: gateway::TCPRouteStatusParentsParentRef {
                         group: Some(group.clone()),
                         kind: Some(kind.clone()),
                         namespace: Some(ns.to_string()),

@@ -12,8 +12,7 @@ use http_body_util::BodyExt;
 use hyper::{http, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
-use linkerd_policy_controller_core as core;
-use linkerd_policy_controller_k8s_api::gateway::{self as k8s_gateway_api, GrpcRoute};
+use linkerd_policy_controller_k8s_api::gateway;
 use linkerd_policy_controller_k8s_index::{self as index, outbound::index as outbound_index};
 use serde::de::DeserializeOwned;
 use std::collections::BTreeMap;
@@ -140,20 +139,20 @@ impl Admission {
             return self.admit_spec::<EgressNetworkSpec>(req).await;
         }
 
-        if is_kind::<k8s_gateway_api::HttpRoute>(&req) {
-            return self.admit_spec::<k8s_gateway_api::HttpRouteSpec>(req).await;
+        if is_kind::<gateway::HTTPRoute>(&req) {
+            return self.admit_spec::<gateway::HTTPRouteSpec>(req).await;
         }
 
-        if is_kind::<k8s_gateway_api::GrpcRoute>(&req) {
-            return self.admit_spec::<k8s_gateway_api::GrpcRouteSpec>(req).await;
+        if is_kind::<gateway::GRPCRoute>(&req) {
+            return self.admit_spec::<gateway::GRPCRouteSpec>(req).await;
         }
 
-        if is_kind::<k8s_gateway_api::TlsRoute>(&req) {
-            return self.admit_spec::<k8s_gateway_api::TlsRouteSpec>(req).await;
+        if is_kind::<gateway::TLSRoute>(&req) {
+            return self.admit_spec::<gateway::TLSRouteSpec>(req).await;
         }
 
-        if is_kind::<k8s_gateway_api::TcpRoute>(&req) {
-            return self.admit_spec::<k8s_gateway_api::TcpRouteSpec>(req).await;
+        if is_kind::<gateway::TCPRoute>(&req) {
+            return self.admit_spec::<gateway::TCPRouteSpec>(req).await;
         }
 
         if is_kind::<HttpLocalRateLimitPolicy>(&req) {
@@ -241,7 +240,7 @@ fn validate_policy_target(ns: &str, tgt: &LocalTargetRef) -> Result<()> {
         return Ok(());
     }
 
-    if tgt.targets_kind::<GrpcRoute>() {
+    if tgt.targets_kind::<gateway::GRPCRoute>() {
         return Ok(());
     }
 
@@ -540,31 +539,8 @@ impl Validate<ServerAuthorizationSpec> for Admission {
     }
 }
 
-use index::routes::http as http_route;
-
-fn validate_match(
-    httproute::HttpRouteMatch {
-        path,
-        headers,
-        query_params,
-        method,
-    }: httproute::HttpRouteMatch,
-) -> Result<()> {
-    let _ = path.map(index::routes::http::path_match).transpose()?;
-    let _ = method
-        .as_deref()
-        .map(core::routes::Method::try_from)
-        .transpose()?;
-
-    for q in query_params.into_iter().flatten() {
-        index::routes::http::query_param_match(q)?;
-    }
-
-    for h in headers.into_iter().flatten() {
-        index::routes::http::header_match(h)?;
-    }
-
-    Ok(())
+fn validate_match(httproute_rules_match: gateway::HTTPRouteRulesMatches) -> Result<()> {
+    index::routes::http::try_match(httproute_rules_match).map(|_| ())
 }
 
 #[async_trait::async_trait]
@@ -576,30 +552,32 @@ impl Validate<HttpRouteSpec> for Admission {
         annotations: &BTreeMap<String, String>,
         spec: HttpRouteSpec,
     ) -> Result<()> {
-        for parent in spec.inner.parent_refs.iter().flatten() {
-            validate_parent_ref_port_requirements(parent)?;
+        for parent in spec.parent_refs.iter().flatten() {
+            if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)
+                && parent.port.is_none()
+            {
+                bail!("cannot target an EgressNetwork without specifying a port");
+            }
         }
 
-        if spec
-            .inner
-            .parent_refs
-            .iter()
-            .flatten()
-            .any(outbound_index::is_parent_service_or_egress_network)
-        {
-            index::outbound::index::http::parse_http_retry(annotations)?;
-            index::outbound::index::parse_accrual_config(annotations)?;
-            index::outbound::index::parse_timeouts(annotations)?;
+        if spec.parent_refs.iter().flatten().any(|parent| {
+            outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
+        }) {
+            outbound_index::http::parse_http_retry(annotations)?;
+            outbound_index::parse_accrual_config(annotations)?;
+            outbound_index::parse_timeouts(annotations)?;
         }
 
         fn validate_filter(filter: httproute::HttpRouteFilter) -> Result<()> {
             match filter {
                 httproute::HttpRouteFilter::RequestHeaderModifier {
                     request_header_modifier,
-                } => index::routes::http::header_modifier(request_header_modifier).map(|_| ()),
+                } => index::routes::http::request_header_modifier(request_header_modifier)
+                    .map(|_| ()),
                 httproute::HttpRouteFilter::ResponseHeaderModifier {
                     response_header_modifier,
-                } => index::routes::http::header_modifier(response_header_modifier).map(|_| ()),
+                } => index::routes::http::response_header_modifier(response_header_modifier)
+                    .map(|_| ()),
                 httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
                     index::routes::http::req_redirect(request_redirect).map(|_| ())
                 }
@@ -657,14 +635,42 @@ impl Validate<HttpRouteSpec> for Admission {
     }
 }
 
-fn validate_backend_if_service(br: &k8s_gateway_api::BackendObjectReference) -> Result<()> {
-    let is_service = matches!(br.group.as_deref(), Some("core") | Some("") | None)
-        && matches!(br.kind.as_deref(), Some("Service") | None);
+fn validate_http_backend_if_service(br: &gateway::HTTPRouteRulesBackendRefs) -> Result<()> {
+    let is_service = matches!(
+        br.backend_ref
+            .as_ref()
+            .and_then(|br| br.inner.group.as_deref()),
+        Some("core") | Some("") | None
+    ) && matches!(
+        br.backend_ref
+            .as_ref()
+            .and_then(|br| br.inner.kind.as_deref()),
+        Some("Service") | None
+    );
 
     // If the backend reference is a Service, it must have a port. If it is not
     // a Service, then we have to admit it for interoperability with other
     // controllers.
-    if is_service && matches!(br.port, None | Some(0)) {
+    if is_service
+        && matches!(
+            br.backend_ref.as_ref().and_then(|br| br.inner.port),
+            None | Some(0)
+        )
+    {
+        bail!("cannot reference a Service without a port");
+    }
+
+    Ok(())
+}
+
+fn validate_grpc_backend_if_service(br: &gateway::GRPCRouteRulesBackendRefs) -> Result<()> {
+    let is_service = matches!(br.inner.group.as_deref(), Some("core") | Some("") | None)
+        && matches!(br.inner.kind.as_deref(), Some("Service") | None);
+
+    // If the backend reference is a Service, it must have a port. If it is not
+    // a Service, then we have to admit it for interoperability with other
+    // controllers.
+    if is_service && matches!(br.inner.port, None | Some(0)) {
         bail!("cannot reference a Service without a port");
     }
 
@@ -672,44 +678,46 @@ fn validate_backend_if_service(br: &k8s_gateway_api::BackendObjectReference) -> 
 }
 
 #[async_trait::async_trait]
-impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
+impl Validate<gateway::HTTPRouteSpec> for Admission {
     async fn validate(
         self,
         _ns: &str,
         _name: &str,
         annotations: &BTreeMap<String, String>,
-        spec: k8s_gateway_api::HttpRouteSpec,
+        spec: gateway::HTTPRouteSpec,
     ) -> Result<()> {
         for parent in spec.inner.parent_refs.iter().flatten() {
-            validate_parent_ref_port_requirements(parent)?;
+            if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)
+                && parent.port.is_none()
+            {
+                bail!("cannot target an EgressNetwork without specifying a port");
+            }
         }
 
-        if spec
-            .inner
-            .parent_refs
-            .iter()
-            .flatten()
-            .any(outbound_index::is_parent_service_or_egress_network)
-        {
+        if spec.inner.parent_refs.iter().flatten().any(|parent| {
+            outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
+        }) {
             outbound_index::http::parse_http_retry(annotations)?;
             outbound_index::parse_accrual_config(annotations)?;
             outbound_index::parse_timeouts(annotations)?;
         }
 
-        fn validate_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<()> {
+        fn validate_filter(filter: gateway::HTTPRouteRulesBackendRefsFilters) -> Result<()> {
             match filter {
-                k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
+                gateway::HTTPRouteRulesBackendRefsFilters::RequestHeaderModifier {
                     request_header_modifier,
-                } => index::routes::http::header_modifier(request_header_modifier).map(|_| ()),
-                k8s_gateway_api::HttpRouteFilter::ResponseHeaderModifier {
+                } => index::routes::http::request_header_modifier(request_header_modifier)
+                    .map(|_| ()),
+                gateway::HTTPRouteRulesBackendRefsFilters::ResponseHeaderModifier {
                     response_header_modifier,
-                } => index::routes::http::header_modifier(response_header_modifier).map(|_| ()),
-                k8s_gateway_api::HttpRouteFilter::RequestRedirect { request_redirect } => {
+                } => index::routes::http::response_header_modifier(response_header_modifier)
+                    .map(|_| ()),
+                gateway::HTTPRouteRulesBackendRefsFilters::RequestRedirect { request_redirect } => {
                     index::routes::http::req_redirect(request_redirect).map(|_| ())
                 }
-                k8s_gateway_api::HttpRouteFilter::RequestMirror { .. } => Ok(()),
-                k8s_gateway_api::HttpRouteFilter::URLRewrite { .. } => Ok(()),
-                k8s_gateway_api::HttpRouteFilter::ExtensionRef { .. } => Ok(()),
+                gateway::HTTPRouteRulesBackendRefsFilters::RequestMirror { .. } => Ok(()),
+                gateway::HTTPRouteRulesBackendRefsFilters::URLRewrite { .. } => Ok(()),
+                gateway::HTTPRouteRulesBackendRefsFilters::ExtensionRef { .. } => Ok(()),
             }
         }
 
@@ -717,10 +725,11 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
         // This is essentially equivalent to the indexer's conversion function
         // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
         // actually allocate stuff in order to return an `InboundRouteBinding`.
-        for k8s_gateway_api::HttpRouteRule {
+        for gateway::HTTPRouteRules {
             filters,
             matches,
             backend_refs,
+            ..
         } in spec.rules.into_iter().flatten()
         {
             for m in matches.into_iter().flatten() {
@@ -731,12 +740,8 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
                 validate_filter(f)?;
             }
 
-            for br in backend_refs
-                .iter()
-                .flatten()
-                .filter_map(|br| br.backend_ref.as_ref())
-            {
-                validate_backend_if_service(&br.inner).context("invalid backendRef")?;
+            for br in backend_refs.iter().flatten() {
+                validate_http_backend_if_service(br).context("invalid backendRef")?;
             }
         }
 
@@ -745,68 +750,47 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
 }
 
 #[async_trait::async_trait]
-impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
+impl Validate<gateway::GRPCRouteSpec> for Admission {
     async fn validate(
         self,
         _ns: &str,
         _name: &str,
         annotations: &BTreeMap<String, String>,
-        spec: k8s_gateway_api::GrpcRouteSpec,
+        spec: gateway::GRPCRouteSpec,
     ) -> Result<()> {
         for parent in spec.inner.parent_refs.iter().flatten() {
-            validate_parent_ref_port_requirements(parent)?;
+            if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)
+                && parent.port.is_none()
+            {
+                bail!("cannot target an EgressNetwork without specifying a port");
+            }
         }
 
-        if spec
-            .inner
-            .parent_refs
-            .iter()
-            .flatten()
-            .any(outbound_index::is_parent_service_or_egress_network)
-        {
+        if spec.inner.parent_refs.iter().flatten().any(|parent| {
+            outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
+        }) {
             outbound_index::grpc::parse_grpc_retry(annotations)?;
             outbound_index::parse_accrual_config(annotations)?;
             outbound_index::parse_timeouts(annotations)?;
         }
 
-        fn validate_filter(filter: k8s_gateway_api::GrpcRouteFilter) -> Result<()> {
+        fn validate_filter(filter: gateway::GRPCRouteRulesFilters) -> Result<()> {
             match filter {
-                k8s_gateway_api::GrpcRouteFilter::RequestHeaderModifier {
+                gateway::GRPCRouteRulesFilters::RequestHeaderModifier {
                     request_header_modifier,
-                } => http_route::header_modifier(request_header_modifier).map(|_| ()),
-                k8s_gateway_api::GrpcRouteFilter::ResponseHeaderModifier {
+                } => index::routes::grpc::request_header_modifier(request_header_modifier)
+                    .map(|_| ()),
+                gateway::GRPCRouteRulesFilters::ResponseHeaderModifier {
                     response_header_modifier,
-                } => http_route::header_modifier(response_header_modifier).map(|_| ()),
-                k8s_gateway_api::GrpcRouteFilter::RequestMirror { .. } => Ok(()),
-                k8s_gateway_api::GrpcRouteFilter::ExtensionRef { .. } => Ok(()),
+                } => index::routes::grpc::response_header_modifier(response_header_modifier)
+                    .map(|_| ()),
+                gateway::GRPCRouteRulesFilters::RequestMirror { .. } => Ok(()),
+                gateway::GRPCRouteRulesFilters::ExtensionRef { .. } => Ok(()),
             }
         }
 
-        fn validate_match_rule(
-            k8s_gateway_api::GrpcRouteMatch { method, headers }: k8s_gateway_api::GrpcRouteMatch,
-        ) -> Result<()> {
-            if let Some(method_match) = method {
-                let (method_name, service_name) = match method_match {
-                    k8s_gateway_api::GrpcMethodMatch::Exact { method, service } => {
-                        (method, service)
-                    }
-                    k8s_gateway_api::GrpcMethodMatch::RegularExpression { method, service } => {
-                        (method, service)
-                    }
-                };
-
-                if method_name.as_deref().map(str::is_empty).unwrap_or(true)
-                    && service_name.as_deref().map(str::is_empty).unwrap_or(true)
-                {
-                    bail!("at least one of GrpcMethodMatch.Service and GrpcMethodMatch.Method MUST be a non-empty string")
-                }
-            }
-
-            for rule in headers.into_iter().flatten() {
-                http_route::header_match(rule)?;
-            }
-
-            Ok(())
+        fn validate_match_rule(matches: gateway::GRPCRouteRulesMatches) -> Result<()> {
+            index::routes::grpc::try_match(matches).map(|_| ())
         }
 
         // Validate the rules in this spec.
@@ -814,10 +798,11 @@ impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
         // of the rules are improperly constructed (e.g. include
         // a `GrpcMethodMatch` rule where neither `method.method`
         // nor `method.service` actually contain a value)
-        for k8s_gateway_api::GrpcRouteRule {
+        for gateway::GRPCRouteRules {
             filters,
             matches,
             backend_refs,
+            ..
         } in spec.rules.into_iter().flatten()
         {
             for rule in matches.into_iter().flatten() {
@@ -829,7 +814,7 @@ impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
             }
 
             for br in backend_refs.iter().flatten() {
-                validate_backend_if_service(&br.inner).context("invalid backendRef")?;
+                validate_grpc_backend_if_service(br).context("invalid backendRef")?;
             }
         }
 
@@ -838,16 +823,20 @@ impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
 }
 
 #[async_trait::async_trait]
-impl Validate<k8s_gateway_api::TlsRouteSpec> for Admission {
+impl Validate<gateway::TLSRouteSpec> for Admission {
     async fn validate(
         self,
         _ns: &str,
         _name: &str,
         _annotations: &BTreeMap<String, String>,
-        spec: k8s_gateway_api::TlsRouteSpec,
+        spec: gateway::TLSRouteSpec,
     ) -> Result<()> {
         for parent in spec.inner.parent_refs.iter().flatten() {
-            validate_parent_ref_port_requirements(parent)?;
+            if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)
+                && parent.port.is_none()
+            {
+                bail!("cannot target an EgressNetwork without specifying a port");
+            }
         }
 
         if spec.rules.len() != 1 {
@@ -859,16 +848,20 @@ impl Validate<k8s_gateway_api::TlsRouteSpec> for Admission {
 }
 
 #[async_trait::async_trait]
-impl Validate<k8s_gateway_api::TcpRouteSpec> for Admission {
+impl Validate<gateway::TCPRouteSpec> for Admission {
     async fn validate(
         self,
         _ns: &str,
         _name: &str,
         _annotations: &BTreeMap<String, String>,
-        spec: k8s_gateway_api::TcpRouteSpec,
+        spec: gateway::TCPRouteSpec,
     ) -> Result<()> {
         for parent in spec.inner.parent_refs.iter().flatten() {
-            validate_parent_ref_port_requirements(parent)?;
+            if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)
+                && parent.port.is_none()
+            {
+                bail!("cannot target an EgressNetwork without specifying a port");
+            }
         }
 
         if spec.rules.len() != 1 {
@@ -877,14 +870,6 @@ impl Validate<k8s_gateway_api::TcpRouteSpec> for Admission {
 
         Ok(())
     }
-}
-
-fn validate_parent_ref_port_requirements(parent: &k8s_gateway_api::ParentReference) -> Result<()> {
-    if index::outbound::index::is_parent_egress_network(parent) && parent.port.is_none() {
-        bail!("cannot target an EgressNetwork without specifying a port");
-    }
-
-    Ok(())
 }
 
 #[async_trait::async_trait]

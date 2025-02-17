@@ -4,7 +4,7 @@ use futures::prelude::*;
 use k8s::policy::LocalTargetRef;
 use kube::ResourceExt;
 use linkerd_policy_controller_core::{Ipv4Net, Ipv6Net};
-use linkerd_policy_controller_k8s_api as k8s;
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway};
 use linkerd_policy_test::{
     assert_default_all_unauthenticated_labels, assert_is_default_all_unauthenticated,
     assert_protocol_detect_external, create, grpc, with_temp_ns,
@@ -191,20 +191,18 @@ async fn external_workload_srv_with_http_route() {
                     ..Default::default()
                 },
                 spec: api::HttpRouteSpec {
-                    inner: api::CommonRouteSpec {
-                        parent_refs: Some(vec![api::ParentReference {
-                            group: Some("policy.linkerd.io".to_string()),
-                            kind: Some("Server".to_string()),
-                            name: server.name_any(),
-                            namespace: None,
-                            section_name: None,
-                            port: None,
-                        }]),
-                    },
+                    parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                        group: Some("policy.linkerd.io".to_string()),
+                        kind: Some("Server".to_string()),
+                        name: server.name_any(),
+                        namespace: None,
+                        section_name: None,
+                        port: None,
+                    }]),
                     hostnames: None,
                     rules: Some(vec![api::HttpRouteRule {
-                        matches: Some(vec![api::HttpRouteMatch {
-                            path: Some(api::HttpPathMatch::Exact {
+                        matches: Some(vec![gateway::HttpRouteMatch {
+                            path: Some(gateway::HttpPathMatch::Exact {
                                 value: "/endpoint".to_string(),
                             }),
                             headers: None,

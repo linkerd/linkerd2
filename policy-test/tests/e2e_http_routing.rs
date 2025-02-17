@@ -16,16 +16,14 @@ async fn path_based_routing() {
                     ..Default::default()
                 },
                 spec: k8s::policy::HttpRouteSpec {
-                    inner: k8s::policy::httproute::CommonRouteSpec {
-                        parent_refs: Some(vec![k8s::policy::httproute::ParentReference {
-                            namespace: None,
-                            name: "web".to_string(),
-                            port: Some(80),
-                            group: Some("core".to_string()),
-                            kind: Some("Service".to_string()),
-                            section_name: None,
-                        }]),
-                    },
+                    parent_refs: Some(vec![k8s::gateway::HTTPRouteParentRefs {
+                        namespace: None,
+                        name: "web".to_string(),
+                        port: Some(80),
+                        group: Some("core".to_string()),
+                        kind: Some("Service".to_string()),
+                        section_name: None,
+                    }]),
                     hostnames: None,
                     rules: Some(vec![
                         rule("/valid".to_string(), "web".to_string()),
@@ -74,11 +72,11 @@ async fn path_based_routing() {
 
 fn rule(path: String, backend: String) -> k8s::policy::httproute::HttpRouteRule {
     k8s::policy::httproute::HttpRouteRule {
-        matches: Some(vec![k8s::policy::httproute::HttpRouteMatch {
-            path: Some(k8s::policy::httproute::HttpPathMatch::Exact { value: path }),
+        matches: Some(vec![k8s::gateway::HttpRouteMatch {
+            path: Some(k8s::gateway::HttpPathMatch::Exact { value: path }),
             ..Default::default()
         }]),
-        backend_refs: Some(vec![k8s::policy::httproute::HttpBackendRef {
+        backend_refs: Some(vec![k8s::gateway::HTTPRouteRulesBackendRefs {
             backend_ref: Some(k8s::gateway::BackendRef {
                 weight: None,
                 inner: k8s::gateway::BackendObjectReference {

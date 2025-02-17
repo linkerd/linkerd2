@@ -1,5 +1,6 @@
 use linkerd_policy_controller_core::IpNet;
 use linkerd_policy_controller_k8s_api::{self as k8s_core_api, policy as linkerd_k8s_api};
+mod conflict;
 mod egress_network;
 mod ratelimit;
 mod routes;

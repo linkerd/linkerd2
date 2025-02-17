@@ -1,8 +1,6 @@
 use crate::index::{GATEWAY_API_GROUP, POLICY_API_GROUP};
 use linkerd_policy_controller_core::routes::GroupKindName;
-use linkerd_policy_controller_k8s_api::{
-    gateway as k8s_gateway_api, policy as linkerd_k8s_api, Resource,
-};
+use linkerd_policy_controller_k8s_api::{gateway, policy as linkerd_k8s_api, Resource};
 use std::borrow::Cow;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -33,10 +31,10 @@ impl NamespaceGroupKindName {
             (POLICY_API_GROUP, "EgressNetwork") => {
                 Ok(linkerd_k8s_api::EgressNetwork::api_version(&()))
             }
-            (GATEWAY_API_GROUP, "HTTPRoute") => Ok(k8s_gateway_api::HttpRoute::api_version(&())),
-            (GATEWAY_API_GROUP, "GRPCRoute") => Ok(k8s_gateway_api::GrpcRoute::api_version(&())),
-            (GATEWAY_API_GROUP, "TCPRoute") => Ok(k8s_gateway_api::TcpRoute::api_version(&())),
-            (GATEWAY_API_GROUP, "TLSRoute") => Ok(k8s_gateway_api::TlsRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "HTTPRoute") => Ok(gateway::HTTPRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "GRPCRoute") => Ok(gateway::GRPCRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "TCPRoute") => Ok(gateway::TCPRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "TLSRoute") => Ok(gateway::TLSRoute::api_version(&())),
             (group, kind) => {
                 anyhow::bail!("unknown group + kind combination: ({}, {})", group, kind)
             }

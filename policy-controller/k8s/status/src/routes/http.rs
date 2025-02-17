@@ -1,14 +1,98 @@
-use super::BackendReference;
-use linkerd_policy_controller_k8s_api::gateway as k8s_gateway_api;
+use super::{BackendReference, ParentReference, ResourceId};
+use anyhow::Result;
+use linkerd_policy_controller_k8s_api::{
+    self as k8s, gateway,
+    policy::{
+        self,
+        httproute::{backend_ref_targets_kind, parent_ref_targets_kind},
+    },
+};
 
 pub(crate) fn make_backends(
     namespace: &str,
-    backends: impl Iterator<Item = k8s_gateway_api::HttpBackendRef>,
+    backends: impl Iterator<Item = gateway::HTTPRouteRulesBackendRefs>,
 ) -> Vec<BackendReference> {
-    backends
-        .filter_map(|http_backend_ref| http_backend_ref.backend_ref)
-        .map(|br| BackendReference::from_backend_ref(&br.inner, namespace))
+    backends.map(|br| to_backend_ref(&br, namespace)).collect()
+}
+
+pub(crate) fn make_parents(
+    namespace: &str,
+    parents: &[gateway::HTTPRouteParentRefs],
+) -> Vec<ParentReference> {
+    parents
+        .iter()
+        .filter_map(|pr| {
+            to_parent_ref(pr, namespace)
+                .inspect_err(|error| tracing::error!(?error, "failed to make parent reference"))
+                .ok()
+        })
         .collect()
+}
+
+fn to_parent_ref(
+    parent_ref: &gateway::HTTPRouteParentRefs,
+    default_namespace: &str,
+) -> Result<ParentReference> {
+    if parent_ref_targets_kind::<policy::Server>(parent_ref) {
+        // If the parent reference does not have a namespace, default to using
+        // the route's namespace.
+        let namespace = parent_ref.namespace.as_deref().unwrap_or(default_namespace);
+        Result::Ok(ParentReference::Server(ResourceId::new(
+            namespace.to_string(),
+            parent_ref.name.clone(),
+        )))
+    } else if parent_ref_targets_kind::<k8s::Service>(parent_ref) {
+        // If the parent reference does not have a namespace, default to using
+        // the route's namespace.
+        let namespace = parent_ref.namespace.as_deref().unwrap_or(default_namespace);
+        Result::Ok(ParentReference::Service(
+            ResourceId::new(namespace.to_string(), parent_ref.name.clone()),
+            parent_ref.port,
+        ))
+    } else if parent_ref_targets_kind::<policy::EgressNetwork>(parent_ref) {
+        // If the parent reference does not have a namespace, default to using
+        // the route's namespace.
+        let namespace = parent_ref.namespace.as_deref().unwrap_or(default_namespace);
+        Result::Ok(ParentReference::EgressNetwork(
+            ResourceId::new(namespace.to_string(), parent_ref.name.clone()),
+            parent_ref.port,
+        ))
+    } else {
+        Result::Ok(ParentReference::UnknownKind)
+    }
+}
+
+fn to_backend_ref(
+    backend_ref: &gateway::HTTPRouteRulesBackendRefs,
+    default_namespace: &str,
+) -> BackendReference {
+    if backend_ref_targets_kind::<k8s::Service>(backend_ref) {
+        let namespace = backend_ref
+            .backend_ref
+            .as_ref()
+            .and_then(|br| br.inner.namespace.as_deref())
+            .unwrap_or(default_namespace);
+        let name = backend_ref
+            .backend_ref
+            .as_ref()
+            .map(|br| br.inner.name.clone())
+            .unwrap_or_default();
+        BackendReference::Service(ResourceId::new(namespace.to_string(), name))
+    } else if backend_ref_targets_kind::<policy::EgressNetwork>(backend_ref) {
+        let namespace = backend_ref
+            .backend_ref
+            .as_ref()
+            .and_then(|br| br.inner.namespace.as_deref())
+            .unwrap_or(default_namespace);
+        let name = backend_ref
+            .backend_ref
+            .as_ref()
+            .map(|br| br.inner.name.clone())
+            .unwrap_or_default();
+        BackendReference::EgressNetwork(ResourceId::new(namespace.to_string(), name))
+    } else {
+        BackendReference::Unknown
+    }
 }
 
 #[cfg(test)]
@@ -16,23 +100,6 @@ mod test {
     use super::*;
     use crate::index::POLICY_API_GROUP;
     use linkerd_policy_controller_k8s_api::{self as k8s_core_api, policy};
-
-    fn mk_default_http_backends(
-        backend_refs: Vec<k8s_gateway_api::BackendObjectReference>,
-    ) -> Option<Vec<k8s_gateway_api::HttpBackendRef>> {
-        Some(
-            backend_refs
-                .into_iter()
-                .map(|backend_ref| k8s_gateway_api::HttpBackendRef {
-                    backend_ref: Some(k8s_gateway_api::BackendRef {
-                        inner: backend_ref,
-                        weight: None,
-                    }),
-                    filters: None,
-                })
-                .collect(),
-        )
-    }
 
     #[test]
     fn backendrefs_from_route() {
@@ -43,26 +110,38 @@ mod test {
                 ..Default::default()
             },
             spec: policy::HttpRouteSpec {
-                inner: k8s_gateway_api::CommonRouteSpec { parent_refs: None },
+                parent_refs: None,
                 hostnames: None,
                 rules: Some(vec![
                     policy::httproute::HttpRouteRule {
                         matches: None,
                         filters: None,
-                        backend_refs: mk_default_http_backends(vec![
-                            k8s_gateway_api::BackendObjectReference {
-                                group: None,
-                                kind: None,
-                                name: "ref-1".to_string(),
-                                namespace: Some("default".to_string()),
-                                port: None,
+                        backend_refs: Some(vec![
+                            gateway::HTTPRouteRulesBackendRefs {
+                                backend_ref: Some(gateway::BackendRef {
+                                    weight: None,
+                                    inner: gateway::BackendObjectReference {
+                                        group: None,
+                                        kind: None,
+                                        name: "ref-1".to_string(),
+                                        namespace: Some("default".to_string()),
+                                        port: None,
+                                    },
+                                }),
+                                filters: None,
                             },
-                            k8s_gateway_api::BackendObjectReference {
-                                group: None,
-                                kind: None,
-                                name: "ref-2".to_string(),
-                                namespace: None,
-                                port: None,
+                            gateway::HTTPRouteRulesBackendRefs {
+                                backend_ref: Some(gateway::BackendRef {
+                                    weight: None,
+                                    inner: gateway::BackendObjectReference {
+                                        group: None,
+                                        kind: None,
+                                        name: "ref-2".to_string(),
+                                        namespace: None,
+                                        port: None,
+                                    },
+                                }),
+                                filters: None,
                             },
                         ]),
                         timeouts: None,
@@ -70,15 +149,19 @@ mod test {
                     policy::httproute::HttpRouteRule {
                         matches: None,
                         filters: None,
-                        backend_refs: mk_default_http_backends(vec![
-                            k8s_gateway_api::BackendObjectReference {
-                                group: Some("Core".to_string()),
-                                kind: Some("Service".to_string()),
-                                name: "ref-3".to_string(),
-                                namespace: Some("default".to_string()),
-                                port: None,
-                            },
-                        ]),
+                        backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                            backend_ref: Some(gateway::BackendRef {
+                                weight: None,
+                                inner: gateway::BackendObjectReference {
+                                    group: Some("Core".to_string()),
+                                    kind: Some("Service".to_string()),
+                                    name: "ref-3".to_string(),
+                                    namespace: Some("default".to_string()),
+                                    port: None,
+                                },
+                            }),
+                            filters: None,
+                        }]),
                         timeouts: None,
                     },
                     policy::httproute::HttpRouteRule {
@@ -125,32 +208,50 @@ mod test {
                 ..Default::default()
             },
             spec: policy::HttpRouteSpec {
-                inner: k8s_gateway_api::CommonRouteSpec { parent_refs: None },
+                parent_refs: None,
                 hostnames: None,
                 rules: Some(vec![policy::httproute::HttpRouteRule {
                     matches: None,
                     filters: None,
-                    backend_refs: mk_default_http_backends(vec![
-                        k8s_gateway_api::BackendObjectReference {
-                            group: None,
-                            kind: None,
-                            name: "ref-1".to_string(),
-                            namespace: None,
-                            port: None,
+                    backend_refs: Some(vec![
+                        gateway::HTTPRouteRulesBackendRefs {
+                            backend_ref: Some(gateway::BackendRef {
+                                weight: None,
+                                inner: gateway::BackendObjectReference {
+                                    group: None,
+                                    kind: None,
+                                    name: "ref-1".to_string(),
+                                    namespace: None,
+                                    port: None,
+                                },
+                            }),
+                            filters: None,
                         },
-                        k8s_gateway_api::BackendObjectReference {
-                            group: Some(POLICY_API_GROUP.to_string()),
-                            kind: Some("EgressNetwork".to_string()),
-                            name: "ref-3".to_string(),
-                            namespace: None,
-                            port: Some(555),
+                        gateway::HTTPRouteRulesBackendRefs {
+                            backend_ref: Some(gateway::BackendRef {
+                                weight: None,
+                                inner: gateway::BackendObjectReference {
+                                    group: Some(POLICY_API_GROUP.to_string()),
+                                    kind: Some("EgressNetwork".to_string()),
+                                    name: "ref-3".to_string(),
+                                    namespace: None,
+                                    port: Some(555),
+                                },
+                            }),
+                            filters: None,
                         },
-                        k8s_gateway_api::BackendObjectReference {
-                            group: Some(POLICY_API_GROUP.to_string()),
-                            kind: Some("Server".to_string()),
-                            name: "ref-2".to_string(),
-                            namespace: None,
-                            port: None,
+                        gateway::HTTPRouteRulesBackendRefs {
+                            backend_ref: Some(gateway::BackendRef {
+                                weight: None,
+                                inner: gateway::BackendObjectReference {
+                                    group: Some(POLICY_API_GROUP.to_string()),
+                                    kind: Some("Server".to_string()),
+                                    name: "ref-2".to_string(),
+                                    namespace: None,
+                                    port: None,
+                                },
+                            }),
+                            filters: None,
                         },
                     ]),
                     timeouts: None,
