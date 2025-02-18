@@ -1,5 +1,5 @@
 use crate::{
-    ports::{ports_annotation, PortSet},
+    ports::{ports_annotation, PortMap},
     routes::{ExplicitGKN, HttpRouteResource, ImpliedGKN},
     ClusterInfo,
 };
@@ -8,9 +8,9 @@ use anyhow::{bail, ensure, Result};
 use egress_network::EgressNetwork;
 use linkerd_policy_controller_core::{
     outbound::{
-        Backend, Backoff, FailureAccrual, GrpcRetryCondition, GrpcRoute, HttpRetryCondition,
-        HttpRoute, Kind, OutboundPolicy, ParentInfo, ResourceTarget, RouteRetry, RouteSet,
-        RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy,
+        AppProtocol, Backend, Backoff, FailureAccrual, GrpcRetryCondition, GrpcRoute,
+        HttpRetryCondition, HttpRoute, Kind, OutboundPolicy, ParentInfo, ResourceTarget,
+        RouteRetry, RouteSet, RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy,
     },
     routes::GroupKindNamespaceName,
 };
@@ -20,7 +20,9 @@ use linkerd_policy_controller_k8s_api::{
     ResourceExt, Service,
 };
 use parking_lot::RwLock;
-use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
+use std::{
+    collections::hash_map::Entry, hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time,
+};
 use tokio::sync::watch;
 
 #[allow(dead_code)]
@@ -90,7 +92,7 @@ struct Namespace {
 
 #[derive(Debug)]
 struct ResourceInfo {
-    opaque_ports: PortSet,
+    app_protocols: PortMap<AppProtocol>,
     accrual: Option<FailureAccrual>,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
@@ -111,7 +113,7 @@ struct ResourceRoutes {
     namespace: Arc<String>,
     port: NonZeroU16,
     watches_by_ns: HashMap<String, RoutesWatch>,
-    opaque: bool,
+    app_protocol: Option<AppProtocol>,
     accrual: Option<FailureAccrual>,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
@@ -121,7 +123,7 @@ struct ResourceRoutes {
 #[derive(Debug)]
 struct RoutesWatch {
     parent_info: ParentInfo,
-    opaque: bool,
+    app_protocol: Option<AppProtocol>,
     accrual: Option<FailureAccrual>,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
@@ -209,9 +211,45 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         let accrual = parse_accrual_config(service.annotations())
             .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse accrual config"))
             .unwrap_or_default();
+
+        let mut app_protocols = service
+            .spec
+            .as_ref()
+            .and_then(|spec| {
+                spec.ports.as_ref().map(|ports| {
+                    ports
+                        .iter()
+                        .filter_map(|port| {
+                            port.app_protocol.as_ref().and_then(|p| {
+                                Some((
+                                    NonZeroU16::new(port.port as u16)?,
+                                    AppProtocol::from(p.as_str()),
+                                ))
+                            })
+                        })
+                        .collect::<PortMap<AppProtocol>>()
+                })
+            })
+            .unwrap_or_default();
         let opaque_ports =
             ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
                 .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
+        for opaque_port in opaque_ports {
+            match app_protocols.entry(opaque_port) {
+                Entry::Occupied(occupied) => {
+                    tracing::warn!(
+                        appProtocol = ?occupied.get(),
+                        port = opaque_port.get(),
+                        ns,
+                        name,
+                        "`appProtocol` set on service port, ignoring opaque port setting"
+                    );
+                }
+                Entry::Vacant(vacant) => {
+                    vacant.insert(AppProtocol::Opaque);
+                }
+            }
+        }
 
         let timeouts = parse_timeouts(service.annotations())
             .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse timeouts"))
@@ -250,7 +288,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         }
 
         let service_info = ResourceInfo {
-            opaque_ports,
+            app_protocols,
             accrual,
             http_retry,
             grpc_retry,
@@ -316,6 +354,10 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
             "config.linkerd.io/opaque-ports",
         )
         .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
+        let app_protocols = opaque_ports
+            .into_iter()
+            .map(|port| (port, AppProtocol::Opaque))
+            .collect();
 
         let timeouts = parse_timeouts(egress_network.annotations())
             .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse timeouts"))
@@ -346,7 +388,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
             .insert(egress_net_ref.clone(), egress_net);
 
         let egress_network_info = ResourceInfo {
-            opaque_ports,
+            app_protocols,
             accrual,
             http_retry,
             grpc_retry,
@@ -1140,10 +1182,10 @@ impl Namespace {
                 continue;
             }
 
-            let opaque = resource.opaque_ports.contains(&resource_port.port);
+            let app_protocol = resource.app_protocols.get(&resource_port.port).cloned();
 
             resource_routes.update_resource(
-                opaque,
+                app_protocol,
                 resource.accrual,
                 resource.http_retry.clone(),
                 resource.grpc_retry.clone(),
@@ -1228,13 +1270,13 @@ impl Namespace {
                         }
                     }
                 };
-                let mut opaque = false;
+                let mut app_protocol = None;
                 let mut accrual = None;
                 let mut http_retry = None;
                 let mut grpc_retry = None;
                 let mut timeouts = Default::default();
                 if let Some(resource) = resource_info.get(&resource_ref) {
-                    opaque = resource.opaque_ports.contains(&rp.port);
+                    app_protocol = resource.app_protocols.get(&rp.port).cloned();
                     accrual = resource.accrual;
                     http_retry = resource.http_retry.clone();
                     grpc_retry = resource.grpc_retry.clone();
@@ -1274,7 +1316,7 @@ impl Namespace {
 
                 let mut resource_routes = ResourceRoutes {
                     parent_info,
-                    opaque,
+                    app_protocol,
                     accrual,
                     http_retry,
                     grpc_retry,
@@ -1495,7 +1537,7 @@ impl ResourceRoutes {
             let (sender, _) = watch::channel(OutboundPolicy {
                 parent_info: self.parent_info.clone(),
                 port: self.port,
-                opaque: self.opaque,
+                app_protocol: self.app_protocol.clone(),
                 accrual: self.accrual,
                 http_retry: self.http_retry.clone(),
                 grpc_retry: self.grpc_retry.clone(),
@@ -1513,7 +1555,7 @@ impl ResourceRoutes {
                 tls_routes,
                 tcp_routes,
                 watch: sender,
-                opaque: self.opaque,
+                app_protocol: self.app_protocol.clone(),
                 accrual: self.accrual,
                 http_retry: self.http_retry.clone(),
                 grpc_retry: self.grpc_retry.clone(),
@@ -1612,21 +1654,21 @@ impl ResourceRoutes {
 
     fn update_resource(
         &mut self,
-        opaque: bool,
+        app_protocol: Option<AppProtocol>,
         accrual: Option<FailureAccrual>,
         http_retry: Option<RouteRetry<HttpRetryCondition>>,
         grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
         timeouts: RouteTimeouts,
         traffic_policy: Option<TrafficPolicy>,
     ) {
-        self.opaque = opaque;
+        self.app_protocol = app_protocol.clone();
         self.accrual = accrual;
         self.http_retry = http_retry.clone();
         self.grpc_retry = grpc_retry.clone();
         self.timeouts = timeouts.clone();
         self.update_traffic_policy(traffic_policy);
         for watch in self.watches_by_ns.values_mut() {
-            watch.opaque = opaque;
+            watch.app_protocol = app_protocol.clone();
             watch.accrual = accrual;
             watch.http_retry = http_retry.clone();
             watch.grpc_retry = grpc_retry.clone();
@@ -1717,8 +1759,8 @@ impl RoutesWatch {
                 modified = true;
             }
 
-            if self.opaque != policy.opaque {
-                policy.opaque = self.opaque;
+            if self.app_protocol != policy.app_protocol {
+                policy.app_protocol = self.app_protocol.clone();
                 modified = true;
             }
 
