@@ -25,7 +25,7 @@ serde_json = "1"
 schemars = "0.8"
 tonic = { workspace = true }
 tokio = { version = "1", features = ["macros", "rt"] }
-tower = "0.5"
+tower = { workspace = true }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

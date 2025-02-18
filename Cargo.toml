@@ -22,6 +22,7 @@ kube = { version = "0.98", default-features = false }
 kubert = { version = "=0.23.0-alpha10", default-features = false }
 prometheus-client = { version = "0.23", default-features = false }
 tonic = { version = "0.12", default-features = false }
+tower = { version = "0.5", default-features = false }
 
 [workspace.dependencies.k8s-gateway-api]
 # TODO(ver): Remove this once we update to a proper generated version of the gateway api bindings.
