@@ -47,7 +47,7 @@ spec:
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
-        - -collector-trace-protocol=opencensus
+        - -collector-trace-protocol=opentelemetry
         - -collector-trace-svc-name=linkerd-proxy
         - -collector-svc-account=collector
         - -log-level=info
