@@ -175,7 +175,7 @@ pub async fn create_ready_pod(client: &kube::Client, pod: k8s::Pod) -> k8s::Pod 
         ip = %pod
             .status.as_ref().expect("pod must have a status")
             .pod_ips.as_ref().unwrap()[0]
-            .ip.as_deref().expect("pod ip must be set"),
+            .ip,
         containers = ?pod
             .spec.as_ref().expect("pod must have a spec")
             .containers.iter().map(|c| &*c.name).collect::<Vec<_>>(),
@@ -645,15 +645,16 @@ pub fn mk_route(
 }
 
 pub fn find_route_condition<'a>(
-    statuses: impl IntoIterator<Item = &'a k8s_gateway_api::RouteParentStatus>,
+    statuses: impl IntoIterator<Item = &'a gateway::HTTPRouteStatusParents>,
     parent_name: &'static str,
 ) -> Option<&'a k8s::Condition> {
     statuses
         .into_iter()
-        .find(|route_status| route_status.parent_ref.name == parent_name)
+        .find(|parent_status| parent_status.parent_ref.name == parent_name)
         .expect("route must have at least one status set")
         .conditions
         .iter()
+        .flatten()
         .find(|cond| cond.type_ == "Accepted")
 }
 
@@ -769,15 +770,11 @@ pub async fn await_service_account(client: &kube::Client, ns: &str, name: &str) 
             .expect("serviceaccounts watch must not fail");
         tracing::info!(?ev);
         match ev {
-            kube::runtime::watcher::Event::Restarted(sas) => {
-                if sas.iter().any(|sa| sa.name_unchecked() == name) {
-                    return;
-                }
-            }
-            kube::runtime::watcher::Event::Applied(sa) => {
-                if sa.name_unchecked() == name {
-                    return;
-                }
+            kube::runtime::watcher::Event::InitApply(sa)
+            | kube::runtime::watcher::Event::Apply(sa)
+                if sa.name_unchecked() == name =>
+            {
+                return
             }
             _ => {}
         }
@@ -808,7 +805,7 @@ pub fn egress_network_parent_ref(
         namespace: Some(ns.to_string()),
         name: "my-egress-net".to_string(),
         section_name: None,
-        port,
+        port: port.map(Into::into),
     }
 }
 

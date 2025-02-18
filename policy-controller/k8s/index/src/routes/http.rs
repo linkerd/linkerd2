@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use linkerd_policy_controller_core::routes;
 use linkerd_policy_controller_k8s_api::gateway;
 use std::num::NonZeroU16;
@@ -25,17 +25,16 @@ pub fn try_match(
         .map(query_param_match)
         .collect::<Result<_>>()?;
 
-    let method = method.as_deref().and_then(|m| match m {
-        gateway::http_method::GET => Some(routes::Method::GET),
-        gateway::http_method::HEAD => Some(routes::Method::HEAD),
-        gateway::http_method::POST => Some(routes::Method::POST),
-        gateway::http_method::PUT => Some(routes::Method::PUT),
-        gateway::http_method::DELETE => Some(routes::Method::DELETE),
-        gateway::http_method::CONNECT => Some(routes::Method::CONNECT),
-        gateway::http_method::OPTIONS => Some(routes::Method::OPTIONS),
-        gateway::http_method::TRACE => Some(routes::Method::TRACE),
-        gateway::http_method::PATCH => Some(routes::Method::PATCH),
-        _ => None,
+    let method = method.map(|m| match m {
+        gateway::HTTPRouteRulesMatchesMethod::Get => routes::Method::GET,
+        gateway::HTTPRouteRulesMatchesMethod::Head => routes::Method::HEAD,
+        gateway::HTTPRouteRulesMatchesMethod::Post => routes::Method::POST,
+        gateway::HTTPRouteRulesMatchesMethod::Put => routes::Method::PUT,
+        gateway::HTTPRouteRulesMatchesMethod::Delete => routes::Method::DELETE,
+        gateway::HTTPRouteRulesMatchesMethod::Connect => routes::Method::CONNECT,
+        gateway::HTTPRouteRulesMatchesMethod::Options => routes::Method::OPTIONS,
+        gateway::HTTPRouteRulesMatchesMethod::Trace => routes::Method::TRACE,
+        gateway::HTTPRouteRulesMatchesMethod::Patch => routes::Method::PATCH,
     });
 
     Ok(routes::HttpRouteMatch {
@@ -46,43 +45,51 @@ pub fn try_match(
     })
 }
 
-pub fn path_match(path_match: gateway::HttpPathMatch) -> Result<routes::PathMatch> {
-    match path_match {
-        gateway::HttpPathMatch::Exact { value } | gateway::HttpPathMatch::PathPrefix { value }
-        if !value.starts_with('/') =>
-            {
-                Err(anyhow!("HttpPathMatch paths must be absolute (begin with `/`); {value:?} is not an absolute path"))
+pub fn path_match(path_match: gateway::HTTPRouteRulesMatchesPath) -> Result<routes::PathMatch> {
+    let value = path_match.value.unwrap_or_else(|| "/".to_string());
+    match path_match.r#type {
+        Some(gateway::HTTPRouteRulesMatchesPathType::Exact) => {
+            if !value.starts_with('/') {
+                bail!("HttpPathMatch paths must be absolute (begin with `/`); {value:?} is not an absolute path")
             }
-        gateway::HttpPathMatch::Exact { value } => Ok(routes::PathMatch::Exact(value)),
-        gateway::HttpPathMatch::PathPrefix { value } => Ok(routes::PathMatch::Prefix(value)),
-        gateway::HttpPathMatch::RegularExpression { value } => value
+            Ok(routes::PathMatch::Exact(value))
+        }
+        Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix) | None => {
+            if !value.starts_with('/') {
+                bail!("HttpPathMatch paths must be absolute (begin with `/`); {value:?} is not an absolute path")
+            }
+            Ok(routes::PathMatch::Prefix(value))
+        }
+        Some(gateway::HTTPRouteRulesMatchesPathType::RegularExpression) => value
             .parse()
             .map(routes::PathMatch::Regex)
             .map_err(Into::into),
     }
 }
 
-pub fn header_match(header_match: gateway::HttpHeaderMatch) -> Result<routes::HeaderMatch> {
-    match header_match {
-        gateway::HttpHeaderMatch::Exact { name, value } => {
-            Ok(routes::HeaderMatch::Exact(name.parse()?, value.parse()?))
-        }
-        gateway::HttpHeaderMatch::RegularExpression { name, value } => {
-            Ok(routes::HeaderMatch::Regex(name.parse()?, value.parse()?))
-        }
+pub fn header_match(
+    header_match: gateway::HTTPRouteRulesMatchesHeaders,
+) -> Result<routes::HeaderMatch> {
+    match header_match.r#type {
+        Some(gateway::HTTPRouteRulesMatchesHeadersType::Exact) | None => Ok(
+            routes::HeaderMatch::Exact(header_match.name.parse()?, header_match.value.parse()?),
+        ),
+        Some(gateway::HTTPRouteRulesMatchesHeadersType::RegularExpression) => Ok(
+            routes::HeaderMatch::Regex(header_match.name.parse()?, header_match.value.parse()?),
+        ),
     }
 }
 
 pub fn query_param_match(
-    query_match: gateway::HttpQueryParamMatch,
+    query_match: gateway::HTTPRouteRulesMatchesQueryParams,
 ) -> Result<routes::QueryParamMatch> {
-    match query_match {
-        gateway::HttpQueryParamMatch::Exact { name, value } => {
-            Ok(routes::QueryParamMatch::Exact(name, value))
-        }
-        gateway::HttpQueryParamMatch::RegularExpression { name, value } => {
-            Ok(routes::QueryParamMatch::Regex(name, value.parse()?))
-        }
+    match query_match.r#type {
+        Some(gateway::HTTPRouteRulesMatchesQueryParamsType::Exact) | None => Ok(
+            routes::QueryParamMatch::Exact(query_match.name, query_match.value),
+        ),
+        Some(gateway::HTTPRouteRulesMatchesQueryParamsType::RegularExpression) => Ok(
+            routes::QueryParamMatch::Regex(query_match.name, query_match.value.parse()?),
+        ),
     }
 }
 
@@ -219,17 +226,22 @@ pub fn req_redirect(
         status_code,
     }: gateway::HTTPRouteRulesFiltersRequestRedirect,
 ) -> Result<routes::RequestRedirectFilter> {
-    let scheme = scheme.as_deref().and_then(|s| match s {
-        gateway::http_scheme::HTTP => Some(routes::Scheme::HTTP),
-        gateway::http_scheme::HTTPS => Some(routes::Scheme::HTTPS),
-        _ => None,
+    let scheme = scheme.map(|s| match s {
+        gateway::HTTPRouteRulesFiltersRequestRedirectScheme::Http => routes::Scheme::HTTP,
+        gateway::HTTPRouteRulesFiltersRequestRedirectScheme::Https => routes::Scheme::HTTPS,
     });
     Ok(routes::RequestRedirectFilter {
         scheme,
         host: hostname,
         path: path.map(path_modifier).transpose()?,
-        port: port.and_then(NonZeroU16::new),
-        status: status_code.map(routes::StatusCode::from_u16).transpose()?,
+        port: port
+            .and_then(|p| p.try_into().ok())
+            .and_then(NonZeroU16::new),
+        status: status_code
+            .map(|code| code.try_into())
+            .transpose()?
+            .map(routes::StatusCode::from_u16)
+            .transpose()?,
     })
 }
 
@@ -242,62 +254,73 @@ pub fn backend_req_redirect(
         status_code,
     }: gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirect,
 ) -> Result<routes::RequestRedirectFilter> {
-    let scheme = scheme.as_deref().and_then(|s| match s {
-        gateway::http_scheme::HTTP => Some(routes::Scheme::HTTP),
-        gateway::http_scheme::HTTPS => Some(routes::Scheme::HTTPS),
-        _ => None,
+    let scheme = scheme.map(|s| match s {
+        gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectScheme::Http => {
+            routes::Scheme::HTTP
+        }
+        gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectScheme::Https => {
+            routes::Scheme::HTTPS
+        }
     });
     Ok(routes::RequestRedirectFilter {
         scheme,
         host: hostname,
         path: path.map(backend_path_modifier).transpose()?,
-        port: port.and_then(NonZeroU16::new),
-        status: status_code.map(routes::StatusCode::from_u16).transpose()?,
+        port: port
+            .and_then(|p| p.try_into().ok())
+            .and_then(NonZeroU16::new),
+        status: status_code
+            .map(|code| code.try_into())
+            .transpose()?
+            .map(routes::StatusCode::from_u16)
+            .transpose()?,
     })
 }
 
 fn path_modifier(
     path_modifier: gateway::HTTPRouteRulesFiltersRequestRedirectPath,
 ) -> Result<routes::PathModifier> {
-    use gateway::HttpPathModifier::*;
-    match path_modifier {
-        ReplaceFullPath {
-            replace_full_path: path,
-        }
-        | ReplacePrefixMatch {
-            replace_prefix_match: path,
-        } if !path.starts_with('/') => {
+    if let Some(path) = path_modifier.replace_full_path {
+        if !path.starts_with('/') {
             bail!(
                 "RequestRedirect filters may only contain absolute paths \
                     (starting with '/'); {path:?} is not an absolute path"
             )
         }
-        ReplaceFullPath { replace_full_path } => Ok(routes::PathModifier::Full(replace_full_path)),
-        ReplacePrefixMatch {
-            replace_prefix_match,
-        } => Ok(routes::PathModifier::Prefix(replace_prefix_match)),
+        return Ok(routes::PathModifier::Full(path));
     }
+    if let Some(path) = path_modifier.replace_prefix_match {
+        if !path.starts_with('/') {
+            bail!(
+                "RequestRedirect filters may only contain absolute paths \
+                    (starting with '/'); {path:?} is not an absolute path"
+            )
+        }
+        return Ok(routes::PathModifier::Prefix(path));
+    }
+    bail!("RequestRedirect filter must contain either replace_full_path or replace_prefix_match")
 }
 
 fn backend_path_modifier(
     path_modifier: gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectPath,
 ) -> Result<routes::PathModifier> {
-    use gateway::HttpPathModifier::*;
-    match path_modifier {
-        ReplaceFullPath {
-            replace_full_path: path,
-        }
-        | ReplacePrefixMatch {
-            replace_prefix_match: path,
-        } if !path.starts_with('/') => {
+    if let Some(path) = path_modifier.replace_full_path {
+        if !path.starts_with('/') {
             bail!(
                 "RequestRedirect filters may only contain absolute paths \
                     (starting with '/'); {path:?} is not an absolute path"
             )
         }
-        ReplaceFullPath { replace_full_path } => Ok(routes::PathModifier::Full(replace_full_path)),
-        ReplacePrefixMatch {
-            replace_prefix_match,
-        } => Ok(routes::PathModifier::Prefix(replace_prefix_match)),
+        return Ok(routes::PathModifier::Full(path));
     }
+    if let Some(path) = path_modifier.replace_prefix_match {
+        if !path.starts_with('/') {
+            bail!(
+                "RequestRedirect filters may only contain absolute paths \
+                    (starting with '/'); {path:?} is not an absolute path"
+            )
+        }
+        return Ok(routes::PathModifier::Prefix(path));
+    }
+    bail!("RequestRedirect filter must contain either replace_full_path or replace_prefix_match")
 }

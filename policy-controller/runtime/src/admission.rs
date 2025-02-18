@@ -8,7 +8,8 @@ use crate::k8s::policy::{
 };
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use futures::future;
-use hyper::{body::Buf, http, Body, Request, Response};
+use http_body_util::BodyExt;
+use hyper::{http, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_k8s_api::gateway;
@@ -48,9 +49,11 @@ trait Validate<T> {
     ) -> Result<()>;
 }
 
+type Body = http_body_util::Full<bytes::Bytes>;
+
 // === impl AdmissionService ===
 
-impl hyper::service::Service<Request<Body>> for Admission {
+impl tower::Service<Request<hyper::body::Incoming>> for Admission {
     type Response = Response<Body>;
     type Error = Error;
     type Future = future::BoxFuture<'static, Result<Response<Body>, Error>>;
@@ -62,7 +65,7 @@ impl hyper::service::Service<Request<Body>> for Admission {
         std::task::Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
+    fn call(&mut self, req: Request<hyper::body::Incoming>) -> Self::Future {
         trace!(?req);
         if req.method() != http::Method::POST || req.uri().path() != "/" {
             return Box::pin(future::ok(
@@ -75,7 +78,8 @@ impl hyper::service::Service<Request<Body>> for Admission {
 
         let admission = self.clone();
         Box::pin(async move {
-            let bytes = hyper::body::aggregate(req.into_body()).await?;
+            use bytes::Buf;
+            let bytes = req.into_body().collect().await?.to_bytes();
             let review: Review = match serde_json::from_reader(bytes.reader()) {
                 Ok(review) => review,
                 Err(error) => {
@@ -632,27 +636,13 @@ impl Validate<HttpRouteSpec> for Admission {
 }
 
 fn validate_http_backend_if_service(br: &gateway::HTTPRouteRulesBackendRefs) -> Result<()> {
-    let is_service = matches!(
-        br.backend_ref
-            .as_ref()
-            .and_then(|br| br.inner.group.as_deref()),
-        Some("core") | Some("") | None
-    ) && matches!(
-        br.backend_ref
-            .as_ref()
-            .and_then(|br| br.inner.kind.as_deref()),
-        Some("Service") | None
-    );
+    let is_service = matches!(br.group.as_deref(), Some("core") | Some("") | None)
+        && matches!(br.kind.as_deref(), Some("Service") | None);
 
     // If the backend reference is a Service, it must have a port. If it is not
     // a Service, then we have to admit it for interoperability with other
     // controllers.
-    if is_service
-        && matches!(
-            br.backend_ref.as_ref().and_then(|br| br.inner.port),
-            None | Some(0)
-        )
-    {
+    if is_service && matches!(br.port, None | Some(0)) {
         bail!("cannot reference a Service without a port");
     }
 
@@ -660,13 +650,13 @@ fn validate_http_backend_if_service(br: &gateway::HTTPRouteRulesBackendRefs) -> 
 }
 
 fn validate_grpc_backend_if_service(br: &gateway::GRPCRouteRulesBackendRefs) -> Result<()> {
-    let is_service = matches!(br.inner.group.as_deref(), Some("core") | Some("") | None)
-        && matches!(br.inner.kind.as_deref(), Some("Service") | None);
+    let is_service = matches!(br.group.as_deref(), Some("core") | Some("") | None)
+        && matches!(br.kind.as_deref(), Some("Service") | None);
 
     // If the backend reference is a Service, it must have a port. If it is not
     // a Service, then we have to admit it for interoperability with other
     // controllers.
-    if is_service && matches!(br.inner.port, None | Some(0)) {
+    if is_service && matches!(br.port, None | Some(0)) {
         bail!("cannot reference a Service without a port");
     }
 
@@ -682,7 +672,7 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
         annotations: &BTreeMap<String, String>,
         spec: gateway::HTTPRouteSpec,
     ) -> Result<()> {
-        for parent in spec.inner.parent_refs.iter().flatten() {
+        for parent in spec.parent_refs.iter().flatten() {
             if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)
                 && parent.port.is_none()
             {
@@ -690,7 +680,7 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
             }
         }
 
-        if spec.inner.parent_refs.iter().flatten().any(|parent| {
+        if spec.parent_refs.iter().flatten().any(|parent| {
             outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
         }) {
             outbound_index::http::parse_http_retry(annotations)?;
@@ -698,23 +688,17 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
             outbound_index::parse_timeouts(annotations)?;
         }
 
-        fn validate_filter(filter: gateway::HTTPRouteRulesBackendRefsFilters) -> Result<()> {
-            match filter {
-                gateway::HTTPRouteRulesBackendRefsFilters::RequestHeaderModifier {
-                    request_header_modifier,
-                } => index::routes::http::request_header_modifier(request_header_modifier)
-                    .map(|_| ()),
-                gateway::HTTPRouteRulesBackendRefsFilters::ResponseHeaderModifier {
-                    response_header_modifier,
-                } => index::routes::http::response_header_modifier(response_header_modifier)
-                    .map(|_| ()),
-                gateway::HTTPRouteRulesBackendRefsFilters::RequestRedirect { request_redirect } => {
-                    index::routes::http::req_redirect(request_redirect).map(|_| ())
-                }
-                gateway::HTTPRouteRulesBackendRefsFilters::RequestMirror { .. } => Ok(()),
-                gateway::HTTPRouteRulesBackendRefsFilters::URLRewrite { .. } => Ok(()),
-                gateway::HTTPRouteRulesBackendRefsFilters::ExtensionRef { .. } => Ok(()),
+        fn validate_filter(filter: gateway::HTTPRouteRulesFilters) -> Result<()> {
+            if let Some(request_header_modifier) = filter.request_header_modifier {
+                index::routes::http::request_header_modifier(request_header_modifier)?;
             }
+            if let Some(response_header_modifier) = filter.response_header_modifier {
+                index::routes::http::response_header_modifier(response_header_modifier)?;
+            }
+            if let Some(request_redirect) = filter.request_redirect {
+                index::routes::http::req_redirect(request_redirect)?;
+            }
+            Ok(())
         }
 
         // Validate the rules in this spec.
@@ -754,7 +738,7 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
         annotations: &BTreeMap<String, String>,
         spec: gateway::GRPCRouteSpec,
     ) -> Result<()> {
-        for parent in spec.inner.parent_refs.iter().flatten() {
+        for parent in spec.parent_refs.iter().flatten() {
             if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)
                 && parent.port.is_none()
             {
@@ -762,7 +746,7 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
             }
         }
 
-        if spec.inner.parent_refs.iter().flatten().any(|parent| {
+        if spec.parent_refs.iter().flatten().any(|parent| {
             outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
         }) {
             outbound_index::grpc::parse_grpc_retry(annotations)?;
@@ -771,18 +755,13 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
         }
 
         fn validate_filter(filter: gateway::GRPCRouteRulesFilters) -> Result<()> {
-            match filter {
-                gateway::GRPCRouteRulesFilters::RequestHeaderModifier {
-                    request_header_modifier,
-                } => index::routes::grpc::request_header_modifier(request_header_modifier)
-                    .map(|_| ()),
-                gateway::GRPCRouteRulesFilters::ResponseHeaderModifier {
-                    response_header_modifier,
-                } => index::routes::grpc::response_header_modifier(response_header_modifier)
-                    .map(|_| ()),
-                gateway::GRPCRouteRulesFilters::RequestMirror { .. } => Ok(()),
-                gateway::GRPCRouteRulesFilters::ExtensionRef { .. } => Ok(()),
+            if let Some(request_header_modifier) = filter.request_header_modifier {
+                index::routes::grpc::request_header_modifier(request_header_modifier)?;
             }
+            if let Some(response_header_modifier) = filter.response_header_modifier {
+                index::routes::grpc::response_header_modifier(response_header_modifier)?;
+            }
+            Ok(())
         }
 
         fn validate_match_rule(matches: gateway::GRPCRouteRulesMatches) -> Result<()> {
@@ -827,7 +806,7 @@ impl Validate<gateway::TLSRouteSpec> for Admission {
         _annotations: &BTreeMap<String, String>,
         spec: gateway::TLSRouteSpec,
     ) -> Result<()> {
-        for parent in spec.inner.parent_refs.iter().flatten() {
+        for parent in spec.parent_refs.iter().flatten() {
             if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)
                 && parent.port.is_none()
             {
@@ -852,7 +831,7 @@ impl Validate<gateway::TCPRouteSpec> for Admission {
         _annotations: &BTreeMap<String, String>,
         spec: gateway::TCPRouteSpec,
     ) -> Result<()> {
-        for parent in spec.inner.parent_refs.iter().flatten() {
+        for parent in spec.parent_refs.iter().flatten() {
             if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)
                 && parent.port.is_none()
             {

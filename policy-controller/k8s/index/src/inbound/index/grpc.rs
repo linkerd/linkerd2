@@ -14,7 +14,7 @@ impl TryFrom<gateway::GRPCRoute> for RouteBinding<GrpcRoute> {
     fn try_from(route: gateway::GRPCRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
         let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
-        let parents = ParentRef::collect_from_grpc(route_ns, route.spec.inner.parent_refs)?;
+        let parents = ParentRef::collect_from_grpc(route_ns, route.spec.parent_refs)?;
         let hostnames = route
             .spec
             .hostnames
@@ -73,26 +73,23 @@ fn try_grpc_rule<F>(
 }
 
 fn try_grpc_filter(filter: gateway::GRPCRouteRulesFilters) -> Result<Filter> {
-    let filter = match filter {
-        gateway::GRPCRouteRulesFilters::RequestHeaderModifier {
-            request_header_modifier,
-        } => {
-            let filter = crate::routes::grpc::request_header_modifier(request_header_modifier)?;
-            Filter::RequestHeaderModifier(filter)
-        }
+    if let Some(request_header_modifier) = filter.request_header_modifier {
+        let filter = crate::routes::grpc::request_header_modifier(request_header_modifier)?;
+        return Ok(Filter::RequestHeaderModifier(filter));
+    }
 
-        gateway::GRPCRouteRulesFilters::ResponseHeaderModifier {
-            response_header_modifier,
-        } => {
-            let filter = crate::routes::grpc::request_header_modifier(response_header_modifier)?;
-            Filter::ResponseHeaderModifier(filter)
-        }
-        gateway::GRPCRouteRulesFilters::RequestMirror { .. } => {
-            bail!("RequestMirror filter is not supported")
-        }
-        gateway::GRPCRouteRulesFilters::ExtensionRef { .. } => {
-            bail!("ExtensionRef filter is not supported")
-        }
-    };
-    Ok(filter)
+    if let Some(response_header_modifier) = filter.response_header_modifier {
+        let filter = crate::routes::grpc::response_header_modifier(response_header_modifier)?;
+        return Ok(Filter::ResponseHeaderModifier(filter));
+    }
+
+    if let Some(_request_mirror) = filter.request_mirror {
+        bail!("RequestMirror filter is not supported")
+    }
+
+    if let Some(_extension_ref) = filter.extension_ref {
+        bail!("ExtensionRef filter is not supported")
+    }
+
+    bail!("No filter specified");
 }

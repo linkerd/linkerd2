@@ -1,6 +1,5 @@
 use futures::{FutureExt, StreamExt};
-use k8s_gateway_api::{self as gateway};
-use linkerd_policy_controller_k8s_api::{self as k8s, policy};
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy};
 use linkerd_policy_test::{
     assert_resource_meta, await_route_accepted, create, create_cluster_scoped,
     delete_cluster_scoped, grpc,
@@ -63,16 +62,16 @@ async fn parent_with_no_routes() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
         })
         .await;
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
+    test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -101,9 +100,9 @@ async fn route_with_no_rules() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             let route = create(
@@ -133,12 +132,12 @@ async fn route_with_no_rules() {
         .await;
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<k8s::Service, gateway::GrpcRoute>().await;
+    test::<k8s::Service, gateway::GRPCRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::GrpcRoute>().await;
+    test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
+    test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -164,9 +163,9 @@ async fn routes_without_backends() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             // Create a route with one rule with no backends.
@@ -199,12 +198,12 @@ async fn routes_without_backends() {
         .await;
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<k8s::Service, gateway::GrpcRoute>().await;
+    test::<k8s::Service, gateway::GRPCRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::GrpcRoute>().await;
+    test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
+    test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -237,9 +236,9 @@ async fn routes_with_backend() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             let route = create(
@@ -283,16 +282,16 @@ async fn routes_with_backend() {
         .await;
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<k8s::Service, gateway::GrpcRoute>().await;
-    test::<k8s::Service, gateway::TlsRoute>().await;
-    test::<k8s::Service, gateway::TcpRoute>().await;
-    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::GRPCRoute>().await;
+    test::<k8s::Service, gateway::TLSRoute>().await;
+    test::<k8s::Service, gateway::TCPRoute>().await;
+    test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::GrpcRoute>().await;
-    test::<policy::EgressNetwork, gateway::TlsRoute>().await;
-    test::<policy::EgressNetwork, gateway::TcpRoute>().await;
+    test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
+    test::<policy::EgressNetwork, gateway::TLSRoute>().await;
+    test::<policy::EgressNetwork, gateway::TCPRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -318,9 +317,9 @@ async fn service_with_routes_with_cross_namespace_backend() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             let backend_ns_name = format!("{}-backend", ns);
@@ -388,11 +387,11 @@ async fn service_with_routes_with_cross_namespace_backend() {
         .await
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<k8s::Service, gateway::GrpcRoute>().await;
-    test::<k8s::Service, gateway::TlsRoute>().await;
-    test::<k8s::Service, gateway::TcpRoute>().await;
+    test::<k8s::Service, gateway::GRPCRoute>().await;
+    test::<k8s::Service, gateway::TLSRoute>().await;
+    test::<k8s::Service, gateway::TCPRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -418,9 +417,9 @@ async fn routes_with_invalid_backend() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             let backend_port = 8888;
@@ -471,16 +470,16 @@ async fn routes_with_invalid_backend() {
         .await
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<k8s::Service, gateway::GrpcRoute>().await;
-    test::<k8s::Service, gateway::TlsRoute>().await;
-    test::<k8s::Service, gateway::TcpRoute>().await;
-    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::GRPCRoute>().await;
+    test::<k8s::Service, gateway::TLSRoute>().await;
+    test::<k8s::Service, gateway::TCPRoute>().await;
+    test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::GrpcRoute>().await;
-    test::<policy::EgressNetwork, gateway::TlsRoute>().await;
-    test::<policy::EgressNetwork, gateway::TcpRoute>().await;
+    test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
+    test::<policy::EgressNetwork, gateway::TLSRoute>().await;
+    test::<policy::EgressNetwork, gateway::TCPRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -517,9 +516,9 @@ async fn multiple_routes() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             // Routes should be returned in sorted order by creation timestamp then
@@ -571,14 +570,14 @@ async fn multiple_routes() {
         .await
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<k8s::Service, gateway::GrpcRoute>().await;
-    test::<k8s::Service, gateway::TlsRoute>().await;
-    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::GRPCRoute>().await;
+    test::<k8s::Service, gateway::TLSRoute>().await;
+    test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::GrpcRoute>().await;
-    test::<policy::EgressNetwork, gateway::TlsRoute>().await;
+    test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
+    test::<policy::EgressNetwork, gateway::TLSRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -659,13 +658,13 @@ async fn route_with_no_port() {
             tracing::trace!(?config_b);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config_a, |routes| {
+            gateway::HTTPRoute::routes(&config_a, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port_a);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port_a);
             });
-            gateway::HttpRoute::routes(&config_b, |routes| {
+            gateway::HTTPRoute::routes(&config_b, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port_b);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port_b);
             });
 
             // Create a route with no port in the parent_ref.
@@ -711,11 +710,11 @@ async fn route_with_no_port() {
         .await;
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<k8s::Service, gateway::GrpcRoute>().await;
-    test::<k8s::Service, gateway::TlsRoute>().await;
-    test::<k8s::Service, gateway::TcpRoute>().await;
+    test::<k8s::Service, gateway::GRPCRoute>().await;
+    test::<k8s::Service, gateway::TLSRoute>().await;
+    test::<k8s::Service, gateway::TCPRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -757,13 +756,13 @@ async fn producer_route() {
             assert_resource_meta(&consumer_config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&producer_config, |routes| {
+            gateway::HTTPRoute::routes(&producer_config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
-            gateway::HttpRoute::routes(&consumer_config, |routes| {
+            gateway::HTTPRoute::routes(&consumer_config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             // A route created in the same namespace as its parent service is called
@@ -810,11 +809,11 @@ async fn producer_route() {
         .await;
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<k8s::Service, gateway::GrpcRoute>().await;
-    test::<k8s::Service, gateway::TlsRoute>().await;
-    test::<k8s::Service, gateway::TcpRoute>().await;
+    test::<k8s::Service, gateway::GRPCRoute>().await;
+    test::<k8s::Service, gateway::TLSRoute>().await;
+    test::<k8s::Service, gateway::TCPRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -885,11 +884,11 @@ async fn pre_existing_producer_route() {
         .await;
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<k8s::Service, gateway::GrpcRoute>().await;
-    test::<k8s::Service, gateway::TlsRoute>().await;
-    test::<k8s::Service, gateway::TcpRoute>().await;
+    test::<k8s::Service, gateway::GRPCRoute>().await;
+    test::<k8s::Service, gateway::TLSRoute>().await;
+    test::<k8s::Service, gateway::TCPRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -957,17 +956,17 @@ async fn consumer_route() {
             assert_resource_meta(&other_config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&producer_config, |routes| {
+            gateway::HTTPRoute::routes(&producer_config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
-            gateway::HttpRoute::routes(&consumer_config, |routes| {
+            gateway::HTTPRoute::routes(&consumer_config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
-            gateway::HttpRoute::routes(&other_config, |routes| {
+            gateway::HTTPRoute::routes(&other_config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             // A route created in a different namespace as its parent service is
@@ -1013,11 +1012,11 @@ async fn consumer_route() {
         .await;
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<k8s::Service, gateway::GrpcRoute>().await;
-    test::<k8s::Service, gateway::TlsRoute>().await;
-    test::<k8s::Service, gateway::TcpRoute>().await;
+    test::<k8s::Service, gateway::GRPCRoute>().await;
+    test::<k8s::Service, gateway::TLSRoute>().await;
+    test::<k8s::Service, gateway::TCPRoute>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -1067,7 +1066,7 @@ async fn route_reattachment() {
             });
 
             // Detatch route.
-            route.parents_mut().first_mut().unwrap().name = "other".to_string();
+            route.set_parent_name("other".to_string());
             update(&client, route.clone()).await;
 
             let config = rx
@@ -1080,13 +1079,13 @@ async fn route_reattachment() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // The route should be unattached and the default route should be present.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             // Reattach route.
-            route.parents_mut().first_mut().unwrap().name = parent.meta().name.clone().unwrap();
+            route.set_parent_name(parent.meta().name.clone().unwrap());
             update(&client, route.clone()).await;
 
             let config = rx
@@ -1107,14 +1106,14 @@ async fn route_reattachment() {
         .await;
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<k8s::Service, gateway::GrpcRoute>().await;
-    test::<k8s::Service, gateway::TlsRoute>().await;
-    test::<k8s::Service, gateway::TcpRoute>().await;
-    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::GRPCRoute>().await;
+    test::<k8s::Service, gateway::TLSRoute>().await;
+    test::<k8s::Service, gateway::TCPRoute>().await;
+    test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::GrpcRoute>().await;
-    test::<policy::EgressNetwork, gateway::TlsRoute>().await;
-    test::<policy::EgressNetwork, gateway::TcpRoute>().await;
+    test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
+    test::<policy::EgressNetwork, gateway::TLSRoute>().await;
+    test::<policy::EgressNetwork, gateway::TCPRoute>().await;
 }

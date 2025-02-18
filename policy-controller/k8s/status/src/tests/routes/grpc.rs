@@ -30,7 +30,7 @@ pub(crate) fn make_parent_status(
         last_transition_time: k8s::Time(DateTime::<Utc>::MIN_UTC),
     };
     gateway::GRPCRouteStatusParents {
-        conditions: vec![condition],
+        conditions: Some(vec![condition]),
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
             port: None,
             section_name: None,
@@ -94,24 +94,20 @@ fn route_with_valid_service_backends() {
         parent.clone(),
         Some(vec![
             gateway::GRPCRouteRulesBackendRefs {
-                inner: gateway::BackendObjectReference {
-                    group: Some("core".to_string()),
-                    kind: Some("Service".to_string()),
-                    name: backend1.name_unchecked(),
-                    namespace: backend1.namespace(),
-                    port: Some(8080),
-                },
+                group: Some("core".to_string()),
+                kind: Some("Service".to_string()),
+                name: backend1.name_unchecked(),
+                namespace: backend1.namespace(),
+                port: Some(8080),
                 weight: None,
                 filters: None,
             },
             gateway::GRPCRouteRulesBackendRefs {
-                inner: gateway::BackendObjectReference {
-                    group: Some("core".to_string()),
-                    kind: Some("Service".to_string()),
-                    name: backend2.name_unchecked(),
-                    namespace: backend2.namespace(),
-                    port: Some(8080),
-                },
+                group: Some("core".to_string()),
+                kind: Some("Service".to_string()),
+                name: backend2.name_unchecked(),
+                namespace: backend2.namespace(),
+                port: Some(8080),
                 filters: None,
                 weight: None,
             },
@@ -133,12 +129,10 @@ fn route_with_valid_service_backends() {
             port: Some(8080),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -190,13 +184,11 @@ fn route_with_valid_egress_network_backend() {
         &id,
         parent.clone(),
         Some(vec![gateway::GRPCRouteRulesBackendRefs {
-            inner: gateway::BackendObjectReference {
-                group: Some("policy.linkerd.io".to_string()),
-                kind: Some("EgressNetwork".to_string()),
-                name: parent.name.clone(),
-                namespace: parent.namespace.clone(),
-                port: Some(8080),
-            },
+            group: Some("policy.linkerd.io".to_string()),
+            kind: Some("EgressNetwork".to_string()),
+            name: parent.name.clone(),
+            namespace: parent.namespace.clone(),
+            port: Some(8080),
             weight: None,
             filters: None,
         }]),
@@ -217,12 +209,10 @@ fn route_with_valid_egress_network_backend() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -279,24 +269,20 @@ fn route_with_invalid_service_backend() {
         parent.clone(),
         Some(vec![
             gateway::GRPCRouteRulesBackendRefs {
-                inner: gateway::BackendObjectReference {
-                    group: Some("core".to_string()),
-                    kind: Some("Service".to_string()),
-                    name: backend.name_unchecked(),
-                    namespace: backend.namespace(),
-                    port: Some(8080),
-                },
+                group: Some("core".to_string()),
+                kind: Some("Service".to_string()),
+                name: backend.name_unchecked(),
+                namespace: backend.namespace(),
+                port: Some(8080),
                 filters: None,
                 weight: None,
             },
             gateway::GRPCRouteRulesBackendRefs {
-                inner: gateway::BackendObjectReference {
-                    group: Some("core".to_string()),
-                    kind: Some("Service".to_string()),
-                    name: "nonexistant-backend".to_string(),
-                    namespace: backend.namespace(),
-                    port: Some(8080),
-                },
+                group: Some("core".to_string()),
+                kind: Some("Service".to_string()),
+                name: "nonexistant-backend".to_string(),
+                namespace: backend.namespace(),
+                port: Some(8080),
                 filters: None,
                 weight: None,
             },
@@ -318,12 +304,10 @@ fn route_with_invalid_service_backend() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -379,13 +363,11 @@ fn route_with_egress_network_backend_different_from_parent() {
         &id,
         parent.clone(),
         Some(vec![gateway::GRPCRouteRulesBackendRefs {
-            inner: gateway::BackendObjectReference {
-                group: Some("policy.linkerd.io".to_string()),
-                kind: Some("EgressNetwork".to_string()),
-                name: backend.name_unchecked(),
-                namespace: backend.namespace(),
-                port: Some(8080),
-            },
+            group: Some("policy.linkerd.io".to_string()),
+            kind: Some("EgressNetwork".to_string()),
+            name: backend.name_unchecked(),
+            namespace: backend.namespace(),
+            port: Some(8080),
             filters: None,
             weight: None,
         }]),
@@ -407,12 +389,10 @@ fn route_with_egress_network_backend_different_from_parent() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -468,13 +448,11 @@ fn route_with_egress_network_backend_and_service_parent() {
         &id,
         parent.clone(),
         Some(vec![gateway::GRPCRouteRulesBackendRefs {
-            inner: gateway::BackendObjectReference {
-                group: Some("policy.linkerd.io".to_string()),
-                kind: Some("EgressNetwork".to_string()),
-                name: backend.name_unchecked(),
-                namespace: backend.namespace(),
-                port: Some(8080),
-            },
+            group: Some("policy.linkerd.io".to_string()),
+            kind: Some("EgressNetwork".to_string()),
+            name: backend.name_unchecked(),
+            namespace: backend.namespace(),
+            port: Some(8080),
             filters: None,
             weight: None,
         }]),
@@ -496,12 +474,10 @@ fn route_with_egress_network_backend_and_service_parent() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -557,13 +533,11 @@ fn route_with_egress_network_parent_and_service_backend() {
         &id,
         parent.clone(),
         Some(vec![gateway::GRPCRouteRulesBackendRefs {
-            inner: gateway::BackendObjectReference {
-                group: Some("core".to_string()),
-                kind: Some("Service".to_string()),
-                name: backend.name_unchecked(),
-                namespace: backend.namespace(),
-                port: Some(8080),
-            },
+            group: Some("core".to_string()),
+            kind: Some("Service".to_string()),
+            name: backend.name_unchecked(),
+            namespace: backend.namespace(),
+            port: Some(8080),
             filters: None,
             weight: None,
         }]),
@@ -583,12 +557,10 @@ fn route_with_egress_network_parent_and_service_backend() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -646,9 +618,7 @@ fn route_accepted_after_server_create() {
         "NoMatchingParent",
     );
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -673,9 +643,7 @@ fn route_accepted_after_server_create() {
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -739,13 +707,11 @@ fn route_accepted_after_egress_network_create() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition.clone()],
+        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
     };
 
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -771,13 +737,11 @@ fn route_accepted_after_egress_network_create() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition],
+        conditions: Some(vec![accepted_condition, backend_condition]),
     };
 
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -845,9 +809,7 @@ fn route_rejected_after_server_delete() {
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -870,9 +832,7 @@ fn route_rejected_after_server_delete() {
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -942,13 +902,11 @@ fn route_rejected_after_egress_network_delete() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition, backend_condition.clone()],
+        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
     };
 
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -979,13 +937,11 @@ fn route_rejected_after_egress_network_delete() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![rejected_condition, backend_condition.clone()],
+        conditions: Some(vec![rejected_condition, backend_condition.clone()]),
     };
 
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -1045,16 +1001,14 @@ fn service_route_type_conflict() {
             ..Default::default()
         },
         spec: gateway::HTTPRouteSpec {
-            inner: gateway::CommonRouteSpec {
-                parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
-                    group: parent.group.clone(),
-                    kind: parent.kind.clone(),
-                    name: parent.name.clone(),
-                    namespace: parent.namespace.clone(),
-                    port: parent.port,
-                    section_name: parent.section_name.clone(),
-                }]),
-            },
+            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                group: parent.group.clone(),
+                kind: parent.kind.clone(),
+                name: parent.name.clone(),
+                namespace: parent.namespace.clone(),
+                port: parent.port,
+                section_name: parent.section_name.clone(),
+            }]),
             hostnames: None,
             rules: Some(vec![]),
         },
@@ -1075,12 +1029,10 @@ fn service_route_type_conflict() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition.clone(), backend_condition.clone()],
+        conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
     };
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&http_id, status).unwrap();
     let update = updates_rx.try_recv().unwrap();
@@ -1114,12 +1066,10 @@ fn service_route_type_conflict() {
                     section_name: parent.section_name.clone(),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: vec![conflict_condition, backend_condition.clone()],
+                conditions: Some(vec![conflict_condition, backend_condition.clone()]),
             };
             let status = gateway::GRPCRouteStatus {
-                inner: gateway::RouteStatus {
-                    parents: vec![parent_status],
-                },
+                parents: vec![parent_status],
             };
             let patch = crate::index::make_patch(&http_id, status).unwrap();
             assert_eq!(patch, update.patch);
@@ -1134,12 +1084,10 @@ fn service_route_type_conflict() {
                     section_name: parent.section_name.clone(),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: vec![accepted_condition.clone(), backend_condition.clone()],
+                conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
             };
             let status = gateway::GRPCRouteStatus {
-                inner: gateway::RouteStatus {
-                    parents: vec![parent_status],
-                },
+                parents: vec![parent_status],
             };
             let patch = crate::index::make_patch(&grpc_id, status).unwrap();
             assert_eq!(patch, update.patch);
@@ -1198,16 +1146,14 @@ fn egress_network_route_type_conflict() {
             ..Default::default()
         },
         spec: gateway::HTTPRouteSpec {
-            inner: gateway::CommonRouteSpec {
-                parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
-                    group: parent.group.clone(),
-                    kind: parent.kind.clone(),
-                    name: parent.name.clone(),
-                    namespace: parent.namespace.clone(),
-                    port: parent.port,
-                    section_name: parent.section_name.clone(),
-                }]),
-            },
+            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                group: parent.group.clone(),
+                kind: parent.kind.clone(),
+                name: parent.name.clone(),
+                namespace: parent.namespace.clone(),
+                port: parent.port,
+                section_name: parent.section_name.clone(),
+            }]),
             hostnames: None,
             rules: Some(vec![]),
         },
@@ -1228,12 +1174,10 @@ fn egress_network_route_type_conflict() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: vec![accepted_condition.clone(), backend_condition.clone()],
+        conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
     };
     let status = gateway::GRPCRouteStatus {
-        inner: gateway::RouteStatus {
-            parents: vec![parent_status],
-        },
+        parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&http_id, status).unwrap();
     let update = updates_rx.try_recv().unwrap();
@@ -1267,12 +1211,10 @@ fn egress_network_route_type_conflict() {
                     section_name: parent.section_name.clone(),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: vec![conflict_condition, backend_condition.clone()],
+                conditions: Some(vec![conflict_condition, backend_condition.clone()]),
             };
             let status = gateway::GRPCRouteStatus {
-                inner: gateway::RouteStatus {
-                    parents: vec![parent_status],
-                },
+                parents: vec![parent_status],
             };
             let patch = crate::index::make_patch(&http_id, status).unwrap();
             assert_eq!(patch, update.patch);
@@ -1287,12 +1229,10 @@ fn egress_network_route_type_conflict() {
                     section_name: parent.section_name.clone(),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: vec![accepted_condition.clone(), backend_condition.clone()],
+                conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
             };
             let status = gateway::GRPCRouteStatus {
-                inner: gateway::RouteStatus {
-                    parents: vec![parent_status],
-                },
+                parents: vec![parent_status],
             };
             let patch = crate::index::make_patch(&grpc_id, status).unwrap();
             assert_eq!(patch, update.patch);
@@ -1317,20 +1257,21 @@ fn make_route(
             ..Default::default()
         },
         spec: gateway::GRPCRouteSpec {
-            inner: gateway::CommonRouteSpec {
-                parent_refs: Some(vec![parent]),
-            },
+            parent_refs: Some(vec![parent]),
             hostnames: None,
             rules: Some(vec![gateway::GRPCRouteRules {
+                name: None,
                 filters: None,
                 backend_refs: backends,
                 matches: Some(vec![gateway::GRPCRouteRulesMatches {
                     headers: None,
-                    method: Some(gateway::GrpcMethodMatch::Exact {
+                    method: Some(gateway::GRPCRouteRulesMatchesMethod {
                         method: Some("MakeRoute".to_string()),
                         service: Some("io.linkerd.Test".to_string()),
+                        r#type: Some(gateway::GRPCRouteRulesMatchesMethodType::Exact),
                     }),
                 }]),
+                session_persistence: None,
             }]),
         },
     }

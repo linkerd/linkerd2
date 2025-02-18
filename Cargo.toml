@@ -15,6 +15,17 @@ members = [
 lto = "thin"
 
 [workspace.dependencies]
-k8s-openapi = { version = "0.20", features = ["v1_22"] }
-kube = { version = "0.87.1", default-features = false }
-kubert = { version = "0.22", default-features = false }
+k8s-openapi = { version = "0.24", features = ["v1_31"] }
+kube = { version = "0.98", default-features = false }
+kubert = { version = "0.23.0-alpha6", default-features = false }
+prometheus-client = { version = "0.23", default-features = false }
+
+[workspace.dependencies.k8s-gateway-api]
+# TODO(ver): Remove this once we update to a proper generated version of the gateway api bindings.
+git = "https://github.com/linkerd/k8s-gateway-api-rs"
+features = ["experimental"]
+
+[workspace.dependencies.linkerd2-proxy-api]
+git = "https://github.com/linkerd/linkerd2-proxy-api"
+branch = "ver/deps-http"
+features = ["inbound", "outbound"]

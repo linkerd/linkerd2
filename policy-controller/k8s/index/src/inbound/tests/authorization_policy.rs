@@ -502,8 +502,9 @@ fn mk_http_route(
             }]),
             rules: Some(vec![policy::httproute::HttpRouteRule {
                 matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HttpPathMatch::PathPrefix {
-                        value: "/foo".to_string(),
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]),
@@ -514,27 +515,25 @@ fn mk_http_route(
             ..Default::default()
         },
         status: Some(gateway::HTTPRouteStatus {
-            inner: gateway::RouteStatus {
-                parents: vec![gateway::HTTPRouteStatusParents {
-                    conditions: vec![metav1::Condition {
-                        type_: "Accepted".to_string(),
-                        status: "True".to_string(),
-                        message: String::new(),
-                        reason: String::new(),
-                        last_transition_time: metav1::Time(chrono::Utc::now()),
-                        observed_generation: None,
-                    }],
-                    parent_ref: gateway::HTTPRouteStatusParentsParentRef {
-                        group: Some("policy.linkerd.io".to_string()),
-                        kind: Some("Server".to_string()),
-                        namespace: Some(ns.to_string()),
-                        name: server.to_string(),
-                        section_name: None,
-                        port: None,
-                    },
-                    controller_name: "linkerd.io/policy-controller".to_string(),
-                }],
-            },
+            parents: vec![gateway::HTTPRouteStatusParents {
+                conditions: Some(vec![metav1::Condition {
+                    type_: "Accepted".to_string(),
+                    status: "True".to_string(),
+                    message: String::new(),
+                    reason: String::new(),
+                    last_transition_time: metav1::Time(chrono::Utc::now()),
+                    observed_generation: None,
+                }]),
+                parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("Server".to_string()),
+                    namespace: Some(ns.to_string()),
+                    name: server.to_string(),
+                    section_name: None,
+                    port: None,
+                },
+                controller_name: "linkerd.io/policy-controller".to_string(),
+            }],
         }),
     }
 }

@@ -202,23 +202,11 @@ pub(super) fn convert_backend(
         Some(backend_kind) => backend_kind,
         None => {
             return Some(Backend::Invalid {
-                weight: backend
-                    .backend_ref
-                    .as_ref()
-                    .and_then(|br| br.weight)
-                    .unwrap_or(1) as u32,
+                weight: backend.weight.unwrap_or(1) as u32,
                 message: format!(
                     "unsupported backend type {group} {kind}",
-                    group = backend
-                        .backend_ref
-                        .as_ref()
-                        .and_then(|br| br.inner.group.as_deref())
-                        .unwrap_or("core"),
-                    kind = backend
-                        .backend_ref
-                        .as_ref()
-                        .and_then(|br| br.inner.kind.as_deref())
-                        .unwrap_or("<empty>"),
+                    group = backend.group.as_deref().unwrap_or("core"),
+                    kind = backend.kind.as_deref().unwrap_or("<empty>"),
                 ),
             });
         }
@@ -227,25 +215,13 @@ pub(super) fn convert_backend(
     let filters = backend.filters;
 
     let backend_ref = ResourceRef {
-        name: backend
-            .backend_ref
-            .as_ref()
-            .map(|br| br.inner.name.clone())
-            .unwrap_or_default(),
-        namespace: backend
-            .backend_ref
-            .as_ref()
-            .and_then(|br| br.inner.namespace.clone())
-            .unwrap_or_else(|| ns.to_string()),
+        name: backend.name.clone(),
+        namespace: backend.namespace.clone().unwrap_or_else(|| ns.to_string()),
         kind: backend_kind.clone(),
     };
 
     let name = backend_ref.name.clone();
-    let weight = backend
-        .backend_ref
-        .as_ref()
-        .and_then(|br| br.weight)
-        .unwrap_or(1) as u32;
+    let weight = backend.weight.unwrap_or(1) as u32;
 
     let filters = match filters
         .into_iter()
@@ -263,8 +239,8 @@ pub(super) fn convert_backend(
     };
 
     let port = backend
-        .backend_ref
-        .and_then(|br| br.inner.port)
+        .port
+        .and_then(|p| p.try_into().ok())
         .and_then(|p: u16| NonZeroU16::try_from(p).ok());
 
     match backend_kind {
@@ -328,71 +304,55 @@ fn convert_linkerd_filter(filter: policy::httproute::HttpRouteFilter) -> Result<
 }
 
 pub(crate) fn convert_gateway_filter(filter: gateway::HTTPRouteRulesFilters) -> Result<Filter> {
-    let filter = match filter {
-        gateway::HTTPRouteRulesFilters::RequestHeaderModifier {
-            request_header_modifier,
-        } => {
-            let filter = routes::http::request_header_modifier(request_header_modifier)?;
-            Filter::RequestHeaderModifier(filter)
-        }
-
-        gateway::HTTPRouteRulesFilters::ResponseHeaderModifier {
-            response_header_modifier,
-        } => {
-            let filter = routes::http::response_header_modifier(response_header_modifier)?;
-            Filter::ResponseHeaderModifier(filter)
-        }
-
-        gateway::HTTPRouteRulesFilters::RequestRedirect { request_redirect } => {
-            let filter = routes::http::req_redirect(request_redirect)?;
-            Filter::RequestRedirect(filter)
-        }
-        gateway::HTTPRouteRulesFilters::RequestMirror { .. } => {
-            bail!("RequestMirror filter is not supported")
-        }
-        gateway::HTTPRouteRulesFilters::URLRewrite { .. } => {
-            bail!("URLRewrite filter is not supported")
-        }
-        gateway::HTTPRouteRulesFilters::ExtensionRef { .. } => {
-            bail!("ExtensionRef filter is not supported")
-        }
-    };
-    Ok(filter)
+    if let Some(request_header_modifier) = filter.request_header_modifier {
+        let filter = routes::http::request_header_modifier(request_header_modifier)?;
+        return Ok(Filter::RequestHeaderModifier(filter));
+    }
+    if let Some(response_header_modifier) = filter.response_header_modifier {
+        let filter = routes::http::response_header_modifier(response_header_modifier)?;
+        return Ok(Filter::ResponseHeaderModifier(filter));
+    }
+    if let Some(request_redirect) = filter.request_redirect {
+        let filter = routes::http::req_redirect(request_redirect)?;
+        return Ok(Filter::RequestRedirect(filter));
+    }
+    if let Some(_request_mirror) = filter.request_mirror {
+        bail!("RequestMirror filter is not supported")
+    }
+    if let Some(_url_rewrite) = filter.url_rewrite {
+        bail!("URLRewrite filter is not supported")
+    }
+    if let Some(_extension_ref) = filter.extension_ref {
+        bail!("ExtensionRef filter is not supported")
+    }
+    bail!("unknown filter")
 }
 
 pub(crate) fn convert_gateway_backend_filter(
     filter: gateway::HTTPRouteRulesBackendRefsFilters,
 ) -> Result<Filter> {
-    let filter = match filter {
-        gateway::HTTPRouteRulesBackendRefsFilters::RequestHeaderModifier {
-            request_header_modifier,
-        } => {
-            let filter = routes::http::backend_request_header_modifier(request_header_modifier)?;
-            Filter::RequestHeaderModifier(filter)
-        }
-
-        gateway::HTTPRouteRulesBackendRefsFilters::ResponseHeaderModifier {
-            response_header_modifier,
-        } => {
-            let filter = routes::http::backend_response_header_modifier(response_header_modifier)?;
-            Filter::ResponseHeaderModifier(filter)
-        }
-
-        gateway::HTTPRouteRulesBackendRefsFilters::RequestRedirect { request_redirect } => {
-            let filter = routes::http::req_redirect(request_redirect)?;
-            Filter::RequestRedirect(filter)
-        }
-        gateway::HTTPRouteRulesBackendRefsFilters::RequestMirror { .. } => {
-            bail!("RequestMirror filter is not supported")
-        }
-        gateway::HTTPRouteRulesBackendRefsFilters::URLRewrite { .. } => {
-            bail!("URLRewrite filter is not supported")
-        }
-        gateway::HTTPRouteRulesBackendRefsFilters::ExtensionRef { .. } => {
-            bail!("ExtensionRef filter is not supported")
-        }
-    };
-    Ok(filter)
+    if let Some(request_header_modifier) = filter.request_header_modifier {
+        let filter = routes::http::backend_request_header_modifier(request_header_modifier)?;
+        return Ok(Filter::RequestHeaderModifier(filter));
+    }
+    if let Some(response_header_modifier) = filter.response_header_modifier {
+        let filter = routes::http::backend_response_header_modifier(response_header_modifier)?;
+        return Ok(Filter::ResponseHeaderModifier(filter));
+    }
+    if let Some(request_redirect) = filter.request_redirect {
+        let filter = routes::http::backend_req_redirect(request_redirect)?;
+        return Ok(Filter::RequestRedirect(filter));
+    }
+    if let Some(_request_mirror) = filter.request_mirror {
+        bail!("RequestMirror filter is not supported")
+    }
+    if let Some(_url_rewrite) = filter.url_rewrite {
+        bail!("URLRewrite filter is not supported")
+    }
+    if let Some(_extension_ref) = filter.extension_ref {
+        bail!("ExtensionRef filter is not supported")
+    }
+    bail!("unknown filter")
 }
 
 pub fn parse_http_retry(
@@ -487,12 +447,12 @@ pub(super) fn route_accepted_by_resource_port(
         group = "core";
     }
     route_status
-        .map(|status| status.inner.parents.as_slice())
+        .map(|status| status.parents.as_slice())
         .unwrap_or_default()
         .iter()
         .any(|parent_status| {
             let port_matches = match parent_status.parent_ref.port {
-                Some(port) => port == resource_port.port.get(),
+                Some(port) => port == resource_port.port.get() as i32,
                 None => true,
             };
             let mut parent_group = parent_status.parent_ref.group.as_deref().unwrap_or("core");
@@ -506,6 +466,7 @@ pub(super) fn route_accepted_by_resource_port(
                 && parent_status
                     .conditions
                     .iter()
+                    .flatten()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
 }
@@ -519,7 +480,7 @@ pub fn route_accepted_by_service(
         service_group = "core";
     }
     route_status
-        .map(|status| status.inner.parents.as_slice())
+        .map(|status| status.parents.as_slice())
         .unwrap_or_default()
         .iter()
         .any(|parent_status| {
@@ -533,21 +494,15 @@ pub fn route_accepted_by_service(
                 && parent_status
                     .conditions
                     .iter()
+                    .flatten()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
 }
 
 pub(crate) fn backend_kind(backend: &gateway::HTTPRouteRulesBackendRefs) -> Option<ResourceKind> {
-    let group = backend
-        .backend_ref
-        .as_ref()
-        .and_then(|br| br.inner.group.as_deref());
+    let group = backend.group.as_deref();
     // Backends default to `Service` if no kind is specified.
-    let kind = backend
-        .backend_ref
-        .as_ref()
-        .and_then(|br| br.inner.kind.as_deref())
-        .unwrap_or("Service");
+    let kind = backend.kind.as_deref().unwrap_or("Service");
     if super::is_service(group, kind) {
         Some(ResourceKind::Service)
     } else if super::is_egress_network(group, kind) {

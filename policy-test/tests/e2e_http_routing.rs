@@ -1,4 +1,4 @@
-use linkerd_policy_controller_k8s_api as k8s;
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway};
 use linkerd_policy_test::{
     await_condition, create, create_ready_pod, curl, endpoints_ready, web, with_temp_ns,
     LinkerdInject,
@@ -72,21 +72,20 @@ async fn path_based_routing() {
 
 fn rule(path: String, backend: String) -> k8s::policy::httproute::HttpRouteRule {
     k8s::policy::httproute::HttpRouteRule {
-        matches: Some(vec![k8s::gateway::HttpRouteMatch {
-            path: Some(k8s::gateway::HttpPathMatch::Exact { value: path }),
+        matches: Some(vec![gateway::HTTPRouteRulesMatches {
+            path: Some(gateway::HTTPRouteRulesMatchesPath {
+                value: Some(path),
+                r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+            }),
             ..Default::default()
         }]),
-        backend_refs: Some(vec![k8s::gateway::HTTPRouteRulesBackendRefs {
-            backend_ref: Some(k8s::gateway::BackendRef {
-                weight: None,
-                inner: k8s::gateway::BackendObjectReference {
-                    group: None,
-                    kind: None,
-                    name: backend,
-                    namespace: None,
-                    port: Some(80),
-                },
-            }),
+        backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+            weight: None,
+            group: None,
+            kind: None,
+            name: backend,
+            namespace: None,
+            port: Some(80),
             filters: None,
         }]),
         filters: None,
