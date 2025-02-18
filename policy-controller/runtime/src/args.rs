@@ -387,8 +387,7 @@ impl Args {
                 .instrument(info_span!("status_controller")),
         );
 
-        let client = runtime.client();
-        let runtime = runtime.spawn_server(|| Admission::new(client));
+        let runtime = runtime.spawn_server(Admission::new);
 
         // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
         // complete before exiting.

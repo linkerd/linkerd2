@@ -12,6 +12,7 @@ pub(crate) struct Server {
     pub port_ref: Port,
     pub protocol: ProxyProtocol,
     pub access_policy: Option<DefaultPolicy>,
+    pub created_at: Option<k8s::Time>,
 }
 
 impl Server {
@@ -22,6 +23,7 @@ impl Server {
             port_ref: srv.spec.port,
             protocol: proxy_protocol(srv.spec.proxy_protocol, cluster),
             access_policy: srv.spec.access_policy.and_then(|p| p.parse().ok()),
+            created_at: srv.metadata.creation_timestamp,
         }
     }
 }
