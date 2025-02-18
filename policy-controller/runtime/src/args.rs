@@ -178,8 +178,8 @@ impl Args {
 
         let claims = lease::init(
             &runtime,
-            &policy_deployment_name,
             &control_plane_namespace,
+            &policy_deployment_name,
             &hostname,
         )
         .await?;

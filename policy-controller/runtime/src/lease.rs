@@ -12,8 +12,8 @@ const FIELD_MANAGER: &str = "policy-controller";
 
 pub async fn init<T>(
     runtime: &kubert::Runtime<T>,
-    deployment_name: &str,
     namespace: &str,
+    deployment_name: &str,
     claimant: &str,
 ) -> Result<watch::Receiver<Arc<kubert::lease::Claim>>> {
     let params = kubert::LeaseParams {
