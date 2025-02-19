@@ -42,18 +42,22 @@ pub mod gateway {
         use gateway_api::apis::experimental::httproutes::HTTPRouteRulesMatchesMethod;
 
         pub const GET: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Get;
-        pub const POST: &str = "POST";
-        pub const PUT: &str = "PUT";
-        pub const DELETE: &str = "DELETE";
-        pub const PATCH: &str = "PATCH";
-        pub const HEAD: &str = "HEAD";
-        pub const OPTIONS: &str = "OPTIONS";
-        pub const CONNECT: &str = "CONNECT";
-        pub const TRACE: &str = "TRACE";
+        pub const POST: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Post;
+        pub const PUT: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Put;
+        pub const DELETE: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Delete;
+        pub const PATCH: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Patch;
+        pub const HEAD: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Head;
+        pub const OPTIONS: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Options;
+        pub const CONNECT: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Connect;
+        pub const TRACE: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Trace;
     }
 
     pub mod http_scheme {
-        pub const HTTP: &str = "http";
-        pub const HTTPS: &str = "https";
+        use gateway_api::apis::experimental::httproutes::HTTPRouteRulesFiltersRequestRedirectScheme;
+
+        pub const HTTP: HTTPRouteRulesFiltersRequestRedirectScheme =
+            HTTPRouteRulesFiltersRequestRedirectScheme::Http;
+        pub const HTTPS: HTTPRouteRulesFiltersRequestRedirectScheme =
+            HTTPRouteRulesFiltersRequestRedirectScheme::Https;
     }
 }
