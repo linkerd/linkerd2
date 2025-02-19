@@ -16,18 +16,21 @@ rustls-tls = ["kube/rustls-tls"]
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
+bytes = "1"
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
 k8s-openapi = { workspace = true }
-hyper = { workspace = true, features = ["http1", "http2", "runtime", "server"] }
+http-body-util = "0.1"
+hyper = { workspace = true, features = ["http1", "http2", "server"] }
 ipnet = { version = "2", default-features = false }
 openssl = { version = "0.10.71", optional = true }
 parking_lot = "0.12"
-prometheus-client = { workspace = true, default-features = false }
+prometheus-client = { workspace = true }
 serde = "1"
 serde_json = "1"
 thiserror = "2"
 tokio-stream = { version = "0.1", features = ["sync"] }
+tower = { workspace = true }
 tracing = "0.1"
 regex = "1"
 
@@ -56,6 +59,8 @@ features = [
     "lease",
     "prometheus-client",
     "runtime",
+    # TODO(ver): enable runtime diagnostics
+    #"runtime-diagnostics",
     "server",
     "rustls-tls",
 ]

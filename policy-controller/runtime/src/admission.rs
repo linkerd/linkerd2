@@ -8,7 +8,8 @@ use crate::k8s::policy::{
 };
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use futures::future;
-use hyper::{body::Buf, http, Body, Request, Response};
+use http_body_util::BodyExt;
+use hyper::{http, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_k8s_api::gateway;
@@ -46,9 +47,11 @@ trait Validate<T> {
     ) -> Result<()>;
 }
 
+type Body = http_body_util::Full<bytes::Bytes>;
+
 // === impl AdmissionService ===
 
-impl hyper::service::Service<Request<Body>> for Admission {
+impl tower::Service<Request<hyper::body::Incoming>> for Admission {
     type Response = Response<Body>;
     type Error = Error;
     type Future = future::BoxFuture<'static, Result<Response<Body>, Error>>;
@@ -60,7 +63,7 @@ impl hyper::service::Service<Request<Body>> for Admission {
         std::task::Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
+    fn call(&mut self, req: Request<hyper::body::Incoming>) -> Self::Future {
         trace!(?req);
         if req.method() != http::Method::POST || req.uri().path() != "/" {
             return Box::pin(future::ok(
@@ -73,7 +76,8 @@ impl hyper::service::Service<Request<Body>> for Admission {
 
         let admission = self.clone();
         Box::pin(async move {
-            let bytes = hyper::body::aggregate(req.into_body()).await?;
+            use bytes::Buf;
+            let bytes = req.into_body().collect().await?.to_bytes();
             let review: Review = match serde_json::from_reader(bytes.reader()) {
                 Ok(review) => review,
                 Err(error) => {

@@ -11,10 +11,10 @@ async-trait = "0.1"
 http = { workspace = true }
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
-hyper = { workspace = true, features = ["http2", "server", "tcp"] }
+hyper = { workspace = true, features = ["http2", "server"] }
 linkerd-policy-controller-core = { path = "../core" }
 maplit = "1"
-prost-types = "0.12.6"
+prost-types = "0.13"
 tokio = { version = "1", features = ["macros"] }
 tonic = { workspace = true }
 tracing = "0.1"

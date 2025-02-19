@@ -8,16 +8,26 @@ use tokio::{sync::watch, time};
 const LEASE_DURATION: time::Duration = time::Duration::from_secs(30);
 const LEASE_NAME: &str = "policy-controller-write";
 const RENEW_GRACE_PERIOD: time::Duration = time::Duration::from_secs(1);
+const FIELD_MANAGER: &str = "policy-controller";
 
 pub async fn init<T>(
     runtime: &kubert::Runtime<T>,
-    ns: &str,
+    namespace: &str,
     deployment_name: &str,
-    hostname: &str,
+    claimant: &str,
 ) -> Result<watch::Receiver<Arc<kubert::lease::Claim>>> {
+    let params = kubert::LeaseParams {
+        name: LEASE_NAME.to_string(),
+        namespace: namespace.to_string(),
+        claimant: claimant.to_string(),
+        lease_duration: LEASE_DURATION,
+        renew_grace_period: RENEW_GRACE_PERIOD,
+        field_manager: Some(FIELD_MANAGER.into()),
+    };
+
     // Fetch the policy-controller deployment so that we can use it as an owner
     // reference of the Lease.
-    let api = k8s::Api::<Deployment>::namespaced(runtime.client(), ns);
+    let api = k8s::Api::<Deployment>::namespaced(runtime.client(), namespace);
     let mut tries = 3;
     let deployment = loop {
         tries -= 1;
@@ -42,8 +52,8 @@ pub async fn init<T>(
 
     let patch = kube::api::Patch::Apply(coordv1::Lease {
         metadata: ObjectMeta {
-            name: Some(LEASE_NAME.to_string()),
-            namespace: Some(ns.to_string()),
+            name: Some(params.name.clone()),
+            namespace: Some(params.namespace.clone()),
             // Specifying a resource version of "0" means that we will
             // only create the Lease if it does not already exist.
             resource_version: Some("0".to_string()),
@@ -54,7 +64,10 @@ pub async fn init<T>(
                         "linkerd.io/control-plane-component".to_string(),
                         "destination".to_string(),
                     ),
-                    ("linkerd.io/control-plane-ns".to_string(), ns.to_string()),
+                    (
+                        "linkerd.io/control-plane-ns".to_string(),
+                        params.namespace.clone(),
+                    ),
                 ]
                 .into_iter()
                 .collect(),
@@ -67,7 +80,7 @@ pub async fn init<T>(
         field_manager: Some("policy-controller".to_string()),
         ..Default::default()
     };
-    let api = k8s::Api::<coordv1::Lease>::namespaced(runtime.client(), ns);
+    let api = k8s::Api::<coordv1::Lease>::namespaced(runtime.client(), namespace);
 
     // An individual request may timeout or hit a transient error, so we try up to 3 times with a brief pause.
     let mut tries = 3;
@@ -96,16 +109,6 @@ pub async fn init<T>(
         time::sleep(time::Duration::from_secs(1)).await;
     }
 
-    // Create the lease manager used for trying to claim the policy
-    // controller write lease.
-    // todo: Do we need to use LeaseManager::field_manager here?
-    let params = kubert::lease::ClaimParams {
-        lease_duration: LEASE_DURATION,
-        renew_grace_period: RENEW_GRACE_PERIOD,
-    };
-    let (claims, _task) = kubert::lease::LeaseManager::init(api, LEASE_NAME)
-        .await?
-        .spawn(hostname, params)
-        .await?;
-    Ok(claims)
+    let (claim, _task) = runtime.spawn_lease(params).await?;
+    Ok(claim)
 }
