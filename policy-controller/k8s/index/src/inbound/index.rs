@@ -1240,7 +1240,15 @@ impl Pod {
             std::hash::BuildHasherDefault::<PortHasher>::default(),
         );
 
-        for (srvname, server) in policy.servers.iter() {
+        // Sort by creation and then name, similarly to HTTPRoutes, to enforce
+        // precedence.
+        let mut servers = policy.servers.iter().collect::<Vec<_>>();
+        servers.sort_by(|(aname, asrv), (bname, bsrv)| {
+            asrv.created_at
+                .cmp(&bsrv.created_at)
+                .then_with(|| aname.cmp(bname))
+        });
+        for (srvname, server) in servers {
             if let Selector::Pod(pod_selector) = &server.selector {
                 if pod_selector.matches(&self.meta.labels) {
                     for port in self.select_ports(&server.port_ref).into_iter() {
@@ -1489,7 +1497,15 @@ impl ExternalWorkload {
             std::hash::BuildHasherDefault::<PortHasher>::default(),
         );
 
-        for (srvname, server) in policy.servers.iter() {
+        // Sort by creation and then name, similarly to HTTPRoutes, to enforce
+        // precedence.
+        let mut servers = policy.servers.iter().collect::<Vec<_>>();
+        servers.sort_by(|(aname, asrv), (bname, bsrv)| {
+            asrv.created_at
+                .cmp(&bsrv.created_at)
+                .then_with(|| aname.cmp(bname))
+        });
+        for (srvname, server) in servers {
             if let Selector::ExternalWorkload(selector) = &server.selector {
                 if selector.matches(&self.meta.labels) {
                     // Each server selects exactly one port on an

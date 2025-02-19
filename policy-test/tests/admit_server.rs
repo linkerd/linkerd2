@@ -1,6 +1,6 @@
 use linkerd_policy_controller_k8s_api::{
     self as api,
-    policy::server::{Port, ProxyProtocol, Selector, Server, ServerSpec},
+    policy::server::{Port, Selector, Server, ServerSpec},
 };
 use linkerd_policy_test::{admission, with_temp_ns};
 
@@ -51,88 +51,6 @@ async fn accepts_server_updates() {
         )
         .await
         .expect("resource must apply");
-    })
-    .await;
-}
-
-#[tokio::test(flavor = "current_thread")]
-async fn rejects_identitical_pod_selector() {
-    with_temp_ns(|client, ns| async move {
-        let spec = ServerSpec {
-            selector: Selector::Pod(api::labels::Selector::from_iter(Some(("app", "test")))),
-            port: Port::Number(80.try_into().unwrap()),
-            proxy_protocol: None,
-            access_policy: None,
-        };
-
-        let api = kube::Api::namespaced(client, &ns);
-
-        let test0 = Server {
-            metadata: api::ObjectMeta {
-                namespace: Some(ns.clone()),
-                name: Some("test0".to_string()),
-                ..Default::default()
-            },
-            spec: spec.clone(),
-        };
-        api.create(&kube::api::PostParams::default(), &test0)
-            .await
-            .expect("resource must apply");
-
-        let test1 = Server {
-            metadata: api::ObjectMeta {
-                namespace: Some(ns),
-                name: Some("test1".to_string()),
-                ..Default::default()
-            },
-            spec,
-        };
-        api.create(&kube::api::PostParams::default(), &test1)
-            .await
-            .expect_err("resource must not apply");
-    })
-    .await;
-}
-
-#[tokio::test(flavor = "current_thread")]
-async fn rejects_all_pods_selected() {
-    with_temp_ns(|client, ns| async move {
-        let api = kube::Api::namespaced(client, &ns);
-
-        let test0 = Server {
-            metadata: api::ObjectMeta {
-                namespace: Some(ns.clone()),
-                name: Some("test0".to_string()),
-                ..Default::default()
-            },
-            spec: ServerSpec {
-                selector: Selector::Pod(api::labels::Selector::from_iter(Some(("app", "test")))),
-                port: Port::Number(80.try_into().unwrap()),
-                proxy_protocol: Some(ProxyProtocol::Http2),
-                access_policy: None,
-            },
-        };
-        api.create(&kube::api::PostParams::default(), &test0)
-            .await
-            .expect("resource must apply");
-
-        let test1 = Server {
-            metadata: api::ObjectMeta {
-                namespace: Some(ns),
-                name: Some("test1".to_string()),
-                ..Default::default()
-            },
-            spec: ServerSpec {
-                selector: Selector::Pod(api::labels::Selector::default()),
-                port: Port::Number(80.try_into().unwrap()),
-                // proxy protocol doesn't factor into the selection
-                proxy_protocol: Some(ProxyProtocol::Http1),
-                access_policy: None,
-            },
-        };
-        api.create(&kube::api::PostParams::default(), &test1)
-            .await
-            .expect_err("resource must not apply");
     })
     .await;
 }

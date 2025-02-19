@@ -1,10 +1,10 @@
 use super::validation;
 use crate::k8s::policy::{
-    httproute, server::Selector, AuthorizationPolicy, AuthorizationPolicySpec, EgressNetwork,
-    EgressNetworkSpec, HttpLocalRateLimitPolicy, HttpRoute, HttpRouteSpec, LocalTargetRef,
-    MeshTLSAuthentication, MeshTLSAuthenticationSpec, NamespacedTargetRef, Network,
-    NetworkAuthentication, NetworkAuthenticationSpec, RateLimitPolicySpec, Server,
-    ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
+    httproute, AuthorizationPolicy, AuthorizationPolicySpec, EgressNetwork, EgressNetworkSpec,
+    HttpLocalRateLimitPolicy, HttpRoute, HttpRouteSpec, LocalTargetRef, MeshTLSAuthentication,
+    MeshTLSAuthenticationSpec, NamespacedTargetRef, Network, NetworkAuthentication,
+    NetworkAuthenticationSpec, RateLimitPolicySpec, Server, ServerAuthorization,
+    ServerAuthorizationSpec, ServerSpec,
 };
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use futures::future;
@@ -19,9 +19,7 @@ use thiserror::Error;
 use tracing::{debug, info, trace, warn};
 
 #[derive(Clone)]
-pub struct Admission {
-    client: kube::Client,
-}
+pub struct Admission {}
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -102,8 +100,8 @@ impl hyper::service::Service<Request<Body>> for Admission {
 }
 
 impl Admission {
-    pub fn new(client: kube::Client) -> Self {
-        Self { client }
+    pub fn new() -> Self {
+        Self {}
     }
 
     async fn admit(self, req: AdmissionRequest) -> AdmissionResponse {
@@ -355,40 +353,14 @@ impl Validate<MeshTLSAuthenticationSpec> for Admission {
 
 #[async_trait::async_trait]
 impl Validate<ServerSpec> for Admission {
-    /// Checks that `spec` doesn't select the same pod/ports as other existing Servers, and that
-    /// `accessPolicy` contains a valid value
-    //
-    // TODO(ver) this isn't rigorous about detecting servers that select the same port if one port
-    // specifies a numeric port and the other specifies the port's name.
+    /// Checks that `spec` has an `accessPolicy` with a valid value.
     async fn validate(
         self,
-        ns: &str,
-        name: &str,
+        _ns: &str,
+        _name: &str,
         _annotations: &BTreeMap<String, String>,
         spec: ServerSpec,
     ) -> Result<()> {
-        // Since we can't ensure that the local index is up-to-date with the API server (i.e.
-        // updates may be delayed), we issue an API request to get the latest state of servers in
-        // the namespace.
-        let servers = kube::Api::<Server>::namespaced(self.client, ns)
-            .list(&kube::api::ListParams::default())
-            .await?;
-        for server in servers.items.into_iter() {
-            let server_name = server.name_unchecked();
-            if server_name != name
-                && server.spec.port == spec.port
-                && Self::overlaps(&server.spec.selector, &spec.selector)
-            {
-                let server_ns = server.namespace();
-                let server_ns = server_ns.as_deref().unwrap_or("default");
-                bail!(
-                    "Server spec '{server_ns}/{server_name}' already defines a policy \
-                    for port {}, and selects pods that would be selected by this Server",
-                    server.spec.port,
-                );
-            }
-        }
-
         if let Some(policy) = spec.access_policy {
             policy
                 .parse::<index::DefaultPolicy>()
@@ -396,32 +368,6 @@ impl Validate<ServerSpec> for Admission {
         }
 
         Ok(())
-    }
-}
-
-impl Admission {
-    /// Detects whether two pod selectors can select the same pod
-    //
-    // TODO(ver) We can probably detect overlapping selectors more effectively. For
-    // example, if `left` selects pods with 'foo=bar' and `right` selects pods with
-    // 'foo', we should indicate the selectors overlap. It's a bit tricky to work
-    // through all of the cases though, so we'll just punt for now.
-    fn overlaps(left: &Selector, right: &Selector) -> bool {
-        match (left, right) {
-            (Selector::Pod(ps_left), Selector::Pod(ps_right)) => {
-                if ps_left.selects_all() || ps_right.selects_all() {
-                    return true;
-                }
-            }
-            (Selector::ExternalWorkload(et_left), Selector::ExternalWorkload(et_right)) => {
-                if et_left.selects_all() || et_right.selects_all() {
-                    return true;
-                }
-            }
-            (_, _) => return false,
-        }
-
-        left == right
     }
 }
 

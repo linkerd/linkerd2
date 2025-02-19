@@ -250,6 +250,54 @@ async fn server_with_authorization_policy() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn servers_ordered_by_creation() {
+    with_temp_ns(|client, ns| async move {
+        // Create two servers in order.
+        let server0 = create(&client, mk_admin_server(&ns, "linkerd-admin-0", None)).await;
+        let server1 = create(&client, mk_admin_server(&ns, "linkerd-admin-1", None)).await;
+
+        // Then create a pod that we can discover policy for...
+        let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
+        let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
+
+        // The first update should reflect the first server.
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        assert_eq!(
+            config.labels,
+            convert_args!(hashmap!(
+                "group" => "policy.linkerd.io",
+                "kind" => "server",
+                "name" => server0.metadata.name.as_deref().expect("server0 name"),
+            )),
+        );
+
+        // Delete the first server and ensure that the update reverts to the
+        // second.
+        kube::Api::<k8s::policy::Server>::namespaced(client.clone(), &ns)
+            .delete(
+                server0.metadata.name.as_deref().expect("name"),
+                &kube::api::DeleteParams::default(),
+            )
+            .await
+            .expect("Server must be deleted");
+        let config = next_config(&mut rx).await;
+        assert_eq!(
+            config.labels,
+            convert_args!(hashmap!(
+                "group" => "policy.linkerd.io",
+                "kind" => "server",
+                "name" => server1.metadata.name.as_deref().expect("server1 name"),
+            )),
+        );
+    })
+    .await
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn server_with_audit_policy() {
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
