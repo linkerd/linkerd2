@@ -13,9 +13,9 @@ use linkerd2_proxy_api::{
 };
 use linkerd_policy_controller_core::{
     outbound::{
-        DiscoverOutboundPolicy, ExternalPolicyStream, Kind, OutboundDiscoverTarget, OutboundPolicy,
-        OutboundPolicyStream, ParentInfo, ResourceTarget, Route, WeightedEgressNetwork,
-        WeightedService,
+        AppProtocol, DiscoverOutboundPolicy, ExternalPolicyStream, Kind, OutboundDiscoverTarget,
+        OutboundPolicy, OutboundPolicyStream, ParentInfo, ResourceTarget, Route,
+        WeightedEgressNetwork, WeightedService,
     },
     routes::GroupKindNamespaceName,
 };
@@ -372,86 +372,93 @@ fn to_proto(
 ) -> outbound::OutboundPolicy {
     let backend: outbound::Backend = default_backend(&policy, original_dst);
 
-    let kind = if policy.opaque {
-        outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
-            routes: vec![default_outbound_opaq_route(backend, &policy.parent_info)],
-        })
-    } else {
-        let accrual = policy.accrual.map(|accrual| outbound::FailureAccrual {
-            kind: Some(match accrual {
-                linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
-                    max_failures,
-                    backoff,
-                } => outbound::failure_accrual::Kind::ConsecutiveFailures(
-                    outbound::failure_accrual::ConsecutiveFailures {
+    let kind = match &policy.app_protocol {
+        Some(AppProtocol::Opaque) => {
+            outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
+                routes: vec![default_outbound_opaq_route(backend, &policy.parent_info)],
+            })
+        }
+        None | Some(AppProtocol::Unknown(_)) => {
+            if let Some(AppProtocol::Unknown(protocol)) = &policy.app_protocol {
+                tracing::debug!(resource = ?policy.parent_info, port = policy.port.get(), "Unknown appProtocol \"{protocol}\"");
+            }
+
+            let accrual = policy.accrual.map(|accrual| outbound::FailureAccrual {
+                kind: Some(match accrual {
+                    linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
                         max_failures,
-                        backoff: Some(outbound::ExponentialBackoff {
-                            min_backoff: convert_duration("min_backoff", backoff.min_penalty),
-                            max_backoff: convert_duration("max_backoff", backoff.max_penalty),
-                            jitter_ratio: backoff.jitter,
-                        }),
-                    },
-                ),
-            }),
-        });
+                        backoff,
+                    } => outbound::failure_accrual::Kind::ConsecutiveFailures(
+                        outbound::failure_accrual::ConsecutiveFailures {
+                            max_failures,
+                            backoff: Some(outbound::ExponentialBackoff {
+                                min_backoff: convert_duration("min_backoff", backoff.min_penalty),
+                                max_backoff: convert_duration("max_backoff", backoff.max_penalty),
+                                jitter_ratio: backoff.jitter,
+                            }),
+                        },
+                    ),
+                }),
+            });
 
-        let mut grpc_routes = policy.grpc_routes.clone().into_iter().collect::<Vec<_>>();
-        let mut http_routes = policy.http_routes.clone().into_iter().collect::<Vec<_>>();
-        let mut tls_routes = policy.tls_routes.clone().into_iter().collect::<Vec<_>>();
-        let mut tcp_routes = policy.tcp_routes.clone().into_iter().collect::<Vec<_>>();
+            let mut grpc_routes = policy.grpc_routes.clone().into_iter().collect::<Vec<_>>();
+            let mut http_routes = policy.http_routes.clone().into_iter().collect::<Vec<_>>();
+            let mut tls_routes = policy.tls_routes.clone().into_iter().collect::<Vec<_>>();
+            let mut tcp_routes = policy.tcp_routes.clone().into_iter().collect::<Vec<_>>();
 
-        if !grpc_routes.is_empty() {
-            grpc_routes.sort_by(timestamp_then_name);
-            grpc::protocol(
-                backend,
-                grpc_routes.into_iter(),
-                accrual,
-                policy.grpc_retry.clone(),
-                policy.timeouts.clone(),
-                allow_l5d_request_headers,
-                &policy.parent_info,
-                original_dst,
-            )
-        } else if !http_routes.is_empty() {
-            http_routes.sort_by(timestamp_then_name);
-            http::protocol(
-                backend,
-                http_routes.into_iter(),
-                accrual,
-                policy.http_retry.clone(),
-                policy.timeouts.clone(),
-                allow_l5d_request_headers,
-                &policy.parent_info,
-                original_dst,
-            )
-        } else if !tls_routes.is_empty() {
-            tls_routes.sort_by(timestamp_then_name);
-            tls::protocol(
-                backend,
-                tls_routes.into_iter(),
-                &policy.parent_info,
-                original_dst,
-            )
-        } else if !tcp_routes.is_empty() {
-            tcp_routes.sort_by(timestamp_then_name);
-            tcp::protocol(
-                backend,
-                tcp_routes.into_iter(),
-                &policy.parent_info,
-                original_dst,
-            )
-        } else {
-            http_routes.sort_by(timestamp_then_name);
-            http::protocol(
-                backend,
-                http_routes.into_iter(),
-                accrual,
-                policy.http_retry.clone(),
-                policy.timeouts.clone(),
-                allow_l5d_request_headers,
-                &policy.parent_info,
-                original_dst,
-            )
+            if !grpc_routes.is_empty() {
+                grpc_routes.sort_by(timestamp_then_name);
+                grpc::protocol(
+                    backend,
+                    grpc_routes.into_iter(),
+                    accrual,
+                    policy.grpc_retry.clone(),
+                    policy.timeouts.clone(),
+                    allow_l5d_request_headers,
+                    &policy.parent_info,
+                    original_dst,
+                )
+            } else if !http_routes.is_empty() {
+                http_routes.sort_by(timestamp_then_name);
+                http::protocol(
+                    backend,
+                    http_routes.into_iter(),
+                    accrual,
+                    policy.http_retry.clone(),
+                    policy.timeouts.clone(),
+                    allow_l5d_request_headers,
+                    &policy.parent_info,
+                    original_dst,
+                )
+            } else if !tls_routes.is_empty() {
+                tls_routes.sort_by(timestamp_then_name);
+                tls::protocol(
+                    backend,
+                    tls_routes.into_iter(),
+                    &policy.parent_info,
+                    original_dst,
+                )
+            } else if !tcp_routes.is_empty() {
+                tcp_routes.sort_by(timestamp_then_name);
+                tcp::protocol(
+                    backend,
+                    tcp_routes.into_iter(),
+                    &policy.parent_info,
+                    original_dst,
+                )
+            } else {
+                http_routes.sort_by(timestamp_then_name);
+                http::protocol(
+                    backend,
+                    http_routes.into_iter(),
+                    accrual,
+                    policy.http_retry.clone(),
+                    policy.timeouts.clone(),
+                    allow_l5d_request_headers,
+                    &policy.parent_info,
+                    original_dst,
+                )
+            }
         }
     };
 
