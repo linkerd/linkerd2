@@ -8,6 +8,7 @@ import (
 
 // TestResourcesPostInstall tests resources post control plane installation
 func TestResourcesPostInstall(namespace string, services []Service, deploys map[string]DeploySpec, h *TestHelper, t *testing.T) {
+	t.Helper()
 	ctx := context.Background()
 	// Tests Namespace
 	err := h.CheckIfNamespaceExists(ctx, namespace)
