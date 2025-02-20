@@ -1483,7 +1483,7 @@ dependencies = [
 [[package]]
 name = "linkerd2-proxy-api"
 version = "0.15.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=main#66abbf3838063c1812229d17c6949ad0a2e188de"
+source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=main#b25931e95f28049b12b56910bac811e971540447"
 dependencies = [
  "http",
  "ipnet",
