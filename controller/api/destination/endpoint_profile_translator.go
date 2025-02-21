@@ -12,7 +12,8 @@ import (
 )
 
 type endpointProfileTranslator struct {
-	enableH2Upgrade     bool
+	forceOpaqueTransport,
+	enableH2Upgrade bool
 	controllerNS        string
 	identityTrustDomain string
 	defaultOpaquePorts  map[uint32]struct{}
@@ -44,6 +45,7 @@ var endpointProfileUpdatesQueueOverflowCounter = promauto.NewCounter(
 // newEndpointProfileTranslator translates pod updates and profile updates to
 // DestinationProfiles for endpoints
 func newEndpointProfileTranslator(
+	forceOpaqueTransport bool,
 	enableH2Upgrade bool,
 	controllerNS,
 	identityTrustDomain string,
@@ -54,10 +56,11 @@ func newEndpointProfileTranslator(
 	log *logging.Entry,
 ) *endpointProfileTranslator {
 	return &endpointProfileTranslator{
-		enableH2Upgrade:     enableH2Upgrade,
-		controllerNS:        controllerNS,
-		identityTrustDomain: identityTrustDomain,
-		defaultOpaquePorts:  defaultOpaquePorts,
+		forceOpaqueTransport: forceOpaqueTransport,
+		enableH2Upgrade:      enableH2Upgrade,
+		controllerNS:         controllerNS,
+		identityTrustDomain:  identityTrustDomain,
+		defaultOpaquePorts:   defaultOpaquePorts,
 
 		meshedHttp2ClientParams: meshedHTTP2ClientParams,
 
@@ -158,10 +161,10 @@ func (ept *endpointProfileTranslator) createEndpoint(address watcher.Address, op
 	var weightedAddr *pb.WeightedAddr
 	var err error
 	if address.ExternalWorkload != nil {
-		weightedAddr, err = createWeightedAddrForExternalWorkload(address, opaquePorts, ept.meshedHttp2ClientParams)
+		weightedAddr, err = createWeightedAddrForExternalWorkload(address, ept.forceOpaqueTransport, opaquePorts, ept.meshedHttp2ClientParams)
 	} else {
 		weightedAddr, err = createWeightedAddr(address, opaquePorts,
-			ept.enableH2Upgrade, ept.identityTrustDomain, ept.controllerNS, ept.meshedHttp2ClientParams)
+			ept.forceOpaqueTransport, ept.enableH2Upgrade, ept.identityTrustDomain, ept.controllerNS, ept.meshedHttp2ClientParams)
 	}
 	if err != nil {
 		return nil, err

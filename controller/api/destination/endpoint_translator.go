@@ -38,6 +38,7 @@ type (
 		nodeName            string
 		defaultOpaquePorts  map[uint32]struct{}
 
+		forceOpaqueTransport,
 		enableH2Upgrade,
 		enableEndpointFiltering,
 		enableIPv6,
@@ -83,6 +84,7 @@ var updatesQueueOverflowCounter = promauto.NewCounterVec(
 func newEndpointTranslator(
 	controllerNS string,
 	identityTrustDomain string,
+	forceOpaqueTransport,
 	enableH2Upgrade,
 	enableEndpointFiltering,
 	enableIPv6,
@@ -115,6 +117,7 @@ func newEndpointTranslator(
 		nodeTopologyZone,
 		srcNodeName,
 		defaultOpaquePorts,
+		forceOpaqueTransport,
 		enableH2Upgrade,
 		enableEndpointFiltering,
 		enableIPv6,
@@ -409,14 +412,14 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 		if address.Pod != nil {
 			opaquePorts = watcher.GetAnnotatedOpaquePorts(address.Pod, et.defaultOpaquePorts)
 			wa, err = createWeightedAddr(address, opaquePorts,
-				et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.meshedHTTP2ClientParams)
+				et.forceOpaqueTransport, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.meshedHTTP2ClientParams)
 			if err != nil {
 				et.log.Errorf("Failed to translate Pod endpoints to weighted addr: %s", err)
 				continue
 			}
 		} else if address.ExternalWorkload != nil {
 			opaquePorts = watcher.GetAnnotatedOpaquePortsForExternalWorkload(address.ExternalWorkload, et.defaultOpaquePorts)
-			wa, err = createWeightedAddrForExternalWorkload(address, opaquePorts, et.meshedHTTP2ClientParams)
+			wa, err = createWeightedAddrForExternalWorkload(address, et.forceOpaqueTransport, opaquePorts, et.meshedHTTP2ClientParams)
 			if err != nil {
 				et.log.Errorf("Failed to translate ExternalWorkload endpoints to weighted addr: %s", err)
 				continue
@@ -531,6 +534,7 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 
 func createWeightedAddrForExternalWorkload(
 	address watcher.Address,
+	forceOpaqueTransport bool,
 	opaquePorts map[uint32]struct{},
 	http2 *pb.Http2ClientParams,
 ) (*pb.WeightedAddr, error) {
@@ -556,20 +560,22 @@ func createWeightedAddrForExternalWorkload(
 	weightedAddr.Http2 = http2
 
 	_, opaquePort := opaquePorts[address.Port]
+	opaquePort = opaquePort || address.OpaqueProtocol
+
+	if forceOpaqueTransport || opaquePort {
+		port, err := getInboundPortFromExternalWorkload(&address.ExternalWorkload.Spec)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read inbound port from external workload: %w", err)
+		}
+		weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{InboundPort: port}
+	}
+
 	// If address is set as opaque by a Server, or its port is set as
 	// opaque by annotation or default value, then set the hinted protocol to
 	// Opaque.
-	if address.OpaqueProtocol || opaquePort {
+	if opaquePort {
 		weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
 			Opaque: &pb.ProtocolHint_Opaque{},
-		}
-
-		port, err := getInboundPortFromExternalWorkload(&address.ExternalWorkload.Spec)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read inbound port: %w", err)
-		}
-		weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-			InboundPort: port,
 		}
 	} else {
 		weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
@@ -603,6 +609,7 @@ func createWeightedAddrForExternalWorkload(
 func createWeightedAddr(
 	address watcher.Address,
 	opaquePorts map[uint32]struct{},
+	forceOpaqueTransport bool,
 	enableH2Upgrade bool,
 	identityTrustDomain string,
 	controllerNS string,
@@ -645,20 +652,22 @@ func createWeightedAddr(
 		weightedAddr.ProtocolHint = &pb.ProtocolHint{}
 
 		_, opaquePort := opaquePorts[address.Port]
-		// If address is set as opaque by a Server, or its port is set as
-		// opaque by annotation or default value, then set the hinted protocol to
-		// Opaque.
-		if address.OpaqueProtocol || opaquePort {
-			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
-				Opaque: &pb.ProtocolHint_Opaque{},
-			}
+		opaquePort = opaquePort || address.OpaqueProtocol
 
+		if forceOpaqueTransport || opaquePort {
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read inbound port: %w", err)
 			}
-			weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-				InboundPort: port,
+			weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{InboundPort: port}
+		}
+
+		// If address is set as opaque by a Server, or its port is set as
+		// opaque by annotation or default value, then set the hinted protocol to
+		// Opaque.
+		if opaquePort {
+			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
+				Opaque: &pb.ProtocolHint_Opaque{},
 			}
 		} else if enableH2Upgrade {
 			// If the pod is controlled by any Linkerd control plane, then it can be
