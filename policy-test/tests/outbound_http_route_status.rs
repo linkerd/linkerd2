@@ -228,7 +228,7 @@
 //             |obj: Option<&k8s::policy::HttpRoute>| -> bool {
 //                 obj.and_then(|route| route.status.as_ref())
 //                     .map(|status| {
-//                         let statuses = &status.inner.parents;
+//                         let statuses = &status.parents;
 
 //                         let other_status_found = statuses
 //                             .iter()

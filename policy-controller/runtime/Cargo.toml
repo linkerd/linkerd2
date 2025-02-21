@@ -57,6 +57,7 @@ features = [
     "clap",
     "index",
     "lease",
+    "runtime-diagnostics",
     "prometheus-client",
     "runtime",
     # TODO(ver): enable runtime diagnostics

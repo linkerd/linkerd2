@@ -752,13 +752,14 @@ fn mk_admin_route(ns: &str, name: &str) -> k8s::policy::HttpRoute {
             }]),
             hostnames: None,
             rules: Some(vec![api::HttpRouteRule {
-                matches: Some(vec![gateway::HttpRouteMatch {
-                    path: Some(gateway::HttpPathMatch::Exact {
-                        value: "/metrics".to_string(),
+                matches: Some(vec![gateway::HTTPRouteRulesMatches {
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/metrics".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
                     }),
                     headers: None,
                     query_params: None,
-                    method: Some("GET".to_string()),
+                    method: Some(gateway::HTTPRouteRulesMatchesMethod::Get),
                 }]),
                 filters: None,
                 backend_refs: None,
@@ -791,13 +792,14 @@ fn mk_admin_route_with_path(ns: &str, name: &str, path: &str) -> k8s::policy::Ht
             }]),
             hostnames: None,
             rules: Some(vec![api::HttpRouteRule {
-                matches: Some(vec![gateway::HttpRouteMatch {
-                    path: Some(gateway::HttpPathMatch::Exact {
-                        value: path.to_string(),
+                matches: Some(vec![gateway::HTTPRouteRulesMatches {
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some(path.to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
                     }),
                     headers: None,
                     query_params: None,
-                    method: Some("GET".to_string()),
+                    method: Some(gateway::HTTPRouteRulesMatchesMethod::Get),
                 }]),
                 filters: None,
                 backend_refs: None,

@@ -63,11 +63,12 @@ async fn rejects_relative_path_match() {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
             rules: Some(vec![policy::httproute::HttpRouteRule {
-                matches: Some(vec![gateway::HttpRouteMatch {
-                    path: Some(gateway::HttpPathMatch::Exact {
-                        value: "foo/bar".to_string(),
+                matches: Some(vec![gateway::HTTPRouteRulesMatches {
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("foo/bar".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
                     }),
-                    ..gateway::HttpRouteMatch::default()
+                    ..Default::default()
                 }]),
                 filters: None,
                 backend_refs: None,
@@ -87,18 +88,21 @@ async fn rejects_relative_redirect_path() {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
             rules: Some(vec![policy::httproute::HttpRouteRule {
-                matches: Some(vec![gateway::HttpRouteMatch {
-                    path: Some(gateway::HttpPathMatch::Exact {
-                        value: "/foo".to_string(),
+                matches: Some(vec![gateway::HTTPRouteRulesMatches {
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
                     }),
-                    ..gateway::HttpRouteMatch::default()
+                    ..Default::default()
                 }]),
                 filters: Some(vec![policy::httproute::HttpRouteFilter::RequestRedirect {
-                    request_redirect: gateway::HttpRequestRedirectFilter {
+                    request_redirect: gateway::HTTPRouteRulesFiltersRequestRedirect {
                         scheme: None,
                         hostname: None,
-                        path: Some(gateway::HttpPathModifier::ReplaceFullPath {
-                            replace_full_path: "foo/bar".to_string(),
+                        path: Some(gateway::HTTPRouteRulesFiltersRequestRedirectPath {
+                            replace_full_path: Some("foo/bar".to_string()),
+                            r#type: gateway::HTTPRouteRulesFiltersRequestRedirectPathType::ReplaceFullPath,
+                            ..Default::default()
                         }),
                         port: None,
                         status_code: None,
@@ -134,11 +138,12 @@ fn meta(ns: impl ToString) -> k8s::ObjectMeta {
 
 fn rules() -> Vec<policy::httproute::HttpRouteRule> {
     vec![policy::httproute::HttpRouteRule {
-        matches: Some(vec![gateway::HttpRouteMatch {
-            path: Some(gateway::HttpPathMatch::Exact {
-                value: "/foo".to_string(),
+        matches: Some(vec![gateway::HTTPRouteRulesMatches {
+            path: Some(gateway::HTTPRouteRulesMatchesPath {
+                value: Some("/foo".to_string()),
+                r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
             }),
-            ..gateway::HttpRouteMatch::default()
+            ..Default::default()
         }]),
         filters: None,
         backend_refs: None,
