@@ -1072,9 +1072,10 @@ metadata:
 	translator := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
-		true,
-		true,
+		false, // forceOpaqueTransport
+		true,  // enableH2Upgrade
 		true,  // enableEndpointFiltering
+		true,  // enableIPv6
 		false, // extEndpointZoneWeights
 		nil,   // meshedHttp2ClientParams
 		"service-name.service-ns",
