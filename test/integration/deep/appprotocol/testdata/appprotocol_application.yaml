@@ -1,0 +1,41 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opaque
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opaque
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: opaque
+    spec:
+      containers:
+      - name: app
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--response-text=opaque"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-opaque
+  labels:
+    app: svc-opaque
+spec:
+  selector:
+    app: opaque
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    appProtocol: linkerd.io/opaque
