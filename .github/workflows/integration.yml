@@ -163,7 +163,7 @@ jobs:
     strategy:
       matrix:
         k8s:
-          - v1.22
+          - v1.23
           - v1.32
     steps:
       - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
@@ -315,7 +315,7 @@ jobs:
     strategy:
       matrix:
         k8s:
-          - v1.22
+          - v1.23
           - v1.32
     steps:
       - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
