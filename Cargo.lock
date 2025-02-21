@@ -2075,7 +2075,7 @@ dependencies = [
  "rustls-pemfile",
  "rustls-pki-types",
  "schannel",
- "security-framework 2.11.0",
+ "security-framework 2.11.1",
 ]
 
 [[package]]
@@ -2178,9 +2178,9 @@ dependencies = [
 
 [[package]]
 name = "security-framework"
-version = "2.11.0"
+version = "2.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c627723fd09706bacdb5cf41499e95098555af3c3c29d014dc3c458ef6be11c0"
+checksum = "897b2245f0b511c87893af39b033e5ca9cce68824c4d7e7630b5a1d339658d02"
 dependencies = [
  "bitflags",
  "core-foundation 0.9.4",
