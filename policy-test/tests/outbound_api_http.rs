@@ -19,12 +19,6 @@ async fn gateway_http_route_with_filters_service() {
             // Create a parent
             let port = 4191;
             let parent = create(&client, P::make_parent(&ns)).await;
-            // Create a backend
-            let backend_port = 8888;
-            let backend = match P::make_backend(&ns) {
-                Some(b) => create(&client, b).await,
-                None => parent.clone(),
-            };
 
             let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
             let config = rx
@@ -42,11 +36,8 @@ async fn gateway_http_route_with_filters_service() {
                 assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
             });
 
-            let mut route = gateway::HttpRoute::make_route(
-                ns,
-                vec![parent.obj_ref()],
-                vec![vec![backend.backend_ref(backend_port)]],
-            );
+            let mut route =
+                gateway::HttpRoute::make_route(ns, vec![parent.obj_ref()], vec![vec![]]);
             for rule in route.spec.rules.iter_mut().flatten() {
                 rule.filters = Some(vec![
                     gateway::HttpRouteFilter::RequestHeaderModifier {
@@ -328,6 +319,12 @@ async fn gateway_http_route_with_backend_filters() {
                 vec![vec![backend.backend_ref(backend_port)]],
             );
             for rule in route.spec.rules.iter_mut().flatten() {
+                rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
+                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
+                        value: "/foo".to_string(),
+                    }),
+                    ..Default::default()
+                }]);
                 for backend in rule.backend_refs.iter_mut().flatten() {
                     backend.filters = Some(vec![
                         gateway::HttpRouteFilter::RequestHeaderModifier {

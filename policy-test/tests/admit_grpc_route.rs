@@ -48,7 +48,7 @@ fn rules() -> Vec<GrpcRouteRule> {
     vec![GrpcRouteRule {
         matches: Some(vec![GrpcRouteMatch {
             method: Some(GrpcMethodMatch::Exact {
-                method: Some("/foo".to_string()),
+                method: Some("foo".to_string()),
                 service: Some("boo".to_string()),
             }),
             ..GrpcRouteMatch::default()
