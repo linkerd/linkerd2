@@ -11,8 +11,6 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = [
     # instant is unmaintained, but pulled in via kube
     "RUSTSEC-2024-0384",
-    # ring is unmaintained, but pulled in via rustls
-    "RUSTSEC-2025-0007",
 ]
 
 [licenses]
@@ -69,4 +67,6 @@ allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = []
 
 [sources.allow-org]
-github = ["linkerd"]
+github = [
+    "linkerd",
+]
