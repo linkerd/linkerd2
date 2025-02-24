@@ -39,6 +39,12 @@ async fn gateway_http_route_with_filters_service() {
             let mut route =
                 gateway::HttpRoute::make_route(ns, vec![parent.obj_ref()], vec![vec![]]);
             for rule in route.spec.rules.iter_mut().flatten() {
+                rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
+                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
+                        value: "/foo".to_string(),
+                    }),
+                    ..Default::default()
+                }]);
                 rule.filters = Some(vec![
                     gateway::HttpRouteFilter::RequestHeaderModifier {
                         request_header_modifier: k8s_gateway_api::HttpRequestHeaderFilter {
@@ -179,6 +185,12 @@ async fn policy_http_route_with_filters_service() {
                 vec![vec![backend.backend_ref(backend_port)]],
             );
             for rule in route.spec.rules.iter_mut().flatten() {
+                rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
+                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
+                        value: "/foo".to_string(),
+                    }),
+                    ..Default::default()
+                }]);
                 rule.filters = Some(vec![
                     policy::httproute::HttpRouteFilter::RequestHeaderModifier {
                         request_header_modifier: k8s_gateway_api::HttpRequestHeaderFilter {
@@ -468,6 +480,12 @@ async fn policy_http_route_with_backend_filters() {
                 vec![vec![backend.backend_ref(backend_port)]],
             );
             for rule in route.spec.rules.iter_mut().flatten() {
+                rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
+                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
+                        value: "/foo".to_string(),
+                    }),
+                    ..Default::default()
+                }]);
                 for backend in rule.backend_refs.iter_mut().flatten() {
                     backend.filters = Some(vec![
                         gateway::HttpRouteFilter::RequestHeaderModifier {
