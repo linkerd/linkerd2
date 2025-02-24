@@ -1072,7 +1072,7 @@ metadata:
 	translator := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
-		false, // forceOpaqueTransport
+		true,  // forceOpaqueTransport
 		true,  // enableH2Upgrade
 		true,  // enableEndpointFiltering
 		true,  // enableIPv6

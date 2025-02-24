@@ -30,6 +30,7 @@ type (
 		ControllerReplicas           uint                   `json:"controllerReplicas"`
 		ControllerUID                int64                  `json:"controllerUID"`
 		ControllerGID                int64                  `json:"controllerGID"`
+		ForceOpaqueTransport         bool                   `json:"forceOpaqueTransport"`
 		EnableH2Upgrade              bool                   `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity        bool                   `json:"enablePodAntiAffinity"`
 		NodeAffinity                 map[string]interface{} `json:"nodeAffinity"`
