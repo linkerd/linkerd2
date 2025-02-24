@@ -20,7 +20,10 @@ use linkerd_policy_controller_k8s_api::{
     ResourceExt, Service,
 };
 use parking_lot::RwLock;
-use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
+use std::{
+    collections::hash_map::Entry, hash::Hash, net::IpAddr, num::NonZeroU16, str::FromStr,
+    sync::Arc, time,
+};
 use tokio::sync::watch;
 
 #[allow(dead_code)]
@@ -209,13 +212,45 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         let accrual = parse_accrual_config(service.annotations())
             .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse accrual config"))
             .unwrap_or_default();
+
+        let mut app_protocols = service
+            .spec
+            .as_ref()
+            .and_then(|spec| {
+                spec.ports.as_ref().map(|ports| {
+                    ports
+                        .iter()
+                        .filter_map(|port| {
+                            port.app_protocol.as_ref().and_then(|p| {
+                                Some((
+                                    NonZeroU16::new(port.port as u16)?,
+                                    AppProtocol::from_str(p.as_str()).expect("Infalliable"),
+                                ))
+                            })
+                        })
+                        .collect::<PortMap<AppProtocol>>()
+                })
+            })
+            .unwrap_or_default();
         let opaque_ports =
             ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
                 .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
-        let app_protocols = opaque_ports
-            .into_iter()
-            .map(|port| (port, AppProtocol::Opaque))
-            .collect();
+        for opaque_port in opaque_ports {
+            match app_protocols.entry(opaque_port) {
+                Entry::Occupied(occupied) => {
+                    tracing::debug!(
+                        appProtocol = ?occupied.get(),
+                        port = opaque_port.get(),
+                        ns,
+                        name,
+                        "`appProtocol` set on service port, ignoring opaque port setting"
+                    );
+                }
+                Entry::Vacant(vacant) => {
+                    vacant.insert(AppProtocol::Opaque);
+                }
+            }
+        }
 
         let timeouts = parse_timeouts(service.annotations())
             .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse timeouts"))
