@@ -40,8 +40,9 @@ async fn gateway_http_route_with_filters_service() {
                 gateway::HTTPRoute::make_route(ns, vec![parent.obj_ref()], vec![vec![]]);
             for rule in route.spec.rules.iter_mut().flatten() {
                 rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
-                        value: "/foo".to_string(),
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]);
@@ -196,8 +197,9 @@ async fn policy_http_route_with_filters_service() {
             );
             for rule in route.spec.rules.iter_mut().flatten() {
                 rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
-                        value: "/foo".to_string(),
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]);
@@ -349,8 +351,9 @@ async fn gateway_http_route_with_backend_filters() {
             );
             for rule in route.spec.rules.iter_mut().flatten() {
                 rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
-                        value: "/foo".to_string(),
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]);
@@ -508,8 +511,9 @@ async fn policy_http_route_with_backend_filters() {
             );
             for rule in route.spec.rules.iter_mut().flatten() {
                 rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
-                        value: "/foo".to_string(),
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]);
