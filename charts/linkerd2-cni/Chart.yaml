@@ -6,7 +6,7 @@ description: |
   Linkerd [CNI plugin](https://linkerd.io/2/features/cni/) takes care of setting
   up your pod's network so  incoming and outgoing traffic is proxied through the
   data plane.
-kubeVersion: ">=1.22.0-0"
+kubeVersion: ">=1.23.0-0"
 icon: https://linkerd.io/images/logo-only-200h.png
 name: "linkerd2-cni"
 # this version will be updated by the CI before publishing the Helm tarball

@@ -56,7 +56,7 @@ fn rules() -> Vec<gateway::GRPCRouteRules> {
         name: None,
         matches: Some(vec![gateway::GRPCRouteRulesMatches {
             method: Some(gateway::GRPCRouteRulesMatchesMethod {
-                method: Some("/foo".to_string()),
+                method: Some("foo".to_string()),
                 service: Some("boo".to_string()),
                 r#type: Some(gateway::GRPCRouteRulesMatchesMethodType::Exact),
             }),
