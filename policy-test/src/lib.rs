@@ -645,15 +645,16 @@ pub fn mk_route(
 }
 
 pub fn find_route_condition<'a>(
-    statuses: impl IntoIterator<Item = &'a k8s_gateway_api::RouteParentStatus>,
+    statuses: impl IntoIterator<Item = &'a gateway::HTTPRouteStatusParents>,
     parent_name: &'static str,
 ) -> Option<&'a k8s::Condition> {
     statuses
         .into_iter()
-        .find(|route_status| route_status.parent_ref.name == parent_name)
+        .find(|parent_status| parent_status.parent_ref.name == parent_name)
         .expect("route must have at least one status set")
         .conditions
         .iter()
+        .flatten()
         .find(|cond| cond.type_ == "Accepted")
 }
 
@@ -804,7 +805,7 @@ pub fn egress_network_parent_ref(
         namespace: Some(ns.to_string()),
         name: "my-egress-net".to_string(),
         section_name: None,
-        port,
+        port: port.map(Into::into),
     }
 }
 

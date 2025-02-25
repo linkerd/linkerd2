@@ -28,7 +28,7 @@ impl HttpRouteResource {
     pub(crate) fn parent_refs(&self) -> &Option<Vec<gateway::HTTPRouteParentRefs>> {
         match self {
             Self::LinkerdHttp(route) => &route.spec.parent_refs,
-            Self::GatewayHttp(route) => &route.spec.inner.parent_refs,
+            Self::GatewayHttp(route) => &route.spec.parent_refs,
         }
     }
 

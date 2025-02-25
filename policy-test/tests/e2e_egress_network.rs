@@ -190,33 +190,34 @@ async fn explicit_allow_http_route() {
         // Now create an http route that will allow explicit hostname and explicit path
         create(
             &client,
-            k8s::gateway::HttpRoute {
+            gateway::HTTPRoute {
                 metadata: k8s::ObjectMeta {
                     namespace: Some(ns.clone()),
                     name: Some("http-route".to_string()),
                     ..Default::default()
                 },
-                spec: k8s::gateway::HttpRouteSpec {
-                    inner: k8s::gateway::CommonRouteSpec {
-                        parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
-                            namespace: None,
-                            name: "egress".to_string(),
-                            port: Some(80),
-                            group: Some("policy.linkerd.io".to_string()),
-                            kind: Some("EgressNetwork".to_string()),
-                            section_name: None,
-                        }]),
-                    },
+                spec: gateway::HTTPRouteSpec {
+                    parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                        namespace: None,
+                        name: "egress".to_string(),
+                        port: Some(80),
+                        group: Some("policy.linkerd.io".to_string()),
+                        kind: Some("EgressNetwork".to_string()),
+                        section_name: None,
+                    }]),
                     hostnames: None,
-                    rules: Some(vec![k8s::gateway::HttpRouteRule {
-                        matches: Some(vec![gateway::HttpRouteMatch {
-                            path: Some(gateway::HttpPathMatch::Exact {
-                                value: "/get".to_string(),
+                    rules: Some(vec![gateway::HTTPRouteRules {
+                        name: None,
+                        matches: Some(vec![gateway::HTTPRouteRulesMatches {
+                            path: Some(gateway::HTTPRouteRulesMatchesPath {
+                                value: Some("/get".to_string()),
+                                r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
                             }),
                             ..Default::default()
                         }]),
                         backend_refs: None,
                         filters: None,
+                        ..Default::default()
                     }]),
                 },
                 status: None,
@@ -292,35 +293,32 @@ async fn explicit_allow_tls_route() {
         // Now create a tls route that will allow explicit hostname and explicit path
         create(
             &client,
-            k8s_gateway_api::TlsRoute {
+            gateway::TLSRoute {
                 metadata: k8s::ObjectMeta {
                     namespace: Some(ns.clone()),
                     name: Some("tls-route".to_string()),
                     ..Default::default()
                 },
-                spec: k8s_gateway_api::TlsRouteSpec {
-                    inner: k8s_gateway_api::CommonRouteSpec {
-                        parent_refs: Some(vec![k8s_gateway_api::ParentReference {
+                spec: gateway::TLSRouteSpec {
+                    parent_refs: Some(vec![gateway::TLSRouteParentRefs {
+                        namespace: None,
+                        name: "egress".to_string(),
+                        port: Some(443),
+                        group: Some("policy.linkerd.io".to_string()),
+                        kind: Some("EgressNetwork".to_string()),
+                        section_name: None,
+                    }]),
+                    hostnames: Some(vec!["postman-echo.com".to_string()]),
+                    rules: vec![gateway::TLSRouteRules {
+                        name: None,
+                        backend_refs: Some(vec![gateway::TLSRouteRulesBackendRefs {
+                            weight: None,
                             namespace: None,
                             name: "egress".to_string(),
                             port: Some(443),
                             group: Some("policy.linkerd.io".to_string()),
                             kind: Some("EgressNetwork".to_string()),
-                            section_name: None,
                         }]),
-                    },
-                    hostnames: Some(vec!["postman-echo.com".to_string()]),
-                    rules: vec![k8s_gateway_api::TlsRouteRule {
-                        backend_refs: vec![k8s_gateway_api::BackendRef {
-                            weight: None,
-                            inner: k8s_gateway_api::BackendObjectReference {
-                                namespace: None,
-                                name: "egress".to_string(),
-                                port: Some(443),
-                                group: Some("policy.linkerd.io".to_string()),
-                                kind: Some("EgressNetwork".to_string()),
-                            },
-                        }],
                     }],
                 },
                 status: None,
@@ -399,34 +397,31 @@ async fn explicit_allow_tcp_route() {
         // Now create a tcp route that will allow explicit hostname and explicit path
         create(
             &client,
-            k8s_gateway_api::TcpRoute {
+            gateway::TCPRoute {
                 metadata: k8s::ObjectMeta {
                     namespace: Some(ns.clone()),
                     name: Some("tcp-route".to_string()),
                     ..Default::default()
                 },
-                spec: k8s_gateway_api::TcpRouteSpec {
-                    inner: k8s_gateway_api::CommonRouteSpec {
-                        parent_refs: Some(vec![k8s_gateway_api::ParentReference {
+                spec: gateway::TCPRouteSpec {
+                    parent_refs: Some(vec![gateway::TCPRouteParentRefs {
+                        namespace: None,
+                        name: "egress".to_string(),
+                        port: Some(443),
+                        group: Some("policy.linkerd.io".to_string()),
+                        kind: Some("EgressNetwork".to_string()),
+                        section_name: None,
+                    }]),
+                    rules: vec![gateway::TCPRouteRules {
+                        name: None,
+                        backend_refs: Some(vec![gateway::TCPRouteRulesBackendRefs {
+                            weight: None,
                             namespace: None,
                             name: "egress".to_string(),
                             port: Some(443),
                             group: Some("policy.linkerd.io".to_string()),
                             kind: Some("EgressNetwork".to_string()),
-                            section_name: None,
                         }]),
-                    },
-                    rules: vec![k8s_gateway_api::TcpRouteRule {
-                        backend_refs: vec![k8s_gateway_api::BackendRef {
-                            weight: None,
-                            inner: k8s_gateway_api::BackendObjectReference {
-                                namespace: None,
-                                name: "egress".to_string(),
-                                port: Some(443),
-                                group: Some("policy.linkerd.io".to_string()),
-                                kind: Some("EgressNetwork".to_string()),
-                            },
-                        }],
                     }],
                 },
                 status: None,
@@ -500,45 +495,42 @@ async fn routing_back_to_cluster_http_route() {
         // and will let the rest go through
         create(
             &client,
-            k8s::gateway::HttpRoute {
+            gateway::HTTPRoute {
                 metadata: k8s::ObjectMeta {
                     namespace: Some(ns.clone()),
                     name: Some("http-route".to_string()),
                     ..Default::default()
                 },
-                spec: k8s::gateway::HttpRouteSpec {
-                    inner: k8s_gateway_api::CommonRouteSpec {
-                        parent_refs: Some(vec![k8s_gateway_api::ParentReference {
-                            namespace: None,
-                            name: "egress".to_string(),
-                            port: Some(80),
-                            group: Some("policy.linkerd.io".to_string()),
-                            kind: Some("EgressNetwork".to_string()),
-                            section_name: None,
-                        }]),
-                    },
+                spec: gateway::HTTPRouteSpec {
+                    parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                        namespace: None,
+                        name: "egress".to_string(),
+                        port: Some(80),
+                        group: Some("policy.linkerd.io".to_string()),
+                        kind: Some("EgressNetwork".to_string()),
+                        section_name: None,
+                    }]),
                     hostnames: Some(vec!["postman-echo.com".to_string()]),
-                    rules: Some(vec![k8s::gateway::HttpRouteRule {
-                        matches: Some(vec![k8s_gateway_api::HttpRouteMatch {
-                            path: Some(k8s_gateway_api::HttpPathMatch::Exact {
-                                value: "/get".to_string(),
+                    rules: Some(vec![gateway::HTTPRouteRules {
+                        name: None,
+                        matches: Some(vec![gateway::HTTPRouteRulesMatches {
+                            path: Some(gateway::HTTPRouteRulesMatchesPath {
+                                value: Some("/get".to_string()),
+                                r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
                             }),
                             ..Default::default()
                         }]),
-                        backend_refs: Some(vec![k8s_gateway_api::HttpBackendRef {
-                            backend_ref: Some(k8s_gateway_api::BackendRef {
-                                weight: None,
-                                inner: k8s_gateway_api::BackendObjectReference {
-                                    namespace: Some(ns.clone()),
-                                    name: "web".to_string(),
-                                    port: Some(80),
-                                    group: None,
-                                    kind: None,
-                                },
-                            }),
+                        backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                            weight: None,
+                            namespace: Some(ns.clone()),
+                            name: "web".to_string(),
+                            port: Some(80),
+                            group: None,
+                            kind: None,
                             filters: None,
                         }]),
                         filters: None,
+                        ..Default::default()
                     }]),
                 },
                 status: None,
@@ -606,35 +598,32 @@ async fn routing_back_to_cluster_tls_route() {
         // to an in-cluster service based on SNI
         create(
             &client,
-            k8s_gateway_api::TlsRoute {
+            gateway::TLSRoute {
                 metadata: k8s::ObjectMeta {
                     namespace: Some(ns.clone()),
                     name: Some("tls-route".to_string()),
                     ..Default::default()
                 },
-                spec: k8s_gateway_api::TlsRouteSpec {
-                    inner: k8s_gateway_api::CommonRouteSpec {
-                        parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
-                            namespace: None,
-                            name: "egress".to_string(),
-                            port: Some(443),
-                            group: Some("policy.linkerd.io".to_string()),
-                            kind: Some("EgressNetwork".to_string()),
-                            section_name: None,
-                        }]),
-                    },
+                spec: gateway::TLSRouteSpec {
+                    parent_refs: Some(vec![gateway::TLSRouteParentRefs {
+                        namespace: None,
+                        name: "egress".to_string(),
+                        port: Some(443),
+                        group: Some("policy.linkerd.io".to_string()),
+                        kind: Some("EgressNetwork".to_string()),
+                        section_name: None,
+                    }]),
                     hostnames: Some(vec!["postman-echo.com".to_string()]),
-                    rules: vec![k8s_gateway_api::TlsRouteRule {
-                        backend_refs: vec![k8s::gateway::BackendRef {
+                    rules: vec![gateway::TLSRouteRules {
+                        name: None,
+                        backend_refs: Some(vec![gateway::TLSRouteRulesBackendRefs {
                             weight: None,
-                            inner: k8s_gateway_api::BackendObjectReference {
-                                namespace: Some(ns.clone()),
-                                name: "web".to_string(),
-                                port: Some(80),
-                                group: None,
-                                kind: None,
-                            },
-                        }],
+                            namespace: Some(ns.clone()),
+                            name: "web".to_string(),
+                            port: Some(80),
+                            group: None,
+                            kind: None,
+                        }]),
                     }],
                 },
                 status: None,
@@ -700,34 +689,31 @@ async fn routing_back_to_cluster_tcp_route() {
         // to an in-cluster service based on SNI
         create(
             &client,
-            k8s_gateway_api::TcpRoute {
+            gateway::TCPRoute {
                 metadata: k8s::ObjectMeta {
                     namespace: Some(ns.clone()),
                     name: Some("tcp-route".to_string()),
                     ..Default::default()
                 },
-                spec: k8s_gateway_api::TcpRouteSpec {
-                    inner: k8s_gateway_api::CommonRouteSpec {
-                        parent_refs: Some(vec![k8s_gateway_api::ParentReference {
-                            namespace: None,
-                            name: "egress".to_string(),
-                            port: Some(80),
-                            group: Some("policy.linkerd.io".to_string()),
-                            kind: Some("EgressNetwork".to_string()),
-                            section_name: None,
-                        }]),
-                    },
-                    rules: vec![k8s_gateway_api::TcpRouteRule {
-                        backend_refs: vec![k8s::gateway::BackendRef {
+                spec: gateway::TCPRouteSpec {
+                    parent_refs: Some(vec![gateway::TCPRouteParentRefs {
+                        namespace: None,
+                        name: "egress".to_string(),
+                        port: Some(80),
+                        group: Some("policy.linkerd.io".to_string()),
+                        kind: Some("EgressNetwork".to_string()),
+                        section_name: None,
+                    }]),
+                    rules: vec![gateway::TCPRouteRules {
+                        name: None,
+                        backend_refs: Some(vec![gateway::TCPRouteRulesBackendRefs {
                             weight: None,
-                            inner: k8s_gateway_api::BackendObjectReference {
-                                namespace: Some(ns.clone()),
-                                name: "web".to_string(),
-                                port: Some(80),
-                                group: None,
-                                kind: None,
-                            },
-                        }],
+                            namespace: Some(ns.clone()),
+                            name: "web".to_string(),
+                            port: Some(80),
+                            group: None,
+                            kind: None,
+                        }]),
                     }],
                 },
                 status: None,

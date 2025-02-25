@@ -1,5 +1,5 @@
 use crate::{grpc, test_route::TestRoute};
-use k8s_gateway_api::ParentReference;
+use linkerd_policy_controller_k8s_api::gateway;
 use std::time::Duration;
 use tokio::time;
 
@@ -168,7 +168,7 @@ pub fn failure_accrual_consecutive(
 #[track_caller]
 pub fn assert_route_is_default<R: TestRoute>(
     route: &R::Route,
-    parent: &ParentReference,
+    parent: &gateway::HTTPRouteParentRefs,
     port: u16,
 ) {
     let rules = &R::rules_first_available(route);
@@ -188,7 +188,7 @@ pub fn assert_route_is_default<R: TestRoute>(
 #[track_caller]
 pub fn assert_backend_matches_reference(
     backend: &grpc::outbound::Backend,
-    obj_ref: &ParentReference,
+    obj_ref: &gateway::HTTPRouteParentRefs,
     port: u16,
 ) {
     let mut group = obj_ref.group.as_deref();

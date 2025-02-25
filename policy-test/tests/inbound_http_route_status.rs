@@ -39,7 +39,6 @@ async fn inbound_accepted_parent() {
         // Wait until route is updated with a status
         let statuses = await_route_status(&client, &ns, "test-accepted-route")
             .await
-            .inner
             .parents;
 
         let route_status = statuses
@@ -114,7 +113,6 @@ async fn inbound_multiple_parents() {
         // Wait until route is updated with a status
         let parent_status = await_route_status(&client, &ns, "test-multiple-parents-route")
             .await
-            .inner
             .parents;
 
         // Find status for invalid parent and extract the condition
@@ -174,7 +172,7 @@ async fn inbound_no_parent_ref_patch() {
         let status = await_route_status(&client, &ns, "test-no-parent-refs-route").await;
         // If timeout has elapsed, then route did not receive a status patch
         assert!(
-            status.inner.parents.len() == 1,
+            status.parents.len() == 1,
             "HTTPRoute Status should have 1 parent status"
         );
 
@@ -188,7 +186,7 @@ async fn inbound_no_parent_ref_patch() {
             &route.name_unchecked(),
             |obj: Option<&k8s::policy::HttpRoute>| -> bool {
                 obj.and_then(|route| route.status.as_ref())
-                    .is_some_and(|status| status.inner.parents.is_empty())
+                    .is_some_and(|status| status.parents.is_empty())
             },
         )
         .await
@@ -220,7 +218,7 @@ async fn inbound_accepted_reconcile_no_parent() {
         )
         .await;
         let route_status = await_route_status(&client, &ns, "test-reconcile-inbound-route").await;
-        let cond = find_route_condition(&route_status.inner.parents, server_name)
+        let cond = find_route_condition(&route_status.parents, server_name)
             .expect("must have at least one 'Accepted' condition set for parent");
         // Test when parent ref does not exist we get Accepted { False }.
         assert_eq!(cond.status, "False");
@@ -257,7 +255,7 @@ async fn inbound_accepted_reconcile_no_parent() {
                     Some(status) => status,
                     None => return false,
                 };
-                let cond = match find_route_condition(&status.inner.parents, server_name) {
+                let cond = match find_route_condition(&status.parents, server_name) {
                     Some(cond) => cond,
                     None => return false,
                 };
@@ -310,7 +308,7 @@ async fn inbound_accepted_reconcile_parent_delete() {
         )
         .await;
         let route_status = await_route_status(&client, &ns, "test-reconcile-delete-route").await;
-        let cond = find_route_condition(&route_status.inner.parents, server_name)
+        let cond = find_route_condition(&route_status.parents, server_name)
             .expect("must have at least one 'Accepted' condition");
         assert_eq!(cond.status, "True");
         assert_eq!(cond.reason, "Accepted");
@@ -336,7 +334,7 @@ async fn inbound_accepted_reconcile_parent_delete() {
                     Some(status) => status,
                     None => return false,
                 };
-                let cond = match find_route_condition(&status.inner.parents, server_name) {
+                let cond = match find_route_condition(&status.parents, server_name) {
                     Some(cond) => cond,
                     None => return false,
                 };
@@ -365,10 +363,7 @@ async fn await_route_status(
     .await
     .expect("must fetch route")
     .status
-    .expect("route must contain a status representation")
-    .inner;
+    .expect("route must contain a status representation");
     tracing::trace!(?route_status, name, ns, "got route status");
-    gateway::HTTPRouteStatus {
-        inner: route_status,
-    }
+    route_status
 }
