@@ -60,7 +60,10 @@ pub trait TestParent:
     + Send
     + Sync
 {
-    fn make_parent(ns: impl ToString) -> Self;
+    fn make_parent(ns: impl ToString) -> Self {
+        Self::make_parent_with_protocol(ns, None)
+    }
+    fn make_parent_with_protocol(ns: impl ToString, app_protocol: Option<String>) -> Self;
     fn make_backend(ns: impl ToString) -> Option<Self>;
     fn conditions(&self) -> Vec<&Condition>;
     fn obj_ref(&self) -> gateway::HTTPRouteParentRefs;
@@ -767,7 +770,7 @@ impl TestRoute for gateway::TCPRoute {
 }
 
 impl TestParent for k8s::Service {
-    fn make_parent(ns: impl ToString) -> Self {
+    fn make_parent_with_protocol(ns: impl ToString, app_protocol: Option<String>) -> Self {
         k8s::Service {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
@@ -777,6 +780,7 @@ impl TestParent for k8s::Service {
             spec: Some(k8s::ServiceSpec {
                 ports: Some(vec![k8s::ServicePort {
                     port: 4191,
+                    app_protocol,
                     ..Default::default()
                 }]),
                 ..Default::default()
@@ -832,7 +836,12 @@ impl TestParent for k8s::Service {
 }
 
 impl TestParent for policy::EgressNetwork {
-    fn make_parent(ns: impl ToString) -> Self {
+    fn make_parent_with_protocol(ns: impl ToString, app_protocol: Option<String>) -> Self {
+        assert!(
+            app_protocol.is_none(),
+            "`appProtocol` is not supported by EgressNetwork"
+        );
+
         policy::EgressNetwork {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
