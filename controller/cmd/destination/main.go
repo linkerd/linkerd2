@@ -32,6 +32,8 @@ func Main(args []string) {
 	metricsAddr := cmd.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	forceOpaqueTransport := cmd.Bool("force-opaque-transport", true,
+		"Force proxies to route all outbound meshed traffic to the proxy's default inbound port")
 	enableH2Upgrade := cmd.Bool("enable-h2-upgrade", true,
 		"Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", true,
@@ -171,6 +173,7 @@ func Main(args []string) {
 		IdentityTrustDomain:     *trustDomain,
 		ClusterDomain:           *clusterDomain,
 		DefaultOpaquePorts:      opaquePorts,
+		ForceOpaqueTransport:    *forceOpaqueTransport,
 		EnableH2Upgrade:         *enableH2Upgrade,
 		EnableEndpointSlices:    *enableEndpointSlices,
 		EnableIPv6:              *enableIPv6,
