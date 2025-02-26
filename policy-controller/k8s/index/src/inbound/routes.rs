@@ -161,7 +161,6 @@ impl ParentRef {
 impl Status {
     pub fn collect_from_http(status: gateway::HTTPRouteStatus) -> Vec<Self> {
         status
-            .inner
             .parents
             .iter()
             .filter(|status| status.controller_name == POLICY_CONTROLLER_NAME)
@@ -180,6 +179,7 @@ impl Status {
         let conditions = status
             .conditions
             .iter()
+            .flatten()
             .filter_map(|condition| {
                 let type_ = match condition.type_.as_ref() {
                     "Accepted" => ConditionType::Accepted,
@@ -208,7 +208,6 @@ impl Status {
 
     pub fn collect_from_grpc(status: gateway::GRPCRouteStatus) -> Vec<Self> {
         status
-            .inner
             .parents
             .iter()
             .filter(|status| status.controller_name == POLICY_CONTROLLER_NAME)
@@ -227,6 +226,7 @@ impl Status {
         let conditions = status
             .conditions
             .iter()
+            .flatten()
             .filter_map(|condition| {
                 let type_ = match condition.type_.as_ref() {
                     "Accepted" => ConditionType::Accepted,

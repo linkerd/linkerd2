@@ -662,7 +662,7 @@ impl Index {
                         port: None,
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition],
+                    conditions: Some(vec![condition]),
                 })
             }
 
@@ -678,7 +678,7 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition, backend_condition],
+                    conditions: Some(vec![condition, backend_condition]),
                 })
             }
 
@@ -694,7 +694,7 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition, backend_condition],
+                    conditions: Some(vec![condition, backend_condition]),
                 })
             }
             routes::ParentReference::UnknownKind => None,
@@ -720,7 +720,7 @@ impl Index {
                         port: None,
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition],
+                    conditions: Some(vec![condition]),
                 })
             }
 
@@ -736,7 +736,7 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition, backend_condition],
+                    conditions: Some(vec![condition, backend_condition]),
                 })
             }
 
@@ -752,7 +752,7 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition, backend_condition],
+                    conditions: Some(vec![condition, backend_condition]),
                 })
             }
             routes::ParentReference::UnknownKind => None,
@@ -778,7 +778,7 @@ impl Index {
                         port: None,
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition],
+                    conditions: Some(vec![condition]),
                 })
             }
 
@@ -794,7 +794,7 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition, backend_condition],
+                    conditions: Some(vec![condition, backend_condition]),
                 })
             }
 
@@ -810,7 +810,7 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition, backend_condition],
+                    conditions: Some(vec![condition, backend_condition]),
                 })
             }
             routes::ParentReference::UnknownKind => None,
@@ -836,7 +836,7 @@ impl Index {
                         port: None,
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition],
+                    conditions: Some(vec![condition]),
                 })
             }
 
@@ -852,7 +852,7 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition, backend_condition],
+                    conditions: Some(vec![condition, backend_condition]),
                 })
             }
 
@@ -868,7 +868,7 @@ impl Index {
                         port: port.map(Into::into),
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition, backend_condition],
+                    conditions: Some(vec![condition, backend_condition]),
                 })
             }
             routes::ParentReference::UnknownKind => None,
@@ -927,7 +927,7 @@ impl Index {
         let unowned_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.inner.parents.clone())
+            .flat_map(|status| status.parents.clone())
             .filter(|status| status.controller_name != POLICY_CONTROLLER_NAME);
 
         // Compute a status for each parent_ref which has a kind we support.
@@ -940,16 +940,14 @@ impl Index {
         let route_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.inner.parents.clone())
+            .flat_map(|status| status.parents.clone())
             .collect::<Vec<_>>();
         if eq_time_insensitive_http_route_parent_statuses(&all_statuses, &route_statuses) {
             return None;
         }
 
         let status = gateway::HTTPRouteStatus {
-            inner: gateway::RouteStatus {
-                parents: all_statuses,
-            },
+            parents: all_statuses,
         };
 
         make_patch(id, status)
@@ -965,7 +963,7 @@ impl Index {
         let unowned_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.inner.parents.clone())
+            .flat_map(|status| status.parents.clone())
             .filter(|status| status.controller_name != POLICY_CONTROLLER_NAME);
 
         // Compute a status for each parent_ref which has a kind we support.
@@ -978,7 +976,7 @@ impl Index {
         let route_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.inner.parents.clone())
+            .flat_map(|status| status.parents.clone())
             .collect::<Vec<_>>();
 
         if eq_time_insensitive_grpc_route_parent_statuses(&all_statuses, &route_statuses) {
@@ -986,9 +984,7 @@ impl Index {
         }
 
         let status = gateway::GRPCRouteStatus {
-            inner: gateway::RouteStatus {
-                parents: all_statuses,
-            },
+            parents: all_statuses,
         };
 
         make_patch(id, status)
@@ -1004,7 +1000,7 @@ impl Index {
         let unowned_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.inner.parents.clone())
+            .flat_map(|status| status.parents.clone())
             .filter(|status| status.controller_name != POLICY_CONTROLLER_NAME);
 
         // Compute a status for each parent_ref which has a kind we support.
@@ -1017,7 +1013,7 @@ impl Index {
         let route_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.inner.parents.clone())
+            .flat_map(|status| status.parents.clone())
             .collect::<Vec<_>>();
 
         if eq_time_insensitive_tls_route_parent_statuses(&all_statuses, &route_statuses) {
@@ -1025,9 +1021,7 @@ impl Index {
         }
 
         let status = gateway::TLSRouteStatus {
-            inner: gateway::RouteStatus {
-                parents: all_statuses,
-            },
+            parents: all_statuses,
         };
 
         make_patch(id, status)
@@ -1043,7 +1037,7 @@ impl Index {
         let unowned_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.inner.parents.clone())
+            .flat_map(|status| status.parents.clone())
             .filter(|status| status.controller_name != POLICY_CONTROLLER_NAME);
 
         // Compute a status for each parent_ref which has a kind we support.
@@ -1056,7 +1050,7 @@ impl Index {
         let route_statuses = route
             .statuses
             .iter()
-            .flat_map(|status| status.inner.parents.clone())
+            .flat_map(|status| status.parents.clone())
             .collect::<Vec<_>>();
 
         if eq_time_insensitive_tcp_route_parent_statuses(&all_statuses, &route_statuses) {
@@ -1064,9 +1058,7 @@ impl Index {
         }
 
         let status = gateway::TCPRouteStatus {
-            inner: gateway::RouteStatus {
-                parents: all_statuses,
-            },
+            parents: all_statuses,
         };
 
         make_patch(id, status)
@@ -1366,7 +1358,7 @@ impl kubert::index::IndexNamespacedResource<policy::HttpRoute> for Index {
         let statuses = resource
             .status
             .into_iter()
-            .flat_map(|status| status.inner.parents)
+            .flat_map(|status| status.parents)
             .collect();
 
         // Construct route and insert into the index; if the HTTPRoute is
@@ -1374,9 +1366,7 @@ impl kubert::index::IndexNamespacedResource<policy::HttpRoute> for Index {
         let route = HTTPRouteRef {
             parents,
             backends,
-            statuses: vec![gateway::HTTPRouteStatus {
-                inner: gateway::RouteStatus { parents: statuses },
-            }],
+            statuses: vec![gateway::HTTPRouteStatus { parents: statuses }],
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1420,10 +1410,8 @@ impl kubert::index::IndexNamespacedResource<gateway::HTTPRoute> for Index {
         };
 
         // Create the route parents
-        let parents = routes::http::make_parents(
-            &namespace,
-            &resource.spec.inner.parent_refs.unwrap_or_default(),
-        );
+        let parents =
+            routes::http::make_parents(&namespace, &resource.spec.parent_refs.unwrap_or_default());
 
         // Create the route backends
         let backends = routes::http::make_backends(
@@ -1440,7 +1428,7 @@ impl kubert::index::IndexNamespacedResource<gateway::HTTPRoute> for Index {
         let statuses = resource
             .status
             .into_iter()
-            .flat_map(|status| status.inner.parents)
+            .flat_map(|status| status.parents)
             .collect();
 
         // Construct route and insert into the index; if the HTTPRoute is
@@ -1448,9 +1436,7 @@ impl kubert::index::IndexNamespacedResource<gateway::HTTPRoute> for Index {
         let route = RouteRef {
             parents,
             backends,
-            statuses: vec![gateway::HTTPRouteStatus {
-                inner: gateway::RouteStatus { parents: statuses },
-            }],
+            statuses: vec![gateway::HTTPRouteStatus { parents: statuses }],
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1494,10 +1480,8 @@ impl kubert::index::IndexNamespacedResource<gateway::GRPCRoute> for Index {
         };
 
         // Create the route parents
-        let parents = routes::grpc::make_parents(
-            &namespace,
-            &resource.spec.inner.parent_refs.unwrap_or_default(),
-        );
+        let parents =
+            routes::grpc::make_parents(&namespace, &resource.spec.parent_refs.unwrap_or_default());
 
         // Create the route backends
         let backends = routes::grpc::make_backends(
@@ -1514,7 +1498,7 @@ impl kubert::index::IndexNamespacedResource<gateway::GRPCRoute> for Index {
         let statuses = resource
             .status
             .into_iter()
-            .flat_map(|status| status.inner.parents)
+            .flat_map(|status| status.parents)
             .collect();
 
         // Construct route and insert into the index; if the GRPCRoute is
@@ -1522,9 +1506,7 @@ impl kubert::index::IndexNamespacedResource<gateway::GRPCRoute> for Index {
         let route = RouteRef {
             parents,
             backends,
-            statuses: vec![gateway::GRPCRouteStatus {
-                inner: gateway::RouteStatus { parents: statuses },
-            }],
+            statuses: vec![gateway::GRPCRouteStatus { parents: statuses }],
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1568,10 +1550,8 @@ impl kubert::index::IndexNamespacedResource<gateway::TLSRoute> for Index {
         };
 
         // Create the route parents
-        let parents = routes::tls::make_parents(
-            &namespace,
-            &resource.spec.inner.parent_refs.unwrap_or_default(),
-        );
+        let parents =
+            routes::tls::make_parents(&namespace, &resource.spec.parent_refs.unwrap_or_default());
 
         // Create the route backends
         let backends = routes::tls::make_backends(
@@ -1580,13 +1560,14 @@ impl kubert::index::IndexNamespacedResource<gateway::TLSRoute> for Index {
                 .spec
                 .rules
                 .into_iter()
-                .flat_map(|rule| rule.backend_refs),
+                .flat_map(|rule| rule.backend_refs)
+                .flatten(),
         );
 
         let statuses = resource
             .status
             .into_iter()
-            .flat_map(|status| status.inner.parents)
+            .flat_map(|status| status.parents)
             .collect();
 
         // Construct route and insert into the index; if the TLSRoute is
@@ -1594,9 +1575,7 @@ impl kubert::index::IndexNamespacedResource<gateway::TLSRoute> for Index {
         let route = RouteRef {
             parents,
             backends,
-            statuses: vec![gateway::TLSRouteStatus {
-                inner: gateway::RouteStatus { parents: statuses },
-            }],
+            statuses: vec![gateway::TLSRouteStatus { parents: statuses }],
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1640,10 +1619,8 @@ impl kubert::index::IndexNamespacedResource<gateway::TCPRoute> for Index {
         };
 
         // Create the route parents
-        let parents = routes::tcp::make_parents(
-            &namespace,
-            &resource.spec.inner.parent_refs.unwrap_or_default(),
-        );
+        let parents =
+            routes::tcp::make_parents(&namespace, &resource.spec.parent_refs.unwrap_or_default());
 
         // Create the route backends
         let backends = routes::tcp::make_backends(
@@ -1652,13 +1629,14 @@ impl kubert::index::IndexNamespacedResource<gateway::TCPRoute> for Index {
                 .spec
                 .rules
                 .into_iter()
-                .flat_map(|rule| rule.backend_refs),
+                .flat_map(|rule| rule.backend_refs)
+                .flatten(),
         );
 
         let statuses = resource
             .status
             .into_iter()
-            .flat_map(|status| status.inner.parents)
+            .flat_map(|status| status.parents)
             .collect();
 
         // Construct route and insert into the index; if the TCPRoute is
@@ -1666,9 +1644,7 @@ impl kubert::index::IndexNamespacedResource<gateway::TCPRoute> for Index {
         let route = RouteRef {
             parents,
             backends,
-            statuses: vec![gateway::TCPRouteStatus {
-                inner: gateway::RouteStatus { parents: statuses },
-            }],
+            statuses: vec![gateway::TCPRouteStatus { parents: statuses }],
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1994,7 +1970,11 @@ pub(crate) fn eq_time_insensitive_http_route_parent_statuses(
 
     // Compare each element in sorted order
     left_sorted.iter().zip(right_sorted.iter()).all(|(l, r)| {
-        let cond_eq = eq_time_insensitive_conditions(&l.conditions, &r.conditions);
+        let cond_eq = match (&l.conditions, &r.conditions) {
+            (Some(l), Some(r)) => eq_time_insensitive_conditions(l.as_ref(), r.as_ref()),
+            (None, None) => true,
+            _ => false,
+        };
         l.parent_ref == r.parent_ref && l.controller_name == r.controller_name && cond_eq
     })
 }
@@ -2026,7 +2006,11 @@ pub(crate) fn eq_time_insensitive_grpc_route_parent_statuses(
 
     // Compare each element in sorted order
     left_sorted.iter().zip(right_sorted.iter()).all(|(l, r)| {
-        let cond_eq = eq_time_insensitive_conditions(&l.conditions, &r.conditions);
+        let cond_eq = match (&l.conditions, &r.conditions) {
+            (Some(l), Some(r)) => eq_time_insensitive_conditions(l.as_ref(), r.as_ref()),
+            (None, None) => true,
+            _ => false,
+        };
         l.parent_ref == r.parent_ref && l.controller_name == r.controller_name && cond_eq
     })
 }
@@ -2058,7 +2042,11 @@ pub(crate) fn eq_time_insensitive_tls_route_parent_statuses(
 
     // Compare each element in sorted order
     left_sorted.iter().zip(right_sorted.iter()).all(|(l, r)| {
-        let cond_eq = eq_time_insensitive_conditions(&l.conditions, &r.conditions);
+        let cond_eq = match (&l.conditions, &r.conditions) {
+            (Some(l), Some(r)) => eq_time_insensitive_conditions(l.as_ref(), r.as_ref()),
+            (None, None) => true,
+            _ => false,
+        };
         l.parent_ref == r.parent_ref && l.controller_name == r.controller_name && cond_eq
     })
 }
@@ -2090,7 +2078,11 @@ pub(crate) fn eq_time_insensitive_tcp_route_parent_statuses(
 
     // Compare each element in sorted order
     left_sorted.iter().zip(right_sorted.iter()).all(|(l, r)| {
-        let cond_eq = eq_time_insensitive_conditions(&l.conditions, &r.conditions);
+        let cond_eq = match (&l.conditions, &r.conditions) {
+            (Some(l), Some(r)) => eq_time_insensitive_conditions(l.as_ref(), r.as_ref()),
+            (None, None) => true,
+            _ => false,
+        };
         l.parent_ref == r.parent_ref && l.controller_name == r.controller_name && cond_eq
     })
 }

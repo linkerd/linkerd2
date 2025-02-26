@@ -109,8 +109,8 @@ pub(super) fn convert_backend(
                 weight: backend.weight.unwrap_or(1) as u32,
                 message: format!(
                     "unsupported backend type {group} {kind}",
-                    group = backend.inner.group.as_deref().unwrap_or("core"),
-                    kind = backend.inner.kind.as_deref().unwrap_or("<empty>"),
+                    group = backend.group.as_deref().unwrap_or("core"),
+                    kind = backend.kind.as_deref().unwrap_or("<empty>"),
                 ),
             });
         }
@@ -119,12 +119,12 @@ pub(super) fn convert_backend(
     let filters = backend.filters;
 
     let backend_ref = ResourceRef {
-        name: backend.inner.name.clone(),
-        namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
+        name: backend.name.clone(),
+        namespace: backend.namespace.unwrap_or_else(|| ns.to_string()),
         kind: backend_kind.clone(),
     };
 
-    let name = backend.inner.name;
+    let name = backend.name;
     let weight = backend.weight.unwrap_or(1) as u32;
 
     let filters = match filters
@@ -143,8 +143,8 @@ pub(super) fn convert_backend(
     };
 
     let port = backend
-        .inner
         .port
+        .and_then(|p| p.try_into().ok())
         .and_then(|p: u16| NonZeroU16::try_from(p).ok());
 
     match backend_kind {
@@ -184,55 +184,41 @@ pub(super) fn convert_backend(
 }
 
 pub(crate) fn convert_filter(filter: gateway::GRPCRouteRulesFilters) -> Result<Filter> {
-    let filter = match filter {
-        gateway::GRPCRouteRulesFilters::RequestHeaderModifier {
-            request_header_modifier,
-        } => {
-            let filter = routes::grpc::request_header_modifier(request_header_modifier)?;
-            Filter::RequestHeaderModifier(filter)
-        }
-
-        gateway::GRPCRouteRulesFilters::ResponseHeaderModifier {
-            response_header_modifier,
-        } => {
-            let filter = routes::grpc::request_header_modifier(response_header_modifier)?;
-            Filter::ResponseHeaderModifier(filter)
-        }
-        gateway::GRPCRouteRulesFilters::RequestMirror { .. } => {
-            bail!("RequestMirror filter is not supported")
-        }
-        gateway::GRPCRouteRulesFilters::ExtensionRef { .. } => {
-            bail!("ExtensionRef filter is not supported")
-        }
-    };
-    Ok(filter)
+    if let Some(request_header_modifier) = filter.request_header_modifier {
+        let filter = routes::grpc::request_header_modifier(request_header_modifier)?;
+        return Ok(Filter::RequestHeaderModifier(filter));
+    }
+    if let Some(response_header_modifier) = filter.response_header_modifier {
+        let filter = routes::grpc::response_header_modifier(response_header_modifier)?;
+        return Ok(Filter::ResponseHeaderModifier(filter));
+    }
+    if let Some(_request_mirror) = filter.request_mirror {
+        bail!("RequestMirror filter is not supported")
+    }
+    if let Some(_extension_ref) = filter.extension_ref {
+        bail!("ExtensionRef filter is not supported")
+    }
+    bail!("unknown filter")
 }
 
 pub(crate) fn convert_backend_filter(
     filter: gateway::GRPCRouteRulesBackendRefsFilters,
 ) -> Result<Filter> {
-    let filter = match filter {
-        gateway::GRPCRouteRulesBackendRefsFilters::RequestHeaderModifier {
-            request_header_modifier,
-        } => {
-            let filter = routes::grpc::backend_request_header_modifier(request_header_modifier)?;
-            Filter::RequestHeaderModifier(filter)
-        }
-
-        gateway::GRPCRouteRulesBackendRefsFilters::ResponseHeaderModifier {
-            response_header_modifier,
-        } => {
-            let filter = routes::grpc::backend_request_header_modifier(response_header_modifier)?;
-            Filter::ResponseHeaderModifier(filter)
-        }
-        gateway::GRPCRouteRulesBackendRefsFilters::RequestMirror { .. } => {
-            bail!("RequestMirror filter is not supported")
-        }
-        gateway::GRPCRouteRulesBackendRefsFilters::ExtensionRef { .. } => {
-            bail!("ExtensionRef filter is not supported")
-        }
-    };
-    Ok(filter)
+    if let Some(request_header_modifier) = filter.request_header_modifier {
+        let filter = routes::grpc::backend_request_header_modifier(request_header_modifier)?;
+        return Ok(Filter::RequestHeaderModifier(filter));
+    }
+    if let Some(response_header_modifier) = filter.response_header_modifier {
+        let filter = routes::grpc::backend_response_header_modifier(response_header_modifier)?;
+        return Ok(Filter::ResponseHeaderModifier(filter));
+    }
+    if let Some(_request_mirror) = filter.request_mirror {
+        bail!("RequestMirror filter is not supported")
+    }
+    if let Some(_extension_ref) = filter.extension_ref {
+        bail!("ExtensionRef filter is not supported")
+    }
+    bail!("unknown filter")
 }
 
 pub fn parse_grpc_retry(
@@ -303,12 +289,12 @@ pub(super) fn route_accepted_by_resource_port(
         group = "core";
     }
     route_status
-        .map(|status| status.inner.parents.as_slice())
+        .map(|status| status.parents.as_slice())
         .unwrap_or_default()
         .iter()
         .any(|parent_status| {
             let port_matches = match parent_status.parent_ref.port {
-                Some(port) => port == resource_port.port.get(),
+                Some(port) => port == resource_port.port.get() as i32,
                 None => true,
             };
             let mut parent_group = parent_status.parent_ref.group.as_deref().unwrap_or("core");
@@ -322,6 +308,7 @@ pub(super) fn route_accepted_by_resource_port(
                 && parent_status
                     .conditions
                     .iter()
+                    .flatten()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
 }
@@ -335,7 +322,7 @@ pub fn route_accepted_by_service(
         service_group = "core";
     }
     route_status
-        .map(|status| status.inner.parents.as_slice())
+        .map(|status| status.parents.as_slice())
         .unwrap_or_default()
         .iter()
         .any(|parent_status| {
@@ -349,14 +336,15 @@ pub fn route_accepted_by_service(
                 && parent_status
                     .conditions
                     .iter()
+                    .flatten()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
 }
 
 pub(crate) fn backend_kind(backend: &gateway::GRPCRouteRulesBackendRefs) -> Option<ResourceKind> {
-    let group = backend.inner.group.as_deref();
+    let group = backend.group.as_deref();
     // Backends default to `Service` if no kind is specified.
-    let kind = backend.inner.kind.as_deref().unwrap_or("Service");
+    let kind = backend.kind.as_deref().unwrap_or("Service");
     if super::is_service(group, kind) {
         Some(ResourceKind::Service)
     } else if super::is_egress_network(group, kind) {

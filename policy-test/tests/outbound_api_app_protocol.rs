@@ -1,6 +1,6 @@
 use futures::StreamExt;
-use k8s_gateway_api::{self as gateway};
 use linkerd_policy_controller_k8s_api as k8s;
+use linkerd_policy_controller_k8s_api::gateway;
 use linkerd_policy_test::{
     assert_resource_meta, create,
     outbound_api::{
@@ -38,7 +38,7 @@ async fn opaque_parent() {
 
             let routes = tcp_routes(&config);
             let route = assert_singleton(routes);
-            assert_route_is_default::<gateway::TcpRoute>(route, &parent.obj_ref(), port);
+            assert_route_is_default::<gateway::TCPRoute>(route, &parent.obj_ref(), port);
         })
         .await;
     }

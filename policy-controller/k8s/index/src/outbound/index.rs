@@ -577,7 +577,7 @@ impl Index {
 
         // For each parent_ref, create a namespace index for it if it doesn't
         // already exist.
-        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
+        for parent_ref in route.spec.parent_refs.iter().flatten() {
             let ns = parent_ref
                 .namespace
                 .clone()
@@ -613,7 +613,7 @@ impl Index {
 
         // For each parent_ref, create a namespace index for it if it doesn't
         // already exist.
-        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
+        for parent_ref in route.spec.parent_refs.iter().flatten() {
             let ns = parent_ref
                 .namespace
                 .clone()
@@ -649,7 +649,7 @@ impl Index {
 
         // For each parent_ref, create a namespace index for it if it doesn't
         // already exist.
-        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
+        for parent_ref in route.spec.parent_refs.iter().flatten() {
             let ns = parent_ref
                 .namespace
                 .clone()
@@ -733,7 +733,10 @@ impl Namespace {
                 continue;
             }
 
-            let port = parent_ref.port.and_then(NonZeroU16::new);
+            let port = parent_ref
+                .port
+                .and_then(|p| p.try_into().ok())
+                .and_then(NonZeroU16::new);
 
             if let Some(port) = port {
                 let resource_port = ResourcePort {
@@ -817,7 +820,7 @@ impl Namespace {
 
         tracing::debug!(?outbound_route);
 
-        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
+        for parent_ref in route.spec.parent_refs.iter().flatten() {
             let parent_kind = if is_parent_service(&parent_ref.kind, &parent_ref.group) {
                 ResourceKind::Service
             } else if is_parent_egress_network(&parent_ref.kind, &parent_ref.group) {
@@ -831,7 +834,10 @@ impl Namespace {
                 continue;
             }
 
-            let port = parent_ref.port.and_then(NonZeroU16::new);
+            let port = parent_ref
+                .port
+                .and_then(|p| p.try_into().ok())
+                .and_then(NonZeroU16::new);
 
             if let Some(port) = port {
                 let port = ResourcePort {
@@ -913,7 +919,7 @@ impl Namespace {
             .namespaced(route.namespace().expect("Route must have namespace"));
         let status = route.status.as_ref();
 
-        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
+        for parent_ref in route.spec.parent_refs.iter().flatten() {
             let parent_kind = if is_parent_service(&parent_ref.kind, &parent_ref.group) {
                 ResourceKind::Service
             } else if is_parent_egress_network(&parent_ref.kind, &parent_ref.group) {
@@ -927,7 +933,10 @@ impl Namespace {
                 continue;
             }
 
-            let port = parent_ref.port.and_then(NonZeroU16::new);
+            let port = parent_ref
+                .port
+                .and_then(|p| p.try_into().ok())
+                .and_then(NonZeroU16::new);
 
             if let Some(port) = port {
                 let port = ResourcePort {
@@ -1009,7 +1018,7 @@ impl Namespace {
             .namespaced(route.namespace().expect("Route must have namespace"));
         let status = route.status.as_ref();
 
-        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
+        for parent_ref in route.spec.parent_refs.iter().flatten() {
             let parent_kind = if is_parent_service(&parent_ref.kind, &parent_ref.group) {
                 ResourceKind::Service
             } else if is_parent_egress_network(&parent_ref.kind, &parent_ref.group) {
@@ -1023,7 +1032,10 @@ impl Namespace {
                 continue;
             }
 
-            let port = parent_ref.port.and_then(NonZeroU16::new);
+            let port = parent_ref
+                .port
+                .and_then(|p| p.try_into().ok())
+                .and_then(NonZeroU16::new);
 
             if let Some(port) = port {
                 let port = ResourcePort {

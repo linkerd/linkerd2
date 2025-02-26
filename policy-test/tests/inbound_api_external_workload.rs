@@ -201,13 +201,14 @@ async fn external_workload_srv_with_http_route() {
                     }]),
                     hostnames: None,
                     rules: Some(vec![api::HttpRouteRule {
-                        matches: Some(vec![gateway::HttpRouteMatch {
-                            path: Some(gateway::HttpPathMatch::Exact {
-                                value: "/endpoint".to_string(),
+                        matches: Some(vec![gateway::HTTPRouteRulesMatches {
+                            path: Some(gateway::HTTPRouteRulesMatchesPath {
+                                value: Some("/endpoint".to_string()),
+                                r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
                             }),
                             headers: None,
                             query_params: None,
-                            method: Some("GET".to_string()),
+                            method: Some(gateway::HTTPRouteRulesMatchesMethod::Get),
                         }]),
                         filters: None,
                         backend_refs: None,

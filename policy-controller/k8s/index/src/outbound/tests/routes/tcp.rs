@@ -185,51 +185,46 @@ fn mk_route(
             ..Default::default()
         },
         spec: gateway::TCPRouteSpec {
-            inner: gateway::CommonRouteSpec {
-                parent_refs: Some(vec![gateway::TCPRouteParentRefs {
+            parent_refs: Some(vec![gateway::TCPRouteParentRefs {
+                group: Some(group.clone()),
+                kind: Some(kind.clone()),
+                namespace: Some(ns.to_string()),
+                name: parent.to_string(),
+                section_name: None,
+                port: Some(port.into()),
+            }]),
+            rules: vec![gateway::TCPRouteRules {
+                name: None,
+                backend_refs: Some(vec![gateway::TCPRouteRulesBackendRefs {
+                    weight: None,
+                    group: Some(group.clone()),
+                    kind: Some(kind.clone()),
+                    namespace: Some(ns.to_string()),
+                    name: backend_name.to_string(),
+                    port: Some(port.into()),
+                }]),
+            }],
+        },
+        status: Some(gateway::TCPRouteStatus {
+            parents: vec![gateway::TCPRouteStatusParents {
+                parent_ref: gateway::TCPRouteStatusParentsParentRef {
                     group: Some(group.clone()),
                     kind: Some(kind.clone()),
                     namespace: Some(ns.to_string()),
                     name: parent.to_string(),
                     section_name: None,
-                    port: Some(port),
+                    port: Some(port.into()),
+                },
+                controller_name: POLICY_CONTROLLER_NAME.to_string(),
+                conditions: Some(vec![k8s::Condition {
+                    last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
+                    message: "".to_string(),
+                    observed_generation: None,
+                    reason: "Accepted".to_string(),
+                    status: "True".to_string(),
+                    type_: "Accepted".to_string(),
                 }]),
-            },
-            rules: vec![gateway::TCPRouteRules {
-                backend_refs: vec![gateway::TCPRouteRulesBackendRefs {
-                    weight: None,
-                    inner: gateway::BackendObjectReference {
-                        group: Some(group.clone()),
-                        kind: Some(kind.clone()),
-                        namespace: Some(ns.to_string()),
-                        name: backend_name.to_string(),
-                        port: Some(port),
-                    },
-                }],
             }],
-        },
-        status: Some(gateway::TCPRouteStatus {
-            inner: gateway::RouteStatus {
-                parents: vec![gateway::TCPRouteStatusParents {
-                    parent_ref: gateway::TCPRouteStatusParentsParentRef {
-                        group: Some(group.clone()),
-                        kind: Some(kind.clone()),
-                        namespace: Some(ns.to_string()),
-                        name: parent.to_string(),
-                        section_name: None,
-                        port: Some(port),
-                    },
-                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![k8s::Condition {
-                        last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
-                        message: "".to_string(),
-                        observed_generation: None,
-                        reason: "Accepted".to_string(),
-                        status: "True".to_string(),
-                        type_: "Accepted".to_string(),
-                    }],
-                }],
-            },
         }),
     }
 }

@@ -37,9 +37,9 @@ async fn multiple_tcp_routes() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             // Routes should be returned in sorted order by creation timestamp then
@@ -92,6 +92,6 @@ async fn multiple_tcp_routes() {
         .await
     }
 
-    test::<k8s::Service, gateway::TcpRoute>().await;
-    test::<policy::EgressNetwork, gateway::TcpRoute>().await;
+    test::<k8s::Service, gateway::TCPRoute>().await;
+    test::<policy::EgressNetwork, gateway::TCPRoute>().await;
 }

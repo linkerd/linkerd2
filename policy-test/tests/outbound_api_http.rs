@@ -31,44 +31,57 @@ async fn gateway_http_route_with_filters_service() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             let mut route =
-                gateway::HttpRoute::make_route(ns, vec![parent.obj_ref()], vec![vec![]]);
+                gateway::HTTPRoute::make_route(ns, vec![parent.obj_ref()], vec![vec![]]);
             for rule in route.spec.rules.iter_mut().flatten() {
                 rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
-                        value: "/foo".to_string(),
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]);
                 rule.filters = Some(vec![
-                    gateway::HttpRouteFilter::RequestHeaderModifier {
-                        request_header_modifier: k8s_gateway_api::HttpRequestHeaderFilter {
-                            set: Some(vec![k8s_gateway_api::HttpHeader {
-                                name: "set".to_string(),
-                                value: "set-value".to_string(),
-                            }]),
-                            add: Some(vec![k8s_gateway_api::HttpHeader {
-                                name: "add".to_string(),
-                                value: "add-value".to_string(),
-                            }]),
-                            remove: Some(vec!["remove".to_string()]),
-                        },
+                    gateway::HTTPRouteRulesFilters {
+                        request_header_modifier: Some(
+                            gateway::HTTPRouteRulesFiltersRequestHeaderModifier {
+                                set: Some(vec![
+                                    gateway::HTTPRouteRulesFiltersRequestHeaderModifierSet {
+                                        name: "set".to_string(),
+                                        value: "set-value".to_string(),
+                                    },
+                                ]),
+                                add: Some(vec![
+                                    gateway::HTTPRouteRulesFiltersRequestHeaderModifierAdd {
+                                        name: "add".to_string(),
+                                        value: "add-value".to_string(),
+                                    },
+                                ]),
+                                remove: Some(vec!["remove".to_string()]),
+                            },
+                        ),
+                        r#type: gateway::HTTPRouteRulesFiltersType::RequestHeaderModifier,
+                        ..Default::default()
                     },
-                    gateway::HttpRouteFilter::RequestRedirect {
-                        request_redirect: k8s_gateway_api::HttpRequestRedirectFilter {
-                            scheme: Some("http".to_string()),
+                    gateway::HTTPRouteRulesFilters {
+                        request_redirect: Some(gateway::HTTPRouteRulesFiltersRequestRedirect {
+                            scheme: Some(gateway::HTTPRouteRulesFiltersRequestRedirectScheme::Http),
                             hostname: Some("host".to_string()),
-                            path: Some(k8s_gateway_api::HttpPathModifier::ReplacePrefixMatch {
-                                replace_prefix_match: "/path".to_string(),
+                            path: Some(gateway::HTTPRouteRulesFiltersRequestRedirectPath {
+                                replace_prefix_match: Some("/path".to_string()),
+                                r#type: gateway::HTTPRouteRulesFiltersRequestRedirectPathType::ReplacePrefixMatch,
+                                ..Default::default()
                             }),
                             port: Some(5555),
                             status_code: Some(302),
-                        },
+                        }),
+                        r#type: gateway::HTTPRouteRulesFiltersType::RequestRedirect,
+                        ..Default::default()
                     },
                 ]);
             }
@@ -85,9 +98,9 @@ async fn gateway_http_route_with_filters_service() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a route with filters.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let outbound_route = routes.first().expect("route must exist");
-                assert!(route.meta_eq(gateway::HttpRoute::extract_meta(outbound_route)));
+                assert!(route.meta_eq(gateway::HTTPRoute::extract_meta(outbound_route)));
                 let rule = assert_singleton(&outbound_route.rules);
                 let filters = &rule.filters;
                 assert_eq!(
@@ -174,9 +187,9 @@ async fn policy_http_route_with_filters_service() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             let mut route = policy::HttpRoute::make_route(
@@ -186,31 +199,39 @@ async fn policy_http_route_with_filters_service() {
             );
             for rule in route.spec.rules.iter_mut().flatten() {
                 rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
-                        value: "/foo".to_string(),
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]);
                 rule.filters = Some(vec![
                     policy::httproute::HttpRouteFilter::RequestHeaderModifier {
-                        request_header_modifier: k8s_gateway_api::HttpRequestHeaderFilter {
-                            set: Some(vec![k8s_gateway_api::HttpHeader {
-                                name: "set".to_string(),
-                                value: "set-value".to_string(),
-                            }]),
-                            add: Some(vec![k8s_gateway_api::HttpHeader {
-                                name: "add".to_string(),
-                                value: "add-value".to_string(),
-                            }]),
-                            remove: Some(vec!["remove".to_string()]),
-                        },
+                        request_header_modifier:
+                            gateway::HTTPRouteRulesFiltersRequestHeaderModifier {
+                                set: Some(vec![
+                                    gateway::HTTPRouteRulesFiltersRequestHeaderModifierSet {
+                                        name: "set".to_string(),
+                                        value: "set-value".to_string(),
+                                    },
+                                ]),
+                                add: Some(vec![
+                                    gateway::HTTPRouteRulesFiltersRequestHeaderModifierAdd {
+                                        name: "add".to_string(),
+                                        value: "add-value".to_string(),
+                                    },
+                                ]),
+                                remove: Some(vec!["remove".to_string()]),
+                            },
                     },
                     policy::httproute::HttpRouteFilter::RequestRedirect {
-                        request_redirect: k8s_gateway_api::HttpRequestRedirectFilter {
-                            scheme: Some("http".to_string()),
+                        request_redirect: gateway::HTTPRouteRulesFiltersRequestRedirect {
+                            scheme: Some(gateway::HTTPRouteRulesFiltersRequestRedirectScheme::Http),
                             hostname: Some("host".to_string()),
-                            path: Some(k8s_gateway_api::HttpPathModifier::ReplacePrefixMatch {
-                                replace_prefix_match: "/path".to_string(),
+                            path: Some(gateway::HTTPRouteRulesFiltersRequestRedirectPath {
+                                replace_prefix_match: Some("/path".to_string()),
+                                r#type: gateway::HTTPRouteRulesFiltersRequestRedirectPathType::ReplacePrefixMatch,
+                                ..Default::default()
                             }),
                             port: Some(5555),
                             status_code: Some(302),
@@ -320,48 +341,61 @@ async fn gateway_http_route_with_backend_filters() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
-            let mut route = gateway::HttpRoute::make_route(
+            let mut route = gateway::HTTPRoute::make_route(
                 ns,
                 vec![parent.obj_ref()],
                 vec![vec![backend.backend_ref(backend_port)]],
             );
             for rule in route.spec.rules.iter_mut().flatten() {
                 rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
-                        value: "/foo".to_string(),
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]);
                 for backend in rule.backend_refs.iter_mut().flatten() {
                     backend.filters = Some(vec![
-                        gateway::HttpRouteFilter::RequestHeaderModifier {
-                            request_header_modifier: k8s_gateway_api::HttpRequestHeaderFilter {
-                                set: Some(vec![k8s_gateway_api::HttpHeader {
-                                    name: "set".to_string(),
-                                    value: "set-value".to_string(),
-                                }]),
-                                add: Some(vec![k8s_gateway_api::HttpHeader {
-                                    name: "add".to_string(),
-                                    value: "add-value".to_string(),
-                                }]),
-                                remove: Some(vec!["remove".to_string()]),
-                            },
+                        gateway::HTTPRouteRulesBackendRefsFilters {
+                            request_header_modifier: Some(
+                                gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifier {
+                                    set: Some(vec![
+                                        gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifierSet {
+                                            name: "set".to_string(),
+                                            value: "set-value".to_string(),
+                                        },
+                                    ]),
+                                    add: Some(vec![
+                                        gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifierAdd {
+                                            name: "add".to_string(),
+                                            value: "add-value".to_string(),
+                                        },
+                                    ]),
+                                    remove: Some(vec!["remove".to_string()]),
+                                },
+                            ),
+                            r#type: gateway::HTTPRouteRulesBackendRefsFiltersType::RequestHeaderModifier,
+                            ..Default::default()
                         },
-                        gateway::HttpRouteFilter::RequestRedirect {
-                            request_redirect: k8s_gateway_api::HttpRequestRedirectFilter {
-                                scheme: Some("http".to_string()),
+                        gateway::HTTPRouteRulesBackendRefsFilters {
+                            request_redirect: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirect {
+                                scheme: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectScheme::Http),
                                 hostname: Some("host".to_string()),
-                                path: Some(k8s_gateway_api::HttpPathModifier::ReplacePrefixMatch {
-                                    replace_prefix_match: "/path".to_string(),
+                                path: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectPath {
+                                    replace_prefix_match: Some("/path".to_string()),
+                                    r#type: gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectPathType::ReplacePrefixMatch,
+                                    ..Default::default()
                                 }),
                                 port: Some(5555),
                                 status_code: Some(302),
-                            },
+                            }),
+                            r#type: gateway::HTTPRouteRulesBackendRefsFiltersType::RequestRedirect,
+                            ..Default::default()
                         },
                     ]);
                 }
@@ -379,10 +413,10 @@ async fn gateway_http_route_with_backend_filters() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a route with backend filters.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let outbound_route = routes.first().expect("route must exist");
-                assert!(route.meta_eq(gateway::HttpRoute::extract_meta(outbound_route)));
-                let rules = gateway::HttpRoute::rules_random_available(outbound_route);
+                assert!(route.meta_eq(gateway::HTTPRoute::extract_meta(outbound_route)));
+                let rules = gateway::HTTPRoute::rules_random_available(outbound_route);
                 let rule = assert_singleton(&rules);
                 let backend = assert_singleton(rule);
                 assert_eq!(
@@ -469,9 +503,9 @@ async fn policy_http_route_with_backend_filters() {
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
             // There should be a default route.
-            gateway::HttpRoute::routes(&config, |routes| {
+            gateway::HTTPRoute::routes(&config, |routes| {
                 let route = assert_singleton(routes);
-                assert_route_is_default::<gateway::HttpRoute>(route, &parent.obj_ref(), port);
+                assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
             let mut route = policy::HttpRoute::make_route(
@@ -481,36 +515,41 @@ async fn policy_http_route_with_backend_filters() {
             );
             for rule in route.spec.rules.iter_mut().flatten() {
                 rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
-                        value: "/foo".to_string(),
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]);
                 for backend in rule.backend_refs.iter_mut().flatten() {
                     backend.filters = Some(vec![
-                        gateway::HttpRouteFilter::RequestHeaderModifier {
-                            request_header_modifier: gateway::HttpRequestHeaderFilter {
-                                set: Some(vec![k8s_gateway_api::HttpHeader {
+                        gateway::HTTPRouteRulesBackendRefsFilters {
+                            request_header_modifier: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifier {
+                                set: Some(vec![gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifierSet {
                                     name: "set".to_string(),
                                     value: "set-value".to_string(),
                                 }]),
-                                add: Some(vec![k8s_gateway_api::HttpHeader {
+                                add: Some(vec![gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifierAdd {
                                     name: "add".to_string(),
                                     value: "add-value".to_string(),
                                 }]),
                                 remove: Some(vec!["remove".to_string()]),
-                            },
+                            }),
+                            ..Default::default()
                         },
-                        gateway::HttpRouteFilter::RequestRedirect {
-                            request_redirect: k8s_gateway_api::HttpRequestRedirectFilter {
-                                scheme: Some("http".to_string()),
+                        gateway::HTTPRouteRulesBackendRefsFilters {
+                            request_redirect: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirect {
+                                scheme: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectScheme::Http),
                                 hostname: Some("host".to_string()),
-                                path: Some(k8s_gateway_api::HttpPathModifier::ReplacePrefixMatch {
-                                    replace_prefix_match: "/path".to_string(),
+                                path: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectPath {
+                                    replace_prefix_match: Some("/path".to_string()),
+                                    r#type: gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectPathType::ReplacePrefixMatch,
+                                    ..Default::default()
                                 }),
                                 port: Some(5555),
                                 status_code: Some(302),
-                            },
+                            }),
+                            ..Default::default()
                         },
                     ]);
                 }
@@ -656,9 +695,9 @@ async fn http_route_retries_and_timeouts() {
         .await;
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
+    test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
 }
 
@@ -731,8 +770,8 @@ async fn parent_retries_and_timeouts() {
         .await;
     }
 
-    test::<k8s::Service, gateway::HttpRoute>().await;
+    test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::HttpRoute>().await;
+    test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
 }
