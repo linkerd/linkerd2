@@ -74,7 +74,7 @@ async fn gateway_http_route_with_filters_service() {
                             hostname: Some("host".to_string()),
                             path: Some(gateway::HTTPRouteRulesFiltersRequestRedirectPath {
                                 replace_prefix_match: Some("/path".to_string()),
-                                r#type: gateway::HTTPRouteRulesFiltersRequestRedirectPathType::ReplaceFullPath,
+                                r#type: gateway::HTTPRouteRulesFiltersRequestRedirectPathType::ReplacePrefixMatch,
                                 ..Default::default()
                             }),
                             port: Some(5555),
@@ -379,6 +379,7 @@ async fn gateway_http_route_with_backend_filters() {
                                     remove: Some(vec!["remove".to_string()]),
                                 },
                             ),
+                            r#type: gateway::HTTPRouteRulesBackendRefsFiltersType::RequestHeaderModifier,
                             ..Default::default()
                         },
                         gateway::HTTPRouteRulesBackendRefsFilters {
@@ -393,6 +394,7 @@ async fn gateway_http_route_with_backend_filters() {
                                 port: Some(5555),
                                 status_code: Some(302),
                             }),
+                            r#type: gateway::HTTPRouteRulesBackendRefsFiltersType::RequestRedirect,
                             ..Default::default()
                         },
                     ]);
