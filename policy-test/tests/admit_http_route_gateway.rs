@@ -43,6 +43,7 @@ async fn accepts_not_implemented_requestmirror() {
                         percent: Some(100),
                         ..Default::default()
                     }),
+                    r#type: gateway::HTTPRouteRulesFiltersType::RequestMirror,
                     ..Default::default()
                 }]),
                 backend_refs: None,
@@ -84,6 +85,7 @@ async fn accepts_not_implemented_urlrewrite() {
                             ..Default::default()
                         }),
                     }),
+                    r#type: gateway::HTTPRouteRulesFiltersType::UrlRewrite,
                     ..Default::default()
                 }]),
                 backend_refs: None,
@@ -121,6 +123,7 @@ async fn accepts_not_implemented_extensionref() {
                         kind: "Service".to_string(),
                         name: "foo".to_string(),
                     }),
+                    r#type: gateway::HTTPRouteRulesFiltersType::ExtensionRef,
                     ..Default::default()
                 }]),
                 backend_refs: None,
@@ -290,6 +293,7 @@ async fn rejects_relative_redirect_path() {
                         port: None,
                         status_code: None,
                     }),
+                    r#type: gateway::HTTPRouteRulesFiltersType::RequestRedirect,
                     ..Default::default()
                 }]),
                 backend_refs: None,

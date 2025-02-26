@@ -65,6 +65,7 @@ async fn gateway_http_route_with_filters_service() {
                                 remove: Some(vec!["remove".to_string()]),
                             },
                         ),
+                        r#type: gateway::HTTPRouteRulesFiltersType::RequestHeaderModifier,
                         ..Default::default()
                     },
                     gateway::HTTPRouteRulesFilters {
@@ -79,6 +80,7 @@ async fn gateway_http_route_with_filters_service() {
                             port: Some(5555),
                             status_code: Some(302),
                         }),
+                        r#type: gateway::HTTPRouteRulesFiltersType::RequestRedirect,
                         ..Default::default()
                     },
                 ]);
