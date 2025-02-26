@@ -248,7 +248,7 @@ async fn rejects_relative_path_match() {
                 name: None,
                 matches: Some(vec![gateway::HTTPRouteRulesMatches {
                     path: Some(gateway::HTTPRouteRulesMatchesPath {
-                        value: Some("/foo".to_string()),
+                        value: Some("foo".to_string()),
                         r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
                     }),
                     ..gateway::HTTPRouteRulesMatches::default()
