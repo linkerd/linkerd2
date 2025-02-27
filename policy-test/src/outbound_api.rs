@@ -59,6 +59,46 @@ where
 }
 
 #[track_caller]
+pub fn http1_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound::HttpRoute] {
+    let kind = config
+        .protocol
+        .as_ref()
+        .expect("must have proxy protocol")
+        .kind
+        .as_ref()
+        .expect("must have kind");
+    if let grpc::outbound::proxy_protocol::Kind::Http1(grpc::outbound::proxy_protocol::Http1 {
+        routes,
+        failure_accrual: _,
+    }) = kind
+    {
+        routes
+    } else {
+        panic!("proxy protocol must be Grpc; actually got:\n{kind:#?}")
+    }
+}
+
+#[track_caller]
+pub fn http2_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound::HttpRoute] {
+    let kind = config
+        .protocol
+        .as_ref()
+        .expect("must have proxy protocol")
+        .kind
+        .as_ref()
+        .expect("must have kind");
+    if let grpc::outbound::proxy_protocol::Kind::Http2(grpc::outbound::proxy_protocol::Http2 {
+        routes,
+        failure_accrual: _,
+    }) = kind
+    {
+        routes
+    } else {
+        panic!("proxy protocol must be Grpc; actually got:\n{kind:#?}")
+    }
+}
+
+#[track_caller]
 pub fn grpc_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound::GrpcRoute] {
     let kind = config
         .protocol
