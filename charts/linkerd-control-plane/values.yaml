@@ -349,6 +349,9 @@ imagePullSecrets: []
 # - name: my-private-docker-registry-login-secret
 
 # -- Allow proxies to perform transparent HTTP/2 upgrading
+forceOpaqueTransport: true
+
+# -- Allow proxies to perform transparent HTTP/2 upgrading
 enableH2Upgrade: true
 
 # -- Add a PSP resource and bind it to the control plane ServiceAccounts. Note
