@@ -20,6 +20,10 @@ var appProtocolClientTemplate = template.Must(template.New("appprotocol_client.y
 var (
 	opaqueApp = "opaque"
 	opaqueSC  = "slow-cooker-opaque"
+	http1App  = "http1"
+	http1SC   = "slow-cooker-http1"
+	http2App  = "http2"
+	http2SC   = "slow-cooker-http2"
 )
 
 type testCase struct {
@@ -45,6 +49,8 @@ func TestMain(m *testing.M) {
 // to the deployment template appprotocol_client.yaml.
 type clientTemplateArgs struct {
 	ServiceCookerOpaqueTargetHost string
+	ServiceCookerHttp1TargetHost  string
+	ServiceCookerHttp2TargetHost  string
 }
 
 func serviceName(n string) string {
@@ -85,6 +91,30 @@ func TestAppProtocolCalledByServiceTarget(t *testing.T) {
 				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 		})
+		runTests(ctx, t, appProtocolNs, []testCase{
+			{
+				name:   "calling a meshed service when appProtocol is http on receiving service",
+				scName: http1SC,
+				scChecks: checks(
+					hasNoOutboundHTTPRequest,
+					hasOutboundTCPWithTLSAndAuthority,
+				),
+				appName:   http1App,
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
+			},
+		})
+		runTests(ctx, t, appProtocolNs, []testCase{
+			{
+				name:   "calling a meshed service when appProtocol is kubernetes.io/h2c on receiving service",
+				scName: http2SC,
+				scChecks: checks(
+					hasNoOutboundHTTPRequest,
+					hasOutboundTCPWithTLSAndAuthority,
+				),
+				appName:   http2App,
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
+			},
+		})
 	})
 }
 
@@ -121,12 +151,52 @@ func TestAppProtocolCalledByPodTarget(t *testing.T) {
 				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 		})
+		runTests(ctx, t, appProtocolNs, []testCase{
+			{
+				name:   "calling a meshed service when appProtocol is http on receiving service",
+				scName: http1SC,
+				scChecks: checks(
+					// We call pods directly, so annotation on a service is ignored.
+					hasOutboundHTTPRequestWithTLS,
+					// No authority here, because we are calling the pod directly.
+					hasOutboundTCPWithTLSAndNoAuthority,
+				),
+				appName:   http1App,
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
+			},
+		})
+		runTests(ctx, t, appProtocolNs, []testCase{
+			{
+				name:   "calling a meshed service when appProtocol is kubernetes.io/h2c on receiving service",
+				scName: http2SC,
+				scChecks: checks(
+					// We call pods directly, so annotation on a service is ignored.
+					hasOutboundHTTPRequestWithTLS,
+					// No authority here, because we are calling the pod directly.
+					hasOutboundTCPWithTLSAndNoAuthority,
+				),
+				appName:   http2App,
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
+			},
+		})
 	})
 }
 
 func waitForAppDeploymentReady(t *testing.T, appProtocolNs string) {
 	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
 		opaqueApp: {
+			Namespace: appProtocolNs,
+			Replicas:  1,
+		},
+	})
+	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
+		http1App: {
+			Namespace: appProtocolNs,
+			Replicas:  1,
+		},
+	})
+	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
+		http2App: {
 			Namespace: appProtocolNs,
 			Replicas:  1,
 		},
@@ -140,6 +210,18 @@ func waitForClientDeploymentReady(t *testing.T, appProtocolNs string) {
 			Replicas:  1,
 		},
 	})
+	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
+		http1SC: {
+			Namespace: appProtocolNs,
+			Replicas:  1,
+		},
+	})
+	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
+		http2SC: {
+			Namespace: appProtocolNs,
+			Replicas:  1,
+		},
+	})
 }
 
 func templateArgsPodIP(ctx context.Context, ns string) (clientTemplateArgs, error) {
@@ -147,8 +229,18 @@ func templateArgsPodIP(ctx context.Context, ns string) (clientTemplateArgs, erro
 	if err != nil {
 		return clientTemplateArgs{}, fmt.Errorf("failed to fetch pod IP for %q: %w", opaqueApp, err)
 	}
+	http1PodIP, err := getPodIPByAppLabel(ctx, ns, http1App)
+	if err != nil {
+		return clientTemplateArgs{}, fmt.Errorf("failed to fetch pod IP for %q: %w", http1App, err)
+	}
+	http2PodIP, err := getPodIPByAppLabel(ctx, ns, http2App)
+	if err != nil {
+		return clientTemplateArgs{}, fmt.Errorf("failed to fetch pod IP for %q: %w", http2App, err)
+	}
 	return clientTemplateArgs{
 		ServiceCookerOpaqueTargetHost: opaquePodIP,
+		ServiceCookerHttp1TargetHost:  http1PodIP,
+		ServiceCookerHttp2TargetHost:  http2PodIP,
 	}, nil
 }
 
