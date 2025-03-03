@@ -27,6 +27,7 @@ jobs:
   audit:
     timeout-minutes: 10
     runs-on: ubuntu-24.04
+    container: ghcr.io/linkerd/dev:v45-rust
     strategy:
       matrix:
         checks:
@@ -36,9 +37,8 @@ jobs:
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: EmbarkStudios/cargo-deny-action@0484eedcba649433ebd03d9b7c9c002746bbc4b9
-        with:
-          command: check ${{ matrix.checks }}
+      - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
+      - run: cargo deny --all-features check ${{ matrix.checks }}
 
   fmt:
     timeout-minutes: 5
