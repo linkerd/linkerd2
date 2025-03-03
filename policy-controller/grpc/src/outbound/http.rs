@@ -85,6 +85,103 @@ pub(crate) fn protocol(
 }
 
 #[allow(clippy::too_many_arguments)]
+pub(crate) fn http1_only_protocol(
+    default_backend: outbound::Backend,
+    routes: impl Iterator<Item = (GroupKindNamespaceName, HttpRoute)>,
+    accrual: Option<outbound::FailureAccrual>,
+    service_retry: Option<RouteRetry<HttpRetryCondition>>,
+    service_timeouts: RouteTimeouts,
+    allow_l5d_request_headers: bool,
+    parent_info: &ParentInfo,
+    original_dst: Option<SocketAddr>,
+) -> outbound::proxy_protocol::Kind {
+    outbound::proxy_protocol::Kind::Http1(outbound::proxy_protocol::Http1 {
+        routes: base_http_routes(
+            default_backend,
+            routes,
+            service_retry,
+            service_timeouts,
+            allow_l5d_request_headers,
+            parent_info,
+            original_dst,
+        ),
+        failure_accrual: accrual,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn http2_only_protocol(
+    default_backend: outbound::Backend,
+    routes: impl Iterator<Item = (GroupKindNamespaceName, HttpRoute)>,
+    accrual: Option<outbound::FailureAccrual>,
+    service_retry: Option<RouteRetry<HttpRetryCondition>>,
+    service_timeouts: RouteTimeouts,
+    allow_l5d_request_headers: bool,
+    parent_info: &ParentInfo,
+    original_dst: Option<SocketAddr>,
+) -> outbound::proxy_protocol::Kind {
+    outbound::proxy_protocol::Kind::Http2(outbound::proxy_protocol::Http2 {
+        routes: base_http_routes(
+            default_backend,
+            routes,
+            service_retry,
+            service_timeouts,
+            allow_l5d_request_headers,
+            parent_info,
+            original_dst,
+        ),
+        failure_accrual: accrual,
+    })
+}
+
+fn base_http_routes(
+    default_backend: outbound::Backend,
+    routes: impl Iterator<Item = (GroupKindNamespaceName, HttpRoute)>,
+    service_retry: Option<RouteRetry<HttpRetryCondition>>,
+    service_timeouts: RouteTimeouts,
+    allow_l5d_request_headers: bool,
+    parent_info: &ParentInfo,
+    original_dst: Option<SocketAddr>,
+) -> Vec<outbound::HttpRoute> {
+    let mut routes = routes
+        .map(|(gknn, route)| {
+            convert_outbound_route(
+                gknn,
+                route,
+                default_backend.clone(),
+                service_retry.clone(),
+                service_timeouts.clone(),
+                allow_l5d_request_headers,
+                parent_info,
+                original_dst,
+            )
+        })
+        .collect::<Vec<_>>();
+
+    match parent_info {
+        ParentInfo::Service { .. } => {
+            if routes.is_empty() {
+                routes.push(default_outbound_service_route(
+                    default_backend,
+                    service_retry.clone(),
+                    service_timeouts.clone(),
+                ));
+            }
+        }
+        ParentInfo::EgressNetwork { traffic_policy, .. } => {
+            routes.push(default_outbound_egress_route(
+                default_backend,
+                service_retry.clone(),
+                service_timeouts.clone(),
+                traffic_policy,
+            ));
+        }
+    }
+
+    routes
+}
+
+#[allow(clippy::too_many_arguments)]
 fn convert_outbound_route(
     gknn: GroupKindNamespaceName,
     HttpRoute {

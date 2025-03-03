@@ -23,3 +23,28 @@ spec:
         - http://{{ .ServiceCookerOpaqueTargetHost}}:8080
         ports:
         - containerPort: 9999
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slow-cooker-http1
+spec:
+  selector:
+    matchLabels:
+      app: slow-cooker-http1
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: "enabled"
+      labels:
+        app: slow-cooker-http1
+    spec:
+      containers:
+      - name: slow-cooker-opaque
+        image: buoyantio/slow_cooker:1.3.0
+        args:
+        - -qps=1
+        - -metric-addr=0.0.0.0:9999
+        - http://{{ .ServiceCookerHttp1TargetHost}}:8080
+        ports:
+        - containerPort: 9999
