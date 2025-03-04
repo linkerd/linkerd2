@@ -44,6 +44,8 @@ pub type RouteSet<T> = HashMap<GroupKindNamespaceName, T>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppProtocol {
+    Http1,
+    Http2,
     Opaque,
     Unknown(Arc<str>),
 }
@@ -53,6 +55,8 @@ impl FromStr for AppProtocol {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         let protocol = match s.to_ascii_lowercase().as_str() {
+            "http" => AppProtocol::Http1,
+            "kubernetes.io/h2c" => AppProtocol::Http2,
             "linkerd.io/tcp" | "linkerd.io/opaque" => AppProtocol::Opaque,
             protocol => AppProtocol::Unknown(Arc::from(protocol)),
         };

@@ -20,6 +20,8 @@ var appProtocolClientTemplate = template.Must(template.New("appprotocol_client.y
 var (
 	opaqueApp = "opaque"
 	opaqueSC  = "slow-cooker-opaque"
+	http1App  = "http1"
+	http1SC   = "slow-cooker-http1"
 )
 
 type testCase struct {
@@ -45,6 +47,7 @@ func TestMain(m *testing.M) {
 // to the deployment template appprotocol_client.yaml.
 type clientTemplateArgs struct {
 	ServiceCookerOpaqueTargetHost string
+	ServiceCookerHttp1TargetHost  string
 }
 
 func serviceName(n string) string {
@@ -67,6 +70,7 @@ func TestAppProtocolCalledByServiceTarget(t *testing.T) {
 
 		tmplArgs := clientTemplateArgs{
 			ServiceCookerOpaqueTargetHost: serviceName(opaqueApp),
+			ServiceCookerHttp1TargetHost:  serviceName(http1App),
 		}
 		if err := deployTemplate(appProtocolNs, appProtocolClientTemplate, tmplArgs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
@@ -82,6 +86,18 @@ func TestAppProtocolCalledByServiceTarget(t *testing.T) {
 					hasOutboundTCPWithTLSAndAuthority,
 				),
 				appName:   opaqueApp,
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
+			},
+		})
+		runTests(ctx, t, appProtocolNs, []testCase{
+			{
+				name:   "calling a meshed service when appProtocol is http on receiving service",
+				scName: http1SC,
+				scChecks: checks(
+					hasOutboundHTTPRequestWithTLS,
+					hasOutboundTCPWithTLSAndAuthority,
+				),
+				appName:   http1App,
 				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 		})
@@ -121,12 +137,30 @@ func TestAppProtocolCalledByPodTarget(t *testing.T) {
 				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 		})
+		runTests(ctx, t, appProtocolNs, []testCase{
+			{
+				name:   "calling a meshed service when appProtocol is http on receiving service",
+				scName: http1SC,
+				scChecks: checks(
+					// We call pods directly, so annotation on a service is ignored.
+					hasOutboundHTTPRequestWithTLS,
+					// No authority here, because we are calling the pod directly.
+					hasOutboundTCPWithTLSAndNoAuthority,
+				),
+				appName:   http1App,
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
+			},
+		})
 	})
 }
 
 func waitForAppDeploymentReady(t *testing.T, appProtocolNs string) {
 	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
 		opaqueApp: {
+			Namespace: appProtocolNs,
+			Replicas:  1,
+		},
+		http1App: {
 			Namespace: appProtocolNs,
 			Replicas:  1,
 		},
@@ -139,6 +173,10 @@ func waitForClientDeploymentReady(t *testing.T, appProtocolNs string) {
 			Namespace: appProtocolNs,
 			Replicas:  1,
 		},
+		http1SC: {
+			Namespace: appProtocolNs,
+			Replicas:  1,
+		},
 	})
 }
 
@@ -147,8 +185,13 @@ func templateArgsPodIP(ctx context.Context, ns string) (clientTemplateArgs, erro
 	if err != nil {
 		return clientTemplateArgs{}, fmt.Errorf("failed to fetch pod IP for %q: %w", opaqueApp, err)
 	}
+	http1PodIP, err := getPodIPByAppLabel(ctx, ns, http1App)
+	if err != nil {
+		return clientTemplateArgs{}, fmt.Errorf("failed to fetch pod IP for %q: %w", http1App, err)
+	}
 	return clientTemplateArgs{
 		ServiceCookerOpaqueTargetHost: opaquePodIP,
+		ServiceCookerHttp1TargetHost:  http1PodIP,
 	}, nil
 }
 
