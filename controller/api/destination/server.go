@@ -30,6 +30,7 @@ type (
 		IdentityTrustDomain,
 		ClusterDomain string
 
+		ForceOpaqueTransport,
 		EnableH2Upgrade,
 		EnableEndpointSlices,
 		EnableIPv6,
@@ -205,6 +206,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		translator := newEndpointTranslator(
 			s.config.ControllerNS,
 			remoteConfig.TrustDomain,
+			s.config.ForceOpaqueTransport,
 			s.config.EnableH2Upgrade,
 			false, // Disable endpoint filtering for remote discovery.
 			s.config.EnableIPv6,
@@ -239,6 +241,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		translator := newEndpointTranslator(
 			s.config.ControllerNS,
 			s.config.IdentityTrustDomain,
+			s.config.ForceOpaqueTransport,
 			s.config.EnableH2Upgrade,
 			true,
 			s.config.EnableIPv6,
@@ -531,6 +534,7 @@ func (s *server) subscribeToEndpointProfile(
 	canceled := stream.Context().Done()
 	streamEnd := make(chan struct{})
 	translator := newEndpointProfileTranslator(
+		s.config.ForceOpaqueTransport,
 		s.config.EnableH2Upgrade,
 		s.config.ControllerNS,
 		s.config.IdentityTrustDomain,
