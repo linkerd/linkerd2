@@ -296,7 +296,7 @@ func TestRenderCRDs(t *testing.T) {
 	addFakeTLSSecrets(defaultValues)
 
 	var buf bytes.Buffer
-	if err := renderCRDs(&buf, values.Options{}, "yaml"); err != nil {
+	if err := renderCRDs(context.Background(), nil, &buf, values.Options{}, "yaml"); err != nil {
 		t.Fatalf("Failed to render templates: %v", err)
 	}
 	if err := testDataDiffer.DiffTestYAML("install_crds.golden", buf.String()); err != nil {
