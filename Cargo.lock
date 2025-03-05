@@ -1262,6 +1262,7 @@ dependencies = [
  "futures-util",
  "http-body-util",
  "hyper",
+ "hyper-openssl",
  "hyper-util",
  "k8s-openapi",
  "kube-client",
@@ -1269,6 +1270,8 @@ dependencies = [
  "kube-runtime",
  "kubert-prometheus-process",
  "kubert-prometheus-tokio",
+ "once_cell",
+ "openssl",
  "parking_lot",
  "pin-project-lite",
  "prometheus-client",
@@ -1277,6 +1280,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.11",
  "tokio",
+ "tokio-openssl",
  "tokio-rustls",
  "tower 0.5.2",
  "tower-http",
@@ -2501,6 +2505,17 @@ dependencies = [
  "pin-project-lite",
  "tokio",
  "tokio-stream",
+]
+
+[[package]]
+name = "tokio-openssl"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59df6849caa43bb7567f9a36f863c447d95a11d5903c9cc334ba32576a27eadd"
+dependencies = [
+ "openssl",
+ "openssl-sys",
+ "tokio",
 ]
 
 [[package]]
