@@ -351,6 +351,7 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 	translator := newEndpointTranslator(
 		fs.config.ControllerNS,
 		remoteConfig.TrustDomain,
+		fs.config.ForceOpaqueTransport,
 		fs.config.EnableH2Upgrade,
 		false, // Disable endpoint filtering for remote discovery.
 		fs.config.EnableIPv6,
@@ -399,6 +400,7 @@ func (fs *federatedService) localDiscoverySubscribe(
 	translator := newEndpointTranslator(
 		fs.config.ControllerNS,
 		fs.config.IdentityTrustDomain,
+		fs.config.ForceOpaqueTransport,
 		fs.config.EnableH2Upgrade,
 		true,
 		fs.config.EnableIPv6,
