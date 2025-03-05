@@ -7,11 +7,11 @@ license = "Apache-2.0"
 publish = false
 
 [features]
-default = ["openssl-tls", "openssl-vendored"]
-openssl-tls = ["kube/openssl-tls"]
+default = ["rustls-tls"]
+openssl-tls = ["kube/openssl-tls", "kubert/openssl-tls"]
 # Vendor openssl to statically link lib
-openssl-vendored = ["openssl/vendored"]
-rustls-tls = ["kube/rustls-tls"]
+openssl-vendored = ["openssl-tls", "openssl/vendored"]
+rustls-tls = ["kube/rustls-tls", "kubert/rustls-tls"]
 
 [dependencies]
 anyhow = "1"
@@ -60,7 +60,6 @@ features = [
     "prometheus-client",
     "runtime",
     "server",
-    "rustls-tls",
 ]
 
 [dependencies.tokio]
