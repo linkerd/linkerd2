@@ -185,6 +185,12 @@ var (
 					Identity:   "spiffe://some-domain/ew-1",
 					ServerName: "server.local",
 				},
+				Ports: []ewv1beta1.PortSpec{
+					{
+						Name: k8s.ProxyPortName,
+						Port: 4143,
+					},
+				},
 			},
 		},
 		OwnerKind: "workloadgroup",
@@ -208,6 +214,12 @@ var (
 					Identity:   "spiffe://some-domain/ew-2",
 					ServerName: "server.local",
 				},
+				Ports: []ewv1beta1.PortSpec{
+					{
+						Name: k8s.ProxyPortName,
+						Port: 4143,
+					},
+				},
 			},
 		},
 	}
@@ -228,6 +240,12 @@ var (
 				MeshTLS: ewv1beta1.MeshTLS{
 					Identity:   "spiffe://some-domain/ew-3",
 					ServerName: "server.local",
+				},
+				Ports: []ewv1beta1.PortSpec{
+					{
+						Name: k8s.ProxyPortName,
+						Port: 4143,
+					},
 				},
 			},
 		},
@@ -486,8 +504,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		translator.Start()
 		defer translator.Stop()
 
-		translator.Add(mkAddressSetForPods(t, pod1, pod2, pod3))
-		translator.Remove(mkAddressSetForPods(t, pod3))
+		translator.Add(mkAddressSetForServices(pod1, pod2, pod3))
+		translator.Remove(mkAddressSetForServices(pod3))
 
 		addressesAdded := (<-mockGetServer.updatesReceived).GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
