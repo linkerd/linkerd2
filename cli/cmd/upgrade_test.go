@@ -577,7 +577,7 @@ func pathMatch(path []string, template []string) bool {
 func renderInstall(t *testing.T, values *charts.Values) *bytes.Buffer {
 	t.Helper()
 	var buf bytes.Buffer
-	if err := renderCRDs(&buf, valuespkg.Options{}, "yaml"); err != nil {
+	if err := renderCRDs(context.Background(), nil, &buf, valuespkg.Options{}, "yaml"); err != nil {
 		t.Fatalf("could not render install manifests: %s", err)
 	}
 	buf.WriteString("---\n")
@@ -592,7 +592,7 @@ func renderUpgrade(installManifest string, upgradeOpts []flag.Flag, templateOpts
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize fake API: %w\n\n%s", err, installManifest)
 	}
-	buf := upgradeCRDs(valuespkg.Options{}, "yaml")
+	buf := upgradeCRDs(context.Background(), k, valuespkg.Options{}, "yaml")
 	buf.WriteString("---\n")
 	cpbuf, err := upgradeControlPlane(context.Background(), k, upgradeOpts, templateOpts, "yaml")
 	if err != nil {

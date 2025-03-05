@@ -138,7 +138,7 @@ A full list of configurable values can be found at https://artifacthub.io/packag
 
 				if !crds {
 					crds := bytes.Buffer{}
-					err = renderCRDs(&crds, valuespkg.Options{
+					err = renderCRDs(cmd.Context(), nil, &crds, valuespkg.Options{
 						// GatewayAPI CRDs are optional so don't check for them.
 						Values: []string{
 							"enableHttpRoutes=false",
@@ -212,7 +212,7 @@ func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, op
 		return err
 	}
 
-	return renderCRDs(w, options, format)
+	return renderCRDs(ctx, k8sAPI, w, options, format)
 }
 
 func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, options valuespkg.Options, format string) error {
@@ -334,7 +334,7 @@ func renderChartToBuffer(files []*loader.BufferedFile, values map[string]interfa
 	return &buf, vals, nil
 }
 
-func renderCRDs(w io.Writer, options valuespkg.Options, format string) error {
+func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options valuespkg.Options, format string) error {
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
@@ -360,6 +360,28 @@ func renderCRDs(w io.Writer, options valuespkg.Options, format string) error {
 		return err
 	}
 	defaultValues["cliVersion"] = k8s.CreatedByAnnotationValue()
+
+	// If any of the Gateway API CRDs are installed, we default to rendering the
+	// Gateway API CRDs.
+	if k != nil {
+		defaultValues["installGatewayAPI"] = false
+		httpRouteCRD, err := k.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, "httproutes.gateway.networking.k8s.io", metav1.GetOptions{})
+		if err == nil && httpRouteCRD != nil && httpRouteCRD.Annotations[k8s.CreatedByAnnotation] != "" {
+			defaultValues["installGatewayAPI"] = true
+		}
+		grpcRouteCRD, err := k.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, "grpcroutes.gateway.networking.k8s.io", metav1.GetOptions{})
+		if err == nil && grpcRouteCRD != nil && grpcRouteCRD.Annotations[k8s.CreatedByAnnotation] != "" {
+			defaultValues["installGatewayAPI"] = true
+		}
+		tlsRouteCRD, err := k.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, "tlsroutes.gateway.networking.k8s.io", metav1.GetOptions{})
+		if err == nil && tlsRouteCRD != nil && tlsRouteCRD.Annotations[k8s.CreatedByAnnotation] != "" {
+			defaultValues["installGatewayAPI"] = true
+		}
+		tcpRouteCRD, err := k.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, "tcproutes.gateway.networking.k8s.io", metav1.GetOptions{})
+		if err == nil && tcpRouteCRD != nil && tcpRouteCRD.Annotations[k8s.CreatedByAnnotation] != "" {
+			defaultValues["installGatewayAPI"] = true
+		}
+	}
 
 	// Create values override
 	valuesOverrides, err := options.MergeValues(nil)

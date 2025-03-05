@@ -54,7 +54,7 @@ Please note this command is only intended for instances of Linkerd that were ins
 			if err = renderControlPlane(&manifests, values, make(map[string]interface{}), "yaml"); err != nil {
 				return err
 			}
-			if err = renderCRDs(&manifests, valuespkg.Options{}, "yaml"); err != nil {
+			if err = renderCRDs(cmd.Context(), k8sAPI, &manifests, valuespkg.Options{}, "yaml"); err != nil {
 				return err
 			}
 

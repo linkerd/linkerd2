@@ -1,3 +1,4 @@
-enableHttpRoutes: true
-enableTlsRoutes: true
-enableTcpRoutes: true
+enableHttpRoutes: false
+enableTlsRoutes: false
+enableTcpRoutes: false
+installGatewayAPI: true
