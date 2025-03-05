@@ -67,6 +67,7 @@ updates:
           - k8s-openapi
           - kube
           - kube-*
+          - gateway-api
         update-types: [patch]
       grpc:
         patterns:

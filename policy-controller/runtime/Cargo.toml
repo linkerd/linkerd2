@@ -59,8 +59,6 @@ features = [
     "lease",
     "prometheus-client",
     "runtime",
-    # TODO(ver): enable runtime diagnostics
-    #"runtime-diagnostics",
     "server",
     "rustls-tls",
 ]

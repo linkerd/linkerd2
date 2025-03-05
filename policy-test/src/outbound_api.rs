@@ -1,5 +1,5 @@
 use crate::{grpc, test_route::TestRoute};
-use k8s_gateway_api::ParentReference;
+use linkerd_policy_controller_k8s_api::gateway;
 use std::time::Duration;
 use tokio::time;
 
@@ -55,6 +55,46 @@ where
         f(&http2.routes);
     } else {
         panic!("proxy protocol must be Detect; actually got:\n{kind:#?}")
+    }
+}
+
+#[track_caller]
+pub fn http1_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound::HttpRoute] {
+    let kind = config
+        .protocol
+        .as_ref()
+        .expect("must have proxy protocol")
+        .kind
+        .as_ref()
+        .expect("must have kind");
+    if let grpc::outbound::proxy_protocol::Kind::Http1(grpc::outbound::proxy_protocol::Http1 {
+        routes,
+        failure_accrual: _,
+    }) = kind
+    {
+        routes
+    } else {
+        panic!("proxy protocol must be Grpc; actually got:\n{kind:#?}")
+    }
+}
+
+#[track_caller]
+pub fn http2_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound::HttpRoute] {
+    let kind = config
+        .protocol
+        .as_ref()
+        .expect("must have proxy protocol")
+        .kind
+        .as_ref()
+        .expect("must have kind");
+    if let grpc::outbound::proxy_protocol::Kind::Http2(grpc::outbound::proxy_protocol::Http2 {
+        routes,
+        failure_accrual: _,
+    }) = kind
+    {
+        routes
+    } else {
+        panic!("proxy protocol must be Grpc; actually got:\n{kind:#?}")
     }
 }
 
@@ -168,7 +208,7 @@ pub fn failure_accrual_consecutive(
 #[track_caller]
 pub fn assert_route_is_default<R: TestRoute>(
     route: &R::Route,
-    parent: &ParentReference,
+    parent: &gateway::HTTPRouteParentRefs,
     port: u16,
 ) {
     let rules = &R::rules_first_available(route);
@@ -188,7 +228,7 @@ pub fn assert_route_is_default<R: TestRoute>(
 #[track_caller]
 pub fn assert_backend_matches_reference(
     backend: &grpc::outbound::Backend,
-    obj_ref: &ParentReference,
+    obj_ref: &gateway::HTTPRouteParentRefs,
     port: u16,
 ) {
     let mut group = obj_ref.group.as_deref();

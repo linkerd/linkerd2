@@ -649,7 +649,7 @@ fn http_route(name: &str, ns: &str, server_name: &str, path: &str) -> k8s::polic
             ..Default::default()
         },
         spec: k8s::policy::HttpRouteSpec {
-            parent_refs: Some(vec![k8s_gateway_api::ParentReference {
+            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("Server".to_string()),
                 namespace: Some(ns.to_string()),
@@ -659,9 +659,10 @@ fn http_route(name: &str, ns: &str, server_name: &str, path: &str) -> k8s::polic
             }]),
             hostnames: None,
             rules: Some(vec![k8s::policy::httproute::HttpRouteRule {
-                matches: Some(vec![gateway::HttpRouteMatch {
-                    path: Some(gateway::HttpPathMatch::Exact {
-                        value: path.to_string(),
+                matches: Some(vec![gateway::HTTPRouteRulesMatches {
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some(path.to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
                     }),
                     ..Default::default()
                 }]),

@@ -464,6 +464,7 @@ pub mod defaults {
 
     pub fn probe_route() -> inbound::HttpRoute {
         use http_route::{path_match, HttpRouteMatch, PathMatch};
+        use http_types::HttpMethod;
         use inbound::{
             authn::{Permit, PermitUnauthenticated},
             http_route::Rule,
@@ -506,14 +507,22 @@ pub mod defaults {
                         path: Some(PathMatch {
                             kind: Some(path_match::Kind::Exact("/live".to_string())),
                         }),
-                        method: Some(hyper::Method::GET.into()),
+                        method: Some(HttpMethod {
+                            r#type: Some(http_types::http_method::Type::Registered(
+                                http_types::http_method::Registered::Get.into(),
+                            )),
+                        }),
                         ..HttpRouteMatch::default()
                     },
                     HttpRouteMatch {
                         path: Some(PathMatch {
                             kind: Some(path_match::Kind::Exact("/ready".to_string())),
                         }),
-                        method: Some(hyper::Method::GET.into()),
+                        method: Some(HttpMethod {
+                            r#type: Some(http_types::http_method::Type::Registered(
+                                http_types::http_method::Registered::Get.into(),
+                            )),
+                        }),
                         ..HttpRouteMatch::default()
                     },
                 ],

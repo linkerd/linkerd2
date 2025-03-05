@@ -232,12 +232,13 @@ fn mk_route(
             hostnames: None,
             rules: Some(vec![HttpRouteRule {
                 matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HttpPathMatch::PathPrefix {
-                        value: "/foo/bar".to_string(),
+                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        value: Some("/foo/bar".to_string()),
+                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
                     }),
                     headers: None,
                     query_params: None,
-                    method: Some("GET".to_string()),
+                    method: Some(gateway::HTTPRouteRulesMatchesMethod::Get),
                 }]),
                 filters: None,
                 backend_refs: None,
@@ -245,27 +246,25 @@ fn mk_route(
             }]),
         },
         status: Some(gateway::HTTPRouteStatus {
-            inner: gateway::RouteStatus {
-                parents: vec![gateway::HTTPRouteStatusParents {
-                    parent_ref: gateway::HTTPRouteStatusParentsParentRef {
-                        group: Some(POLICY_API_GROUP.to_string()),
-                        kind: Some("Server".to_string()),
-                        namespace: None,
-                        name: server.to_string(),
-                        section_name: None,
-                        port: None,
-                    },
-                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![k8s::Condition {
-                        last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
-                        message: "".to_string(),
-                        observed_generation: None,
-                        reason: "Accepted".to_string(),
-                        status: "True".to_string(),
-                        type_: "Accepted".to_string(),
-                    }],
-                }],
-            },
+            parents: vec![gateway::HTTPRouteStatusParents {
+                parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+                    group: Some(POLICY_API_GROUP.to_string()),
+                    kind: Some("Server".to_string()),
+                    namespace: None,
+                    name: server.to_string(),
+                    section_name: None,
+                    port: None,
+                },
+                controller_name: POLICY_CONTROLLER_NAME.to_string(),
+                conditions: Some(vec![k8s::Condition {
+                    last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
+                    message: "".to_string(),
+                    observed_generation: None,
+                    reason: "Accepted".to_string(),
+                    status: "True".to_string(),
+                    type_: "Accepted".to_string(),
+                }]),
+            }],
         }),
     }
 }

@@ -529,6 +529,37 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		checkAddress(t, addressesRemoved[0], pod3)
 	})
 
+	t.Run("Sends addresses with opaque transport", func(t *testing.T) {
+		expectedProtocolHint := &pb.ProtocolHint{
+			Protocol: &pb.ProtocolHint_H2_{
+				H2: &pb.ProtocolHint_H2{},
+			},
+			OpaqueTransport: &pb.ProtocolHint_OpaqueTransport{
+				InboundPort: 4143,
+			},
+		}
+
+		mockGetServer, translator := makeEndpointTranslatorWithOpaqueTransport(t, true)
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForPods(t, pod1, pod2, pod3))
+
+		addressesAdded := (<-mockGetServer.updatesReceived).GetAdd().Addrs
+		actualNumberOfAdded := len(addressesAdded)
+		expectedNumberOfAdded := 3
+		if actualNumberOfAdded != expectedNumberOfAdded {
+			t.Fatalf("Expecting [%d] addresses to be added, got [%d]: %v", expectedNumberOfAdded, actualNumberOfAdded, addressesAdded)
+		}
+
+		for i := 0; i < 3; i++ {
+			actualProtocolHint := addressesAdded[i].GetProtocolHint()
+			if diff := deep.Equal(actualProtocolHint, expectedProtocolHint); diff != nil {
+				t.Fatalf("ProtocolHint: %v", diff)
+			}
+		}
+	})
+
 	t.Run("Sends metric labels with added addresses", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 		translator.Start()

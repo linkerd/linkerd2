@@ -246,7 +246,7 @@ fn update_backend_on_route_with_no_port() {
 
     test.index.write().apply(parent);
 
-    let parent_ref = gateway::ParentReference {
+    let parent_ref = gateway::HTTPRouteParentRefs {
         name: "parent-svc".to_string(),
         namespace: Some(ns.to_string()),
         kind: Some("Service".to_string()),
@@ -255,51 +255,53 @@ fn update_backend_on_route_with_no_port() {
         port: None, // Route is attached to parent without specifying port.
     };
 
-    let route = gateway::HttpRoute {
+    let route = gateway::HTTPRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some("foo-route".to_string()),
             ..Default::default()
         },
-        spec: gateway::HttpRouteSpec {
-            inner: gateway::CommonRouteSpec {
-                parent_refs: Some(vec![parent_ref.clone()]),
-            },
+        spec: gateway::HTTPRouteSpec {
+            parent_refs: Some(vec![parent_ref.clone()]),
             hostnames: None,
-            rules: Some(vec![gateway::HttpRouteRule {
+            rules: Some(vec![gateway::HTTPRouteRules {
+                name: None,
                 matches: None,
                 filters: None,
                 // Reference to a backend that doesn't exist yet.
-                backend_refs: Some(vec![gateway::HttpBackendRef {
-                    backend_ref: Some(gateway::BackendRef {
-                        weight: Some(1),
-                        inner: gateway::BackendObjectReference {
-                            group: Some("core".to_string()),
-                            kind: Some("Service".to_string()),
-                            name: "backend-svc".to_string(),
-                            namespace: Some(ns.to_string()),
-                            port: Some(8080),
-                        },
-                    }),
+                backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                    weight: Some(1),
+                    group: Some("core".to_string()),
+                    kind: Some("Service".to_string()),
+                    name: "backend-svc".to_string(),
+                    namespace: Some(ns.to_string()),
+                    port: Some(8080),
+
                     filters: None,
                 }]),
+                ..Default::default()
             }]),
         },
-        status: Some(gateway::HttpRouteStatus {
-            inner: gateway::RouteStatus {
-                parents: vec![gateway::RouteParentStatus {
-                    parent_ref,
-                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![k8s::Condition {
-                        last_transition_time: k8s::Time(Utc::now()),
-                        message: "".to_string(),
-                        observed_generation: None,
-                        reason: "Accepted".to_string(),
-                        status: "True".to_string(),
-                        type_: "Accepted".to_string(),
-                    }],
-                }],
-            },
+        status: Some(gateway::HTTPRouteStatus {
+            parents: vec![gateway::HTTPRouteStatusParents {
+                parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+                    name: "parent-svc".to_string(),
+                    namespace: Some(ns.to_string()),
+                    kind: Some("Service".to_string()),
+                    group: Some("core".to_string()),
+                    section_name: None,
+                    port: None, // Route is attached to parent without specifying port.
+                },
+                controller_name: POLICY_CONTROLLER_NAME.to_string(),
+                conditions: Some(vec![k8s::Condition {
+                    last_transition_time: k8s::Time(Utc::now()),
+                    message: "".to_string(),
+                    observed_generation: None,
+                    reason: "Accepted".to_string(),
+                    status: "True".to_string(),
+                    type_: "Accepted".to_string(),
+                }]),
+            }],
         }),
     };
 

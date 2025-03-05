@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 ahash = "0.8"
 anyhow = "1"
-chrono = { version = "0.4.39", default-features = false }
+chrono = { version = "0.4.40", default-features = false }
 futures = { version = "0.3", default-features = false }
 http = { workspace = true }
 kube = { workspace = true, default-features = false, features = [
