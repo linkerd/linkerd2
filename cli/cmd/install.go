@@ -365,21 +365,19 @@ func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options 
 	// Gateway API CRDs.
 	if k != nil {
 		defaultValues["installGatewayAPI"] = false
-		httpRouteCRD, err := k.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, "httproutes.gateway.networking.k8s.io", metav1.GetOptions{})
-		if err == nil && httpRouteCRD != nil && httpRouteCRD.Annotations[k8s.CreatedByAnnotation] != "" {
-			defaultValues["installGatewayAPI"] = true
+		crds := k.Apiextensions.ApiextensionsV1().CustomResourceDefinitions()
+		names := []string{
+			"httproutes.gateway.networking.k8s.io",
+			"grpcroutes.gateway.networking.k8s.io",
+			"tlsroutes.gateway.networking.k8s.io",
+			"tcproutes.gateway.networking.k8s.io",
 		}
-		grpcRouteCRD, err := k.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, "grpcroutes.gateway.networking.k8s.io", metav1.GetOptions{})
-		if err == nil && grpcRouteCRD != nil && grpcRouteCRD.Annotations[k8s.CreatedByAnnotation] != "" {
-			defaultValues["installGatewayAPI"] = true
-		}
-		tlsRouteCRD, err := k.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, "tlsroutes.gateway.networking.k8s.io", metav1.GetOptions{})
-		if err == nil && tlsRouteCRD != nil && tlsRouteCRD.Annotations[k8s.CreatedByAnnotation] != "" {
-			defaultValues["installGatewayAPI"] = true
-		}
-		tcpRouteCRD, err := k.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, "tcproutes.gateway.networking.k8s.io", metav1.GetOptions{})
-		if err == nil && tcpRouteCRD != nil && tcpRouteCRD.Annotations[k8s.CreatedByAnnotation] != "" {
-			defaultValues["installGatewayAPI"] = true
+		for _, name := range names {
+			crd, err := crds.Get(ctx, name, metav1.GetOptions{})
+			if err == nil && crd != nil && crd.Annotations[k8s.CreatedByAnnotation] != "" {
+				defaultValues["installGatewayAPI"] = true
+				break
+			}
 		}
 	}
 
