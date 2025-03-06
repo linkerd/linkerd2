@@ -6772,6 +6772,7 @@ metadata:
     gateway.networking.k8s.io/bundle-version: v1.1.1
     gateway.networking.k8s.io/channel: experimental
     linkerd.io/created-by: linkerd/cli dev-undefined
+    helm.sh/resource-policy: keep
   labels:
     helm.sh/chart: linkerd-crds-0.0.0-undefined
     linkerd.io/control-plane-ns: linkerd
@@ -13255,6 +13256,7 @@ metadata:
     gateway.networking.k8s.io/bundle-version: v1.1.1
     gateway.networking.k8s.io/channel: experimental
     linkerd.io/created-by: linkerd/cli dev-undefined
+    helm.sh/resource-policy: keep
   labels:
     helm.sh/chart: linkerd-crds-0.0.0-undefined
     linkerd.io/control-plane-ns: linkerd
@@ -17952,6 +17954,7 @@ metadata:
     gateway.networking.k8s.io/bundle-version: v1.1.1
     gateway.networking.k8s.io/channel: experimental
     linkerd.io/created-by: linkerd/cli dev-undefined
+    helm.sh/resource-policy: keep
   labels:
     helm.sh/chart: linkerd-crds-0.0.0-undefined
     linkerd.io/control-plane-ns: linkerd
@@ -18852,6 +18855,7 @@ metadata:
     gateway.networking.k8s.io/bundle-version: v1.1.1
     gateway.networking.k8s.io/channel: experimental
     linkerd.io/created-by: linkerd/cli dev-undefined
+    helm.sh/resource-policy: keep
   labels:
     helm.sh/chart: linkerd-crds-0.0.0-undefined
     linkerd.io/control-plane-ns: linkerd
