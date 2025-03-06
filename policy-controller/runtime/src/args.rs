@@ -458,9 +458,9 @@ where
     T::DynamicType: Default,
 {
     let dt = Default::default();
-    let resources = client
-        .list_api_group_resources(&T::api_version(&dt))
-        .await
-        .expect("Failed to list API group resources");
-    resources.resources.iter().any(|r| r.kind == T::kind(&dt))
+    if let Ok(resources) = client.list_api_group_resources(&T::api_version(&dt)).await {
+        resources.resources.iter().any(|r| r.kind == T::kind(&dt))
+    } else {
+        false
+    }
 }
