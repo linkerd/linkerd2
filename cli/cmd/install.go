@@ -141,9 +141,7 @@ A full list of configurable values can be found at https://artifacthub.io/packag
 					err = renderCRDs(cmd.Context(), nil, &crds, valuespkg.Options{
 						// GatewayAPI CRDs are optional so don't check for them.
 						Values: []string{
-							"enableHttpRoutes=false",
-							"enableTcpRoutes=false",
-							"enableTlsRoutes=false",
+							"installGatewayAPI=false",
 						},
 					}, "yaml")
 					if err != nil {
