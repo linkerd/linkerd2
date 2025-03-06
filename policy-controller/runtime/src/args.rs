@@ -458,9 +458,11 @@ where
     T::DynamicType: Default,
 {
     let dt = Default::default();
-    if let Ok(resources) = client.list_api_group_resources(&T::api_version(&dt)).await {
-        resources.resources.iter().any(|r| r.kind == T::kind(&dt))
-    } else {
-        false
-    }
+    client
+        .list_api_group_resources(&T::api_version(&dt))
+        .await
+        .ok()
+        .iter()
+        .flat_map(|r| r.resources.iter())
+        .any(|r| r.kind == T::kind(&dt))
 }
