@@ -89,19 +89,19 @@ A full list of configurable values can be found at https://www.github.com/linker
   # And lastly, remove linkerd resources that no longer exist in the current version
   linkerd prune | kubectl delete -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			k, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return fmt.Errorf("failed to create a kubernetes client: %w", err)
+			}
+
 			if crds {
 				// The CRD chart is not configurable.
 				// TODO(ver): Error if values have been configured?
-				if _, err := upgradeCRDs(options, output).WriteTo(os.Stdout); err != nil {
+				if _, err := upgradeCRDs(cmd.Context(), k, options, output).WriteTo(os.Stdout); err != nil {
 					fmt.Fprintln(os.Stderr, err.Error())
 					os.Exit(1)
 				}
 				return nil
-			}
-
-			k, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			if err != nil {
-				return fmt.Errorf("failed to create a kubernetes client: %w", err)
 			}
 
 			if err = upgradeControlPlaneRunE(cmd.Context(), k, flags, options, manifests, output); err != nil {
@@ -167,7 +167,7 @@ func makeUpgradeFlags() *pflag.FlagSet {
 func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, options valuespkg.Options, localManifestPath string, format string) error {
 
 	crds := bytes.Buffer{}
-	err := renderCRDs(&crds, options, "yaml")
+	err := renderCRDs(ctx, k, &crds, options, "yaml")
 	if err != nil {
 		return err
 	}
@@ -198,9 +198,9 @@ func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []
 	return err
 }
 
-func upgradeCRDs(options valuespkg.Options, format string) *bytes.Buffer {
+func upgradeCRDs(ctx context.Context, k *k8s.KubernetesAPI, options valuespkg.Options, format string) *bytes.Buffer {
 	var buf bytes.Buffer
-	if err := renderCRDs(&buf, options, format); err != nil {
+	if err := renderCRDs(ctx, k, &buf, options, format); err != nil {
 		upgradeErrorf("Could not render upgrade configuration: %s", err)
 	}
 	return &buf

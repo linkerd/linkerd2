@@ -287,6 +287,8 @@ controller-image := DOCKER_REGISTRY + "/controller"
 proxy-image := DOCKER_REGISTRY + "/proxy"
 policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
 
+gateway-api-version := "v1.2.1"
+
 # External dependencies
 #
 # We execute these commands lazily in case `yq` isn't present (so that other
@@ -298,6 +300,10 @@ _prometheus-image-cmd := "yq '.prometheus.image | .registry + \"/\" + .name + \"
 linkerd *flags:
     {{ _linkerd }} {{ flags }}
 
+gateway-api-install:
+    curl --proto '=https' --tlsv1.2 -sSfL https://github.com/kubernetes-sigs/gateway-api/releases/download/{{ gateway-api-version }}/experimental-install.yaml \
+        | {{ _kubectl }} apply -f -
+
 # Install crds on the test cluster.
 linkerd-crds-install: _k3d-init
     {{ _linkerd }} install --crds \
@@ -307,7 +313,7 @@ linkerd-crds-install: _k3d-init
         --timeout=1m
 
 # Install linkerd on the test cluster using test images.
-linkerd-install *args='': linkerd-load linkerd-crds-install && _linkerd-ready
+linkerd-install *args='': linkerd-load gateway-api-install linkerd-crds-install && _linkerd-ready
     {{ _linkerd }} install \
             --set='imagePullPolicy=Never' \
             --set='controllerImage={{ controller-image }}' \

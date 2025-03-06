@@ -138,12 +138,10 @@ A full list of configurable values can be found at https://artifacthub.io/packag
 
 				if !crds {
 					crds := bytes.Buffer{}
-					err = renderCRDs(&crds, valuespkg.Options{
+					err = renderCRDs(cmd.Context(), nil, &crds, valuespkg.Options{
 						// GatewayAPI CRDs are optional so don't check for them.
 						Values: []string{
-							"enableHttpRoutes=false",
-							"enableTcpRoutes=false",
-							"enableTlsRoutes=false",
+							"installGatewayAPI=false",
 						},
 					}, "yaml")
 					if err != nil {
@@ -212,7 +210,7 @@ func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, op
 		return err
 	}
 
-	return renderCRDs(w, options, format)
+	return renderCRDs(ctx, k8sAPI, w, options, format)
 }
 
 func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, options valuespkg.Options, format string) error {
@@ -334,7 +332,7 @@ func renderChartToBuffer(files []*loader.BufferedFile, values map[string]interfa
 	return &buf, vals, nil
 }
 
-func renderCRDs(w io.Writer, options valuespkg.Options, format string) error {
+func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options valuespkg.Options, format string) error {
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
@@ -360,6 +358,32 @@ func renderCRDs(w io.Writer, options valuespkg.Options, format string) error {
 		return err
 	}
 	defaultValues["cliVersion"] = k8s.CreatedByAnnotationValue()
+
+	// If any of the Gateway API CRDs are installed, we default to rendering the
+	// Gateway API CRDs.
+	if k != nil {
+		defaultValues["installGatewayAPI"] = false
+		crds := k.Apiextensions.ApiextensionsV1().CustomResourceDefinitions()
+		names := []string{
+			"httproutes.gateway.networking.k8s.io",
+			"grpcroutes.gateway.networking.k8s.io",
+			"tlsroutes.gateway.networking.k8s.io",
+			"tcproutes.gateway.networking.k8s.io",
+		}
+		for _, name := range names {
+			crd, err := crds.Get(ctx, name, metav1.GetOptions{})
+			if err == nil {
+				if crd != nil && crd.Annotations[k8s.CreatedByAnnotation] != "" {
+					defaultValues["installGatewayAPI"] = true
+					break
+				}
+			} else if kerrors.IsNotFound(err) {
+				// No action if CRD is not found.
+			} else {
+				return err
+			}
+		}
+	}
 
 	// Create values override
 	valuesOverrides, err := options.MergeValues(nil)
