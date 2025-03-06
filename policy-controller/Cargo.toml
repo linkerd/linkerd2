@@ -15,7 +15,7 @@ openssl-vendored = ["linkerd-policy-controller-runtime/openssl-vendored"]
 anyhow = "1"
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 
-linkerd-policy-controller-runtime = { path = "./runtime" }
+linkerd-policy-controller-runtime = { path = "./runtime", default-features = false }
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 jemallocator = "0.5"
