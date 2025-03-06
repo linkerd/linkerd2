@@ -8,6 +8,7 @@ metadata:
     gateway.networking.k8s.io/bundle-version: v1.1.1
     gateway.networking.k8s.io/channel: experimental
     {{ include "partials.annotations.created-by" . }}
+    helm.sh/resource-policy: keep
   labels:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     linkerd.io/control-plane-ns: {{.Release.Namespace}}

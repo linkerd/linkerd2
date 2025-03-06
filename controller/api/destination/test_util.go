@@ -1045,6 +1045,10 @@ func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) e
 }
 
 func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointTranslator) {
+	return makeEndpointTranslatorWithOpaqueTransport(t, false)
+}
+
+func makeEndpointTranslatorWithOpaqueTransport(t *testing.T, forceOpaqueTransport bool) (*mockDestinationGetServer, *endpointTranslator) {
 	t.Helper()
 	node := `apiVersion: v1
 kind: Node
@@ -1072,9 +1076,10 @@ metadata:
 	translator := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
-		true,
-		true,
+		forceOpaqueTransport,
+		true,  // enableH2Upgrade
 		true,  // enableEndpointFiltering
+		true,  // enableIPv6
 		false, // extEndpointZoneWeights
 		nil,   // meshedHttp2ClientParams
 		"service-name.service-ns",

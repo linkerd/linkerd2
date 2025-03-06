@@ -36,6 +36,17 @@ var (
 			},
 			Spec: corev1.PodSpec{
 				ServiceAccountName: "serviceaccount-name",
+				Containers: []corev1.Container{
+					{
+						Name: k8s.ProxyContainerName,
+						Env: []corev1.EnvVar{
+							{
+								Name:  envInboundListenAddr,
+								Value: "0.0.0.0:4143",
+							},
+						},
+					},
+				},
 			},
 		},
 		OwnerKind: "replicationcontroller",
@@ -56,6 +67,17 @@ var (
 			},
 			Spec: corev1.PodSpec{
 				ServiceAccountName: "serviceaccount-name",
+				Containers: []corev1.Container{
+					{
+						Name: k8s.ProxyContainerName,
+						Env: []corev1.EnvVar{
+							{
+								Name:  envInboundListenAddr,
+								Value: "[::1]:4143",
+							},
+						},
+					},
+				},
 			},
 		},
 		OwnerKind: "replicationcontroller",
@@ -74,6 +96,19 @@ var (
 					k8s.ProxyDeploymentLabel: "deployment-name",
 				},
 			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name: k8s.ProxyContainerName,
+						Env: []corev1.EnvVar{
+							{
+								Name:  envInboundListenAddr,
+								Value: "0.0.0.0:4143",
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -87,6 +122,19 @@ var (
 				Labels: map[string]string{
 					k8s.ControllerNSLabel:    "linkerd",
 					k8s.ProxyDeploymentLabel: "deployment-name",
+				},
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name: k8s.ProxyContainerName,
+						Env: []corev1.EnvVar{
+							{
+								Name:  envInboundListenAddr,
+								Value: "[::1]:4143",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -461,6 +509,37 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		checkAddressAndWeight(t, addressesAdded[0], pod1, defaultWeight)
 		checkAddressAndWeight(t, addressesAdded[1], pod2, defaultWeight)
 		checkAddress(t, addressesRemoved[0], pod3)
+	})
+
+	t.Run("Sends addresses with opaque transport", func(t *testing.T) {
+		expectedProtocolHint := &pb.ProtocolHint{
+			Protocol: &pb.ProtocolHint_H2_{
+				H2: &pb.ProtocolHint_H2{},
+			},
+			OpaqueTransport: &pb.ProtocolHint_OpaqueTransport{
+				InboundPort: 4143,
+			},
+		}
+
+		mockGetServer, translator := makeEndpointTranslatorWithOpaqueTransport(t, true)
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForPods(t, pod1, pod2, pod3))
+
+		addressesAdded := (<-mockGetServer.updatesReceived).GetAdd().Addrs
+		actualNumberOfAdded := len(addressesAdded)
+		expectedNumberOfAdded := 3
+		if actualNumberOfAdded != expectedNumberOfAdded {
+			t.Fatalf("Expecting [%d] addresses to be added, got [%d]: %v", expectedNumberOfAdded, actualNumberOfAdded, addressesAdded)
+		}
+
+		for i := 0; i < 3; i++ {
+			actualProtocolHint := addressesAdded[i].GetProtocolHint()
+			if diff := deep.Equal(actualProtocolHint, expectedProtocolHint); diff != nil {
+				t.Fatalf("ProtocolHint: %v", diff)
+			}
+		}
 	})
 
 	t.Run("Sends metric labels with added addresses", func(t *testing.T) {

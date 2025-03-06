@@ -372,37 +372,64 @@ fn to_proto(
 ) -> outbound::OutboundPolicy {
     let backend: outbound::Backend = default_backend(&policy, original_dst);
 
+    let accrual = policy.accrual.map(|accrual| outbound::FailureAccrual {
+        kind: Some(match accrual {
+            linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
+                max_failures,
+                backoff,
+            } => outbound::failure_accrual::Kind::ConsecutiveFailures(
+                outbound::failure_accrual::ConsecutiveFailures {
+                    max_failures,
+                    backoff: Some(outbound::ExponentialBackoff {
+                        min_backoff: convert_duration("min_backoff", backoff.min_penalty),
+                        max_backoff: convert_duration("max_backoff", backoff.max_penalty),
+                        jitter_ratio: backoff.jitter,
+                    }),
+                },
+            ),
+        }),
+    });
+
+    let mut http_routes = policy.http_routes.clone().into_iter().collect::<Vec<_>>();
+
     let kind = match &policy.app_protocol {
         Some(AppProtocol::Opaque) => {
             outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
                 routes: vec![default_outbound_opaq_route(backend, &policy.parent_info)],
             })
         }
+        Some(AppProtocol::Http1) => {
+            http_routes.sort_by(timestamp_then_name);
+            http::http1_only_protocol(
+                backend,
+                http_routes.into_iter(),
+                accrual,
+                policy.http_retry.clone(),
+                policy.timeouts.clone(),
+                allow_l5d_request_headers,
+                &policy.parent_info,
+                original_dst,
+            )
+        }
+        Some(AppProtocol::Http2) => {
+            http_routes.sort_by(timestamp_then_name);
+            http::http2_only_protocol(
+                backend,
+                http_routes.into_iter(),
+                accrual,
+                policy.http_retry.clone(),
+                policy.timeouts.clone(),
+                allow_l5d_request_headers,
+                &policy.parent_info,
+                original_dst,
+            )
+        }
         None | Some(AppProtocol::Unknown(_)) => {
             if let Some(AppProtocol::Unknown(protocol)) = &policy.app_protocol {
                 tracing::debug!(resource = ?policy.parent_info, port = policy.port.get(), "Unknown appProtocol \"{protocol}\"");
             }
 
-            let accrual = policy.accrual.map(|accrual| outbound::FailureAccrual {
-                kind: Some(match accrual {
-                    linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
-                        max_failures,
-                        backoff,
-                    } => outbound::failure_accrual::Kind::ConsecutiveFailures(
-                        outbound::failure_accrual::ConsecutiveFailures {
-                            max_failures,
-                            backoff: Some(outbound::ExponentialBackoff {
-                                min_backoff: convert_duration("min_backoff", backoff.min_penalty),
-                                max_backoff: convert_duration("max_backoff", backoff.max_penalty),
-                                jitter_ratio: backoff.jitter,
-                            }),
-                        },
-                    ),
-                }),
-            });
-
             let mut grpc_routes = policy.grpc_routes.clone().into_iter().collect::<Vec<_>>();
-            let mut http_routes = policy.http_routes.clone().into_iter().collect::<Vec<_>>();
             let mut tls_routes = policy.tls_routes.clone().into_iter().collect::<Vec<_>>();
             let mut tcp_routes = policy.tcp_routes.clone().into_iter().collect::<Vec<_>>();
 

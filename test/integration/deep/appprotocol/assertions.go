@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	authorityRE = regexp.MustCompile(`[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+`)
+	authorityRE = regexp.MustCompile(`[a-zA-Z0-9\-]+\.[a-zA-Z0-9\-]+\.svc\.cluster\.local:[0-9]+`)
 )
 
 // hasNoOutboundHTTPRequest returns error if there is any
