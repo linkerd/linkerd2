@@ -164,7 +164,7 @@ jobs:
           (Get-Content bin\win\linkerd.nuspec).replace('LINKERD_VERSION', "$LINKERD_VERSION") | Set-Content bin\win\linkerd.nuspec
       - name: Chocolatey - pack
         if: startsWith(github.ref, 'refs/tags/stable')
-        uses: crazy-max/ghaction-chocolatey@2ae99523e93879734d432250f87e2c45c379cd60
+        uses: crazy-max/ghaction-chocolatey@6828f16489ec8d2968b55066766cb41f0d278f2a
         with:
           args: pack bin/win/linkerd.nuspec
       - name: Chocolatey - upload package

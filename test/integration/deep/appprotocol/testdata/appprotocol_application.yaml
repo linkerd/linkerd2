@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: buoyantio/bb:v0.0.6
+        image: buoyantio/bb:v0.0.7
         args:
         - terminus
         - "--h1-server-port=8080"
@@ -39,3 +39,44 @@ spec:
     port: 8080
     targetPort: 8080
     appProtocol: linkerd.io/opaque
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: http1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: http1
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: http1
+    spec:
+      containers:
+      - name: app
+        image: buoyantio/bb:v0.0.7
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--response-text=http1"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-http1
+  labels:
+    app: svc-http1
+spec:
+  selector:
+    app: http1
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    appProtocol: http
