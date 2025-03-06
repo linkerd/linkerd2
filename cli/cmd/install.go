@@ -372,9 +372,15 @@ func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options 
 		}
 		for _, name := range names {
 			crd, err := crds.Get(ctx, name, metav1.GetOptions{})
-			if err == nil && crd != nil && crd.Annotations[k8s.CreatedByAnnotation] != "" {
-				defaultValues["installGatewayAPI"] = true
-				break
+			if err == nil {
+				if crd != nil && crd.Annotations[k8s.CreatedByAnnotation] != "" {
+					defaultValues["installGatewayAPI"] = true
+					break
+				}
+			} else if kerrors.IsNotFound(err) {
+				// No action if CRD is not found.
+			} else {
+				return err
 			}
 		}
 	}
