@@ -201,6 +201,7 @@ spec:
         - destination
         - -addr=:8086
         - -controller-namespace={{.Release.Namespace}}
+        - -outbound-transport-mode={{.Values.proxy.outboundTransportMode}}
         - -enable-h2-upgrade={{.Values.enableH2Upgrade}}
         - -log-level={{.Values.controllerLogLevel}}
         - -log-format={{.Values.controllerLogFormat}}
