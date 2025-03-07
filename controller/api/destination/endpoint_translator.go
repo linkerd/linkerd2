@@ -24,6 +24,8 @@ const (
 	// inboundListenAddr is the environment variable holding the inbound
 	// listening address for the proxy container.
 	envInboundListenAddr = "LINKERD2_PROXY_INBOUND_LISTEN_ADDR"
+	envAdminListenAddr   = "LINKERD2_PROXY_ADMIN_LISTEN_ADDR"
+	envControlListenAddr = "LINKERD2_PROXY_CONTROL_LISTEN_ADDR"
 
 	updateQueueCapacity = 100
 )
@@ -651,10 +653,16 @@ func createWeightedAddr(
 		weightedAddr.Http2 = meshedHttp2
 		weightedAddr.ProtocolHint = &pb.ProtocolHint{}
 
+		metaPorts, err := getPodMetaPorts(&address.Pod.Spec)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read pod meta ports: %w", err)
+		}
+
 		_, opaquePort := opaquePorts[address.Port]
 		opaquePort = opaquePort || address.OpaqueProtocol
+		_, isMetaPort := metaPorts[address.Port]
 
-		if forceOpaqueTransport || opaquePort {
+		if !isMetaPort && (forceOpaqueTransport || opaquePort) {
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read inbound port: %w", err)
@@ -723,24 +731,59 @@ func newEmptyAddressSet() watcher.AddressSet {
 // getInboundPort gets the inbound port from the proxy container's environment
 // variable.
 func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
+	ports, err := getPodPorts(podSpec, map[string]struct{}{envInboundListenAddr: {}})
+	if err != nil {
+		return 0, err
+	}
+	if len(ports) != 1 {
+		return 0, fmt.Errorf("")
+	}
+	port := uint32(0)
+	for p := range ports {
+		port = p
+	}
+	return port, nil
+}
+
+func getPodMetaPorts(podSpec *corev1.PodSpec) (map[uint32]string, error) {
+	return getPodPorts(podSpec, map[string]struct{}{
+		envAdminListenAddr:   {},
+		envControlListenAddr: {},
+	})
+}
+
+func getPodPorts(podSpec *corev1.PodSpec, addrEnvNames map[string]struct{}) (map[uint32]string, error) {
 	containers := append(podSpec.InitContainers, podSpec.Containers...)
 	for _, containerSpec := range containers {
+		ports := map[uint32]string{}
 		if containerSpec.Name != pkgK8s.ProxyContainerName {
 			continue
 		}
 		for _, envVar := range containerSpec.Env {
-			if envVar.Name != envInboundListenAddr {
+			_, hasEnv := addrEnvNames[envVar.Name]
+			if !hasEnv {
 				continue
 			}
 			addrPort, err := netip.ParseAddrPort(envVar.Value)
 			if err != nil {
-				return 0, fmt.Errorf("failed to parse inbound port for proxy container: %w", err)
+				return map[uint32]string{}, fmt.Errorf("failed to parse inbound port for proxy container: %w", err)
 			}
 
-			return uint32(addrPort.Port()), nil
+			ports[uint32(addrPort.Port())] = envVar.Name
 		}
+		if len(ports) != len(addrEnvNames) {
+			missingEnv := []string{}
+			for _, env := range ports {
+				_, hasEnv := addrEnvNames[env]
+				if !hasEnv {
+					missingEnv = append(missingEnv, env)
+				}
+			}
+			return map[uint32]string{}, fmt.Errorf("failed to find %s environment variables in proxy container", missingEnv)
+		}
+		return ports, nil
 	}
-	return 0, fmt.Errorf("failed to find %s environment variable in any container for given pod spec", envInboundListenAddr)
+	return map[uint32]string{}, fmt.Errorf("failed to find %s environment variables in any container for given pod spec", addrEnvNames)
 }
 
 // getInboundPortFromExternalWorkload gets the inbound port from the ExternalWorkload spec
