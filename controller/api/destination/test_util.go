@@ -79,6 +79,10 @@ spec:
     - env:
       - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
         value: 0.0.0.0:4143
+      - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+        value: 0.0.0.0:4191
+      - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+        value: 0.0.0.0:4190
       name: linkerd-proxy`,
 		`
 apiVersion: v1
@@ -264,6 +268,10 @@ spec:
     - env:
       - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
         value: 0.0.0.0:4143
+      - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+        value: 0.0.0.0:4191
+      - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+        value: 0.0.0.0:4190
       name: linkerd-proxy`,
 	}
 
@@ -332,6 +340,10 @@ spec:
     - env:
       - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
         value: 0.0.0.0:4143
+      - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+        value: 0.0.0.0:4191
+      - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+        value: 0.0.0.0:4190
       name: linkerd-proxy`,
 	}
 
@@ -384,7 +396,17 @@ status:
     status: "True"
   podIP: 172.17.13.15
   podIPs:
-  - ip: 172.17.13.15`,
+  - ip: 172.17.13.15
+spec:
+  containers:
+    - env:
+      - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+        value: 0.0.0.0:4143
+      - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+        value: 0.0.0.0:4191
+      - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+        value: 0.0.0.0:4190
+      name: linkerd-proxy`,
 	}
 
 	policyResources := []string{
@@ -441,6 +463,10 @@ spec:
       env:
       - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
         value: 0.0.0.0:4143
+      - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+        value: 0.0.0.0:4191
+      - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+        value: 0.0.0.0:4190
     - name: app
       image: nginx
       ports:
@@ -527,6 +553,10 @@ spec:
       env:
       - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
         value: 0.0.0.0:4143
+      - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+        value: 0.0.0.0:4191
+      - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+        value: 0.0.0.0:4190
     - name: app
       image: nginx
       ports:
@@ -625,10 +655,14 @@ status:
   - ip: 172.17.55.1
 spec:
   containers:
-    - env:
+    - name: linkerd-proxy
+      env:
       - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
         value: 0.0.0.0:4143
-        name: linkerd-proxy`,
+      - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+        value: 0.0.0.0:4191
+      - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+        value: 0.0.0.0:4190`,
 	}
 
 	destinationCredentialsResources := []string{`
@@ -804,6 +838,10 @@ spec:
     - env:
       - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
         value: 0.0.0.0:4143
+      - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+        value: 0.0.0.0:4191
+      - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+        value: 0.0.0.0:4190
       name: linkerd-proxy`,
 	}
 
@@ -885,6 +923,10 @@ spec:
     - env:
       - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
         value: 0.0.0.0:4143
+      - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+        value: 0.0.0.0:4191
+      - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+        value: 0.0.0.0:4190
       name: linkerd-proxy`,
 		`
 apiVersion: linkerd.io/v1alpha2
