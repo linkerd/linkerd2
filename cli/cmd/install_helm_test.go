@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -24,15 +25,31 @@ func TestRenderHelm(t *testing.T) {
 	t.Run("Non-HA mode", func(t *testing.T) {
 		chartCrds := chartCrds(t)
 		chartControlPlane := chartControlPlane(t, false, "", "111", "222")
-		testRenderHelm(t, chartCrds, "install_helm_crds_output.golden")
-		testRenderHelm(t, chartControlPlane, "install_helm_control_plane_output.golden")
+		testRenderHelm(t, chartCrds, nil, "install_helm_crds_output.golden")
+		testRenderHelm(t, chartControlPlane, nil, "install_helm_control_plane_output.golden")
+	})
+
+	t.Run("CRDs without Gateway API", func(t *testing.T) {
+		chartCrds := chartCrds(t)
+		testRenderHelm(t, chartCrds, map[string]interface{}{
+			"installGatewayAPI": false,
+		}, "install_helm_crds_without_gateway_output.golden")
+	})
+
+	t.Run("CRDs without Gateway API routes", func(t *testing.T) {
+		chartCrds := chartCrds(t)
+		testRenderHelm(t, chartCrds, map[string]interface{}{
+			"enableHttpRoutes": false,
+			"enableTcpRoutes":  false,
+			"enableTlsRoutes":  false,
+		}, "install_helm_crds_without_gateway_output.golden")
 	})
 
 	t.Run("HA mode", func(t *testing.T) {
 		chartCrds := chartCrds(t)
 		chartControlPlane := chartControlPlane(t, true, "", "111", "222")
-		testRenderHelm(t, chartCrds, "install_helm_crds_output_ha.golden")
-		testRenderHelm(t, chartControlPlane, "install_helm_control_plane_output_ha.golden")
+		testRenderHelm(t, chartCrds, nil, "install_helm_crds_output_ha.golden")
+		testRenderHelm(t, chartControlPlane, nil, "install_helm_control_plane_output_ha.golden")
 	})
 
 	t.Run("HA mode with GID", func(t *testing.T) {
@@ -42,7 +59,7 @@ proxy:
   gid: 4231
 `
 		chartControlPlane := chartControlPlane(t, true, additionalConfig, "111", "222")
-		testRenderHelm(t, chartControlPlane, "install_helm_control_plane_output_ha_with_gid.golden")
+		testRenderHelm(t, chartControlPlane, nil, "install_helm_control_plane_output_ha_with_gid.golden")
 	})
 
 	t.Run("HA mode with podLabels and podAnnotations", func(t *testing.T) {
@@ -55,7 +72,7 @@ podAnnotations:
   asda: fasda
 `
 		chartControlPlane := chartControlPlane(t, true, additionalConfig, "333", "444")
-		testRenderHelm(t, chartControlPlane, "install_helm_output_ha_labels.golden")
+		testRenderHelm(t, chartControlPlane, nil, "install_helm_output_ha_labels.golden")
 	})
 
 	t.Run("HA mode with custom namespaceSelector", func(t *testing.T) {
@@ -76,11 +93,11 @@ profileValidator:
       - enabled
 `
 		chartControlPlane := chartControlPlane(t, true, additionalConfig, "111", "222")
-		testRenderHelm(t, chartControlPlane, "install_helm_output_ha_namespace_selector.golden")
+		testRenderHelm(t, chartControlPlane, nil, "install_helm_output_ha_namespace_selector.golden")
 	})
 }
 
-func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName string) {
+func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, additionalValues map[string]interface{}, goldenFileName string) {
 	var (
 		chartName = "linkerd2"
 		namespace = "linkerd-dev"
@@ -139,6 +156,9 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
+	for k, v := range additionalValues {
+		overrideConfig[k] = v
+	}
 
 	releaseOptions := chartutil.ReleaseOptions{
 		Name:      chartName,
@@ -147,10 +167,14 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 		IsInstall: true,
 	}
 
+	fmt.Println("overrideConfig", overrideConfig)
+
 	valuesToRender, err := chartutil.ToRenderValues(linkerd2Chart, overrideConfig, releaseOptions, nil)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
+
+	fmt.Println("valuesToRender", valuesToRender)
 
 	rendered, err := engine.Render(linkerd2Chart, valuesToRender)
 	if err != nil {
