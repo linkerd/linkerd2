@@ -4,10 +4,10 @@
 installGatewayAPI: true
 # -- Controls if Linkerd should install the Gateway API HTTPRoutes and
 # GRPCRoutes CRDs. If unspecified, the value of `installGatewayAPI` is used.
-enableHttpRoutes: false
+# enableHttpRoutes: false
 # -- Controls if Linkerd should install the Gateway API TLSRoutes CRD. If
 # unspecified, the value of `installGatewayAPI` is used.
-enableTlsRoutes: false
+# enableTlsRoutes: false
 # -- Controls if Linkerd should install the Gateway API TCPRoutes CRD. If
 # unspecified, the value of `installGatewayAPI` is used.
-enableTcpRoutes: false
+# enableTcpRoutes: false
