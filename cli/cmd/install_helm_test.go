@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -167,14 +166,10 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, additionalValues m
 		IsInstall: true,
 	}
 
-	fmt.Println("overrideConfig", overrideConfig)
-
 	valuesToRender, err := chartutil.ToRenderValues(linkerd2Chart, overrideConfig, releaseOptions, nil)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
-
-	fmt.Println("valuesToRender", valuesToRender)
 
 	rendered, err := engine.Render(linkerd2Chart, valuesToRender)
 	if err != nil {

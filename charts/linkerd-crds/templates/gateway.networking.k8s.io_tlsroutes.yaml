@@ -1,4 +1,4 @@
-{{- if (ternary .Values.enableTcpRoutes .Values.installGatewayAPI (hasKey .Values "enableTcpRoutes")) }}
+{{- if (ternary .Values.enableTlsRoutes .Values.installGatewayAPI (hasKey .Values "enableTlsRoutes")) }}
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
