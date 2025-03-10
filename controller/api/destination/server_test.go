@@ -1018,6 +1018,14 @@ func TestGetProfiles(t *testing.T) {
 								Name:  "LINKERD2_PROXY_INBOUND_LISTEN_ADDR",
 								Value: "0.0.0.0:4143",
 							},
+							{
+								Name:  "LINKERD2_PROXY_ADMIN_LISTEN_ADDR",
+								Value: "0.0.0.0:4191",
+							},
+							{
+								Name:  "LINKERD2_PROXY_CONTROL_LISTEN_ADDR",
+								Value: "0.0.0.0:4190",
+							},
 						},
 					},
 					{
