@@ -289,17 +289,24 @@ func TestIgnoreCluster(t *testing.T) {
 }
 
 func TestRenderCRDs(t *testing.T) {
-	defaultValues, err := testInstallOptions()
-	if err != nil {
-		t.Fatal(err)
-	}
-	addFakeTLSSecrets(defaultValues)
-
 	var buf bytes.Buffer
 	if err := renderCRDs(context.Background(), nil, &buf, values.Options{}, "yaml"); err != nil {
 		t.Fatalf("Failed to render templates: %v", err)
 	}
 	if err := testDataDiffer.DiffTestYAML("install_crds.golden", buf.String()); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestRenderCRDsWithGatewayAPI(t *testing.T) {
+	options := values.Options{
+		Values: []string{"installGatewayAPI=true"},
+	}
+	var buf bytes.Buffer
+	if err := renderCRDs(context.Background(), nil, &buf, options, "yaml"); err != nil {
+		t.Fatalf("Failed to render templates: %v", err)
+	}
+	if err := testDataDiffer.DiffTestYAML("install_crds_with_gateway_api.golden", buf.String()); err != nil {
 		t.Error(err)
 	}
 }
