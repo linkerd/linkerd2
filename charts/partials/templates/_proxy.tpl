@@ -25,10 +25,30 @@ env:
       fieldPath: spec.nodeName
 - name: _pod_containerName
   value: &containerName linkerd-proxy
-{{- if .Values.proxy.cores }}
+{{/* Configure CPU cores usage */}}
+{{/* 1. Fixed configuration (DEPRECATED) */}}
+{{ if .Values.proxy.cores -}}
 - name: LINKERD2_PROXY_CORES
-  value: {{.Values.proxy.cores | quote}}
-{{- end }}
+  value: {{ .Values.proxy.cores | quote }}
+- name: LINKERD2_PROXY_CORES_MIN
+  value: {{ .Values.proxy.cores | quote }}
+{{ else -}}
+{{/* 2. Variable configuration */}}
+{{ with (.Values.proxy.runtime).workers -}}
+- name: LINKERD2_PROXY_CORES
+  value: {{ .minimum | default 1 | quote }}
+- name: LINKERD2_PROXY_CORES_MIN
+  value: {{ .minimum | default 1 | quote }}
+{{ if .maximum -}}
+- name: LINKERD2_PROXY_CORES_MAX
+  value: {{ .maximum | quote }}
+{{ end -}}
+{{ if .maximumByRatioOfAvailableCPUs -}}
+- name: LINKERD2_PROXY_CORES_MAX_RATIO
+  value: {{ .maximumByRatioOfAvailableCPUs | quote }}
+{{ end -}}
+{{ end -}}
+{{ end -}}
 {{ if .Values.proxy.requireIdentityOnInboundPorts -}}
 - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_IDENTITY
   value: {{.Values.proxy.requireIdentityOnInboundPorts | quote}}

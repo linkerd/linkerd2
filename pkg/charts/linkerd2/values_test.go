@@ -178,6 +178,11 @@ func TestNewValues(t *testing.T) {
 					Lifetime:       "1h",
 				},
 			},
+			Runtime: ProxyRuntime{
+				Workers: ProxyRuntimeWorkers{
+					Minimum: 1,
+				},
+			},
 			Inbound: ProxyParams{
 				"server": ProxyScopeParams{
 					"http2": ProxyProtoParams{

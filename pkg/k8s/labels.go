@@ -197,6 +197,10 @@ const (
 	// ProxyCPULimitAnnotation can be used to override the limitCPU config.
 	ProxyCPULimitAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-cpu-limit"
 
+	// ProxyCPULimitByRatioOfAvailableCPUsAnnotation can be used to configure
+	// proxy worker threads as a proportion of the node's available CPUs.
+	ProxyCPULimitByRatioOfAvailableCPUsAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-cpu-limit-by-ratio-of-available-cpus"
+
 	// ProxyMemoryLimitAnnotation can be used to override the limitMemory config.
 	ProxyMemoryLimitAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-memory-limit"
 
