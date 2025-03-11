@@ -147,6 +147,7 @@ type (
 		OpaquePorts                          string           `json:"opaquePorts"`
 		Await                                bool             `json:"await"`
 		DefaultInboundPolicy                 string           `json:"defaultInboundPolicy"`
+		OutboundTransportMode                string           `json:"outboundTransportMode"`
 		AccessLog                            string           `json:"accessLog"`
 		ShutdownGracePeriod                  string           `json:"shutdownGracePeriod"`
 		NativeSidecar                        bool             `json:"nativeSidecar"`

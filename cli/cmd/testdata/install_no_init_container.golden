@@ -716,6 +716,7 @@ data:
             keepAliveTimeout: 3s
       outboundConnectTimeout: 1000ms
       outboundDiscoveryCacheUnusedTimeout: 5s
+      outboundTransportMode: transport-header
       podInboundPorts: ""
       ports:
         admin: 4191
@@ -1544,6 +1545,7 @@ spec:
         - destination
         - -addr=:8086
         - -controller-namespace=linkerd
+        - -outbound-transport-mode=transport-header
         - -enable-h2-upgrade=true
         - -log-level=info
         - -log-format=plain

@@ -250,6 +250,8 @@ proxy:
   # "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny", "audit"
   # @default -- "all-unauthenticated"
   defaultInboundPolicy: "all-unauthenticated"
+  # -- Configures the outbound transport mode. Valid values are "transport-header" and "transparent"
+  outboundTransportMode: transport-header
   # -- Enable KEP-753 native sidecars
   # This is an experimental feature. It requires Kubernetes >= 1.29.
   # If enabled, .proxy.waitBeforeExitSeconds should not be used.
