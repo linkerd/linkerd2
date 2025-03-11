@@ -154,6 +154,7 @@ func TestNewValues(t *testing.T) {
 			OpaquePorts:                          "25,587,3306,4444,5432,6379,9300,11211",
 			Await:                                true,
 			DefaultInboundPolicy:                 "all-unauthenticated",
+			OutboundTransportMode:                "transport-header",
 			OutboundDiscoveryCacheUnusedTimeout:  "5s",
 			InboundDiscoveryCacheUnusedTimeout:   "90s",
 			DisableOutboundProtocolDetectTimeout: false,
