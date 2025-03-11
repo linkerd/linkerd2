@@ -1,0 +1,20 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-multicluster-controller-access-local-resources
+  labels:
+    linkerd.io/extension: multicluster
+    component: controller
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+rules:
+- apiGroups: [""]
+  resources: ["endpoints", "services"]
+  verbs: ["list", "get", "watch", "create", "delete", "update"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list", "get", "watch"]
+{{- if .Values.enableNamespaceCreation }}
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["create"]
+{{- end}}
