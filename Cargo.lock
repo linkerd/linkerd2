@@ -1302,9 +1302,9 @@ dependencies = [
 
 [[package]]
 name = "kubert-prometheus-tokio"
-version = "0.2.0-alpha1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dbcc33c25a942237489d4a50beffb704a01a0faff50ec0d5c97eb98b12c6c23"
+checksum = "639670482534c37eb44caf6f4b72cc5da2f2c06aed39d1fb0cba940569428212"
 dependencies = [
  "prometheus-client",
  "tokio",
