@@ -61,6 +61,17 @@ func TestFederatedService(t *testing.T) {
 				if err != nil {
 					testutil.AnnotatedFatalf(t, "failed to label web-svc", "%s\n%s", err, out)
 				}
+
+				// Add metadata to each service so we can ensure it is copied
+				// correctly to the federated service.
+				out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "annotate", "service/web-svc", "test-context="+ctx)
+				if err != nil {
+					testutil.AnnotatedFatalf(t, "failed to annotate web-svc", "%s\n%s", err, out)
+				}
+				out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "label", "service/web-svc", "test-context="+ctx)
+				if err != nil {
+					testutil.AnnotatedFatalf(t, "failed to label web-svc", "%s\n%s", err, out)
+				}
 			}
 		})
 
@@ -107,6 +118,23 @@ func TestFederatedService(t *testing.T) {
 					return fmt.Errorf("federated service local discovery was %s, expected %s", localDiscovery, "web-svc")
 				}
 
+				// Metadata should be copied from the source cluster's service
+				// because that Link is older.
+				testAnnotation, found := svc.Annotations["test-context"]
+				if !found {
+					return errors.New("federated service missing annotation: test-context")
+				}
+				if testAnnotation != contexts[testutil.SourceContextKey] {
+					return fmt.Errorf("federated service test-context was %s, expected %s", testAnnotation, contexts[testutil.SourceContextKey])
+				}
+				testLabel, found := svc.Labels["test-context"]
+				if !found {
+					return errors.New("federated service missing label: test-context")
+				}
+				if testLabel != contexts[testutil.SourceContextKey] {
+					return fmt.Errorf("federated service test-context was %s, expected %s", testLabel, contexts[testutil.SourceContextKey])
+				}
+
 				_, err = TestHelper.GetEndpoints(ctx, ns, "web-svc-federated")
 				if err == nil {
 					return errors.New("federated service should not have endpoints")
@@ -145,5 +173,42 @@ func TestFederatedService(t *testing.T) {
 				testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out waiting for traffic in %s cluster (%s)", ctx, timeout), err)
 			}
 		}
+
+		// We update the ports on both members services and assert that the ports
+		// are copied from the older Link.
+		t.Run("Update federated service ports", func(t *testing.T) {
+			for _, ctx := range contexts {
+				out, err := TestHelper.KubectlWithContext("",
+					ctx,
+					"--namespace", ns,
+					"patch",
+					"service",
+					"web-svc",
+					"--type", "merge",
+					"--patch", fmt.Sprintf(`{"spec": {"ports": [{"name": "http-%s", "port": 80, "targetPort": 80}]}}`, ctx),
+				)
+				if err != nil {
+					testutil.AnnotatedFatal(t, "failed to update ports", out)
+				}
+			}
+
+			err := TestHelper.SwitchContext(contexts[testutil.SourceContextKey])
+			if err != nil {
+				testutil.AnnotatedFatal(t, "failed to switch contexts", err)
+			}
+			err = testutil.RetryFor(timeout, func() error {
+				svc, err := TestHelper.GetService(ctx, ns, "web-svc-federated")
+				if err != nil {
+					return err
+				}
+				if svc.Spec.Ports[0].Name != "http-"+contexts[testutil.SourceContextKey] {
+					return fmt.Errorf("federated service port name was %s, expected %s", svc.Spec.Ports[0].Name, "http-"+contexts[testutil.SourceContextKey])
+				}
+				return nil
+			})
+			if err != nil {
+				testutil.AnnotatedFatal(t, "timed-out verifying federated service ports", err)
+			}
+		})
 	})
 }

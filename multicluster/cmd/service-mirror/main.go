@@ -98,6 +98,7 @@ func Main(args []string) {
 		controllerK8s.NS,
 		controllerK8s.Svc,
 		controllerK8s.Endpoint,
+		controllerK8s.Link,
 	)
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
