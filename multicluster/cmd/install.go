@@ -46,6 +46,11 @@ var TemplatesMulticluster = []string{
 	"templates/link-crd.yaml",
 	"templates/service-mirror-policy.yaml",
 	"templates/local-service-mirror.yaml",
+	"templates/controller-clusterrole.yaml",
+	"templates/controller/deployment.yaml",
+	"templates/controller/pdb.yaml",
+	"templates/controller/probe-svc.yaml",
+	"templates/controller/rbac.yaml",
 }
 
 func newMulticlusterInstallCommand() *cobra.Command {
