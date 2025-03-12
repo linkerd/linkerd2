@@ -68,7 +68,7 @@ func newGatewaysCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("make sure the linkerd-multicluster extension is installed, using 'linkerd multicluster install' (%w)", err)
 			}
-			selector := fmt.Sprintf("component=%s", "linkerd-service-mirror")
+			selector := "component in (linkerd-service-mirror, controller)"
 			if opts.clusterName != "" {
 				selector = fmt.Sprintf("%s,mirror.linkerd.io/cluster-name=%s", selector, opts.clusterName)
 			}
@@ -255,7 +255,9 @@ func getServiceMirrorContainer(pod corev1.Pod) (corev1.Container, error) {
 		return corev1.Container{}, fmt.Errorf("pod not running: %s", pod.GetName())
 	}
 	for _, c := range pod.Spec.Containers {
-		if c.Name == "service-mirror" {
+		// "controller" is for the service mirror controllers managed by the
+		// linkerd-multicluster chart
+		if c.Name == "service-mirror" || c.Name == "controller" {
 			return c, nil
 		}
 	}
