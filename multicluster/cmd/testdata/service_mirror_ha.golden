@@ -142,6 +142,7 @@ spec:
         - -event-requeue-limit=3
         - -namespace=test
         - -enable-pprof=false
+        - -probe-service=probe-gateway-test-cluster
         - test-cluster
         image: cr.l5d.io/linkerd/controller:dev-undefined
         name: service-mirror
