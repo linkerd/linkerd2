@@ -45,6 +45,7 @@ type Values struct {
 	ServiceMirrorExperimentalEnv []corev1.EnvVar `json:"serviceMirrorExperimentalEnv"`
 
 	LocalServiceMirror *LocalServiceMirror `json:"localServiceMirror"`
+	ControllerDefaults *ControllerDefaults `json:"controllerDefaults"`
 }
 
 // Gateway contains all options related to the Gateway Service
@@ -83,6 +84,21 @@ type LocalServiceMirror struct {
 	EnablePprof              bool            `json:"enablePprof"`
 	UID                      int64           `json:"UID"`
 	GID                      int64           `json:"GID"`
+}
+
+// ControllerDefaults is used to unmarshal the default values.yaml file, so
+// only entries that are objects that are not empty by default are required.
+type ControllerDefaults struct {
+	Gateway *ControllerDefaultsGateway `json:"gateway"`
+	Image   *linkerd2.Image            `json:"image"`
+}
+
+type ControllerDefaultsGateway struct {
+	Probe *ControllerDefaultsProbe `json:"probe"`
+}
+
+type ControllerDefaultsProbe struct {
+	Port uint32 `json:"port"`
 }
 
 // NewInstallValues returns a new instance of the Values type.
