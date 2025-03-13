@@ -252,6 +252,7 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	}
 
 	defaults.LocalServiceMirror.Image.Version = version.Version
+	defaults.ControllerDefaults.Image.Version = version.Version
 	defaults.Gateway.Enabled = opts.gateway.Enabled
 	defaults.Gateway.Port = opts.gateway.Port
 	defaults.Gateway.Probe.Seconds = opts.gateway.Probe.Seconds
