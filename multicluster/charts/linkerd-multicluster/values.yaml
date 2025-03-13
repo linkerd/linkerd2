@@ -167,9 +167,13 @@ localServiceMirror:
 # - link:
 #     ref:
 #       name: target1
+#   logLevel: debug
 # - link:
 #     ref:
 #       name: target2
+#   gateway:
+#     enabled: false
+#   replicas: 2
 controllers: []
 
 controllerDefaults:
