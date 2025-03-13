@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
+	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	scheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type MeshTLSAuthenticationsGetter interface {
 
 // MeshTLSAuthenticationInterface has methods to work with MeshTLSAuthentication resources.
 type MeshTLSAuthenticationInterface interface {
-	Create(ctx context.Context, meshTLSAuthentication *v1alpha1.MeshTLSAuthentication, opts v1.CreateOptions) (*v1alpha1.MeshTLSAuthentication, error)
-	Update(ctx context.Context, meshTLSAuthentication *v1alpha1.MeshTLSAuthentication, opts v1.UpdateOptions) (*v1alpha1.MeshTLSAuthentication, error)
+	Create(ctx context.Context, meshTLSAuthentication *policyv1alpha1.MeshTLSAuthentication, opts v1.CreateOptions) (*policyv1alpha1.MeshTLSAuthentication, error)
+	Update(ctx context.Context, meshTLSAuthentication *policyv1alpha1.MeshTLSAuthentication, opts v1.UpdateOptions) (*policyv1alpha1.MeshTLSAuthentication, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.MeshTLSAuthentication, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.MeshTLSAuthenticationList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*policyv1alpha1.MeshTLSAuthentication, error)
+	List(ctx context.Context, opts v1.ListOptions) (*policyv1alpha1.MeshTLSAuthenticationList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.MeshTLSAuthentication, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *policyv1alpha1.MeshTLSAuthentication, err error)
 	MeshTLSAuthenticationExpansion
 }
 
 // meshTLSAuthentications implements MeshTLSAuthenticationInterface
 type meshTLSAuthentications struct {
-	*gentype.ClientWithList[*v1alpha1.MeshTLSAuthentication, *v1alpha1.MeshTLSAuthenticationList]
+	*gentype.ClientWithList[*policyv1alpha1.MeshTLSAuthentication, *policyv1alpha1.MeshTLSAuthenticationList]
 }
 
 // newMeshTLSAuthentications returns a MeshTLSAuthentications
 func newMeshTLSAuthentications(c *PolicyV1alpha1Client, namespace string) *meshTLSAuthentications {
 	return &meshTLSAuthentications{
-		gentype.NewClientWithList[*v1alpha1.MeshTLSAuthentication, *v1alpha1.MeshTLSAuthenticationList](
+		gentype.NewClientWithList[*policyv1alpha1.MeshTLSAuthentication, *policyv1alpha1.MeshTLSAuthenticationList](
 			"meshtlsauthentications",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.MeshTLSAuthentication { return &v1alpha1.MeshTLSAuthentication{} },
-			func() *v1alpha1.MeshTLSAuthenticationList { return &v1alpha1.MeshTLSAuthenticationList{} }),
+			func() *policyv1alpha1.MeshTLSAuthentication { return &policyv1alpha1.MeshTLSAuthentication{} },
+			func() *policyv1alpha1.MeshTLSAuthenticationList { return &policyv1alpha1.MeshTLSAuthenticationList{} },
+		),
 	}
 }

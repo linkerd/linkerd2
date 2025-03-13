@@ -29,7 +29,7 @@ type FakeExternalworkloadV1beta1 struct {
 }
 
 func (c *FakeExternalworkloadV1beta1) ExternalWorkloads(namespace string) v1beta1.ExternalWorkloadInterface {
-	return &FakeExternalWorkloads{c, namespace}
+	return newFakeExternalWorkloads(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

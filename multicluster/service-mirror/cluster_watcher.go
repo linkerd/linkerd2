@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
@@ -48,7 +48,7 @@ type (
 	// problems or general glitch in the Matrix.
 	RemoteClusterServiceWatcher struct {
 		serviceMirrorNamespace   string
-		link                     *v1alpha2.Link
+		link                     *v1alpha3.Link
 		remoteAPIClient          *k8s.API
 		localAPIClient           *k8s.API
 		linkClient               l5dcrdclient.Interface
@@ -194,7 +194,7 @@ func NewRemoteClusterServiceWatcher(
 	localAPI *k8s.API,
 	remoteAPI *k8s.API,
 	linkClient l5dcrdclient.Interface,
-	link *v1alpha2.Link,
+	link *v1alpha3.Link,
 	requeueLimit int,
 	repairPeriod time.Duration,
 	liveness chan bool,
@@ -1793,12 +1793,12 @@ func (rcsw *RemoteClusterServiceWatcher) isFederatedServiceMember(l map[string]s
 	return federatedServiceSelector.Matches(labels.Set(l))
 }
 
-func (rcsw *RemoteClusterServiceWatcher) updateLinkMirrorStatus(remoteName, namespace string, condition v1alpha2.LinkCondition) {
+func (rcsw *RemoteClusterServiceWatcher) updateLinkMirrorStatus(remoteName, namespace string, condition v1alpha3.LinkCondition) {
 	if rcsw.link.Spec.TargetClusterName == "" {
 		// The local cluster has no Link resource.
 		return
 	}
-	link, err := rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
+	link, err := rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
 	if err != nil {
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
@@ -1806,12 +1806,12 @@ func (rcsw *RemoteClusterServiceWatcher) updateLinkMirrorStatus(remoteName, name
 	rcsw.patchLinkStatus(link.Status)
 }
 
-func (rcsw *RemoteClusterServiceWatcher) updateLinkFederatedStatus(remoteName, namespace string, condition v1alpha2.LinkCondition) {
+func (rcsw *RemoteClusterServiceWatcher) updateLinkFederatedStatus(remoteName, namespace string, condition v1alpha3.LinkCondition) {
 	if rcsw.link.Spec.TargetClusterName == "" {
 		// The local cluster has no Link resource.
 		return
 	}
-	link, err := rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
+	link, err := rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
 	if err != nil {
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
@@ -1824,7 +1824,7 @@ func (rcsw *RemoteClusterServiceWatcher) deleteLinkMirrorStatus(remoteName, name
 		// The local cluster has no Link resource.
 		return
 	}
-	link, err := rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
+	link, err := rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
 	if err != nil {
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
@@ -1837,7 +1837,7 @@ func (rcsw *RemoteClusterServiceWatcher) deleteLinkFederatedStatus(remoteName, n
 		// The local cluster has no Link resource.
 		return
 	}
-	link, err := rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
+	link, err := rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
 	if err != nil {
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
@@ -1845,13 +1845,13 @@ func (rcsw *RemoteClusterServiceWatcher) deleteLinkFederatedStatus(remoteName, n
 	rcsw.patchLinkStatus(link.Status)
 }
 
-func (rcsw *RemoteClusterServiceWatcher) patchLinkStatus(status v1alpha2.LinkStatus) {
+func (rcsw *RemoteClusterServiceWatcher) patchLinkStatus(status v1alpha3.LinkStatus) {
 	rcsw.log.Infof("patching link status %s/%s", rcsw.link.Namespace, rcsw.link.Name)
 	statusBytes, err := json.Marshal(status)
 	if err != nil {
 		rcsw.log.Errorf("Failed to marshal link status: %s", err)
 	}
-	_, err = rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Patch(
+	_, err = rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Patch(
 		context.Background(),
 		rcsw.link.Name,
 		types.MergePatchType,
@@ -1864,32 +1864,32 @@ func (rcsw *RemoteClusterServiceWatcher) patchLinkStatus(status v1alpha2.LinkSta
 	}
 }
 
-func updateServiceStatus(remoteName, namespace string, condition v1alpha2.LinkCondition, statuses []v1alpha2.ServiceStatus) []v1alpha2.ServiceStatus {
+func updateServiceStatus(remoteName, namespace string, condition v1alpha3.LinkCondition, statuses []v1alpha3.ServiceStatus) []v1alpha3.ServiceStatus {
 	foundStatus := false
 	for i, status := range statuses {
 		if status.RemoteRef.Name == remoteName && status.RemoteRef.Namespace == namespace {
 			foundStatus = true
-			status.Conditions = []v1alpha2.LinkCondition{condition}
+			status.Conditions = []v1alpha3.LinkCondition{condition}
 			statuses[i] = status
 		}
 	}
 	if !foundStatus {
-		statuses = append(statuses, v1alpha2.ServiceStatus{
+		statuses = append(statuses, v1alpha3.ServiceStatus{
 			ControllerName: "linkerd.io/service-mirror",
-			RemoteRef: v1alpha2.ObjectRef{
+			RemoteRef: v1alpha3.ObjectRef{
 				Name:      remoteName,
 				Namespace: namespace,
 				Kind:      "Service",
 				Group:     corev1.GroupName,
 			},
-			Conditions: []v1alpha2.LinkCondition{condition},
+			Conditions: []v1alpha3.LinkCondition{condition},
 		})
 	}
 	return statuses
 }
 
-func deleteServiceStatus(remoteName, namespace string, statuses []v1alpha2.ServiceStatus) []v1alpha2.ServiceStatus {
-	newStatuses := make([]v1alpha2.ServiceStatus, 0)
+func deleteServiceStatus(remoteName, namespace string, statuses []v1alpha3.ServiceStatus) []v1alpha3.ServiceStatus {
+	newStatuses := make([]v1alpha3.ServiceStatus, 0)
 	for _, status := range statuses {
 		if status.RemoteRef.Name == remoteName && status.RemoteRef.Namespace == namespace {
 			continue
@@ -1899,12 +1899,12 @@ func deleteServiceStatus(remoteName, namespace string, statuses []v1alpha2.Servi
 	return newStatuses
 }
 
-func mirrorStatusCondition(success bool, reason string, message string, localRef *corev1.Service) v1alpha2.LinkCondition {
+func mirrorStatusCondition(success bool, reason string, message string, localRef *corev1.Service) v1alpha3.LinkCondition {
 	status := metav1.ConditionTrue
 	if !success {
 		status = metav1.ConditionFalse
 	}
-	condition := v1alpha2.LinkCondition{
+	condition := v1alpha3.LinkCondition{
 		LastTransitionTime: metav1.Now(),
 		Message:            message,
 		Reason:             reason,
@@ -1912,7 +1912,7 @@ func mirrorStatusCondition(success bool, reason string, message string, localRef
 		Type:               "Mirrored",
 	}
 	if localRef != nil {
-		condition.LocalRef = v1alpha2.ObjectRef{
+		condition.LocalRef = v1alpha3.ObjectRef{
 			Name:      localRef.Name,
 			Namespace: localRef.Namespace,
 			Kind:      "Service",

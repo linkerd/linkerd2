@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
+	apispolicyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/listers/policy/v1alpha1"
+	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/listers/policy/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // NetworkAuthentications.
 type NetworkAuthenticationInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.NetworkAuthenticationLister
+	Lister() policyv1alpha1.NetworkAuthenticationLister
 }
 
 type networkAuthenticationInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredNetworkAuthenticationInformer(client versioned.Interface, namesp
 				return client.PolicyV1alpha1().NetworkAuthentications(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&policyv1alpha1.NetworkAuthentication{},
+		&apispolicyv1alpha1.NetworkAuthentication{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *networkAuthenticationInformer) defaultInformer(client versioned.Interfa
 }
 
 func (f *networkAuthenticationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&policyv1alpha1.NetworkAuthentication{}, f.defaultInformer)
+	return f.factory.InformerFor(&apispolicyv1alpha1.NetworkAuthentication{}, f.defaultInformer)
 }
 
-func (f *networkAuthenticationInformer) Lister() v1alpha1.NetworkAuthenticationLister {
-	return v1alpha1.NewNetworkAuthenticationLister(f.Informer().GetIndexer())
+func (f *networkAuthenticationInformer) Lister() policyv1alpha1.NetworkAuthenticationLister {
+	return policyv1alpha1.NewNetworkAuthenticationLister(f.Informer().GetIndexer())
 }

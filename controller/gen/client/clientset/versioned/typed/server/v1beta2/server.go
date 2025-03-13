@@ -19,9 +19,9 @@ limitations under the License.
 package v1beta2
 
 import (
-	"context"
+	context "context"
 
-	v1beta2 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
+	serverv1beta2 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	scheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type ServersGetter interface {
 
 // ServerInterface has methods to work with Server resources.
 type ServerInterface interface {
-	Create(ctx context.Context, server *v1beta2.Server, opts v1.CreateOptions) (*v1beta2.Server, error)
-	Update(ctx context.Context, server *v1beta2.Server, opts v1.UpdateOptions) (*v1beta2.Server, error)
+	Create(ctx context.Context, server *serverv1beta2.Server, opts v1.CreateOptions) (*serverv1beta2.Server, error)
+	Update(ctx context.Context, server *serverv1beta2.Server, opts v1.UpdateOptions) (*serverv1beta2.Server, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta2.Server, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1beta2.ServerList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*serverv1beta2.Server, error)
+	List(ctx context.Context, opts v1.ListOptions) (*serverv1beta2.ServerList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta2.Server, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *serverv1beta2.Server, err error)
 	ServerExpansion
 }
 
 // servers implements ServerInterface
 type servers struct {
-	*gentype.ClientWithList[*v1beta2.Server, *v1beta2.ServerList]
+	*gentype.ClientWithList[*serverv1beta2.Server, *serverv1beta2.ServerList]
 }
 
 // newServers returns a Servers
 func newServers(c *ServerV1beta2Client, namespace string) *servers {
 	return &servers{
-		gentype.NewClientWithList[*v1beta2.Server, *v1beta2.ServerList](
+		gentype.NewClientWithList[*serverv1beta2.Server, *serverv1beta2.ServerList](
 			"servers",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1beta2.Server { return &v1beta2.Server{} },
-			func() *v1beta2.ServerList { return &v1beta2.ServerList{} }),
+			func() *serverv1beta2.Server { return &serverv1beta2.Server{} },
+			func() *serverv1beta2.ServerList { return &serverv1beta2.ServerList{} },
+		),
 	}
 }

@@ -3,15 +3,15 @@ package servicemirror
 import (
 	"reflect"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/cache"
 )
 
-func GetLinkHandlers(results chan<- *v1alpha2.Link, linkName string) cache.ResourceEventHandlerFuncs {
+func GetLinkHandlers(results chan<- *v1alpha3.Link, linkName string) cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			link, ok := obj.(*v1alpha2.Link)
+			link, ok := obj.(*v1alpha3.Link)
 			if !ok {
 				log.Errorf("object is not a Link: %+v", obj)
 				return
@@ -25,12 +25,12 @@ func GetLinkHandlers(results chan<- *v1alpha2.Link, linkName string) cache.Resou
 			}
 		},
 		UpdateFunc: func(oldObj, currentObj interface{}) {
-			oldLink, ok := oldObj.(*v1alpha2.Link)
+			oldLink, ok := oldObj.(*v1alpha3.Link)
 			if !ok {
 				log.Errorf("object is not a Link: %+v", oldObj)
 				return
 			}
-			currentLink, ok := currentObj.(*v1alpha2.Link)
+			currentLink, ok := currentObj.(*v1alpha3.Link)
 			if !ok {
 				log.Errorf("object is not a Link: %+v", currentObj)
 				return
@@ -48,14 +48,14 @@ func GetLinkHandlers(results chan<- *v1alpha2.Link, linkName string) cache.Resou
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			link, ok := obj.(*v1alpha2.Link)
+			link, ok := obj.(*v1alpha3.Link)
 			if !ok {
 				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 				if !ok {
 					log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
 					return
 				}
-				link, ok = tombstone.Obj.(*v1alpha2.Link)
+				link, ok = tombstone.Obj.(*v1alpha3.Link)
 				if !ok {
 					log.Errorf("DeletedFinalStateUnknown contained object that is not a Link %#v", obj)
 					return
