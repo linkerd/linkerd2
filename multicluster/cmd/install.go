@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/linkerd/linkerd2/multicluster/static"
@@ -189,6 +190,18 @@ func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string
 		return err
 	}
 
+	if reg := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
+		overrideRegistry(chart.Values, "localServiceMirror.image.name", reg, "cr.l5d.io/linkerd/controller")
+
+		if controllers, ok := valuesOverrides["controllers"].([]any); ok {
+			for _, c := range controllers {
+				if controller, ok := c.(map[string]any); ok {
+					overrideRegistry(controller, "image.name", reg, "cr.l5d.io/linkerd/controller")
+				}
+			}
+		}
+	}
+
 	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
 	if err != nil {
 		return err
@@ -238,10 +251,6 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 		return nil, err
 	}
 
-	if reg := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
-		defaults.LocalServiceMirror.Image.Name = pkgcmd.RegistryOverride(defaults.LocalServiceMirror.Image.Name, reg)
-	}
-
 	defaults.LocalServiceMirror.Image.Version = version.Version
 	defaults.Gateway.Enabled = opts.gateway.Enabled
 	defaults.Gateway.Port = opts.gateway.Port
@@ -267,4 +276,32 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	defaults.IdentityTrustDomain = values.IdentityTrustDomain
 
 	return defaults, nil
+}
+
+// overrideRegistry overrides the image name in the values map at the given
+// keyPath with the given registry. If the keyPath does not exist, it is
+// created.
+func overrideRegistry(values map[string]any, keyPath, reg, defaultImage string) {
+	keys := strings.Split(keyPath, ".")
+	m := values
+
+	// Traverse map using keys, except for the last key
+	for _, key := range keys[:len(keys)-1] {
+		if next, ok := m[key].(map[string]any); ok {
+			m = next
+		} else {
+			newMap := make(map[string]any)
+			m[key] = newMap
+			m = newMap
+		}
+	}
+
+	// Override the last key if it exists and is a string
+	lastKey := keys[len(keys)-1]
+	if val, ok := m[lastKey].(string); ok {
+		m[lastKey] = pkgcmd.RegistryOverride(val, reg)
+	} else {
+		// If the key is missing, initialize it with an empty string before overriding
+		m[lastKey] = pkgcmd.RegistryOverride(defaultImage, reg)
+	}
 }
