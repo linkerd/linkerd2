@@ -8,6 +8,7 @@ permissions:
 env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
+  CARGO_NEXTEST_VERSION: 0.9.92
   DOCKER_REGISTRY: ghcr.io/linkerd
   GH_ANNOTATION: true
   K3D_VERSION: v5.8.1
@@ -188,8 +189,11 @@ jobs:
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
           bin/scurl -vo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" && chmod +x /usr/local/bin/yq
+          bin/scurl -v "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/cargo-nextest-${CARGO_NEXTEST_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o nextest.tar.gz
+          tar -xzf nextest.tar.gz
+          mv cargo-nextest ~/.cargo/bin/
+          chmod +x ~/.cargo/bin/cargo-nextest
       - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3
-      - run: cargo install cargo-nextest@0.9.67 --locked
       - run: just policy-test-build
       - run: just k3d-k8s='${{ matrix.k8s }}' k3d-create
       - run: docker load <image-archives/controller.tar
