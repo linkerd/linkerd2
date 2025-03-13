@@ -1248,9 +1248,9 @@ dependencies = [
 
 [[package]]
 name = "kubert"
-version = "0.23.0"
+version = "0.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc108b7a3e2cb764f37403914ae168a206630f5ca0437fed29d83eebd8ca7b8e"
+checksum = "8f936f5739b42d148cc6f17fb568090cf812e77a29fef38c3cfe1a6e6390b087"
 dependencies = [
  "ahash",
  "backoff",
@@ -1290,9 +1290,9 @@ dependencies = [
 
 [[package]]
 name = "kubert-prometheus-process"
-version = "0.2.0-alpha1"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5df580a32e3cddba16ff702e448e09d829527de76caf501d14d4869080002e2"
+checksum = "5b89e2a641a3f74c2e7366eb050282ac4a6194b63dae5294084215c457237e47"
 dependencies = [
  "libc",
  "procfs",
