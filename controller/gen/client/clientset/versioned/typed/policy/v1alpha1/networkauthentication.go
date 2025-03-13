@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
+	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	scheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type NetworkAuthenticationsGetter interface {
 
 // NetworkAuthenticationInterface has methods to work with NetworkAuthentication resources.
 type NetworkAuthenticationInterface interface {
-	Create(ctx context.Context, networkAuthentication *v1alpha1.NetworkAuthentication, opts v1.CreateOptions) (*v1alpha1.NetworkAuthentication, error)
-	Update(ctx context.Context, networkAuthentication *v1alpha1.NetworkAuthentication, opts v1.UpdateOptions) (*v1alpha1.NetworkAuthentication, error)
+	Create(ctx context.Context, networkAuthentication *policyv1alpha1.NetworkAuthentication, opts v1.CreateOptions) (*policyv1alpha1.NetworkAuthentication, error)
+	Update(ctx context.Context, networkAuthentication *policyv1alpha1.NetworkAuthentication, opts v1.UpdateOptions) (*policyv1alpha1.NetworkAuthentication, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.NetworkAuthentication, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.NetworkAuthenticationList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*policyv1alpha1.NetworkAuthentication, error)
+	List(ctx context.Context, opts v1.ListOptions) (*policyv1alpha1.NetworkAuthenticationList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.NetworkAuthentication, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *policyv1alpha1.NetworkAuthentication, err error)
 	NetworkAuthenticationExpansion
 }
 
 // networkAuthentications implements NetworkAuthenticationInterface
 type networkAuthentications struct {
-	*gentype.ClientWithList[*v1alpha1.NetworkAuthentication, *v1alpha1.NetworkAuthenticationList]
+	*gentype.ClientWithList[*policyv1alpha1.NetworkAuthentication, *policyv1alpha1.NetworkAuthenticationList]
 }
 
 // newNetworkAuthentications returns a NetworkAuthentications
 func newNetworkAuthentications(c *PolicyV1alpha1Client, namespace string) *networkAuthentications {
 	return &networkAuthentications{
-		gentype.NewClientWithList[*v1alpha1.NetworkAuthentication, *v1alpha1.NetworkAuthenticationList](
+		gentype.NewClientWithList[*policyv1alpha1.NetworkAuthentication, *policyv1alpha1.NetworkAuthenticationList](
 			"networkauthentications",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.NetworkAuthentication { return &v1alpha1.NetworkAuthentication{} },
-			func() *v1alpha1.NetworkAuthenticationList { return &v1alpha1.NetworkAuthenticationList{} }),
+			func() *policyv1alpha1.NetworkAuthentication { return &policyv1alpha1.NetworkAuthentication{} },
+			func() *policyv1alpha1.NetworkAuthenticationList { return &policyv1alpha1.NetworkAuthenticationList{} },
+		),
 	}
 }

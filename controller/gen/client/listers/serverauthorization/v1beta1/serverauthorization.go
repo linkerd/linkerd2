@@ -19,10 +19,10 @@ limitations under the License.
 package v1beta1
 
 import (
-	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ServerAuthorizationLister helps list ServerAuthorizations.
@@ -30,7 +30,7 @@ import (
 type ServerAuthorizationLister interface {
 	// List lists all ServerAuthorizations in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta1.ServerAuthorization, err error)
+	List(selector labels.Selector) (ret []*serverauthorizationv1beta1.ServerAuthorization, err error)
 	// ServerAuthorizations returns an object that can list and get ServerAuthorizations.
 	ServerAuthorizations(namespace string) ServerAuthorizationNamespaceLister
 	ServerAuthorizationListerExpansion
@@ -38,17 +38,17 @@ type ServerAuthorizationLister interface {
 
 // serverAuthorizationLister implements the ServerAuthorizationLister interface.
 type serverAuthorizationLister struct {
-	listers.ResourceIndexer[*v1beta1.ServerAuthorization]
+	listers.ResourceIndexer[*serverauthorizationv1beta1.ServerAuthorization]
 }
 
 // NewServerAuthorizationLister returns a new ServerAuthorizationLister.
 func NewServerAuthorizationLister(indexer cache.Indexer) ServerAuthorizationLister {
-	return &serverAuthorizationLister{listers.New[*v1beta1.ServerAuthorization](indexer, v1beta1.Resource("serverauthorization"))}
+	return &serverAuthorizationLister{listers.New[*serverauthorizationv1beta1.ServerAuthorization](indexer, serverauthorizationv1beta1.Resource("serverauthorization"))}
 }
 
 // ServerAuthorizations returns an object that can list and get ServerAuthorizations.
 func (s *serverAuthorizationLister) ServerAuthorizations(namespace string) ServerAuthorizationNamespaceLister {
-	return serverAuthorizationNamespaceLister{listers.NewNamespaced[*v1beta1.ServerAuthorization](s.ResourceIndexer, namespace)}
+	return serverAuthorizationNamespaceLister{listers.NewNamespaced[*serverauthorizationv1beta1.ServerAuthorization](s.ResourceIndexer, namespace)}
 }
 
 // ServerAuthorizationNamespaceLister helps list and get ServerAuthorizations.
@@ -56,15 +56,15 @@ func (s *serverAuthorizationLister) ServerAuthorizations(namespace string) Serve
 type ServerAuthorizationNamespaceLister interface {
 	// List lists all ServerAuthorizations in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta1.ServerAuthorization, err error)
+	List(selector labels.Selector) (ret []*serverauthorizationv1beta1.ServerAuthorization, err error)
 	// Get retrieves the ServerAuthorization from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1beta1.ServerAuthorization, error)
+	Get(name string) (*serverauthorizationv1beta1.ServerAuthorization, error)
 	ServerAuthorizationNamespaceListerExpansion
 }
 
 // serverAuthorizationNamespaceLister implements the ServerAuthorizationNamespaceLister
 // interface.
 type serverAuthorizationNamespaceLister struct {
-	listers.ResourceIndexer[*v1beta1.ServerAuthorization]
+	listers.ResourceIndexer[*serverauthorizationv1beta1.ServerAuthorization]
 }

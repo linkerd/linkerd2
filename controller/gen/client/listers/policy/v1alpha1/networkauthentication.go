@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // NetworkAuthenticationLister helps list NetworkAuthentications.
@@ -30,7 +30,7 @@ import (
 type NetworkAuthenticationLister interface {
 	// List lists all NetworkAuthentications in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.NetworkAuthentication, err error)
+	List(selector labels.Selector) (ret []*policyv1alpha1.NetworkAuthentication, err error)
 	// NetworkAuthentications returns an object that can list and get NetworkAuthentications.
 	NetworkAuthentications(namespace string) NetworkAuthenticationNamespaceLister
 	NetworkAuthenticationListerExpansion
@@ -38,17 +38,17 @@ type NetworkAuthenticationLister interface {
 
 // networkAuthenticationLister implements the NetworkAuthenticationLister interface.
 type networkAuthenticationLister struct {
-	listers.ResourceIndexer[*v1alpha1.NetworkAuthentication]
+	listers.ResourceIndexer[*policyv1alpha1.NetworkAuthentication]
 }
 
 // NewNetworkAuthenticationLister returns a new NetworkAuthenticationLister.
 func NewNetworkAuthenticationLister(indexer cache.Indexer) NetworkAuthenticationLister {
-	return &networkAuthenticationLister{listers.New[*v1alpha1.NetworkAuthentication](indexer, v1alpha1.Resource("networkauthentication"))}
+	return &networkAuthenticationLister{listers.New[*policyv1alpha1.NetworkAuthentication](indexer, policyv1alpha1.Resource("networkauthentication"))}
 }
 
 // NetworkAuthentications returns an object that can list and get NetworkAuthentications.
 func (s *networkAuthenticationLister) NetworkAuthentications(namespace string) NetworkAuthenticationNamespaceLister {
-	return networkAuthenticationNamespaceLister{listers.NewNamespaced[*v1alpha1.NetworkAuthentication](s.ResourceIndexer, namespace)}
+	return networkAuthenticationNamespaceLister{listers.NewNamespaced[*policyv1alpha1.NetworkAuthentication](s.ResourceIndexer, namespace)}
 }
 
 // NetworkAuthenticationNamespaceLister helps list and get NetworkAuthentications.
@@ -56,15 +56,15 @@ func (s *networkAuthenticationLister) NetworkAuthentications(namespace string) N
 type NetworkAuthenticationNamespaceLister interface {
 	// List lists all NetworkAuthentications in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.NetworkAuthentication, err error)
+	List(selector labels.Selector) (ret []*policyv1alpha1.NetworkAuthentication, err error)
 	// Get retrieves the NetworkAuthentication from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.NetworkAuthentication, error)
+	Get(name string) (*policyv1alpha1.NetworkAuthentication, error)
 	NetworkAuthenticationNamespaceListerExpansion
 }
 
 // networkAuthenticationNamespaceLister implements the NetworkAuthenticationNamespaceLister
 // interface.
 type networkAuthenticationNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.NetworkAuthentication]
+	listers.ResourceIndexer[*policyv1alpha1.NetworkAuthentication]
 }

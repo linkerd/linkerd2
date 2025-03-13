@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha2
 
 import (
-	"context"
+	context "context"
 
-	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
+	serviceprofilev1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	scheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type ServiceProfilesGetter interface {
 
 // ServiceProfileInterface has methods to work with ServiceProfile resources.
 type ServiceProfileInterface interface {
-	Create(ctx context.Context, serviceProfile *v1alpha2.ServiceProfile, opts v1.CreateOptions) (*v1alpha2.ServiceProfile, error)
-	Update(ctx context.Context, serviceProfile *v1alpha2.ServiceProfile, opts v1.UpdateOptions) (*v1alpha2.ServiceProfile, error)
+	Create(ctx context.Context, serviceProfile *serviceprofilev1alpha2.ServiceProfile, opts v1.CreateOptions) (*serviceprofilev1alpha2.ServiceProfile, error)
+	Update(ctx context.Context, serviceProfile *serviceprofilev1alpha2.ServiceProfile, opts v1.UpdateOptions) (*serviceprofilev1alpha2.ServiceProfile, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha2.ServiceProfile, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha2.ServiceProfileList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*serviceprofilev1alpha2.ServiceProfile, error)
+	List(ctx context.Context, opts v1.ListOptions) (*serviceprofilev1alpha2.ServiceProfileList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha2.ServiceProfile, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *serviceprofilev1alpha2.ServiceProfile, err error)
 	ServiceProfileExpansion
 }
 
 // serviceProfiles implements ServiceProfileInterface
 type serviceProfiles struct {
-	*gentype.ClientWithList[*v1alpha2.ServiceProfile, *v1alpha2.ServiceProfileList]
+	*gentype.ClientWithList[*serviceprofilev1alpha2.ServiceProfile, *serviceprofilev1alpha2.ServiceProfileList]
 }
 
 // newServiceProfiles returns a ServiceProfiles
 func newServiceProfiles(c *LinkerdV1alpha2Client, namespace string) *serviceProfiles {
 	return &serviceProfiles{
-		gentype.NewClientWithList[*v1alpha2.ServiceProfile, *v1alpha2.ServiceProfileList](
+		gentype.NewClientWithList[*serviceprofilev1alpha2.ServiceProfile, *serviceprofilev1alpha2.ServiceProfileList](
 			"serviceprofiles",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha2.ServiceProfile { return &v1alpha2.ServiceProfile{} },
-			func() *v1alpha2.ServiceProfileList { return &v1alpha2.ServiceProfileList{} }),
+			func() *serviceprofilev1alpha2.ServiceProfile { return &serviceprofilev1alpha2.ServiceProfile{} },
+			func() *serviceprofilev1alpha2.ServiceProfileList { return &serviceprofilev1alpha2.ServiceProfileList{} },
+		),
 	}
 }

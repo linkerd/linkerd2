@@ -29,7 +29,7 @@ type FakeLinkerdV1alpha2 struct {
 }
 
 func (c *FakeLinkerdV1alpha2) ServiceProfiles(namespace string) v1alpha2.ServiceProfileInterface {
-	return &FakeServiceProfiles{c, namespace}
+	return newFakeServiceProfiles(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate
