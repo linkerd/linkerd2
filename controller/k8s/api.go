@@ -137,6 +137,11 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 			if err != nil {
 				return nil, err
 			}
+		case res == Link:
+			err := k8s.LinksAccess(ctx, k8sClient)
+			if err != nil {
+				return nil, err
+			}
 		default:
 			continue
 		}
@@ -456,6 +461,13 @@ func (api *API) Job() batchv1informers.JobInformer {
 		panic("Job informer not configured")
 	}
 	return api.job
+}
+
+func (api *API) Link() linkinformers.LinkInformer {
+	if api.link == nil {
+		panic("Link informer not configured")
+	}
+	return api.link
 }
 
 // SPAvailable informs the caller whether this API is configured to retrieve

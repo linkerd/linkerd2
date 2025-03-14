@@ -13,6 +13,9 @@ rules:
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["multicluster.linkerd.io"]
+  resources: ["links"]
+  verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -44,9 +47,6 @@ rules:
   - apiGroups: [""]
     resources: ["secrets"]
     resourceNames: ["cluster-credentials-test-cluster"]
-    verbs: ["list", "get", "watch"]
-  - apiGroups: ["multicluster.linkerd.io"]
-    resources: ["links"]
     verbs: ["list", "get", "watch"]
   - apiGroups: ["multicluster.linkerd.io"]
     resources: ["links/status"]
