@@ -448,6 +448,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "drain"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "599214ee8a1d13a3a422a016834d5cf71ff984a38ea463f30677e62348161b7f"
+dependencies = [
+ "tokio",
+]
+
+[[package]]
 name = "dtoa"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1257,7 +1266,7 @@ dependencies = [
  "bytes",
  "chrono",
  "clap",
- "drain",
+ "drain 0.1.2",
  "futures-core",
  "futures-util",
  "http-body-util",
@@ -1369,7 +1378,7 @@ version = "0.1.0"
 dependencies = [
  "async-stream",
  "async-trait",
- "drain",
+ "drain 0.2.1",
  "futures",
  "http",
  "hyper",
@@ -1453,7 +1462,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "clap",
- "drain",
+ "drain 0.2.1",
  "futures",
  "http-body-util",
  "hyper",

@@ -9,7 +9,7 @@ publish = false
 async-stream = "0.3"
 async-trait = "0.1"
 http = { workspace = true }
-drain = "0.1"
+drain = "0.2"
 futures = { version = "0.3", default-features = false }
 hyper = { workspace = true, features = ["http2", "server"] }
 linkerd-policy-controller-core = { path = "../core" }
