@@ -60,6 +60,7 @@ type (
 		gatewayPort              uint32
 		ha                       bool
 		enableGateway            bool
+		enableServiceMirror      bool
 		output                   string
 	}
 )
@@ -372,8 +373,10 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			stdout.Write(separator)
 			stdout.Write(linkOut)
 			stdout.Write(separator)
-			stdout.Write(serviceMirrorOut)
-			stdout.Write(separator)
+			if opts.enableServiceMirror {
+				stdout.Write(serviceMirrorOut)
+				stdout.Write(separator)
+			}
 
 			return nil
 		},
@@ -399,6 +402,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
 	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enable HA configuration for the service-mirror deployment (default false)")
 	cmd.Flags().BoolVar(&opts.enableGateway, "gateway", opts.enableGateway, "If false, allows a link to be created against a cluster that does not have a gateway service")
+	cmd.Flags().BoolVar(&opts.enableServiceMirror, "service-mirror", opts.enableServiceMirror, "If false, only outputs link manifest and credentials secrets")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
@@ -506,7 +510,7 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 		gatewayPort:              0,
 		ha:                       false,
 		enableGateway:            true,
-		output:                   "yaml",
+		enableServiceMirror:      true,
 	}, nil
 }
 
