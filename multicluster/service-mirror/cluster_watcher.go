@@ -256,6 +256,23 @@ func (rcsw *RemoteClusterServiceWatcher) originalResourceName(mirroredName strin
 	return strings.TrimSuffix(mirroredName, fmt.Sprintf("-%s", rcsw.link.Spec.TargetClusterName))
 }
 
+func (rcsw *RemoteClusterServiceWatcher) isLabelExlucded(label string) bool {
+	if strings.HasPrefix(label, consts.SvcMirrorPrefix) {
+		return true
+	}
+	for _, excludedLabel := range rcsw.link.Spec.ExcludedLabels {
+		if strings.HasSuffix(excludedLabel, "/*") {
+			trimmed := strings.TrimSuffix(excludedLabel, "/*")
+			if strings.HasPrefix(label, trimmed) {
+				return true
+			}
+		} else if label == excludedLabel {
+			return true
+		}
+	}
+	return false
+}
+
 // Provides labels for mirrored or federatedservice.
 // Copies all labels from the remote service to local service (except labels
 // with the "SvcMirrorPrefix").
@@ -265,7 +282,7 @@ func (rcsw *RemoteClusterServiceWatcher) getCommonServiceLabels(remoteService *c
 	}
 
 	for key, value := range remoteService.ObjectMeta.Labels {
-		if strings.HasPrefix(key, consts.SvcMirrorPrefix) {
+		if rcsw.isLabelExlucded(key) {
 			continue
 		}
 		labels[key] = value
@@ -307,13 +324,30 @@ func (rcsw *RemoteClusterServiceWatcher) getFederatedServiceLabels(remoteService
 	return labels
 }
 
+func (rcsw *RemoteClusterServiceWatcher) isAnnotationExlucded(annotation string) bool {
+	// Topology aware hints are not multicluster aware.
+	if annotation == "service.kubernetes.io/topology-aware-hints" || annotation == "service.kubernetes.io/topology-mode" {
+		return true
+	}
+	for _, excludedAnnotation := range rcsw.link.Spec.ExcludedAnnotations {
+		if strings.HasSuffix(excludedAnnotation, "/*") {
+			trimmed := strings.TrimSuffix(excludedAnnotation, "/*")
+			if strings.HasPrefix(annotation, trimmed) {
+				return true
+			}
+		} else if annotation == excludedAnnotation {
+			return true
+		}
+	}
+	return false
+}
+
 // Provides annotations for mirror or federated services
 func (rcsw *RemoteClusterServiceWatcher) getCommonServiceAnnotations(remoteService *corev1.Service) map[string]string {
 	annotations := map[string]string{}
 
 	for key, value := range remoteService.ObjectMeta.Annotations {
-		// Topology aware hints are not multicluster aware.
-		if key == "service.kubernetes.io/topology-aware-hints" || key == "service.kubernetes.io/topology-mode" {
+		if rcsw.isAnnotationExlucded(key) {
 			continue
 		}
 		annotations[key] = value
