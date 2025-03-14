@@ -24,24 +24,25 @@ import (
 
 // TestHelper provides helpers for running the linkerd integration tests.
 type TestHelper struct {
-	linkerd              string
-	version              string
-	namespace            string
-	vizNamespace         string
-	upgradeFromVersion   string
-	clusterDomain        string
-	externalIssuer       bool
-	externalPrometheus   bool
-	multicluster         bool
-	multiclusterSrcCtx   string
-	multiclusterTgtCtx   string
-	uninstall            bool
-	cni                  bool
-	calico               bool
-	dualStack            bool
-	nativeSidecar        bool
-	defaultInboundPolicy string
-	httpClient           http.Client
+	linkerd                       string
+	version                       string
+	namespace                     string
+	vizNamespace                  string
+	upgradeFromVersion            string
+	clusterDomain                 string
+	externalIssuer                bool
+	externalPrometheus            bool
+	multicluster                  bool
+	multiclusterSrcCtx            string
+	multiclusterTgtCtx            string
+	multiclusterManageControllers bool
+	uninstall                     bool
+	cni                           bool
+	calico                        bool
+	dualStack                     bool
+	nativeSidecar                 bool
+	defaultInboundPolicy          string
+	httpClient                    http.Client
 	KubernetesHelper
 	helm
 	installedExtensions []string
@@ -98,13 +99,6 @@ var LinkerdVizDeployReplicas = map[string]DeploySpec{
 // each Deployment and the main container name for multicluster components
 var MulticlusterDeployReplicas = map[string]DeploySpec{
 	"linkerd-gateway": {"linkerd-multicluster", 1},
-}
-
-// MulticlusterSourceReplicas is a map containing the number of replicas for the
-// Service Mirror component; component that we'd only expect in the
-// source cluster.
-var MulticlusterSourceReplicas = map[string]DeploySpec{
-	"linkerd-service-mirror-target": {Namespace: "linkerd-multicluster", Replicas: 1},
 }
 
 // ExternalVizDeployReplicas has an external prometheus instance that's in a
@@ -192,6 +186,7 @@ func NewTestHelper() *TestHelper {
 	multicluster := flag.Bool("multicluster", false, "when specified the multicluster install functionality is tested")
 	multiclusterSourceCtx := flag.String("multicluster-source-context", "k3d-source", "the context belonging to source cluster in multicluster test")
 	multiclusterTargetCtx := flag.String("multicluster-target-context", "k3d-target", "the context belonging to target cluster in multicluster test")
+	multiclusterManageControllers := flag.Bool("multicluster-manage-controllers", false, "when specified the multicluster install will also install the service mirror controllers referred in the 'controllers` config")
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
 	helmCharts := flag.String("helm-charts", "charts/linkerd2", "path to linkerd2's Helm charts")
 	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd-multicluster", "path to linkerd2's multicluster Helm chart")
@@ -234,13 +229,14 @@ func NewTestHelper() *TestHelper {
 	}
 
 	testHelper := &TestHelper{
-		linkerd:            linkerd,
-		namespace:          *namespace,
-		vizNamespace:       *vizNamespace,
-		upgradeFromVersion: *upgradeFromVersion,
-		multicluster:       *multicluster,
-		multiclusterSrcCtx: *multiclusterSourceCtx,
-		multiclusterTgtCtx: *multiclusterTargetCtx,
+		linkerd:                       linkerd,
+		namespace:                     *namespace,
+		vizNamespace:                  *vizNamespace,
+		upgradeFromVersion:            *upgradeFromVersion,
+		multicluster:                  *multicluster,
+		multiclusterSrcCtx:            *multiclusterSourceCtx,
+		multiclusterTgtCtx:            *multiclusterTargetCtx,
+		multiclusterManageControllers: *multiclusterManageControllers,
 		helm: helm{
 			path:                    *helmPath,
 			charts:                  *helmCharts,
@@ -339,6 +335,10 @@ func (h *TestHelper) GetHelmCharts() string {
 // GetMulticlusterHelmChart returns the path to the Linkerd multicluster Helm chart
 func (h *TestHelper) GetMulticlusterHelmChart() string {
 	return h.helm.multiclusterChart
+}
+
+func (h *TestHelper) GetMulticlusterManageControllers() bool {
+	return h.multiclusterManageControllers
 }
 
 // GetLinkerdVizHelmChart returns the path to the Linkerd viz Helm chart
