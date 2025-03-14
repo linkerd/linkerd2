@@ -532,14 +532,15 @@ mc-flat-network-init:
 
 
 # Run the multicluster tests without any setup
-mc-test-run:
+mc-test-run *flags:
     LINKERD_DOCKER_REGISTRY='{{ DOCKER_REGISTRY }}' \
         go test -v -test.timeout=20m --failfast --mod=readonly \
             ./test/integration/multicluster/... \
                 -integration-tests \
                 -linkerd='{{ justfile_directory() }}/bin/linkerd' \
                 -multicluster-source-context='k3d-{{ k3d-name }}' \
-                -multicluster-target-context='k3d-{{ k3d-name }}-target'
+                -multicluster-target-context='k3d-{{ k3d-name }}-target' \
+                {{ flags }}
 
 ##
 ## GitHub Actions
