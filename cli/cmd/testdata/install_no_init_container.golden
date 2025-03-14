@@ -737,6 +737,9 @@ data:
         memory:
           limit: ""
           request: ""
+      runtime:
+        workers:
+          minimum: 1
       saMountPath: null
       shutdownGracePeriod: ""
       startupProbe:
@@ -1011,6 +1014,13 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: &containerName linkerd-proxy
+        
+        
+        
+        - name: LINKERD2_PROXY_CORES
+          value: "1"
+        - name: LINKERD2_PROXY_CORES_MIN
+          value: "1"
         - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
           value: "8080"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
@@ -1381,6 +1391,13 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: &containerName linkerd-proxy
+        
+        
+        
+        - name: LINKERD2_PROXY_CORES
+          value: "1"
+        - name: LINKERD2_PROXY_CORES_MIN
+          value: "1"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
@@ -1888,6 +1905,13 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: &containerName linkerd-proxy
+        
+        
+        
+        - name: LINKERD2_PROXY_CORES
+          value: "1"
+        - name: LINKERD2_PROXY_CORES_MIN
+          value: "1"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG

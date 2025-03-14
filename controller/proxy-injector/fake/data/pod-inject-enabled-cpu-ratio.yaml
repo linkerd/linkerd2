@@ -1,0 +1,18 @@
+kind: Pod
+apiVersion: apps/v1
+metadata:
+  name: nginx
+  namespace: kube-public
+  annotations:
+    config.linkerd.io/proxy-cpu-request: "3"
+    config.linkerd.io/proxy-cpu-ratio-limit: "0.10"
+    linkerd.io/inject: enabled
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - name: http
+      containerPort: 80

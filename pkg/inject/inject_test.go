@@ -85,7 +85,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			expected: func() *l5dcharts.Values {
 				values, _ := l5dcharts.NewValues()
 
-				values.Proxy.Cores = 2
+				values.Proxy.Runtime.Workers.Maximum = 2
 				values.Proxy.Image.Name = "cr.l5d.io/linkerd/proxy"
 				values.Proxy.Image.PullPolicy = pullPolicy
 				values.Proxy.Image.Version = proxyVersionOverride
@@ -190,7 +190,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			expected: func() *l5dcharts.Values {
 				values, _ := l5dcharts.NewValues()
 
-				values.Proxy.Cores = 2
+				values.Proxy.Runtime.Workers.Maximum = 2
 				values.Proxy.Image.Name = "cr.l5d.io/linkerd/proxy"
 				values.Proxy.Image.PullPolicy = pullPolicy
 				values.Proxy.Image.Version = proxyVersionOverride

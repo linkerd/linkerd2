@@ -40,6 +40,10 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: linkerd-proxy
+        - name: LINKERD2_PROXY_CORES
+          value: "1"
+        - name: LINKERD2_PROXY_CORES_MIN
+          value: "1"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
@@ -291,6 +295,10 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: linkerd-proxy
+        - name: LINKERD2_PROXY_CORES
+          value: "1"
+        - name: LINKERD2_PROXY_CORES_MIN
+          value: "1"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
@@ -542,6 +550,10 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: linkerd-proxy
+        - name: LINKERD2_PROXY_CORES
+          value: "1"
+        - name: LINKERD2_PROXY_CORES_MIN
+          value: "1"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
@@ -793,6 +805,10 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: linkerd-proxy
+        - name: LINKERD2_PROXY_CORES
+          value: "1"
+        - name: LINKERD2_PROXY_CORES_MIN
+          value: "1"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
