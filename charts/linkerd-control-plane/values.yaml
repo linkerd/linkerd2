@@ -179,10 +179,10 @@ proxy:
   cores:
 
   runtime:
-    # -- Worker threadpool configuration. The minimum will be automtaically
+    # -- Worker threadpool configuration. The minimum will be automatically
     # derived from workload proxy CPU requests, when they are configured by
     # annotation. A cluster-level maximum may be configured here (and a
-    # workload-level annotaion is supported as well).
+    # workload-level annotation is supported as well).
     workers:
       # -- Maximum number of worker threads that the proxy can use, by ratio of
       # the number of available CPUs. A value of 1.0 allocates a worker thread
@@ -196,7 +196,7 @@ proxy:
       minimum: 1
 
   resources:
-    # -- CPU configuration, when specify globally in Helm values, should be kept
+    # -- CPU configuration, when specified globally in Helm values, should be kept
     # in sync with the above runtime.workers.minimum configuration. The minimum
     # should reflect _at least_ the CPU request. When a limit is set, the
     # minimum should match the limit (and the maximumByRatioOfAvailableCPUs
