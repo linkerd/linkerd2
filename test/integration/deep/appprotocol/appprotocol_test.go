@@ -155,6 +155,7 @@ func TestAppProtocolCalledByPodTarget(t *testing.T) {
 }
 
 func waitForAppDeploymentReady(t *testing.T, appProtocolNs string) {
+	t.Helper()
 	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
 		opaqueApp: {
 			Namespace: appProtocolNs,
@@ -168,6 +169,7 @@ func waitForAppDeploymentReady(t *testing.T, appProtocolNs string) {
 }
 
 func waitForClientDeploymentReady(t *testing.T, appProtocolNs string) {
+	t.Helper()
 	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
 		opaqueSC: {
 			Namespace: appProtocolNs,
@@ -199,6 +201,7 @@ func runTests(ctx context.Context, t *testing.T, ns string, tcs []testCase) {
 	t.Helper()
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Helper()
 			err := testutil.RetryFor(30*time.Second, func() error {
 				if err := checkPodMetrics(ctx, ns, tc.scName, tc.scChecks); err != nil {
 					return fmt.Errorf("failed to check metrics for client pod: %w", err)
