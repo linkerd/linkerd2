@@ -5,7 +5,7 @@ metadata:
   namespace: kube-public
   annotations:
     config.linkerd.io/proxy-cpu-request: "3"
-    config.linkerd.io/proxy-cpu-limit-by-ratio-of-available-cpus: "0.10"
+    config.linkerd.io/proxy-cpu-ratio-limit: "0.10"
     linkerd.io/inject: enabled
   labels:
     app: nginx

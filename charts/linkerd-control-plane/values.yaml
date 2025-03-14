@@ -188,19 +188,19 @@ proxy:
       # the number of available CPUs. A value of 1.0 allocates a worker thread
       # for all available CPUs. A value of 0.1 allocates a worker thread for
       # 10% of the available CPUs.
-      maximumByRatioOfAvailableCPUs:
+      maximumCPURatio:
 
       # -- Configures a lower bound on the number of worker threads that the
-      # proxy can use. When maximumByRatioOfAvailableCPUs is not set, this value
+      # proxy can use. When maximumCPURatio is not set, this value
       # is used.
       minimum: 1
 
   resources:
-    # -- CPU configuration, when specified globally in Helm values, should be kept
-    # in sync with the above runtime.workers.minimum configuration. The minimum
-    # should reflect _at least_ the CPU request. When a limit is set, the
-    # minimum should match the limit (and the maximumByRatioOfAvailableCPUs
-    # should be unset).
+    # -- CPU configuration, when specified globally in Helm values, should be
+    # kept in sync with the above runtime.workers.minimum configuration. The
+    # minimum should reflect _at least_ the CPU request. When a limit is set,
+    # the minimum should match the limit (and the maximumCPURatio should be
+    # unset).
     cpu:
       # -- Maximum amount of CPU units that the proxy can use
       limit: ""

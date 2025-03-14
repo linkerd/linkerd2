@@ -190,7 +190,7 @@ type (
 		Maximum int64 `json:"maximum,omitempty"`
 		Minimum int64 `json:"minimum,omitempty"`
 
-		MaximumByRatioOfAvailableCPUs float64 `json:"maximumByRatioOfAvailableCPUs,omitempty"`
+		MaximumCPURatio float64 `json:"maximumCPURatio,omitempty"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

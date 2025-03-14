@@ -395,15 +395,15 @@ func applyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyCPULimitByRatioOfAvailableCPUsAnnotation]; ok {
+	if override, ok := annotations[k8s.ProxyCPURatioLimitAnnotation]; ok {
 		ratio, err := strconv.ParseFloat(override, 64)
 		if err != nil {
-			log.Warnf("%s (%s)", err, k8s.ProxyCPULimitByRatioOfAvailableCPUsAnnotation)
+			log.Warnf("%s (%s)", err, k8s.ProxyCPURatioLimitAnnotation)
 		} else if (ratio <= 0.0) || (ratio >= 1.0) {
 			log.Warnf("invalid value used for the %s annotation, valid values are between 0.0 and 1.0",
-				k8s.ProxyCPULimitByRatioOfAvailableCPUsAnnotation)
+				k8s.ProxyCPURatioLimitAnnotation)
 		} else {
-			values.Proxy.Runtime.Workers.MaximumByRatioOfAvailableCPUs = ratio
+			values.Proxy.Runtime.Workers.MaximumCPURatio = ratio
 		}
 	}
 

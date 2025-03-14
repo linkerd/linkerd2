@@ -189,7 +189,7 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Maximum amount of CPU units that the proxy sidecar can use",
 		},
 		{
-			Name:        k8s.ProxyCPULimitByRatioOfAvailableCPUsAnnotation,
+			Name:        k8s.ProxyCPULimitCPURatio,
 			Description: "Maximum ratio of proxy worker threads to total available CPUs on the node",
 		},
 		{

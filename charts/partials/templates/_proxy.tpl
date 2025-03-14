@@ -43,9 +43,9 @@ env:
 - name: LINKERD2_PROXY_CORES_MAX
   value: {{ .maximum | quote }}
 {{ end -}}
-{{ if .maximumByRatioOfAvailableCPUs -}}
+{{ if .maximumCPURatio -}}
 - name: LINKERD2_PROXY_CORES_MAX_RATIO
-  value: {{ .maximumByRatioOfAvailableCPUs | quote }}
+  value: {{ .maximumCPURatio | quote }}
 {{ end -}}
 {{ end -}}
 {{ end -}}
