@@ -11,7 +11,6 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
-	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	servicemirror "github.com/linkerd/linkerd2/multicluster/service-mirror"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -140,16 +139,8 @@ func Main(args []string) {
 			// Use a small buffered channel for Link updates to avoid dropping
 			// updates if there is an update burst.
 			results := make(chan *v1alpha2.Link, 100)
-			informerFactory := l5dcrdinformer.NewSharedInformerFactoryWithOptions(
-				l5dClient,
-				controllerK8s.ResyncTime,
-				l5dcrdinformer.WithNamespace(*namespace),
-			)
-			informer := informerFactory.Link().V1alpha2().Links().Informer()
-			log.Infof("Starting Link informer")
-			informerFactory.Start(ctx.Done())
 
-			_, err := informer.AddEventHandler(servicemirror.GetLinkHandlers(results, linkName))
+			_, err := controllerK8sAPI.Link().Informer().AddEventHandler(servicemirror.GetLinkHandlers(results, linkName))
 			if err != nil {
 				log.Fatalf("Failed to add event handler to Link informer: %s", err)
 			}

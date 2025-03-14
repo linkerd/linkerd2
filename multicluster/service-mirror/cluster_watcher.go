@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -709,6 +710,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteExportedServiceUpdated(ctx 
 // Updates a federated service to include the remote service as a member.
 func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceJoin(ctx context.Context, ev *RemoteServiceJoinsFederatedService) error {
 	rcsw.log.Infof("Updating federated service %s/%s", ev.localService.Namespace, ev.localService.Name)
+	previous := ev.localService.DeepCopy()
 
 	if ev.remoteUpdate.Spec.ClusterIP == corev1.ClusterIPNone {
 		rcsw.updateLinkFederatedStatus(
@@ -785,6 +787,11 @@ func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceJoin(ctx context.
 				)
 			}
 		}
+	}
+
+	// Don't update the service if it has not changed.
+	if reflect.DeepEqual(previous, ev.localService) {
+		return nil
 	}
 
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(ev.localService.Namespace).Update(ctx, ev.localService, metav1.UpdateOptions{}); err != nil {
