@@ -86,15 +86,25 @@ type LocalServiceMirror struct {
 	GID                      int64           `json:"GID"`
 }
 
-// ControllerDefaults is used to unmarshal the default values.yaml file, so
-// only entries that are objects that are not empty by default are required.
+// ControllerDefaults contains all the entries for the controllerDefaults
+// section that are not empty by default
 type ControllerDefaults struct {
-	Gateway *ControllerDefaultsGateway `json:"gateway"`
-	Image   *linkerd2.Image            `json:"image"`
+	Replicas               uint32                     `json:"replicas"`
+	Image                  *linkerd2.Image            `json:"image"`
+	Gateway                *ControllerDefaultsGateway `json:"gateway"`
+	LogLevel               string                     `json:"logLevel"`
+	LogFormat              string                     `json:"logFormat"`
+	EnableHeadlessServices bool                       `json:"enableHeadlessServices"`
+	EnablePprof            bool                       `json:"enablePprof"`
+	UID                    int64                      `json:"UID"`
+	GID                    int64                      `json:"GID"`
+	RetryLimit             uint32                     `json:"retryLimit"`
+	EnablePodAntiAffinity  bool                       `json:"enablePodAntiAffinity"`
 }
 
 type ControllerDefaultsGateway struct {
-	Probe *ControllerDefaultsProbe `json:"probe"`
+	Enabled bool                     `json:"enabled"`
+	Probe   *ControllerDefaultsProbe `json:"probe"`
 }
 
 type ControllerDefaultsProbe struct {
