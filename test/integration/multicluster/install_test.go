@@ -205,6 +205,8 @@ func TestLinkClusters(t *testing.T) {
 		"--api-server-address", fmt.Sprintf("https://%s:6443", lbIP),
 		"--set", "enableHeadlessServices=true",
 		"multicluster", "link",
+		"--excluded-annotations", "evil.linkerd/*,evil",
+		"--excluded-labels", "evil.linkerd/*,evil",
 		"--log-format", "json",
 		"--log-level", "debug",
 	}

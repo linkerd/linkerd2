@@ -181,11 +181,55 @@ func TestTargetTraffic(t *testing.T) {
 
 			timeout := time.Minute
 			err = testutil.RetryFor(timeout, func() error {
-				out, err = TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace", ns, "label", "service/web-svc", "mirror.linkerd.io/exported=true")
-				return err
+				for _, label := range []string{
+					"mirror.linkerd.io/exported=true",
+					"evil.linkerd/a=b",
+					"evil=yes",
+					"good.linkerd/c=d",
+					"good=yes",
+				} {
+					out, err = TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace", ns, "label", "service/web-svc", label)
+					return err
+				}
+				return nil
 			})
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to label web-svc", "%s\n%s", err, out)
+			}
+
+			err = testutil.RetryFor(timeout, func() error {
+				for _, annotation := range []string{
+					"evil.linkerd/a=b",
+					"evil=yes",
+					"good.linkerd/c=d",
+					"good=yes",
+				} {
+					out, err = TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace", ns, "annotate", "service/web-svc", annotation)
+					return err
+				}
+				return nil
+			})
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "failed to label web-svc", "%s\n%s", err, out)
+			}
+		})
+
+		t.Run("Check if mirror service has correct metadata", func(t *testing.T) {
+			timeout := time.Minute
+			err := testutil.RetryFor(timeout, func() error {
+				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil", "")              // Should be excluded.
+				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil\\.linkerd/a", "")  // Should be excluded.
+				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes")           // Should be included.
+				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good\\.linkerd/c", "d") // Should be included.
+
+				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil", "")              // Should be excluded.
+				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil\\.linkerd/a", "")  // Should be excluded.
+				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes")           // Should be included.
+				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good\\.linkerd/c", "d") // Should be included.
+				return nil
+			})
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "incorrect service metadata", "incorrect service metadata: %s", err)
 			}
 		})
 
@@ -343,5 +387,25 @@ func TestTargetResourcesAreCleaned(t *testing.T) {
 	if err := TestHelper.DeleteNamespaceIfExists(ctx, "linkerd-nginx-gateway-deploy"); err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to delete %s namespace", "linkerd-nginx-gateway-deploy"),
 			"failed to delete %s namespace: %s", "linkerd-nginx-gateway-deploy", err)
+	}
+}
+
+func CheckAnnotation(t *testing.T, context, ns, svc, annotation, expected string) {
+	out, err := TestHelper.KubectlWithContext("", context, "--namespace", ns, "get", "service", svc, fmt.Sprintf("-ojsonpath='{.metadata.annotations.%s}'", annotation))
+	if err != nil {
+		t.Fatalf("Failed to get annotation %s on service %s: %s", annotation, svc, err)
+	}
+	if out != expected {
+		t.Fatalf("Expected annotation %s to be %s, got %s", annotation, expected, out)
+	}
+}
+
+func CheckLabel(t *testing.T, context, ns, svc, label, expected string) {
+	out, err := TestHelper.KubectlWithContext("", context, "--namespace", ns, "get", "service", svc, fmt.Sprintf("-ojsonpath='{.metadata.labels.%s}'", label))
+	if err != nil {
+		t.Fatalf("Failed to get label %s on service %s: %s", label, svc, err)
+	}
+	if out != expected {
+		t.Fatalf("Expected label %s to be %s, got %s", label, expected, out)
 	}
 }
