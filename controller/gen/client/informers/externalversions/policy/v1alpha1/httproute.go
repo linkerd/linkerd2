@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
+	apispolicyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/listers/policy/v1alpha1"
+	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/listers/policy/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // HTTPRoutes.
 type HTTPRouteInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.HTTPRouteLister
+	Lister() policyv1alpha1.HTTPRouteLister
 }
 
 type hTTPRouteInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredHTTPRouteInformer(client versioned.Interface, namespace string, 
 				return client.PolicyV1alpha1().HTTPRoutes(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&policyv1alpha1.HTTPRoute{},
+		&apispolicyv1alpha1.HTTPRoute{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *hTTPRouteInformer) defaultInformer(client versioned.Interface, resyncPe
 }
 
 func (f *hTTPRouteInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&policyv1alpha1.HTTPRoute{}, f.defaultInformer)
+	return f.factory.InformerFor(&apispolicyv1alpha1.HTTPRoute{}, f.defaultInformer)
 }
 
-func (f *hTTPRouteInformer) Lister() v1alpha1.HTTPRouteLister {
-	return v1alpha1.NewHTTPRouteLister(f.Informer().GetIndexer())
+func (f *hTTPRouteInformer) Lister() policyv1alpha1.HTTPRouteLister {
+	return policyv1alpha1.NewHTTPRouteLister(f.Informer().GetIndexer())
 }

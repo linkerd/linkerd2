@@ -29,7 +29,7 @@ type FakeServerV1beta3 struct {
 }
 
 func (c *FakeServerV1beta3) Servers(namespace string) v1beta3.ServerInterface {
-	return &FakeServers{c, namespace}
+	return newFakeServers(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
@@ -48,7 +48,7 @@ type (
 	// problems or general glitch in the Matrix.
 	RemoteClusterServiceWatcher struct {
 		serviceMirrorNamespace   string
-		link                     *v1alpha2.Link
+		link                     *v1alpha3.Link
 		remoteAPIClient          *k8s.API
 		localAPIClient           *k8s.API
 		linkClient               l5dcrdclient.Interface
@@ -194,7 +194,7 @@ func NewRemoteClusterServiceWatcher(
 	localAPI *k8s.API,
 	remoteAPI *k8s.API,
 	linkClient l5dcrdclient.Interface,
-	link *v1alpha2.Link,
+	link *v1alpha3.Link,
 	requeueLimit int,
 	repairPeriod time.Duration,
 	liveness chan bool,
@@ -256,6 +256,23 @@ func (rcsw *RemoteClusterServiceWatcher) originalResourceName(mirroredName strin
 	return strings.TrimSuffix(mirroredName, fmt.Sprintf("-%s", rcsw.link.Spec.TargetClusterName))
 }
 
+func (rcsw *RemoteClusterServiceWatcher) isLabelExlucded(label string) bool {
+	if strings.HasPrefix(label, consts.SvcMirrorPrefix) {
+		return true
+	}
+	for _, excludedLabel := range rcsw.link.Spec.ExcludedLabels {
+		if strings.HasSuffix(excludedLabel, "/*") {
+			trimmed := strings.TrimSuffix(excludedLabel, "/*")
+			if strings.HasPrefix(label, trimmed) {
+				return true
+			}
+		} else if label == excludedLabel {
+			return true
+		}
+	}
+	return false
+}
+
 // Provides labels for mirrored or federatedservice.
 // Copies all labels from the remote service to local service (except labels
 // with the "SvcMirrorPrefix").
@@ -265,7 +282,7 @@ func (rcsw *RemoteClusterServiceWatcher) getCommonServiceLabels(remoteService *c
 	}
 
 	for key, value := range remoteService.ObjectMeta.Labels {
-		if strings.HasPrefix(key, consts.SvcMirrorPrefix) {
+		if rcsw.isLabelExlucded(key) {
 			continue
 		}
 		labels[key] = value
@@ -307,13 +324,30 @@ func (rcsw *RemoteClusterServiceWatcher) getFederatedServiceLabels(remoteService
 	return labels
 }
 
+func (rcsw *RemoteClusterServiceWatcher) isAnnotationExlucded(annotation string) bool {
+	// Topology aware hints are not multicluster aware.
+	if annotation == "service.kubernetes.io/topology-aware-hints" || annotation == "service.kubernetes.io/topology-mode" {
+		return true
+	}
+	for _, excludedAnnotation := range rcsw.link.Spec.ExcludedAnnotations {
+		if strings.HasSuffix(excludedAnnotation, "/*") {
+			trimmed := strings.TrimSuffix(excludedAnnotation, "/*")
+			if strings.HasPrefix(annotation, trimmed) {
+				return true
+			}
+		} else if annotation == excludedAnnotation {
+			return true
+		}
+	}
+	return false
+}
+
 // Provides annotations for mirror or federated services
 func (rcsw *RemoteClusterServiceWatcher) getCommonServiceAnnotations(remoteService *corev1.Service) map[string]string {
 	annotations := map[string]string{}
 
 	for key, value := range remoteService.ObjectMeta.Annotations {
-		// Topology aware hints are not multicluster aware.
-		if key == "service.kubernetes.io/topology-aware-hints" || key == "service.kubernetes.io/topology-mode" {
+		if rcsw.isAnnotationExlucded(key) {
 			continue
 		}
 		annotations[key] = value
@@ -718,23 +752,72 @@ func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceJoin(ctx context.
 		return fmt.Errorf("headless service %s/%s cannot join federated service", ev.remoteUpdate.GetNamespace(), ev.remoteUpdate.GetName())
 	}
 
+	// We treat the member with the oldest Link as the source of truth for Service
+	// metadata such as labels and annotations.
+	var isOldest bool
+	if rcsw.link.Spec.TargetClusterName == "" {
+		// Always treat the local cluster as the oldest.
+		isOldest = true
+	} else if _, localDiscoveryExists := ev.localService.Annotations[consts.LocalDiscoveryAnnotation]; localDiscoveryExists {
+		// The local cluster is older than us.
+		isOldest = false
+	} else {
+		// The local cluster is not a member of the federated service. Therefore,
+		// we check the remote discovery to see if we are the oldest.
+		isOldest = true
+		members := strings.Split(ev.localService.Annotations[consts.RemoteDiscoveryAnnotation], ",")
+		for _, member := range members {
+			target := strings.Split(member, "@")
+			if len(target) != 2 {
+				rcsw.log.Errorf("Invalid federated service member: %s", member)
+				continue
+			}
+			cluster := target[1]
+			link, err := rcsw.localAPIClient.Link().Lister().Links(rcsw.serviceMirrorNamespace).Get(cluster)
+			if err != nil {
+				rcsw.log.Errorf("Failed to get link %s: %s", cluster, err)
+				continue
+			}
+			if link.CreationTimestamp.Before(&rcsw.link.CreationTimestamp) {
+				rcsw.log.Debugf("ignoring metadata from %s because %s is older", rcsw.link.Spec.TargetClusterName, cluster)
+				isOldest = false
+				break
+			}
+		}
+	}
+
+	if isOldest {
+		preservedAnnotations := map[string]string{}
+		for _, k := range []string{consts.RemoteDiscoveryAnnotation, consts.LocalDiscoveryAnnotation} {
+			if v, ok := ev.localService.Annotations[k]; ok {
+				preservedAnnotations[k] = v
+			}
+		}
+		ev.localService.Labels = rcsw.getFederatedServiceLabels(ev.remoteUpdate)
+		ev.localService.Annotations = rcsw.getFederatedServiceAnnotations(ev.remoteUpdate)
+		for k, v := range preservedAnnotations {
+			ev.localService.Annotations[k] = v
+		}
+
+		ev.localService.Spec.Ports = remapRemoteServicePorts(ev.remoteUpdate.Spec.Ports)
+	}
+
 	if rcsw.link.Spec.TargetClusterName == "" {
 		// Local discovery
 		ev.localService.Annotations[consts.LocalDiscoveryAnnotation] = ev.remoteUpdate.Name
 	} else {
 		// Remote discovery
 		remoteTarget := fmt.Sprintf("%s@%s", ev.remoteUpdate.Name, rcsw.link.Spec.TargetClusterName)
-		if remoteDiscoveryContains(ev.localService.Annotations[consts.RemoteDiscoveryAnnotation], remoteTarget) {
-			return nil
-		}
-		if ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] == "" {
-			ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = remoteTarget
-		} else {
-			ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = fmt.Sprintf(
-				"%s,%s",
-				ev.localService.Annotations[consts.RemoteDiscoveryAnnotation],
-				remoteTarget,
-			)
+		if !remoteDiscoveryContains(ev.localService.Annotations[consts.RemoteDiscoveryAnnotation], remoteTarget) {
+			if ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] == "" {
+				ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = remoteTarget
+			} else {
+				ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = fmt.Sprintf(
+					"%s,%s",
+					ev.localService.Annotations[consts.RemoteDiscoveryAnnotation],
+					remoteTarget,
+				)
+			}
 		}
 	}
 
@@ -1744,12 +1827,12 @@ func (rcsw *RemoteClusterServiceWatcher) isFederatedServiceMember(l map[string]s
 	return federatedServiceSelector.Matches(labels.Set(l))
 }
 
-func (rcsw *RemoteClusterServiceWatcher) updateLinkMirrorStatus(remoteName, namespace string, condition v1alpha2.LinkCondition) {
+func (rcsw *RemoteClusterServiceWatcher) updateLinkMirrorStatus(remoteName, namespace string, condition v1alpha3.LinkCondition) {
 	if rcsw.link.Spec.TargetClusterName == "" {
 		// The local cluster has no Link resource.
 		return
 	}
-	link, err := rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
+	link, err := rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
 	if err != nil {
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
@@ -1757,12 +1840,12 @@ func (rcsw *RemoteClusterServiceWatcher) updateLinkMirrorStatus(remoteName, name
 	rcsw.patchLinkStatus(link.Status)
 }
 
-func (rcsw *RemoteClusterServiceWatcher) updateLinkFederatedStatus(remoteName, namespace string, condition v1alpha2.LinkCondition) {
+func (rcsw *RemoteClusterServiceWatcher) updateLinkFederatedStatus(remoteName, namespace string, condition v1alpha3.LinkCondition) {
 	if rcsw.link.Spec.TargetClusterName == "" {
 		// The local cluster has no Link resource.
 		return
 	}
-	link, err := rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
+	link, err := rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
 	if err != nil {
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
@@ -1775,7 +1858,7 @@ func (rcsw *RemoteClusterServiceWatcher) deleteLinkMirrorStatus(remoteName, name
 		// The local cluster has no Link resource.
 		return
 	}
-	link, err := rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
+	link, err := rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
 	if err != nil {
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
@@ -1788,7 +1871,7 @@ func (rcsw *RemoteClusterServiceWatcher) deleteLinkFederatedStatus(remoteName, n
 		// The local cluster has no Link resource.
 		return
 	}
-	link, err := rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
+	link, err := rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
 	if err != nil {
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
@@ -1796,13 +1879,13 @@ func (rcsw *RemoteClusterServiceWatcher) deleteLinkFederatedStatus(remoteName, n
 	rcsw.patchLinkStatus(link.Status)
 }
 
-func (rcsw *RemoteClusterServiceWatcher) patchLinkStatus(status v1alpha2.LinkStatus) {
+func (rcsw *RemoteClusterServiceWatcher) patchLinkStatus(status v1alpha3.LinkStatus) {
 	rcsw.log.Infof("patching link status %s/%s", rcsw.link.Namespace, rcsw.link.Name)
 	statusBytes, err := json.Marshal(status)
 	if err != nil {
 		rcsw.log.Errorf("Failed to marshal link status: %s", err)
 	}
-	_, err = rcsw.linkClient.LinkV1alpha2().Links(rcsw.link.GetNamespace()).Patch(
+	_, err = rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Patch(
 		context.Background(),
 		rcsw.link.Name,
 		types.MergePatchType,
@@ -1815,32 +1898,32 @@ func (rcsw *RemoteClusterServiceWatcher) patchLinkStatus(status v1alpha2.LinkSta
 	}
 }
 
-func updateServiceStatus(remoteName, namespace string, condition v1alpha2.LinkCondition, statuses []v1alpha2.ServiceStatus) []v1alpha2.ServiceStatus {
+func updateServiceStatus(remoteName, namespace string, condition v1alpha3.LinkCondition, statuses []v1alpha3.ServiceStatus) []v1alpha3.ServiceStatus {
 	foundStatus := false
 	for i, status := range statuses {
 		if status.RemoteRef.Name == remoteName && status.RemoteRef.Namespace == namespace {
 			foundStatus = true
-			status.Conditions = []v1alpha2.LinkCondition{condition}
+			status.Conditions = []v1alpha3.LinkCondition{condition}
 			statuses[i] = status
 		}
 	}
 	if !foundStatus {
-		statuses = append(statuses, v1alpha2.ServiceStatus{
+		statuses = append(statuses, v1alpha3.ServiceStatus{
 			ControllerName: "linkerd.io/service-mirror",
-			RemoteRef: v1alpha2.ObjectRef{
+			RemoteRef: v1alpha3.ObjectRef{
 				Name:      remoteName,
 				Namespace: namespace,
 				Kind:      "Service",
 				Group:     corev1.GroupName,
 			},
-			Conditions: []v1alpha2.LinkCondition{condition},
+			Conditions: []v1alpha3.LinkCondition{condition},
 		})
 	}
 	return statuses
 }
 
-func deleteServiceStatus(remoteName, namespace string, statuses []v1alpha2.ServiceStatus) []v1alpha2.ServiceStatus {
-	newStatuses := make([]v1alpha2.ServiceStatus, 0)
+func deleteServiceStatus(remoteName, namespace string, statuses []v1alpha3.ServiceStatus) []v1alpha3.ServiceStatus {
+	newStatuses := make([]v1alpha3.ServiceStatus, 0)
 	for _, status := range statuses {
 		if status.RemoteRef.Name == remoteName && status.RemoteRef.Namespace == namespace {
 			continue
@@ -1850,12 +1933,12 @@ func deleteServiceStatus(remoteName, namespace string, statuses []v1alpha2.Servi
 	return newStatuses
 }
 
-func mirrorStatusCondition(success bool, reason string, message string, localRef *corev1.Service) v1alpha2.LinkCondition {
+func mirrorStatusCondition(success bool, reason string, message string, localRef *corev1.Service) v1alpha3.LinkCondition {
 	status := metav1.ConditionTrue
 	if !success {
 		status = metav1.ConditionFalse
 	}
-	condition := v1alpha2.LinkCondition{
+	condition := v1alpha3.LinkCondition{
 		LastTransitionTime: metav1.Now(),
 		Message:            message,
 		Reason:             reason,
@@ -1863,7 +1946,7 @@ func mirrorStatusCondition(success bool, reason string, message string, localRef
 		Type:               "Mirrored",
 	}
 	if localRef != nil {
-		condition.LocalRef = v1alpha2.ObjectRef{
+		condition.LocalRef = v1alpha3.ObjectRef{
 			Name:      localRef.Name,
 			Namespace: localRef.Namespace,
 			Kind:      "Service",

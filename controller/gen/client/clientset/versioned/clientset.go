@@ -19,12 +19,13 @@ limitations under the License.
 package versioned
 
 import (
-	"fmt"
-	"net/http"
+	fmt "fmt"
+	http "net/http"
 
 	externalworkloadv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalworkload/v1beta1"
 	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1"
 	linkv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha2"
+	linkv1alpha3 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha3"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1alpha1"
 	policyv1beta3 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1beta3"
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1"
@@ -42,6 +43,7 @@ type Interface interface {
 	ExternalworkloadV1beta1() externalworkloadv1beta1.ExternalworkloadV1beta1Interface
 	LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface
 	LinkV1alpha2() linkv1alpha2.LinkV1alpha2Interface
+	LinkV1alpha3() linkv1alpha3.LinkV1alpha3Interface
 	PolicyV1alpha1() policyv1alpha1.PolicyV1alpha1Interface
 	PolicyV1beta3() policyv1beta3.PolicyV1beta3Interface
 	ServerV1beta1() serverv1beta1.ServerV1beta1Interface
@@ -57,6 +59,7 @@ type Clientset struct {
 	externalworkloadV1beta1    *externalworkloadv1beta1.ExternalworkloadV1beta1Client
 	linkV1alpha1               *linkv1alpha1.LinkV1alpha1Client
 	linkV1alpha2               *linkv1alpha2.LinkV1alpha2Client
+	linkV1alpha3               *linkv1alpha3.LinkV1alpha3Client
 	policyV1alpha1             *policyv1alpha1.PolicyV1alpha1Client
 	policyV1beta3              *policyv1beta3.PolicyV1beta3Client
 	serverV1beta1              *serverv1beta1.ServerV1beta1Client
@@ -79,6 +82,11 @@ func (c *Clientset) LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface {
 // LinkV1alpha2 retrieves the LinkV1alpha2Client
 func (c *Clientset) LinkV1alpha2() linkv1alpha2.LinkV1alpha2Interface {
 	return c.linkV1alpha2
+}
+
+// LinkV1alpha3 retrieves the LinkV1alpha3Client
+func (c *Clientset) LinkV1alpha3() linkv1alpha3.LinkV1alpha3Interface {
+	return c.linkV1alpha3
 }
 
 // PolicyV1alpha1 retrieves the PolicyV1alpha1Client
@@ -172,6 +180,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.linkV1alpha3, err = linkv1alpha3.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 	cs.policyV1alpha1, err = policyv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
@@ -224,6 +236,7 @@ func New(c rest.Interface) *Clientset {
 	cs.externalworkloadV1beta1 = externalworkloadv1beta1.New(c)
 	cs.linkV1alpha1 = linkv1alpha1.New(c)
 	cs.linkV1alpha2 = linkv1alpha2.New(c)
+	cs.linkV1alpha3 = linkv1alpha3.New(c)
 	cs.policyV1alpha1 = policyv1alpha1.New(c)
 	cs.policyV1beta3 = policyv1beta3.New(c)
 	cs.serverV1beta1 = serverv1beta1.New(c)

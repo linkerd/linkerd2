@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -30,10 +30,10 @@ func TestLinkHandlers(t *testing.T) {
 		k8s.ResyncTime,
 		l5dcrdinformer.WithNamespace(nsName),
 	)
-	informer := informerFactory.Link().V1alpha2().Links().Informer()
+	informer := informerFactory.Link().V1alpha3().Links().Informer()
 	informerFactory.Start(context.Background().Done())
 
-	results := make(chan *v1alpha2.Link, 100)
+	results := make(chan *v1alpha3.Link, 100)
 	_, err = informer.AddEventHandler(GetLinkHandlers(results, linkName))
 	if err != nil {
 		t.Fatal(err)
@@ -45,14 +45,14 @@ func TestLinkHandlers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	link := &v1alpha2.Link{
+	link := &v1alpha3.Link{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      linkName,
 			Namespace: nsName,
 		},
-		Spec: v1alpha2.LinkSpec{ProbeSpec: v1alpha2.ProbeSpec{Timeout: "30s"}},
+		Spec: v1alpha3.LinkSpec{ProbeSpec: v1alpha3.ProbeSpec{Timeout: "30s"}},
 	}
-	_, err = l5dAPI.LinkV1alpha2().Links(nsName).Create(context.Background(), link, metav1.CreateOptions{})
+	_, err = l5dAPI.LinkV1alpha3().Links(nsName).Create(context.Background(), link, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestLinkHandlers(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Failed to marshal patch: %v", err)
 	}
-	_, err = l5dAPI.LinkV1alpha2().Links(nsName).Patch(
+	_, err = l5dAPI.LinkV1alpha3().Links(nsName).Patch(
 		context.Background(),
 		linkName,
 		types.MergePatchType,
@@ -108,7 +108,7 @@ func TestLinkHandlers(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Failed to marshal patch: %v", err)
 	}
-	_, err = l5dAPI.LinkV1alpha2().Links(nsName).Patch(
+	_, err = l5dAPI.LinkV1alpha3().Links(nsName).Patch(
 		context.Background(),
 		linkName,
 		types.MergePatchType,
@@ -127,7 +127,7 @@ func TestLinkHandlers(t *testing.T) {
 	}
 
 	// test that a nil message is received when a link is deleted
-	if err := l5dAPI.LinkV1alpha2().Links(nsName).Delete(context.Background(), linkName, metav1.DeleteOptions{}); err != nil {
+	if err := l5dAPI.LinkV1alpha3().Links(nsName).Delete(context.Background(), linkName, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Failed to delete link: %s", err)
 	}
 	select {

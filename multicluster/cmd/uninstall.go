@@ -41,7 +41,7 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 				return err
 			}
 
-			links, err := k8sAPI.L5dCrdClient.LinkV1alpha2().Links("").List(cmd.Context(), metav1.ListOptions{})
+			links, err := k8sAPI.L5dCrdClient.LinkV1alpha3().Links("").List(cmd.Context(), metav1.ListOptions{})
 			if err != nil && !kerrors.IsNotFound(err) {
 				return err
 			}

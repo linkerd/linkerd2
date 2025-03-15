@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	"github.com/linkerd/linkerd2/multicluster/static"
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
@@ -58,6 +58,8 @@ type (
 		federatedServiceSelector string
 		gatewayAddresses         string
 		gatewayPort              uint32
+		excludedAnnotations      []string
+		excludedLabels           []string
 		ha                       bool
 		enableGateway            bool
 		output                   string
@@ -245,8 +247,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
-			link := v1alpha2.Link{
-				TypeMeta: metav1.TypeMeta{Kind: "Link", APIVersion: "multicluster.linkerd.io/v1alpha2"},
+			link := v1alpha3.Link{
+				TypeMeta: metav1.TypeMeta{Kind: "Link", APIVersion: "multicluster.linkerd.io/v1alpha3"},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      opts.clusterName,
 					Namespace: opts.namespace,
@@ -254,13 +256,15 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 						k8s.CreatedByAnnotation: k8s.CreatedByAnnotationValue(),
 					},
 				},
-				Spec: v1alpha2.LinkSpec{
+				Spec: v1alpha3.LinkSpec{
 					TargetClusterName:             opts.clusterName,
 					TargetClusterDomain:           configMap.ClusterDomain,
 					TargetClusterLinkerdNamespace: controlPlaneNamespace,
 					ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
 					RemoteDiscoverySelector:       remoteDiscoverySelector,
 					FederatedServiceSelector:      federatedServiceSelector,
+					ExcludedAnnotations:           opts.excludedAnnotations,
+					ExcludedLabels:                opts.excludedLabels,
 				},
 			}
 
@@ -397,6 +401,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVar(&opts.federatedServiceSelector, "federated-service-selector", opts.federatedServiceSelector, "Selector (label query) for federated service members in the target cluster")
 	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified, overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
+	cmd.Flags().StringSliceVar(&opts.excludedAnnotations, "excluded-annotations", opts.excludedAnnotations, "Annotations to exclude when mirroring services")
+	cmd.Flags().StringSliceVar(&opts.excludedLabels, "excluded-labels", opts.excludedLabels, "Labels to exclude when mirroring services")
 	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enable HA configuration for the service-mirror deployment (default false)")
 	cmd.Flags().BoolVar(&opts.enableGateway, "gateway", opts.enableGateway, "If false, allows a link to be created against a cluster that does not have a gateway service")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "yaml", "Output format. One of: json|yaml")
@@ -504,6 +510,8 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 		federatedServiceSelector: fmt.Sprintf("%s=%s", k8s.DefaultFederatedServiceSelector, "member"),
 		gatewayAddresses:         "",
 		gatewayPort:              0,
+		excludedAnnotations:      []string{},
+		excludedLabels:           []string{},
 		ha:                       false,
 		enableGateway:            true,
 		output:                   "yaml",
@@ -590,15 +598,15 @@ func extractSAToken(secrets []corev1.Secret, saName string) (string, error) {
 // For now we're not including the failureThreshold and timeout fields which
 // are new since edge-24.9.3, to avoid errors when attempting to apply them in
 // clusters with an older Link CRD.
-func extractProbeSpec(gateway *corev1.Service) (v1alpha2.ProbeSpec, error) {
+func extractProbeSpec(gateway *corev1.Service) (v1alpha3.ProbeSpec, error) {
 	path := gateway.Annotations[k8s.GatewayProbePath]
 	if path == "" {
-		return v1alpha2.ProbeSpec{}, errors.New("probe path is empty")
+		return v1alpha3.ProbeSpec{}, errors.New("probe path is empty")
 	}
 
 	port, err := extractPort(gateway.Spec, k8s.ProbePortName)
 	if err != nil {
-		return v1alpha2.ProbeSpec{}, err
+		return v1alpha3.ProbeSpec{}, err
 	}
 
 	// the `mirror.linkerd.io/probe-period` annotation is initialized with a
@@ -609,10 +617,10 @@ func extractProbeSpec(gateway *corev1.Service) (v1alpha2.ProbeSpec, error) {
 		dur := time.Duration(secs) * time.Second
 		period = dur.String()
 	} else if _, err := time.ParseDuration(period); err != nil {
-		return v1alpha2.ProbeSpec{}, fmt.Errorf("could not parse probe period: %w", err)
+		return v1alpha3.ProbeSpec{}, fmt.Errorf("could not parse probe period: %w", err)
 	}
 
-	return v1alpha2.ProbeSpec{
+	return v1alpha3.ProbeSpec{
 		Path:   path,
 		Port:   fmt.Sprintf("%d", port),
 		Period: period,

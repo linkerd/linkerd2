@@ -29,7 +29,7 @@ type FakePolicyV1beta3 struct {
 }
 
 func (c *FakePolicyV1beta3) HTTPRoutes(namespace string) v1beta3.HTTPRouteInterface {
-	return &FakeHTTPRoutes{c, namespace}
+	return newFakeHTTPRoutes(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

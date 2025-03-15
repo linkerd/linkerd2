@@ -19,116 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeServerAuthorizations implements ServerAuthorizationInterface
-type FakeServerAuthorizations struct {
+// fakeServerAuthorizations implements ServerAuthorizationInterface
+type fakeServerAuthorizations struct {
+	*gentype.FakeClientWithList[*v1beta1.ServerAuthorization, *v1beta1.ServerAuthorizationList]
 	Fake *FakeServerauthorizationV1beta1
-	ns   string
 }
 
-var serverauthorizationsResource = v1beta1.SchemeGroupVersion.WithResource("serverauthorizations")
-
-var serverauthorizationsKind = v1beta1.SchemeGroupVersion.WithKind("ServerAuthorization")
-
-// Get takes name of the serverAuthorization, and returns the corresponding serverAuthorization object, and an error if there is any.
-func (c *FakeServerAuthorizations) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.ServerAuthorization, err error) {
-	emptyResult := &v1beta1.ServerAuthorization{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(serverauthorizationsResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakeServerAuthorizations(fake *FakeServerauthorizationV1beta1, namespace string) serverauthorizationv1beta1.ServerAuthorizationInterface {
+	return &fakeServerAuthorizations{
+		gentype.NewFakeClientWithList[*v1beta1.ServerAuthorization, *v1beta1.ServerAuthorizationList](
+			fake.Fake,
+			namespace,
+			v1beta1.SchemeGroupVersion.WithResource("serverauthorizations"),
+			v1beta1.SchemeGroupVersion.WithKind("ServerAuthorization"),
+			func() *v1beta1.ServerAuthorization { return &v1beta1.ServerAuthorization{} },
+			func() *v1beta1.ServerAuthorizationList { return &v1beta1.ServerAuthorizationList{} },
+			func(dst, src *v1beta1.ServerAuthorizationList) { dst.ListMeta = src.ListMeta },
+			func(list *v1beta1.ServerAuthorizationList) []*v1beta1.ServerAuthorization {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1beta1.ServerAuthorizationList, items []*v1beta1.ServerAuthorization) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1beta1.ServerAuthorization), err
-}
-
-// List takes label and field selectors, and returns the list of ServerAuthorizations that match those selectors.
-func (c *FakeServerAuthorizations) List(ctx context.Context, opts v1.ListOptions) (result *v1beta1.ServerAuthorizationList, err error) {
-	emptyResult := &v1beta1.ServerAuthorizationList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(serverauthorizationsResource, serverauthorizationsKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1beta1.ServerAuthorizationList{ListMeta: obj.(*v1beta1.ServerAuthorizationList).ListMeta}
-	for _, item := range obj.(*v1beta1.ServerAuthorizationList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested serverAuthorizations.
-func (c *FakeServerAuthorizations) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(serverauthorizationsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a serverAuthorization and creates it.  Returns the server's representation of the serverAuthorization, and an error, if there is any.
-func (c *FakeServerAuthorizations) Create(ctx context.Context, serverAuthorization *v1beta1.ServerAuthorization, opts v1.CreateOptions) (result *v1beta1.ServerAuthorization, err error) {
-	emptyResult := &v1beta1.ServerAuthorization{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(serverauthorizationsResource, c.ns, serverAuthorization, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1beta1.ServerAuthorization), err
-}
-
-// Update takes the representation of a serverAuthorization and updates it. Returns the server's representation of the serverAuthorization, and an error, if there is any.
-func (c *FakeServerAuthorizations) Update(ctx context.Context, serverAuthorization *v1beta1.ServerAuthorization, opts v1.UpdateOptions) (result *v1beta1.ServerAuthorization, err error) {
-	emptyResult := &v1beta1.ServerAuthorization{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(serverauthorizationsResource, c.ns, serverAuthorization, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1beta1.ServerAuthorization), err
-}
-
-// Delete takes name of the serverAuthorization and deletes it. Returns an error if one occurs.
-func (c *FakeServerAuthorizations) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(serverauthorizationsResource, c.ns, name, opts), &v1beta1.ServerAuthorization{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeServerAuthorizations) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(serverauthorizationsResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1beta1.ServerAuthorizationList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched serverAuthorization.
-func (c *FakeServerAuthorizations) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.ServerAuthorization, err error) {
-	emptyResult := &v1beta1.ServerAuthorization{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(serverauthorizationsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1beta1.ServerAuthorization), err
 }
