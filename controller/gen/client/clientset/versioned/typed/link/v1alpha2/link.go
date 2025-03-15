@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha2
 
 import (
-	"context"
+	context "context"
 
-	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	linkv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
 	scheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type LinksGetter interface {
 
 // LinkInterface has methods to work with Link resources.
 type LinkInterface interface {
-	Create(ctx context.Context, link *v1alpha2.Link, opts v1.CreateOptions) (*v1alpha2.Link, error)
-	Update(ctx context.Context, link *v1alpha2.Link, opts v1.UpdateOptions) (*v1alpha2.Link, error)
+	Create(ctx context.Context, link *linkv1alpha2.Link, opts v1.CreateOptions) (*linkv1alpha2.Link, error)
+	Update(ctx context.Context, link *linkv1alpha2.Link, opts v1.UpdateOptions) (*linkv1alpha2.Link, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha2.Link, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha2.LinkList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*linkv1alpha2.Link, error)
+	List(ctx context.Context, opts v1.ListOptions) (*linkv1alpha2.LinkList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha2.Link, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *linkv1alpha2.Link, err error)
 	LinkExpansion
 }
 
 // links implements LinkInterface
 type links struct {
-	*gentype.ClientWithList[*v1alpha2.Link, *v1alpha2.LinkList]
+	*gentype.ClientWithList[*linkv1alpha2.Link, *linkv1alpha2.LinkList]
 }
 
 // newLinks returns a Links
 func newLinks(c *LinkV1alpha2Client, namespace string) *links {
 	return &links{
-		gentype.NewClientWithList[*v1alpha2.Link, *v1alpha2.LinkList](
+		gentype.NewClientWithList[*linkv1alpha2.Link, *linkv1alpha2.LinkList](
 			"links",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha2.Link { return &v1alpha2.Link{} },
-			func() *v1alpha2.LinkList { return &v1alpha2.LinkList{} }),
+			func() *linkv1alpha2.Link { return &linkv1alpha2.Link{} },
+			func() *linkv1alpha2.LinkList { return &linkv1alpha2.LinkList{} },
+		),
 	}
 }

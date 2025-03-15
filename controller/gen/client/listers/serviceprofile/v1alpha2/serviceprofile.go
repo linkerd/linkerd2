@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha2
 
 import (
-	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	serviceprofilev1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ServiceProfileLister helps list ServiceProfiles.
@@ -30,7 +30,7 @@ import (
 type ServiceProfileLister interface {
 	// List lists all ServiceProfiles in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha2.ServiceProfile, err error)
+	List(selector labels.Selector) (ret []*serviceprofilev1alpha2.ServiceProfile, err error)
 	// ServiceProfiles returns an object that can list and get ServiceProfiles.
 	ServiceProfiles(namespace string) ServiceProfileNamespaceLister
 	ServiceProfileListerExpansion
@@ -38,17 +38,17 @@ type ServiceProfileLister interface {
 
 // serviceProfileLister implements the ServiceProfileLister interface.
 type serviceProfileLister struct {
-	listers.ResourceIndexer[*v1alpha2.ServiceProfile]
+	listers.ResourceIndexer[*serviceprofilev1alpha2.ServiceProfile]
 }
 
 // NewServiceProfileLister returns a new ServiceProfileLister.
 func NewServiceProfileLister(indexer cache.Indexer) ServiceProfileLister {
-	return &serviceProfileLister{listers.New[*v1alpha2.ServiceProfile](indexer, v1alpha2.Resource("serviceprofile"))}
+	return &serviceProfileLister{listers.New[*serviceprofilev1alpha2.ServiceProfile](indexer, serviceprofilev1alpha2.Resource("serviceprofile"))}
 }
 
 // ServiceProfiles returns an object that can list and get ServiceProfiles.
 func (s *serviceProfileLister) ServiceProfiles(namespace string) ServiceProfileNamespaceLister {
-	return serviceProfileNamespaceLister{listers.NewNamespaced[*v1alpha2.ServiceProfile](s.ResourceIndexer, namespace)}
+	return serviceProfileNamespaceLister{listers.NewNamespaced[*serviceprofilev1alpha2.ServiceProfile](s.ResourceIndexer, namespace)}
 }
 
 // ServiceProfileNamespaceLister helps list and get ServiceProfiles.
@@ -56,15 +56,15 @@ func (s *serviceProfileLister) ServiceProfiles(namespace string) ServiceProfileN
 type ServiceProfileNamespaceLister interface {
 	// List lists all ServiceProfiles in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha2.ServiceProfile, err error)
+	List(selector labels.Selector) (ret []*serviceprofilev1alpha2.ServiceProfile, err error)
 	// Get retrieves the ServiceProfile from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha2.ServiceProfile, error)
+	Get(name string) (*serviceprofilev1alpha2.ServiceProfile, error)
 	ServiceProfileNamespaceListerExpansion
 }
 
 // serviceProfileNamespaceLister implements the ServiceProfileNamespaceLister
 // interface.
 type serviceProfileNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha2.ServiceProfile]
+	listers.ResourceIndexer[*serviceprofilev1alpha2.ServiceProfile]
 }

@@ -53,7 +53,7 @@ func newUnlinkCommand() *cobra.Command {
 				return err
 			}
 
-			l, err := k.L5dCrdClient.LinkV1alpha2().Links(opts.namespace).Get(cmd.Context(), opts.clusterName, metav1.GetOptions{})
+			l, err := k.L5dCrdClient.LinkV1alpha3().Links(opts.namespace).Get(cmd.Context(), opts.clusterName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}

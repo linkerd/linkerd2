@@ -29,7 +29,7 @@ type FakeServerauthorizationV1beta1 struct {
 }
 
 func (c *FakeServerauthorizationV1beta1) ServerAuthorizations(namespace string) v1beta1.ServerAuthorizationInterface {
-	return &FakeServerAuthorizations{c, namespace}
+	return newFakeServerAuthorizations(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

@@ -19,10 +19,10 @@ limitations under the License.
 package v1beta1
 
 import (
-	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	externalworkloadv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ExternalWorkloadLister helps list ExternalWorkloads.
@@ -30,7 +30,7 @@ import (
 type ExternalWorkloadLister interface {
 	// List lists all ExternalWorkloads in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta1.ExternalWorkload, err error)
+	List(selector labels.Selector) (ret []*externalworkloadv1beta1.ExternalWorkload, err error)
 	// ExternalWorkloads returns an object that can list and get ExternalWorkloads.
 	ExternalWorkloads(namespace string) ExternalWorkloadNamespaceLister
 	ExternalWorkloadListerExpansion
@@ -38,17 +38,17 @@ type ExternalWorkloadLister interface {
 
 // externalWorkloadLister implements the ExternalWorkloadLister interface.
 type externalWorkloadLister struct {
-	listers.ResourceIndexer[*v1beta1.ExternalWorkload]
+	listers.ResourceIndexer[*externalworkloadv1beta1.ExternalWorkload]
 }
 
 // NewExternalWorkloadLister returns a new ExternalWorkloadLister.
 func NewExternalWorkloadLister(indexer cache.Indexer) ExternalWorkloadLister {
-	return &externalWorkloadLister{listers.New[*v1beta1.ExternalWorkload](indexer, v1beta1.Resource("externalworkload"))}
+	return &externalWorkloadLister{listers.New[*externalworkloadv1beta1.ExternalWorkload](indexer, externalworkloadv1beta1.Resource("externalworkload"))}
 }
 
 // ExternalWorkloads returns an object that can list and get ExternalWorkloads.
 func (s *externalWorkloadLister) ExternalWorkloads(namespace string) ExternalWorkloadNamespaceLister {
-	return externalWorkloadNamespaceLister{listers.NewNamespaced[*v1beta1.ExternalWorkload](s.ResourceIndexer, namespace)}
+	return externalWorkloadNamespaceLister{listers.NewNamespaced[*externalworkloadv1beta1.ExternalWorkload](s.ResourceIndexer, namespace)}
 }
 
 // ExternalWorkloadNamespaceLister helps list and get ExternalWorkloads.
@@ -56,15 +56,15 @@ func (s *externalWorkloadLister) ExternalWorkloads(namespace string) ExternalWor
 type ExternalWorkloadNamespaceLister interface {
 	// List lists all ExternalWorkloads in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta1.ExternalWorkload, err error)
+	List(selector labels.Selector) (ret []*externalworkloadv1beta1.ExternalWorkload, err error)
 	// Get retrieves the ExternalWorkload from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1beta1.ExternalWorkload, error)
+	Get(name string) (*externalworkloadv1beta1.ExternalWorkload, error)
 	ExternalWorkloadNamespaceListerExpansion
 }
 
 // externalWorkloadNamespaceLister implements the ExternalWorkloadNamespaceLister
 // interface.
 type externalWorkloadNamespaceLister struct {
-	listers.ResourceIndexer[*v1beta1.ExternalWorkload]
+	listers.ResourceIndexer[*externalworkloadv1beta1.ExternalWorkload]
 }

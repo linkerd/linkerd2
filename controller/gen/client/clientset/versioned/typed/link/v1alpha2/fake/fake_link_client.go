@@ -29,7 +29,7 @@ type FakeLinkV1alpha2 struct {
 }
 
 func (c *FakeLinkV1alpha2) Links(namespace string) v1alpha2.LinkInterface {
-	return &FakeLinks{c, namespace}
+	return newFakeLinks(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

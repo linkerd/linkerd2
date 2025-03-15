@@ -19,13 +19,13 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
+	apisserverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
-	v1beta1 "github.com/linkerd/linkerd2/controller/gen/client/listers/serverauthorization/v1beta1"
+	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/listers/serverauthorization/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // ServerAuthorizations.
 type ServerAuthorizationInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta1.ServerAuthorizationLister
+	Lister() serverauthorizationv1beta1.ServerAuthorizationLister
 }
 
 type serverAuthorizationInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredServerAuthorizationInformer(client versioned.Interface, namespac
 				return client.ServerauthorizationV1beta1().ServerAuthorizations(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&serverauthorizationv1beta1.ServerAuthorization{},
+		&apisserverauthorizationv1beta1.ServerAuthorization{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *serverAuthorizationInformer) defaultInformer(client versioned.Interface
 }
 
 func (f *serverAuthorizationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&serverauthorizationv1beta1.ServerAuthorization{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisserverauthorizationv1beta1.ServerAuthorization{}, f.defaultInformer)
 }
 
-func (f *serverAuthorizationInformer) Lister() v1beta1.ServerAuthorizationLister {
-	return v1beta1.NewServerAuthorizationLister(f.Informer().GetIndexer())
+func (f *serverAuthorizationInformer) Lister() serverauthorizationv1beta1.ServerAuthorizationLister {
+	return serverauthorizationv1beta1.NewServerAuthorizationLister(f.Informer().GetIndexer())
 }

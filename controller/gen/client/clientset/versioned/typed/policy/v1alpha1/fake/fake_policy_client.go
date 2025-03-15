@@ -29,19 +29,19 @@ type FakePolicyV1alpha1 struct {
 }
 
 func (c *FakePolicyV1alpha1) AuthorizationPolicies(namespace string) v1alpha1.AuthorizationPolicyInterface {
-	return &FakeAuthorizationPolicies{c, namespace}
+	return newFakeAuthorizationPolicies(c, namespace)
 }
 
 func (c *FakePolicyV1alpha1) HTTPRoutes(namespace string) v1alpha1.HTTPRouteInterface {
-	return &FakeHTTPRoutes{c, namespace}
+	return newFakeHTTPRoutes(c, namespace)
 }
 
 func (c *FakePolicyV1alpha1) MeshTLSAuthentications(namespace string) v1alpha1.MeshTLSAuthenticationInterface {
-	return &FakeMeshTLSAuthentications{c, namespace}
+	return newFakeMeshTLSAuthentications(c, namespace)
 }
 
 func (c *FakePolicyV1alpha1) NetworkAuthentications(namespace string) v1alpha1.NetworkAuthenticationInterface {
-	return &FakeNetworkAuthentications{c, namespace}
+	return newFakeNetworkAuthentications(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

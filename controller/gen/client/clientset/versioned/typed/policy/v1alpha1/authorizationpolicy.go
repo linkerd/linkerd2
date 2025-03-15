@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
+	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	scheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type AuthorizationPoliciesGetter interface {
 
 // AuthorizationPolicyInterface has methods to work with AuthorizationPolicy resources.
 type AuthorizationPolicyInterface interface {
-	Create(ctx context.Context, authorizationPolicy *v1alpha1.AuthorizationPolicy, opts v1.CreateOptions) (*v1alpha1.AuthorizationPolicy, error)
-	Update(ctx context.Context, authorizationPolicy *v1alpha1.AuthorizationPolicy, opts v1.UpdateOptions) (*v1alpha1.AuthorizationPolicy, error)
+	Create(ctx context.Context, authorizationPolicy *policyv1alpha1.AuthorizationPolicy, opts v1.CreateOptions) (*policyv1alpha1.AuthorizationPolicy, error)
+	Update(ctx context.Context, authorizationPolicy *policyv1alpha1.AuthorizationPolicy, opts v1.UpdateOptions) (*policyv1alpha1.AuthorizationPolicy, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.AuthorizationPolicy, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.AuthorizationPolicyList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*policyv1alpha1.AuthorizationPolicy, error)
+	List(ctx context.Context, opts v1.ListOptions) (*policyv1alpha1.AuthorizationPolicyList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.AuthorizationPolicy, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *policyv1alpha1.AuthorizationPolicy, err error)
 	AuthorizationPolicyExpansion
 }
 
 // authorizationPolicies implements AuthorizationPolicyInterface
 type authorizationPolicies struct {
-	*gentype.ClientWithList[*v1alpha1.AuthorizationPolicy, *v1alpha1.AuthorizationPolicyList]
+	*gentype.ClientWithList[*policyv1alpha1.AuthorizationPolicy, *policyv1alpha1.AuthorizationPolicyList]
 }
 
 // newAuthorizationPolicies returns a AuthorizationPolicies
 func newAuthorizationPolicies(c *PolicyV1alpha1Client, namespace string) *authorizationPolicies {
 	return &authorizationPolicies{
-		gentype.NewClientWithList[*v1alpha1.AuthorizationPolicy, *v1alpha1.AuthorizationPolicyList](
+		gentype.NewClientWithList[*policyv1alpha1.AuthorizationPolicy, *policyv1alpha1.AuthorizationPolicyList](
 			"authorizationpolicies",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.AuthorizationPolicy { return &v1alpha1.AuthorizationPolicy{} },
-			func() *v1alpha1.AuthorizationPolicyList { return &v1alpha1.AuthorizationPolicyList{} }),
+			func() *policyv1alpha1.AuthorizationPolicy { return &policyv1alpha1.AuthorizationPolicy{} },
+			func() *policyv1alpha1.AuthorizationPolicyList { return &policyv1alpha1.AuthorizationPolicyList{} },
+		),
 	}
 }

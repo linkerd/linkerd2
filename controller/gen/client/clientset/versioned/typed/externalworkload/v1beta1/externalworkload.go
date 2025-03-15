@@ -19,9 +19,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 
-	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
+	externalworkloadv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	scheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,34 @@ type ExternalWorkloadsGetter interface {
 
 // ExternalWorkloadInterface has methods to work with ExternalWorkload resources.
 type ExternalWorkloadInterface interface {
-	Create(ctx context.Context, externalWorkload *v1beta1.ExternalWorkload, opts v1.CreateOptions) (*v1beta1.ExternalWorkload, error)
-	Update(ctx context.Context, externalWorkload *v1beta1.ExternalWorkload, opts v1.UpdateOptions) (*v1beta1.ExternalWorkload, error)
+	Create(ctx context.Context, externalWorkload *externalworkloadv1beta1.ExternalWorkload, opts v1.CreateOptions) (*externalworkloadv1beta1.ExternalWorkload, error)
+	Update(ctx context.Context, externalWorkload *externalworkloadv1beta1.ExternalWorkload, opts v1.UpdateOptions) (*externalworkloadv1beta1.ExternalWorkload, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.ExternalWorkload, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1beta1.ExternalWorkloadList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*externalworkloadv1beta1.ExternalWorkload, error)
+	List(ctx context.Context, opts v1.ListOptions) (*externalworkloadv1beta1.ExternalWorkloadList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.ExternalWorkload, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *externalworkloadv1beta1.ExternalWorkload, err error)
 	ExternalWorkloadExpansion
 }
 
 // externalWorkloads implements ExternalWorkloadInterface
 type externalWorkloads struct {
-	*gentype.ClientWithList[*v1beta1.ExternalWorkload, *v1beta1.ExternalWorkloadList]
+	*gentype.ClientWithList[*externalworkloadv1beta1.ExternalWorkload, *externalworkloadv1beta1.ExternalWorkloadList]
 }
 
 // newExternalWorkloads returns a ExternalWorkloads
 func newExternalWorkloads(c *ExternalworkloadV1beta1Client, namespace string) *externalWorkloads {
 	return &externalWorkloads{
-		gentype.NewClientWithList[*v1beta1.ExternalWorkload, *v1beta1.ExternalWorkloadList](
+		gentype.NewClientWithList[*externalworkloadv1beta1.ExternalWorkload, *externalworkloadv1beta1.ExternalWorkloadList](
 			"externalworkloads",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1beta1.ExternalWorkload { return &v1beta1.ExternalWorkload{} },
-			func() *v1beta1.ExternalWorkloadList { return &v1beta1.ExternalWorkloadList{} }),
+			func() *externalworkloadv1beta1.ExternalWorkload { return &externalworkloadv1beta1.ExternalWorkload{} },
+			func() *externalworkloadv1beta1.ExternalWorkloadList {
+				return &externalworkloadv1beta1.ExternalWorkloadList{}
+			},
+		),
 	}
 }

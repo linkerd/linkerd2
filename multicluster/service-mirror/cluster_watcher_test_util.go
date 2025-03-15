@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-test/deep"
-	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	defaultProbeSpec = v1alpha2.ProbeSpec{
+	defaultProbeSpec = v1alpha3.ProbeSpec{
 		Path:   defaultProbePath,
 		Port:   fmt.Sprintf("%d", defaultProbePort),
 		Period: defaultProbePeriod,
@@ -39,7 +39,7 @@ type testEnvironment struct {
 	events          []interface{}
 	remoteResources []string
 	localResources  []string
-	link            v1alpha2.Link
+	link            v1alpha3.Link
 }
 
 func (te *testEnvironment) runEnvironment(watcherQueue workqueue.TypedRateLimitingInterface[any]) (*k8s.API, error) {
@@ -108,8 +108,8 @@ var createExportedService = &testEnvironment{
 	localResources: []string{
 		asYaml(namespace("ns1")),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:       clusterName,
 			TargetClusterDomain:     clusterDomain,
 			GatewayIdentity:         "gateway-identity",
@@ -147,8 +147,8 @@ var createRemoteDiscoveryService = &testEnvironment{
 	localResources: []string{
 		asYaml(namespace("ns1")),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:       clusterName,
 			TargetClusterDomain:     clusterDomain,
 			GatewayIdentity:         "gateway-identity",
@@ -186,8 +186,8 @@ var createFederatedService = &testEnvironment{
 	localResources: []string{
 		asYaml(namespace("ns1")),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:       clusterName,
 			TargetClusterDomain:     clusterDomain,
 			GatewayIdentity:         "gateway-identity",
@@ -240,8 +240,8 @@ func joinFederatedService() *testEnvironment {
 			asYaml(namespace("ns1")),
 			asYaml(fedSvc),
 		},
-		link: v1alpha2.Link{
-			Spec: v1alpha2.LinkSpec{
+		link: v1alpha3.Link{
+			Spec: v1alpha3.LinkSpec{
 				TargetClusterName:       clusterName,
 				TargetClusterDomain:     clusterDomain,
 				GatewayIdentity:         "gateway-identity",
@@ -280,8 +280,8 @@ var leftFederatedService = &testEnvironment{
 			},
 		}, "", fmt.Sprintf("service-one@other,service-one@%s", clusterName))),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:       clusterName,
 			TargetClusterDomain:     clusterDomain,
 			GatewayIdentity:         "gateway-identity",
@@ -319,8 +319,8 @@ var createLocalFederatedService = &testEnvironment{
 	localResources: []string{
 		asYaml(namespace("ns1")),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:       "", // local cluster
 			TargetClusterDomain:     clusterDomain,
 			GatewayIdentity:         "gateway-identity",
@@ -373,8 +373,8 @@ func joinLocalFederatedService() *testEnvironment {
 			asYaml(namespace("ns1")),
 			asYaml(fedSvc),
 		},
-		link: v1alpha2.Link{
-			Spec: v1alpha2.LinkSpec{
+		link: v1alpha3.Link{
+			Spec: v1alpha3.LinkSpec{
 				TargetClusterName:       "", // local cluster
 				TargetClusterDomain:     clusterDomain,
 				GatewayIdentity:         "gateway-identity",
@@ -413,8 +413,8 @@ var leftLocalFederatedService = &testEnvironment{
 			},
 		}, "service-one", "service-one@other")),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:       "", // local cluster
 			TargetClusterDomain:     clusterDomain,
 			GatewayIdentity:         "gateway-identity",
@@ -492,14 +492,14 @@ var createExportedHeadlessService = &testEnvironment{
 	localResources: []string{
 		asYaml(namespace("ns2")),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:   clusterName,
 			TargetClusterDomain: clusterDomain,
 			GatewayIdentity:     "gateway-identity",
 			GatewayAddress:      "192.0.2.129",
 			GatewayPort:         "889",
-			ProbeSpec: v1alpha2.ProbeSpec{
+			ProbeSpec: v1alpha3.ProbeSpec{
 				Port:   "123456",
 				Path:   "/probe1",
 				Period: "120",
@@ -521,8 +521,8 @@ var deleteMirrorService = &testEnvironment{
 		asYaml(mirrorService("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", nil, nil)),
 		asYaml(endpoints("test-service-remote-to-delete-remote", "test-namespace-to-delete", nil, "", "gateway-identity", nil)),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:       clusterName,
 			TargetClusterDomain:     clusterDomain,
 			GatewayIdentity:         "gateway-identity",
@@ -617,8 +617,8 @@ var updateServiceWithChangedPorts = &testEnvironment{
 			},
 		})),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:       clusterName,
 			TargetClusterDomain:     clusterDomain,
 			GatewayIdentity:         "gateway-identity",
@@ -728,8 +728,8 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 				},
 			})),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:       clusterName,
 			TargetClusterDomain:     clusterDomain,
 			GatewayIdentity:         "gateway-identity",
@@ -751,8 +751,8 @@ var clusterUnregistered = &testEnvironment{
 		asYaml(mirrorService("test-service-2-remote", "test-namespace", "", nil, nil)),
 		asYaml(endpoints("test-service-2-remote", "test-namespace", nil, "", "", nil)),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName: clusterName,
 		},
 	},
@@ -776,8 +776,8 @@ var gcTriggered = &testEnvironment{
 		asYaml(remoteService("test-service-1", "test-namespace", "", map[string]string{consts.DefaultExportedServiceSelector: "true"}, nil)),
 		asYaml(remoteHeadlessService("test-headless-service", "test-namespace", "", nil, nil)),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName: clusterName,
 		},
 	},
@@ -825,8 +825,8 @@ var noGatewayLink = &testEnvironment{
 		asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 		asYaml(endpoints("service-two", "ns1", nil, "192.0.2.128", "gateway-identity", []corev1.EndpointPort{})),
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:       clusterName,
 			TargetClusterDomain:     clusterDomain,
 			Selector:                &metav1.LabelSelector{},
@@ -842,8 +842,8 @@ func onAddOrUpdateExportedSvc(isAdd bool) *testEnvironment {
 				consts.DefaultExportedServiceSelector: "true",
 			}, nil)),
 		},
-		link: v1alpha2.Link{
-			Spec: v1alpha2.LinkSpec{
+		link: v1alpha3.Link{
+			Spec: v1alpha3.LinkSpec{
 				TargetClusterName:       clusterName,
 				TargetClusterDomain:     clusterDomain,
 				GatewayIdentity:         "gateway-identity",
@@ -869,8 +869,8 @@ func onAddOrUpdateRemoteServiceUpdated(isAdd bool) *testEnvironment {
 			asYaml(mirrorService("test-service-remote", "test-namespace", "pastResourceVersion", nil, nil)),
 			asYaml(endpoints("test-service-remote", "test-namespace", nil, "0.0.0.0", "", nil)),
 		},
-		link: v1alpha2.Link{
-			Spec: v1alpha2.LinkSpec{
+		link: v1alpha3.Link{
+			Spec: v1alpha3.LinkSpec{
 				TargetClusterName:       clusterName,
 				TargetClusterDomain:     clusterDomain,
 				GatewayIdentity:         "gateway-identity",
@@ -895,8 +895,8 @@ func onAddOrUpdateSameResVersion(isAdd bool) *testEnvironment {
 			asYaml(mirrorService("test-service-remote", "test-namespace", "currentResVersion", nil, nil)),
 			asYaml(endpoints("test-service-remote", "test-namespace", nil, "0.0.0.0", "", nil)),
 		},
-		link: v1alpha2.Link{
-			Spec: v1alpha2.LinkSpec{
+		link: v1alpha3.Link{
+			Spec: v1alpha3.LinkSpec{
 				TargetClusterName:       clusterName,
 				TargetClusterDomain:     clusterDomain,
 				GatewayIdentity:         "gateway-identity",
@@ -919,8 +919,8 @@ func serviceNotExportedAnymore(isAdd bool) *testEnvironment {
 			asYaml(mirrorService("test-service-remote", "test-namespace", "currentResVersion", nil, nil)),
 			asYaml(endpoints("test-service-remote", "test-namespace", nil, "0.0.0.0", "", nil)),
 		},
-		link: v1alpha2.Link{
-			Spec: v1alpha2.LinkSpec{
+		link: v1alpha3.Link{
+			Spec: v1alpha3.LinkSpec{
 				TargetClusterName:       clusterName,
 				TargetClusterDomain:     clusterDomain,
 				GatewayIdentity:         "gateway-identity",
@@ -942,8 +942,8 @@ var onDeleteExportedService = &testEnvironment{
 			}, nil),
 		},
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:       clusterName,
 			TargetClusterDomain:     clusterDomain,
 			GatewayIdentity:         "gateway-identity",
@@ -962,8 +962,8 @@ var onDeleteNonExportedService = &testEnvironment{
 			svc: remoteService("gateway", "test-namespace", "currentResVersion", map[string]string{}, nil),
 		},
 	},
-	link: v1alpha2.Link{
-		Spec: v1alpha2.LinkSpec{
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:       clusterName,
 			TargetClusterDomain:     clusterDomain,
 			GatewayIdentity:         "gateway-identity",
@@ -1499,8 +1499,8 @@ func createEnvWithSelector(defaultSelector, remoteSelector *metav1.LabelSelector
 			asYaml(endpoints("service-one", "ns1", nil, "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 			asYaml(endpoints("service-two", "ns1", nil, "192.0.3.127", "gateway-identity", []corev1.EndpointPort{})),
 		},
-		link: v1alpha2.Link{
-			Spec: v1alpha2.LinkSpec{
+		link: v1alpha3.Link{
+			Spec: v1alpha3.LinkSpec{
 				TargetClusterName:       clusterName,
 				TargetClusterDomain:     clusterDomain,
 				Selector:                defaultSelector,

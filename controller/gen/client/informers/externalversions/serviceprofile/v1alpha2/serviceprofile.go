@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha2
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	serviceprofilev1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
+	apisserviceprofilev1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
-	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/listers/serviceprofile/v1alpha2"
+	serviceprofilev1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/listers/serviceprofile/v1alpha2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // ServiceProfiles.
 type ServiceProfileInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha2.ServiceProfileLister
+	Lister() serviceprofilev1alpha2.ServiceProfileLister
 }
 
 type serviceProfileInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredServiceProfileInformer(client versioned.Interface, namespace str
 				return client.LinkerdV1alpha2().ServiceProfiles(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&serviceprofilev1alpha2.ServiceProfile{},
+		&apisserviceprofilev1alpha2.ServiceProfile{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *serviceProfileInformer) defaultInformer(client versioned.Interface, res
 }
 
 func (f *serviceProfileInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&serviceprofilev1alpha2.ServiceProfile{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisserviceprofilev1alpha2.ServiceProfile{}, f.defaultInformer)
 }
 
-func (f *serviceProfileInformer) Lister() v1alpha2.ServiceProfileLister {
-	return v1alpha2.NewServiceProfileLister(f.Informer().GetIndexer())
+func (f *serviceProfileInformer) Lister() serviceprofilev1alpha2.ServiceProfileLister {
+	return serviceprofilev1alpha2.NewServiceProfileLister(f.Informer().GetIndexer())
 }

@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
+	apispolicyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/listers/policy/v1alpha1"
+	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/listers/policy/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // AuthorizationPolicies.
 type AuthorizationPolicyInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.AuthorizationPolicyLister
+	Lister() policyv1alpha1.AuthorizationPolicyLister
 }
 
 type authorizationPolicyInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredAuthorizationPolicyInformer(client versioned.Interface, namespac
 				return client.PolicyV1alpha1().AuthorizationPolicies(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&policyv1alpha1.AuthorizationPolicy{},
+		&apispolicyv1alpha1.AuthorizationPolicy{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *authorizationPolicyInformer) defaultInformer(client versioned.Interface
 }
 
 func (f *authorizationPolicyInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&policyv1alpha1.AuthorizationPolicy{}, f.defaultInformer)
+	return f.factory.InformerFor(&apispolicyv1alpha1.AuthorizationPolicy{}, f.defaultInformer)
 }
 
-func (f *authorizationPolicyInformer) Lister() v1alpha1.AuthorizationPolicyLister {
-	return v1alpha1.NewAuthorizationPolicyLister(f.Informer().GetIndexer())
+func (f *authorizationPolicyInformer) Lister() policyv1alpha1.AuthorizationPolicyLister {
+	return policyv1alpha1.NewAuthorizationPolicyLister(f.Informer().GetIndexer())
 }

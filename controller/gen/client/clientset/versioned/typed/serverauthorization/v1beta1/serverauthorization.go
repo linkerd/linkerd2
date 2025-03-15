@@ -19,9 +19,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 
-	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
+	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	scheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,36 @@ type ServerAuthorizationsGetter interface {
 
 // ServerAuthorizationInterface has methods to work with ServerAuthorization resources.
 type ServerAuthorizationInterface interface {
-	Create(ctx context.Context, serverAuthorization *v1beta1.ServerAuthorization, opts v1.CreateOptions) (*v1beta1.ServerAuthorization, error)
-	Update(ctx context.Context, serverAuthorization *v1beta1.ServerAuthorization, opts v1.UpdateOptions) (*v1beta1.ServerAuthorization, error)
+	Create(ctx context.Context, serverAuthorization *serverauthorizationv1beta1.ServerAuthorization, opts v1.CreateOptions) (*serverauthorizationv1beta1.ServerAuthorization, error)
+	Update(ctx context.Context, serverAuthorization *serverauthorizationv1beta1.ServerAuthorization, opts v1.UpdateOptions) (*serverauthorizationv1beta1.ServerAuthorization, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.ServerAuthorization, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1beta1.ServerAuthorizationList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*serverauthorizationv1beta1.ServerAuthorization, error)
+	List(ctx context.Context, opts v1.ListOptions) (*serverauthorizationv1beta1.ServerAuthorizationList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.ServerAuthorization, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *serverauthorizationv1beta1.ServerAuthorization, err error)
 	ServerAuthorizationExpansion
 }
 
 // serverAuthorizations implements ServerAuthorizationInterface
 type serverAuthorizations struct {
-	*gentype.ClientWithList[*v1beta1.ServerAuthorization, *v1beta1.ServerAuthorizationList]
+	*gentype.ClientWithList[*serverauthorizationv1beta1.ServerAuthorization, *serverauthorizationv1beta1.ServerAuthorizationList]
 }
 
 // newServerAuthorizations returns a ServerAuthorizations
 func newServerAuthorizations(c *ServerauthorizationV1beta1Client, namespace string) *serverAuthorizations {
 	return &serverAuthorizations{
-		gentype.NewClientWithList[*v1beta1.ServerAuthorization, *v1beta1.ServerAuthorizationList](
+		gentype.NewClientWithList[*serverauthorizationv1beta1.ServerAuthorization, *serverauthorizationv1beta1.ServerAuthorizationList](
 			"serverauthorizations",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1beta1.ServerAuthorization { return &v1beta1.ServerAuthorization{} },
-			func() *v1beta1.ServerAuthorizationList { return &v1beta1.ServerAuthorizationList{} }),
+			func() *serverauthorizationv1beta1.ServerAuthorization {
+				return &serverauthorizationv1beta1.ServerAuthorization{}
+			},
+			func() *serverauthorizationv1beta1.ServerAuthorizationList {
+				return &serverauthorizationv1beta1.ServerAuthorizationList{}
+			},
+		),
 	}
 }
