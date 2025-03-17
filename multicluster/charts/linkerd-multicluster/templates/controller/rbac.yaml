@@ -1,7 +1,7 @@
 {{- range .Values.controllers }}
 {{- if empty ((.link).ref).name -}}
 {{- fail "the value link.ref.name is required" -}}
-{{- end -}}
+{{ end -}}
 ---
 kind: ServiceAccount
 apiVersion: v1
@@ -76,4 +76,4 @@ subjects:
   - kind: ServiceAccount
     name: controller-{{.link.ref.name}}
     namespace: {{$.Release.Namespace}}
-{{- end}}
+{{ end -}}
