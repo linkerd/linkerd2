@@ -51,6 +51,7 @@ type (
 		link                     *v1alpha2.Link
 		remoteAPIClient          *k8s.API
 		localAPIClient           *k8s.API
+		probeSvc                 string
 		linkClient               l5dcrdclient.Interface
 		stopper                  chan struct{}
 		eventBroadcaster         record.EventBroadcaster
@@ -193,6 +194,7 @@ func NewRemoteClusterServiceWatcher(
 	serviceMirrorNamespace string,
 	localAPI *k8s.API,
 	remoteAPI *k8s.API,
+	probeSvc string,
 	linkClient l5dcrdclient.Interface,
 	link *v1alpha2.Link,
 	requeueLimit int,
@@ -222,6 +224,7 @@ func NewRemoteClusterServiceWatcher(
 		link:                   link,
 		remoteAPIClient:        remoteAPI,
 		localAPIClient:         localAPI,
+		probeSvc:               probeSvc,
 		linkClient:             linkClient,
 		stopper:                stopper,
 		eventBroadcaster:       eventBroadcaster,
@@ -1546,14 +1549,13 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 // worker responsible for probing gateway liveness, so these endpoints are
 // never in a not ready state.
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGatewayEndpoints(ctx context.Context, addressses []corev1.EndpointAddress) error {
-	gatewayMirrorName := fmt.Sprintf("probe-gateway-%s", rcsw.link.Spec.TargetClusterName)
 	probePort, err := strconv.ParseInt(rcsw.link.Spec.ProbeSpec.Port, 10, 32)
 	if err != nil {
 		return fmt.Errorf("failed to parse probe port: %w", err)
 	}
 	endpoints := &corev1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      gatewayMirrorName,
+			Name:      rcsw.probeSvc,
 			Namespace: rcsw.serviceMirrorNamespace,
 			Labels: map[string]string{
 				consts.RemoteClusterNameLabel: rcsw.link.Spec.TargetClusterName,
