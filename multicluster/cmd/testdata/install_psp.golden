@@ -533,16 +533,6 @@ spec:
               targetClusterLinkerdNamespace:
                 description: Name of namespace Linkerd control plane is installed in on target cluster
                 type: string
-              excludedAnnotations:
-                description: List of annotations which should not be copied to the federated service
-                type: array
-                items:
-                  type: string
-              excludedLabels:
-                description: List of labels which should not be copied to the federated service
-                type: array
-                items:
-                  type: string
           status:
             description: Status defines the state of resources managed by this Link
             properties:
@@ -973,6 +963,16 @@ spec:
               targetClusterLinkerdNamespace:
                 description: Name of namespace Linkerd control plane is installed in on target cluster
                 type: string
+              excludedAnnotations:
+                description: List of annotations which should not be copied to the federated service
+                type: array
+                items:
+                  type: string
+              excludedLabels:
+                description: List of labels which should not be copied to the federated service
+                type: array
+                items:
+                  type: string
           status:
             description: Status defines the state of resources managed by this Link
             properties:
