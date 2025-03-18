@@ -42,7 +42,21 @@ if ! ghcurl "$releases_url" | jq '.[] | select(.name == "'"$version"'")' > relea
   exit 1
 fi
 
-pkgname=linkerd2-proxy-${version}-${arch}
+pkgname_legacy=linkerd2-proxy-${version}-${arch}
+pkgname_os=linkerd2-proxy-${version}-${arch}-linux
+
+# First try to find the Linux-specific package in the release assets
+if jq -e '.assets[] | select(.name == "'"${pkgname_os}.tar.gz"'")' release.json > /dev/null; then
+  pkgname=$pkgname_os
+else
+  # Fall back to the legacy package name
+  if jq -e '.assets[] | select(.name == "'"${pkgname_legacy}.tar.gz"'")' release.json > /dev/null; then
+    pkgname=$pkgname_legacy
+  else
+    echo "Neither ${pkgname_os}.tar.gz nor ${pkgname_legacy}.tar.gz found in release assets" >&2
+    exit 1
+  fi
+fi
 
 pkgfile=${pkgname}.tar.gz
 pkgurl=$(jq -r '.assets[] | select(.name == "'"$pkgfile"'") | .url' release.json)
