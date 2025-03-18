@@ -1116,9 +1116,9 @@ func (conf *ResourceConfig) injectPodSpec(values *podPatch) {
 			log.Infof("inject debug container")
 			values.DebugContainer = &l5dcharts.DebugContainer{
 				Image: &l5dcharts.Image{
-					Name:       conf.values.DebugContainer.Image.Name,
-					Version:    conf.values.DebugContainer.Image.Version,
-					PullPolicy: conf.values.DebugContainer.Image.PullPolicy,
+					Name:       values.Values.DebugContainer.Image.Name,
+					Version:    values.Values.DebugContainer.Image.Version,
+					PullPolicy: values.Values.DebugContainer.Image.PullPolicy,
 				},
 			}
 		}

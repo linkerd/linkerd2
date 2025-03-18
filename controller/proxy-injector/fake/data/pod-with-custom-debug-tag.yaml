@@ -1,0 +1,19 @@
+kind: Pod
+apiVersion: apps/v1
+metadata:
+  name: nginx
+  namespace: kube-public
+  annotations:
+    config.linkerd.io/debug-image: cr.l5d.io/linkerd/debug
+    config.linkerd.io/debug-image-version: edge-24.2.4
+    config.linkerd.io/enable-debug-sidecar: true
+    linkerd.io/inject: enabled
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - name: http
+      containerPort: 80
