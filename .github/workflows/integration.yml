@@ -322,6 +322,7 @@ jobs:
         - {k8s: "v1.23", manage-controllers: false}
         - {k8s: "v1.32", manage-controllers: false}
         - {k8s: "v1.32", manage-controllers: true}
+    name: "test-multicluster(${{ matrix.cases.k8s }}, ${{ matrix.cases.manage-controllers && 'managed-controllers' || 'unmanaged-controllers' }})"
     steps:
       - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
         env:
