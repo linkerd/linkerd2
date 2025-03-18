@@ -14,6 +14,9 @@ rules:
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["multicluster.linkerd.io"]
+  resources: ["links"]
+  verbs: ["list", "get", "watch"]
 {{- if .Values.enableNamespaceCreation }}
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -52,9 +55,6 @@ rules:
   - apiGroups: [""]
     resources: ["secrets"]
     resourceNames: ["cluster-credentials-{{.Values.targetClusterName}}"]
-    verbs: ["list", "get", "watch"]
-  - apiGroups: ["multicluster.linkerd.io"]
-    resources: ["links"]
     verbs: ["list", "get", "watch"]
   - apiGroups: ["multicluster.linkerd.io"]
     resources: ["links/status"]
@@ -151,6 +151,7 @@ spec:
         - -enable-namespace-creation
         {{- end }}
         - -enable-pprof={{.Values.enablePprof | default false}}
+        - -probe-service=probe-gateway-{{.Values.targetClusterName}}
         - {{.Values.targetClusterName}}
         {{- if or .Values.serviceMirrorAdditionalEnv .Values.serviceMirrorExperimentalEnv }}
         env:

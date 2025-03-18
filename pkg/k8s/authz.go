@@ -146,6 +146,24 @@ func ExtWorkloadAccess(ctx context.Context, k8sClient kubernetes.Interface) erro
 	return errors.New("ExternalWorkload CRD not found")
 }
 
+// LinksAccess checks whether the Links CRD is installed on the
+// cluster and the client is authorized to access Links
+func LinksAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
+	groupVersion := fmt.Sprintf("%s/%s", LinkAPIGroup, LinkAPIVersion)
+	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(groupVersion)
+	if err != nil {
+		return err
+	}
+	if res.GroupVersion == groupVersion {
+		for _, apiRes := range res.APIResources {
+			if apiRes.Kind == LinkKind {
+				return ResourceAuthz(ctx, k8sClient, "", "list", LinkAPIGroup, "", "links", "")
+			}
+		}
+	}
+	return errors.New("Links CRD not found")
+}
+
 // EndpointSliceAccess verifies whether the K8s cluster has
 // access to EndpointSlice resources.
 func EndpointSliceAccess(ctx context.Context, k8sClient kubernetes.Interface) error {

@@ -363,12 +363,20 @@ func applyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		}
 	}
 
+	// Proxy CPU resources
+
 	if override, ok := annotations[k8s.ProxyCPURequestAnnotation]; ok {
-		_, err := k8sResource.ParseQuantity(override)
+		q, err := k8sResource.ParseQuantity(override)
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyCPURequestAnnotation)
 		} else {
 			values.Proxy.Resources.CPU.Request = override
+
+			n, err := ToWholeCPUCores(q)
+			if err != nil {
+				log.Warnf("%s (%s)", err, k8s.ProxyCPULimitAnnotation)
+			}
+			values.Proxy.Runtime.Workers.Minimum = n
 		}
 	}
 
@@ -383,7 +391,19 @@ func applyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 			if err != nil {
 				log.Warnf("%s (%s)", err, k8s.ProxyCPULimitAnnotation)
 			}
-			values.Proxy.Cores = n
+			values.Proxy.Runtime.Workers.Maximum = n
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyCPURatioLimitAnnotation]; ok {
+		ratio, err := strconv.ParseFloat(override, 64)
+		if err != nil {
+			log.Warnf("%s (%s)", err, k8s.ProxyCPURatioLimitAnnotation)
+		} else if (ratio <= 0.0) || (ratio >= 1.0) {
+			log.Warnf("invalid value used for the %s annotation, valid values are between 0.0 and 1.0",
+				k8s.ProxyCPURatioLimitAnnotation)
+		} else {
+			values.Proxy.Runtime.Workers.MaximumCPURatio = ratio
 		}
 	}
 
@@ -1096,9 +1116,9 @@ func (conf *ResourceConfig) injectPodSpec(values *podPatch) {
 			log.Infof("inject debug container")
 			values.DebugContainer = &l5dcharts.DebugContainer{
 				Image: &l5dcharts.Image{
-					Name:       conf.values.DebugContainer.Image.Name,
-					Version:    conf.values.DebugContainer.Image.Version,
-					PullPolicy: conf.values.DebugContainer.Image.PullPolicy,
+					Name:       values.Values.DebugContainer.Image.Name,
+					Version:    values.Values.DebugContainer.Image.Version,
+					PullPolicy: values.Values.DebugContainer.Image.PullPolicy,
 				},
 			}
 		}

@@ -1401,3 +1401,21 @@ spec:
                   apiVersion: v1
                   fieldPath: metadata.namespace
                 path: namespace
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-multicluster-controller-access-local-resources
+  labels:
+    linkerd.io/extension: multicluster
+    component: controller
+rules:
+- apiGroups: [""]
+  resources: ["endpoints", "services"]
+  verbs: ["list", "get", "watch", "create", "delete", "update"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list", "get", "watch"]
+
+
+

@@ -93,7 +93,7 @@
     "op": "add",
     "path": "/spec/containers/-",
     "value": {
-      "image": "cr.l5d.io/linkerd/debug:dev-undefined",
+      "image": "cr.l5d.io/linkerd/debug:edge-24.2.4",
       "imagePullPolicy": "IfNotPresent",
       "name": "linkerd-debug",
       "terminationMessagePolicy": "FallbackToLogsOnError",

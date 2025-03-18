@@ -167,7 +167,7 @@ jobs:
           - v1.23
           - v1.32
     steps:
-      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
+      - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
@@ -318,11 +318,12 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        k8s:
-          - v1.23
-          - v1.32
+        cases:
+        - {k8s: "v1.23", manage-controllers: false}
+        - {k8s: "v1.32", manage-controllers: false}
+        - {k8s: "v1.32", manage-controllers: true}
     steps:
-      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
+      - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -351,13 +352,13 @@ jobs:
       - name: Run just mc-test-load
         run: |
           just linkerd-tag='${{ needs.meta.outputs.tag }}' \
-              k3d-k8s='${{ matrix.k8s }}' \
+              k3d-k8s='${{ matrix.cases.k8s }}' \
               mc-test-load
       - name: Run just mc-test-run
         run: |
           just linkerd-tag='${{ needs.meta.outputs.tag }}' \
-              k3d-k8s='${{ matrix.k8s }}' \
-              mc-test-run
+              k3d-k8s='${{ matrix.cases.k8s }}' \
+              mc-test-run -multicluster-manage-controllers=${{ matrix.cases.manage-controllers }}
 
   build-ok:
     needs: [build-cli, build-core, build-ext]

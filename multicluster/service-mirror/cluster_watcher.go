@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -51,6 +52,7 @@ type (
 		link                     *v1alpha3.Link
 		remoteAPIClient          *k8s.API
 		localAPIClient           *k8s.API
+		probeSvc                 string
 		linkClient               l5dcrdclient.Interface
 		stopper                  chan struct{}
 		eventBroadcaster         record.EventBroadcaster
@@ -193,6 +195,7 @@ func NewRemoteClusterServiceWatcher(
 	serviceMirrorNamespace string,
 	localAPI *k8s.API,
 	remoteAPI *k8s.API,
+	probeSvc string,
 	linkClient l5dcrdclient.Interface,
 	link *v1alpha3.Link,
 	requeueLimit int,
@@ -222,6 +225,7 @@ func NewRemoteClusterServiceWatcher(
 		link:                   link,
 		remoteAPIClient:        remoteAPI,
 		localAPIClient:         localAPI,
+		probeSvc:               probeSvc,
 		linkClient:             linkClient,
 		stopper:                stopper,
 		eventBroadcaster:       eventBroadcaster,
@@ -709,6 +713,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteExportedServiceUpdated(ctx 
 // Updates a federated service to include the remote service as a member.
 func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceJoin(ctx context.Context, ev *RemoteServiceJoinsFederatedService) error {
 	rcsw.log.Infof("Updating federated service %s/%s", ev.localService.Namespace, ev.localService.Name)
+	previous := ev.localService.DeepCopy()
 
 	if ev.remoteUpdate.Spec.ClusterIP == corev1.ClusterIPNone {
 		rcsw.updateLinkFederatedStatus(
@@ -718,24 +723,78 @@ func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceJoin(ctx context.
 		return fmt.Errorf("headless service %s/%s cannot join federated service", ev.remoteUpdate.GetNamespace(), ev.remoteUpdate.GetName())
 	}
 
+	// We treat the member with the oldest Link as the source of truth for Service
+	// metadata such as labels and annotations.
+	var isOldest bool
+	if rcsw.link.Spec.TargetClusterName == "" {
+		// Always treat the local cluster as the oldest.
+		isOldest = true
+	} else if _, localDiscoveryExists := ev.localService.Annotations[consts.LocalDiscoveryAnnotation]; localDiscoveryExists {
+		// The local cluster is older than us.
+		isOldest = false
+	} else {
+		// The local cluster is not a member of the federated service. Therefore,
+		// we check the remote discovery to see if we are the oldest.
+		isOldest = true
+		members := strings.Split(ev.localService.Annotations[consts.RemoteDiscoveryAnnotation], ",")
+		for _, member := range members {
+			target := strings.Split(member, "@")
+			if len(target) != 2 {
+				rcsw.log.Errorf("Invalid federated service member: %s", member)
+				continue
+			}
+			cluster := target[1]
+			link, err := rcsw.localAPIClient.Link().Lister().Links(rcsw.serviceMirrorNamespace).Get(cluster)
+			if err != nil {
+				rcsw.log.Errorf("Failed to get link %s: %s", cluster, err)
+				continue
+			}
+			if link.CreationTimestamp.Before(&rcsw.link.CreationTimestamp) {
+				rcsw.log.Debugf("ignoring metadata from %s because %s is older", rcsw.link.Spec.TargetClusterName, cluster)
+				isOldest = false
+				break
+			}
+		}
+	}
+
+	if isOldest {
+		preservedAnnotations := map[string]string{}
+		for _, k := range []string{consts.RemoteDiscoveryAnnotation, consts.LocalDiscoveryAnnotation} {
+			if v, ok := ev.localService.Annotations[k]; ok {
+				preservedAnnotations[k] = v
+			}
+		}
+		ev.localService.Labels = rcsw.getFederatedServiceLabels(ev.remoteUpdate)
+		ev.localService.Annotations = rcsw.getFederatedServiceAnnotations(ev.remoteUpdate)
+		for k, v := range preservedAnnotations {
+			ev.localService.Annotations[k] = v
+		}
+
+		ev.localService.Spec.Ports = remapRemoteServicePorts(ev.remoteUpdate.Spec.Ports)
+	}
+
 	if rcsw.link.Spec.TargetClusterName == "" {
 		// Local discovery
 		ev.localService.Annotations[consts.LocalDiscoveryAnnotation] = ev.remoteUpdate.Name
 	} else {
 		// Remote discovery
 		remoteTarget := fmt.Sprintf("%s@%s", ev.remoteUpdate.Name, rcsw.link.Spec.TargetClusterName)
-		if remoteDiscoveryContains(ev.localService.Annotations[consts.RemoteDiscoveryAnnotation], remoteTarget) {
-			return nil
+		if !remoteDiscoveryContains(ev.localService.Annotations[consts.RemoteDiscoveryAnnotation], remoteTarget) {
+			if ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] == "" {
+				ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = remoteTarget
+			} else {
+				ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = fmt.Sprintf(
+					"%s,%s",
+					ev.localService.Annotations[consts.RemoteDiscoveryAnnotation],
+					remoteTarget,
+				)
+			}
 		}
-		if ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] == "" {
-			ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = remoteTarget
-		} else {
-			ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = fmt.Sprintf(
-				"%s,%s",
-				ev.localService.Annotations[consts.RemoteDiscoveryAnnotation],
-				remoteTarget,
-			)
-		}
+	}
+
+	// Don't update the service if it has not changed.
+	if reflect.DeepEqual(previous, ev.localService) {
+		return nil
 	}
 
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(ev.localService.Namespace).Update(ctx, ev.localService, metav1.UpdateOptions{}); err != nil {
@@ -1546,14 +1605,13 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 // worker responsible for probing gateway liveness, so these endpoints are
 // never in a not ready state.
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGatewayEndpoints(ctx context.Context, addressses []corev1.EndpointAddress) error {
-	gatewayMirrorName := fmt.Sprintf("probe-gateway-%s", rcsw.link.Spec.TargetClusterName)
 	probePort, err := strconv.ParseInt(rcsw.link.Spec.ProbeSpec.Port, 10, 32)
 	if err != nil {
 		return fmt.Errorf("failed to parse probe port: %w", err)
 	}
 	endpoints := &corev1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      gatewayMirrorName,
+			Name:      rcsw.probeSvc,
 			Namespace: rcsw.serviceMirrorNamespace,
 			Labels: map[string]string{
 				consts.RemoteClusterNameLabel: rcsw.link.Spec.TargetClusterName,

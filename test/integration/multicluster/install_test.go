@@ -145,13 +145,31 @@ func TestInstallMulticluster(t *testing.T) {
 	for k, ctx := range contexts {
 		var out string
 		var err error
+		args := []string{"--context=" + ctx, "multicluster", "install"}
+
 		// Source context should be installed without a gateway
 		if k == testutil.SourceContextKey {
-			out, err = TestHelper.LinkerdRun("--context="+ctx, "multicluster", "install", "--gateway=false")
-		} else {
-			out, err = TestHelper.LinkerdRun("--context="+ctx, "multicluster", "install")
+			args = append(args, "--gateway=false")
+			if TestHelper.GetMulticlusterManageControllers() {
+				args = append(
+					args,
+					"--set", "controllers[0].link.ref.name=target",
+					"--set", "controllers[0].logFormat=json",
+					"--set", "controllers[0].logLevel=debug",
+					"--set", "controllers[0].enableHeadlessServices=true",
+				)
+			}
+		} else if TestHelper.GetMulticlusterManageControllers() {
+			args = append(
+				args,
+				"--set", "controllers[0].link.ref.name=source",
+				"--set", "controllers[0].gateway.enabled=false",
+				"--set", "controllers[0].logFormat=json",
+				"--set", "controllers[0].logLevel=debug",
+			)
 		}
 
+		out, err = TestHelper.LinkerdRun(args...)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "'linkerd multicluster install' command failed", err)
 		}
@@ -203,10 +221,20 @@ func TestLinkClusters(t *testing.T) {
 		"--context=" + contexts[testutil.TargetContextKey],
 		"--cluster-name", linkName,
 		"--api-server-address", fmt.Sprintf("https://%s:6443", lbIP),
-		"--set", "enableHeadlessServices=true",
 		"multicluster", "link",
-		"--log-format", "json",
-		"--log-level", "debug",
+	}
+	if TestHelper.GetMulticlusterManageControllers() {
+		linkCmd = append(
+			linkCmd,
+			"--service-mirror=false",
+		)
+	} else {
+		linkCmd = append(
+			linkCmd,
+			"--set", "enableHeadlessServices=true",
+			"--log-format", "json",
+			"--log-level", "debug",
+		)
 	}
 
 	out, err := TestHelper.LinkerdRun(linkCmd...)
@@ -234,8 +262,18 @@ func TestLinkClusters(t *testing.T) {
 		"--cluster-name", linkName, "--gateway=false",
 		"--api-server-address", fmt.Sprintf("https://%s:6443", lbIP),
 		"multicluster", "link",
-		"--log-format", "json",
-		"--log-level", "debug",
+	}
+	if TestHelper.GetMulticlusterManageControllers() {
+		linkCmd = append(
+			linkCmd,
+			"--service-mirror=false",
+		)
+	} else {
+		linkCmd = append(
+			linkCmd,
+			"--log-format", "json",
+			"--log-level", "debug",
+		)
 	}
 
 	out, err = TestHelper.LinkerdRun(linkCmd...)
