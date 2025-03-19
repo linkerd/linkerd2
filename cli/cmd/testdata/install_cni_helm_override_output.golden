@@ -84,7 +84,7 @@ spec:
   selector:
     matchLabels:
       k8s-app: linkerd-cni
-  updateStrategy: 
+  updateStrategy:
     rollingUpdate:
       maxUnavailable: 1
     type: RollingUpdate

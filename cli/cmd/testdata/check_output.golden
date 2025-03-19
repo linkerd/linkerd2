@@ -1,1 +1,7 @@
+category
+--------
+√ check1
+× check2
+    This should contain instructions for fail
+    see https://linkerd.io/2/checks/#hint-anchor for hints
 
