@@ -399,6 +399,7 @@ func TestTargetResourcesAreCleaned(t *testing.T) {
 }
 
 func CheckAnnotation(t *testing.T, context, ns, svc, annotation, expected string) {
+	t.Helper()
 	out, err := TestHelper.KubectlWithContext("", context, "--namespace", ns, "get", "service", svc, fmt.Sprintf("-ojsonpath='{.metadata.annotations.%s}'", annotation))
 	if err != nil {
 		t.Fatalf("Failed to get annotation %s on service %s: %s", annotation, svc, err)
@@ -409,6 +410,7 @@ func CheckAnnotation(t *testing.T, context, ns, svc, annotation, expected string
 }
 
 func CheckLabel(t *testing.T, context, ns, svc, label, expected string) {
+	t.Helper()
 	out, err := TestHelper.KubectlWithContext("", context, "--namespace", ns, "get", "service", svc, fmt.Sprintf("-ojsonpath='{.metadata.labels.%s}'", label))
 	if err != nil {
 		t.Fatalf("Failed to get label %s on service %s: %s", label, svc, err)

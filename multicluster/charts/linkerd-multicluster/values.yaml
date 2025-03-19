@@ -126,6 +126,14 @@ localServiceMirror:
   # -- Label selector for federated service members in the local cluster.
   federatedServiceSelector: "mirror.linkerd.io/federated=member"
 
+  # -- Labels that should not be copied from the local service to the mirror
+  # service.
+  excludedLabels: ""
+
+  # -- Annotations that should not be copied from the local service to the
+  # mirror service.
+  excludedAnnotations: ""
+
   # -- Number of local service mirror replicas to run
   replicas: 1
 

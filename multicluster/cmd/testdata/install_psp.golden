@@ -1392,6 +1392,8 @@ spec:
         - -enable-pprof=false
         - -local-mirror
         - -federated-service-selector=mirror.linkerd.io/federated=member
+        - -excluded-labels=
+        - -excluded-annotations=
         image: cr.l5d.io/linkerd/controller:linkerdVersionValue
         name: service-mirror
         securityContext:
