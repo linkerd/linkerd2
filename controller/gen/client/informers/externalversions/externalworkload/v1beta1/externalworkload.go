@@ -19,13 +19,13 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	externalworkloadv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
+	apisexternalworkloadv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
-	v1beta1 "github.com/linkerd/linkerd2/controller/gen/client/listers/externalworkload/v1beta1"
+	externalworkloadv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/listers/externalworkload/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // ExternalWorkloads.
 type ExternalWorkloadInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta1.ExternalWorkloadLister
+	Lister() externalworkloadv1beta1.ExternalWorkloadLister
 }
 
 type externalWorkloadInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredExternalWorkloadInformer(client versioned.Interface, namespace s
 				return client.ExternalworkloadV1beta1().ExternalWorkloads(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&externalworkloadv1beta1.ExternalWorkload{},
+		&apisexternalworkloadv1beta1.ExternalWorkload{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *externalWorkloadInformer) defaultInformer(client versioned.Interface, r
 }
 
 func (f *externalWorkloadInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&externalworkloadv1beta1.ExternalWorkload{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisexternalworkloadv1beta1.ExternalWorkload{}, f.defaultInformer)
 }
 
-func (f *externalWorkloadInformer) Lister() v1beta1.ExternalWorkloadLister {
-	return v1beta1.NewExternalWorkloadLister(f.Informer().GetIndexer())
+func (f *externalWorkloadInformer) Lister() externalworkloadv1beta1.ExternalWorkloadLister {
+	return externalworkloadv1beta1.NewExternalWorkloadLister(f.Informer().GetIndexer())
 }

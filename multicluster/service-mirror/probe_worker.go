@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 )
@@ -19,14 +19,14 @@ type ProbeWorker struct {
 	alive            bool
 	Liveness         chan bool
 	*sync.RWMutex
-	probeSpec *v1alpha2.ProbeSpec
+	probeSpec *v1alpha3.ProbeSpec
 	stopCh    chan struct{}
 	metrics   *ProbeMetrics
 	log       *logging.Entry
 }
 
 // NewProbeWorker creates a new probe worker associated with a particular gateway
-func NewProbeWorker(localGatewayName string, spec *v1alpha2.ProbeSpec, metrics *ProbeMetrics, probekey string) *ProbeWorker {
+func NewProbeWorker(localGatewayName string, spec *v1alpha3.ProbeSpec, metrics *ProbeMetrics, probekey string) *ProbeWorker {
 	metrics.gatewayEnabled.Set(1)
 	return &ProbeWorker{
 		localGatewayName: localGatewayName,
@@ -42,7 +42,7 @@ func NewProbeWorker(localGatewayName string, spec *v1alpha2.ProbeSpec, metrics *
 }
 
 // UpdateProbeSpec is used to update the probe specification when something about the gateway changes
-func (pw *ProbeWorker) UpdateProbeSpec(spec *v1alpha2.ProbeSpec) {
+func (pw *ProbeWorker) UpdateProbeSpec(spec *v1alpha3.ProbeSpec) {
 	pw.Lock()
 	pw.probeSpec = spec
 	pw.Unlock()

@@ -19,11 +19,12 @@ limitations under the License.
 package externalversions
 
 import (
-	"fmt"
+	fmt "fmt"
 
 	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
 	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	v1alpha3 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	v1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1beta3"
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
@@ -72,6 +73,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		// Group=link, Version=v1alpha2
 	case v1alpha2.SchemeGroupVersion.WithResource("links"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Link().V1alpha2().Links().Informer()}, nil
+
+		// Group=link, Version=v1alpha3
+	case v1alpha3.SchemeGroupVersion.WithResource("links"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Link().V1alpha3().Links().Informer()}, nil
 
 		// Group=linkerd.io, Version=v1alpha2
 	case serviceprofilev1alpha2.SchemeGroupVersion.WithResource("serviceprofiles"):

@@ -45,8 +45,8 @@ const (
 	ServiceProfileKind       = "ServiceProfile"
 
 	LinkAPIGroup        = "multicluster.linkerd.io"
-	LinkAPIVersion      = "v1alpha2"
-	LinkAPIGroupVersion = "multicluster.linkerd.io/v1alpha2"
+	LinkAPIVersion      = "v1alpha3"
+	LinkAPIGroupVersion = "multicluster.linkerd.io/v1alpha3"
 	LinkKind            = "Link"
 
 	K8sCoreAPIGroup = "core"

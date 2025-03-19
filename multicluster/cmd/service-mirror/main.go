@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	servicemirror "github.com/linkerd/linkerd2/multicluster/service-mirror"
@@ -139,7 +139,7 @@ func Main(args []string) {
 		run = func(ctx context.Context) {
 			// Use a small buffered channel for Link updates to avoid dropping
 			// updates if there is an update burst.
-			results := make(chan *v1alpha2.Link, 100)
+			results := make(chan *v1alpha3.Link, 100)
 
 			_, err := controllerK8sAPI.Link().Informer().AddEventHandler(servicemirror.GetLinkHandlers(results, linkName))
 			if err != nil {
@@ -273,7 +273,7 @@ func cleanupWorkers() {
 	}
 }
 
-func loadCredentials(ctx context.Context, link *v1alpha2.Link, namespace string, k8sAPI kubernetes.Interface) ([]byte, error) {
+func loadCredentials(ctx context.Context, link *v1alpha3.Link, namespace string, k8sAPI kubernetes.Interface) ([]byte, error) {
 	// Load the credentials secret
 	secret, err := k8sAPI.CoreV1().Secrets(namespace).Get(ctx, link.Spec.ClusterCredentialsSecret, metav1.GetOptions{})
 	if err != nil {
@@ -284,7 +284,7 @@ func loadCredentials(ctx context.Context, link *v1alpha2.Link, namespace string,
 
 func restartClusterWatcher(
 	ctx context.Context,
-	link *v1alpha2.Link,
+	link *v1alpha3.Link,
 	namespace,
 	probeSvc string,
 	creds []byte,
@@ -364,12 +364,12 @@ func startLocalClusterWatcher(
 		return fmt.Errorf("failed to parse federated service selector: %w", err)
 	}
 
-	link := v1alpha2.Link{
+	link := v1alpha3.Link{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "local",
 			Namespace: namespace,
 		},
-		Spec: v1alpha2.LinkSpec{
+		Spec: v1alpha3.LinkSpec{
 			TargetClusterName:        "",
 			Selector:                 nil,
 			RemoteDiscoverySelector:  nil,

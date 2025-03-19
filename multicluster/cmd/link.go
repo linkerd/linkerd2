@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	"github.com/linkerd/linkerd2/multicluster/static"
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
@@ -246,8 +246,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
-			link := v1alpha2.Link{
-				TypeMeta: metav1.TypeMeta{Kind: "Link", APIVersion: "multicluster.linkerd.io/v1alpha2"},
+			link := v1alpha3.Link{
+				TypeMeta: metav1.TypeMeta{Kind: "Link", APIVersion: "multicluster.linkerd.io/v1alpha3"},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      opts.clusterName,
 					Namespace: opts.namespace,
@@ -255,7 +255,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 						k8s.CreatedByAnnotation: k8s.CreatedByAnnotationValue(),
 					},
 				},
-				Spec: v1alpha2.LinkSpec{
+				Spec: v1alpha3.LinkSpec{
 					TargetClusterName:             opts.clusterName,
 					TargetClusterDomain:           configMap.ClusterDomain,
 					TargetClusterLinkerdNamespace: controlPlaneNamespace,
@@ -594,15 +594,15 @@ func extractSAToken(secrets []corev1.Secret, saName string) (string, error) {
 // For now we're not including the failureThreshold and timeout fields which
 // are new since edge-24.9.3, to avoid errors when attempting to apply them in
 // clusters with an older Link CRD.
-func extractProbeSpec(gateway *corev1.Service) (v1alpha2.ProbeSpec, error) {
+func extractProbeSpec(gateway *corev1.Service) (v1alpha3.ProbeSpec, error) {
 	path := gateway.Annotations[k8s.GatewayProbePath]
 	if path == "" {
-		return v1alpha2.ProbeSpec{}, errors.New("probe path is empty")
+		return v1alpha3.ProbeSpec{}, errors.New("probe path is empty")
 	}
 
 	port, err := extractPort(gateway.Spec, k8s.ProbePortName)
 	if err != nil {
-		return v1alpha2.ProbeSpec{}, err
+		return v1alpha3.ProbeSpec{}, err
 	}
 
 	// the `mirror.linkerd.io/probe-period` annotation is initialized with a
@@ -613,10 +613,10 @@ func extractProbeSpec(gateway *corev1.Service) (v1alpha2.ProbeSpec, error) {
 		dur := time.Duration(secs) * time.Second
 		period = dur.String()
 	} else if _, err := time.ParseDuration(period); err != nil {
-		return v1alpha2.ProbeSpec{}, fmt.Errorf("could not parse probe period: %w", err)
+		return v1alpha3.ProbeSpec{}, fmt.Errorf("could not parse probe period: %w", err)
 	}
 
-	return v1alpha2.ProbeSpec{
+	return v1alpha3.ProbeSpec{
 		Path:   path,
 		Port:   fmt.Sprintf("%d", port),
 		Period: period,

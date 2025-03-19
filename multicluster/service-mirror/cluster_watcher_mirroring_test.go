@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
@@ -410,8 +410,8 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	eventRecorder := record.NewFakeRecorder(100)
 
 	watcher := RemoteClusterServiceWatcher{
-		link: &v1alpha2.Link{
-			Spec: v1alpha2.LinkSpec{
+		link: &v1alpha3.Link{
+			Spec: v1alpha3.LinkSpec{
 				TargetClusterName:       clusterName,
 				TargetClusterDomain:     clusterDomain,
 				GatewayIdentity:         "gateway-identity",
@@ -502,8 +502,8 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 
 	events := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]())
 	watcher := RemoteClusterServiceWatcher{
-		link: &v1alpha2.Link{
-			Spec: v1alpha2.LinkSpec{
+		link: &v1alpha3.Link{
+			Spec: v1alpha3.LinkSpec{
 				TargetClusterName:       clusterName,
 				TargetClusterDomain:     clusterDomain,
 				GatewayIdentity:         "gateway-identity",
@@ -653,8 +653,8 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 
 	events := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]())
 	watcher := RemoteClusterServiceWatcher{
-		link: &v1alpha2.Link{
-			Spec: v1alpha2.LinkSpec{
+		link: &v1alpha3.Link{
+			Spec: v1alpha3.LinkSpec{
 				TargetClusterName:       clusterName,
 				TargetClusterDomain:     clusterDomain,
 				GatewayIdentity:         "gateway-identity",

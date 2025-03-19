@@ -19,13 +19,13 @@ limitations under the License.
 package v1beta2
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	serverv1beta2 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
+	apisserverv1beta2 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
-	v1beta2 "github.com/linkerd/linkerd2/controller/gen/client/listers/server/v1beta2"
+	serverv1beta2 "github.com/linkerd/linkerd2/controller/gen/client/listers/server/v1beta2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // Servers.
 type ServerInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta2.ServerLister
+	Lister() serverv1beta2.ServerLister
 }
 
 type serverInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredServerInformer(client versioned.Interface, namespace string, res
 				return client.ServerV1beta2().Servers(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&serverv1beta2.Server{},
+		&apisserverv1beta2.Server{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *serverInformer) defaultInformer(client versioned.Interface, resyncPerio
 }
 
 func (f *serverInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&serverv1beta2.Server{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisserverv1beta2.Server{}, f.defaultInformer)
 }
 
-func (f *serverInformer) Lister() v1beta2.ServerLister {
-	return v1beta2.NewServerLister(f.Informer().GetIndexer())
+func (f *serverInformer) Lister() serverv1beta2.ServerLister {
+	return serverv1beta2.NewServerLister(f.Informer().GetIndexer())
 }

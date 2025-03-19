@@ -19,116 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeAuthorizationPolicies implements AuthorizationPolicyInterface
-type FakeAuthorizationPolicies struct {
+// fakeAuthorizationPolicies implements AuthorizationPolicyInterface
+type fakeAuthorizationPolicies struct {
+	*gentype.FakeClientWithList[*v1alpha1.AuthorizationPolicy, *v1alpha1.AuthorizationPolicyList]
 	Fake *FakePolicyV1alpha1
-	ns   string
 }
 
-var authorizationpoliciesResource = v1alpha1.SchemeGroupVersion.WithResource("authorizationpolicies")
-
-var authorizationpoliciesKind = v1alpha1.SchemeGroupVersion.WithKind("AuthorizationPolicy")
-
-// Get takes name of the authorizationPolicy, and returns the corresponding authorizationPolicy object, and an error if there is any.
-func (c *FakeAuthorizationPolicies) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.AuthorizationPolicy, err error) {
-	emptyResult := &v1alpha1.AuthorizationPolicy{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(authorizationpoliciesResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakeAuthorizationPolicies(fake *FakePolicyV1alpha1, namespace string) policyv1alpha1.AuthorizationPolicyInterface {
+	return &fakeAuthorizationPolicies{
+		gentype.NewFakeClientWithList[*v1alpha1.AuthorizationPolicy, *v1alpha1.AuthorizationPolicyList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("authorizationpolicies"),
+			v1alpha1.SchemeGroupVersion.WithKind("AuthorizationPolicy"),
+			func() *v1alpha1.AuthorizationPolicy { return &v1alpha1.AuthorizationPolicy{} },
+			func() *v1alpha1.AuthorizationPolicyList { return &v1alpha1.AuthorizationPolicyList{} },
+			func(dst, src *v1alpha1.AuthorizationPolicyList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.AuthorizationPolicyList) []*v1alpha1.AuthorizationPolicy {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.AuthorizationPolicyList, items []*v1alpha1.AuthorizationPolicy) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.AuthorizationPolicy), err
-}
-
-// List takes label and field selectors, and returns the list of AuthorizationPolicies that match those selectors.
-func (c *FakeAuthorizationPolicies) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.AuthorizationPolicyList, err error) {
-	emptyResult := &v1alpha1.AuthorizationPolicyList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(authorizationpoliciesResource, authorizationpoliciesKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.AuthorizationPolicyList{ListMeta: obj.(*v1alpha1.AuthorizationPolicyList).ListMeta}
-	for _, item := range obj.(*v1alpha1.AuthorizationPolicyList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested authorizationPolicies.
-func (c *FakeAuthorizationPolicies) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(authorizationpoliciesResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a authorizationPolicy and creates it.  Returns the server's representation of the authorizationPolicy, and an error, if there is any.
-func (c *FakeAuthorizationPolicies) Create(ctx context.Context, authorizationPolicy *v1alpha1.AuthorizationPolicy, opts v1.CreateOptions) (result *v1alpha1.AuthorizationPolicy, err error) {
-	emptyResult := &v1alpha1.AuthorizationPolicy{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(authorizationpoliciesResource, c.ns, authorizationPolicy, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.AuthorizationPolicy), err
-}
-
-// Update takes the representation of a authorizationPolicy and updates it. Returns the server's representation of the authorizationPolicy, and an error, if there is any.
-func (c *FakeAuthorizationPolicies) Update(ctx context.Context, authorizationPolicy *v1alpha1.AuthorizationPolicy, opts v1.UpdateOptions) (result *v1alpha1.AuthorizationPolicy, err error) {
-	emptyResult := &v1alpha1.AuthorizationPolicy{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(authorizationpoliciesResource, c.ns, authorizationPolicy, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.AuthorizationPolicy), err
-}
-
-// Delete takes name of the authorizationPolicy and deletes it. Returns an error if one occurs.
-func (c *FakeAuthorizationPolicies) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(authorizationpoliciesResource, c.ns, name, opts), &v1alpha1.AuthorizationPolicy{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeAuthorizationPolicies) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(authorizationpoliciesResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.AuthorizationPolicyList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched authorizationPolicy.
-func (c *FakeAuthorizationPolicies) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.AuthorizationPolicy, err error) {
-	emptyResult := &v1alpha1.AuthorizationPolicy{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(authorizationpoliciesResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.AuthorizationPolicy), err
 }

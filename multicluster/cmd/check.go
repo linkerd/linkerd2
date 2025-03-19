@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -77,13 +77,13 @@ func (options *checkOptions) validate() error {
 
 type healthChecker struct {
 	*healthcheck.HealthChecker
-	links []v1alpha2.Link
+	links []v1alpha3.Link
 }
 
 func newHealthChecker(linkerdHC *healthcheck.HealthChecker) *healthChecker {
 	return &healthChecker{
 		linkerdHC,
-		[]v1alpha2.Link{},
+		[]v1alpha3.Link{},
 	}
 }
 
@@ -333,7 +333,7 @@ func (hc *healthChecker) linkAccess(ctx context.Context) error {
 }
 
 func (hc *healthChecker) checkLinks(ctx context.Context) error {
-	links, err := hc.KubeAPIClient().L5dCrdClient.LinkV1alpha2().Links("").List(ctx, metav1.ListOptions{})
+	links, err := hc.KubeAPIClient().L5dCrdClient.LinkV1alpha3().Links("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -764,7 +764,7 @@ func (hc *healthChecker) checkForOrphanedServices(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	links, err := hc.KubeAPIClient().L5dCrdClient.LinkV1alpha2().Links("").List(ctx, metav1.ListOptions{})
+	links, err := hc.KubeAPIClient().L5dCrdClient.LinkV1alpha3().Links("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}

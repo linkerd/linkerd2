@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
+	apislinkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/listers/link/v1alpha1"
+	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/listers/link/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // Links.
 type LinkInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.LinkLister
+	Lister() linkv1alpha1.LinkLister
 }
 
 type linkInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredLinkInformer(client versioned.Interface, namespace string, resyn
 				return client.LinkV1alpha1().Links(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&linkv1alpha1.Link{},
+		&apislinkv1alpha1.Link{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *linkInformer) defaultInformer(client versioned.Interface, resyncPeriod 
 }
 
 func (f *linkInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&linkv1alpha1.Link{}, f.defaultInformer)
+	return f.factory.InformerFor(&apislinkv1alpha1.Link{}, f.defaultInformer)
 }
 
-func (f *linkInformer) Lister() v1alpha1.LinkLister {
-	return v1alpha1.NewLinkLister(f.Informer().GetIndexer())
+func (f *linkInformer) Lister() linkv1alpha1.LinkLister {
+	return linkv1alpha1.NewLinkLister(f.Informer().GetIndexer())
 }
