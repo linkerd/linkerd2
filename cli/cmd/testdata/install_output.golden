@@ -966,9 +966,6 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: &containerName linkerd-proxy
-        
-        
-        
         - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
           value: "8080"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
@@ -1343,9 +1340,6 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: &containerName linkerd-proxy
-        
-        
-        
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
@@ -1866,9 +1860,6 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: &containerName linkerd-proxy
-        
-        
-        
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG

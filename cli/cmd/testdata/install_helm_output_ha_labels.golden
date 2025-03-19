@@ -1072,9 +1072,6 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: &containerName linkerd-proxy
-        
-        
-        
         - name: LINKERD2_PROXY_CORES
           value: "1"
         - name: LINKERD2_PROXY_CORES_MIN
@@ -1507,9 +1504,6 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: &containerName linkerd-proxy
-        
-        
-        
         - name: LINKERD2_PROXY_CORES
           value: "1"
         - name: LINKERD2_PROXY_CORES_MIN
@@ -2081,9 +2075,6 @@ spec:
               fieldPath: spec.nodeName
         - name: _pod_containerName
           value: &containerName linkerd-proxy
-        
-        
-        
         - name: LINKERD2_PROXY_CORES
           value: "1"
         - name: LINKERD2_PROXY_CORES_MIN
