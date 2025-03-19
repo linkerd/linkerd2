@@ -4,7 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "@babel/eslint-plugin": "7.25.9",
+    "@babel/eslint-plugin": "7.26.10",
     "@fortawesome/fontawesome-svg-core": "6.7.2",
     "@fortawesome/free-regular-svg-icons": "6.7.2",
     "@fortawesome/free-solid-svg-icons": "6.7.2",
@@ -41,12 +41,12 @@
     "whatwg-fetch": "3.6.20"
   },
   "devDependencies": {
-    "@babel/core": "^7.26.8",
-    "@babel/eslint-parser": "^7.26.8",
+    "@babel/core": "^7.26.10",
+    "@babel/eslint-parser": "^7.26.10",
     "@babel/plugin-proposal-class-properties": "^7.17.12",
     "@babel/preset-env": "^7.26.8",
     "@babel/preset-react": "^7.26.3",
-    "@babel/runtime": "^7.26.7",
+    "@babel/runtime": "^7.26.10",
     "@lingui/cli": "3.17.2",
     "babel-core": "^7.0.0-bridge.0",
     "babel-jest": "^29.7.0",

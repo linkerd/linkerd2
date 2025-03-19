@@ -65,7 +65,15 @@ func TestMain(m *testing.M) {
 	}
 	// Block until gateway & service mirror deploys are running successfully in
 	// source cluster.
-	TestHelper.WaitUntilDeployReady(testutil.MulticlusterSourceReplicas)
+	if TestHelper.GetMulticlusterManageControllers() {
+		TestHelper.WaitUntilDeployReady(map[string]testutil.DeploySpec{
+			"controller-target": {Namespace: "linkerd-multicluster", Replicas: 1},
+		})
+	} else {
+		TestHelper.WaitUntilDeployReady(map[string]testutil.DeploySpec{
+			"linkerd-service-mirror-target": {Namespace: "linkerd-multicluster", Replicas: 1},
+		})
+	}
 	os.Exit(m.Run())
 }
 

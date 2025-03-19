@@ -52,7 +52,9 @@ func TestFederatedService(t *testing.T) {
 					testutil.AnnotatedFatalf(t, "failed to install emojivoto", "failed to install emojivoto: %s\n%s", err, out)
 				}
 
-				// Label the service to join the federated service.
+				// Label the service to join the federated service and add
+				// labels to the service so we can ensure they are copied
+				// correctly to the federated service.
 				timeout := time.Minute
 				err = testutil.RetryFor(timeout, func() error {
 					for _, label := range []string{
@@ -62,7 +64,13 @@ func TestFederatedService(t *testing.T) {
 						"good.linkerd/c=d",
 						"good=yes",
 					} {
-						out, err = TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace", ns, "label", "service/web-svc", label)
+						out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "label", "service/web-svc", label)
+						if err != nil {
+							return err
+						}
+					}
+					out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "label", "service/web-svc", "test-context="+ctx)
+					if err != nil {
 						return err
 					}
 					return nil
@@ -71,6 +79,8 @@ func TestFederatedService(t *testing.T) {
 					testutil.AnnotatedFatalf(t, "failed to label web-svc", "%s\n%s", err, out)
 				}
 
+				// Add annotations to the service so we can ensure they are
+				// copied correctly to the federated service.
 				err = testutil.RetryFor(timeout, func() error {
 					for _, annotation := range []string{
 						"evil.linkerd/a=b",
@@ -78,24 +88,19 @@ func TestFederatedService(t *testing.T) {
 						"good.linkerd/c=d",
 						"good=yes",
 					} {
-						out, err = TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace", ns, "annotate", "service/web-svc", annotation)
+						out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "annotate", "service/web-svc", annotation)
+						if err != nil {
+							return err
+						}
+					}
+					out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "annotate", "service/web-svc", "test-context="+ctx)
+					if err != nil {
 						return err
 					}
 					return nil
 				})
 				if err != nil {
-					testutil.AnnotatedFatalf(t, "failed to label web-svc", "%s\n%s", err, out)
-				}
-
-				// Add metadata to each service so we can ensure it is copied
-				// correctly to the federated service.
-				out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "annotate", "service/web-svc", "test-context="+ctx)
-				if err != nil {
 					testutil.AnnotatedFatalf(t, "failed to annotate web-svc", "%s\n%s", err, out)
-				}
-				out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "label", "service/web-svc", "test-context="+ctx)
-				if err != nil {
-					testutil.AnnotatedFatalf(t, "failed to label web-svc", "%s\n%s", err, out)
 				}
 			}
 		})

@@ -92,9 +92,9 @@ spec:
     matchLabels:
       k8s-app: linkerd-cni
   updateStrategy:
-    type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 1
+    type: RollingUpdate
   template:
     metadata:
       labels:

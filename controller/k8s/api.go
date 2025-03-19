@@ -12,7 +12,7 @@ import (
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	ewinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalworkload/v1beta1"
-	linkinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/link/v1alpha2"
+	linkinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/link/v1alpha3"
 	srvinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server/v1beta3"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -259,7 +259,7 @@ func newAPI(
 			if l5dCrdSharedInformers == nil {
 				panic("Linkerd CRD shared informer not configured")
 			}
-			api.link = l5dCrdSharedInformers.Link().V1alpha2().Links()
+			api.link = l5dCrdSharedInformers.Link().V1alpha3().Links()
 			api.syncChecks = append(api.syncChecks, api.link.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.Link, informerLabels, api.link.Informer())
 		case MWC:

@@ -185,20 +185,24 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Amount of CPU units that the proxy sidecar requests",
 		},
 		{
-			Name:        k8s.ProxyMemoryRequestAnnotation,
-			Description: "Amount of Memory that the proxy sidecar requests",
-		},
-		{
-			Name:        k8s.ProxyEphemeralStorageRequestAnnotation,
-			Description: "Used to override the requestEphemeralStorage config",
-		},
-		{
 			Name:        k8s.ProxyCPULimitAnnotation,
 			Description: "Maximum amount of CPU units that the proxy sidecar can use",
 		},
 		{
+			Name:        k8s.ProxyCPURatioLimitAnnotation,
+			Description: "Maximum ratio of proxy worker threads to total available CPUs on the node",
+		},
+		{
+			Name:        k8s.ProxyMemoryRequestAnnotation,
+			Description: "Amount of Memory that the proxy sidecar requests",
+		},
+		{
 			Name:        k8s.ProxyMemoryLimitAnnotation,
 			Description: "Maximum amount of Memory that the proxy sidecar can use",
+		},
+		{
+			Name:        k8s.ProxyEphemeralStorageRequestAnnotation,
+			Description: "Used to override the requestEphemeralStorage config",
 		},
 		{
 			Name:        k8s.ProxyEphemeralStorageLimitAnnotation,

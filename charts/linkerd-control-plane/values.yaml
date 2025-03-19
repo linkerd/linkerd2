@@ -174,26 +174,51 @@ proxy:
     inbound: 4143
     # -- Outbound port for the proxy container
     outbound: 4140
-  # -- The `cpu.limit` and `cores` should be kept in sync. The value of `cores`
-  # must be an integer and should typically be set by rounding up from the
-  # limit. E.g. if cpu.limit is '1500m', cores should be 2.
-  cores: 0
+
+  # -- Deprecated: use runtime.workers.minimum
+  cores:
+
+  runtime:
+    # -- Worker threadpool configuration. The minimum will be automatically
+    # derived from workload proxy CPU requests, when they are configured by
+    # annotation. A cluster-level maximum may be configured here (and a
+    # workload-level annotation is supported as well).
+    workers:
+      # -- Maximum number of worker threads that the proxy can use, by ratio of
+      # the number of available CPUs. A value of 1.0 allocates a worker thread
+      # for all available CPUs. A value of 0.1 allocates a worker thread for
+      # 10% of the available CPUs.
+      maximumCPURatio:
+
+      # -- Configures a lower bound on the number of worker threads that the
+      # proxy can use. When maximumCPURatio is not set, this value
+      # is used.
+      minimum: 1
+
   resources:
+    # -- CPU configuration, when specified globally in Helm values, should be
+    # kept in sync with the above runtime.workers.minimum configuration. The
+    # minimum should reflect _at least_ the CPU request. When a limit is set,
+    # the minimum should match the limit (and the maximumCPURatio should be
+    # unset).
     cpu:
       # -- Maximum amount of CPU units that the proxy can use
       limit: ""
       # -- Amount of CPU units that the proxy requests
       request: ""
+
     memory:
       # -- Maximum amount of memory that the proxy can use
       limit: ""
       # -- Maximum amount of memory that the proxy requests
       request: ""
+
     ephemeral-storage:
       # -- Maximum amount of ephemeral storage that the proxy can use
       limit: ""
       # -- Amount of ephemeral storage that the proxy requests
       request: ""
+
   # -- User id under which the proxy runs
   uid: 2102
   # -- (int) Optional customisation of the group id under which the proxy runs (the group ID will be omitted if lower than 0)
@@ -225,6 +250,8 @@ proxy:
   # "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny", "audit"
   # @default -- "all-unauthenticated"
   defaultInboundPolicy: "all-unauthenticated"
+  # -- Configures the outbound transport mode. Valid values are "transport-header" and "transparent"
+  outboundTransportMode: transport-header
   # -- Enable KEP-753 native sidecars
   # This is an experimental feature. It requires Kubernetes >= 1.29.
   # If enabled, .proxy.waitBeforeExitSeconds should not be used.

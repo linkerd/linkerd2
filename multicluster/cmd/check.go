@@ -36,11 +36,22 @@ const (
 
 	// LinkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
 	LinkerdMulticlusterExtensionCheck healthcheck.CategoryID = "linkerd-multicluster"
+)
 
-	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror-%s"
-	linkerdServiceMirrorComponentName      = "service-mirror"
-	linkerdServiceMirrorClusterRoleName    = "linkerd-service-mirror-access-local-resources-%s"
-	linkerdServiceMirrorRoleName           = "linkerd-service-mirror-read-remote-creds-%s"
+// For these vars, the second name is for service mirror controllers
+// managed by the linkerd-multicluster chart
+var (
+	linkerdServiceMirrorServiceAccountNames = []string{"linkerd-service-mirror-%s", "controller-%s"}
+	linkerdServiceMirrorComponentNames      = []string{"service-mirror", "controller"}
+
+	linkerdServiceMirrorClusterRoleNames = []string{
+		"linkerd-service-mirror-access-local-resources-%s",
+		"linkerd-multicluster-controller-access-local-resources",
+	}
+	linkerdServiceMirrorRoleNames = []string{
+		"linkerd-service-mirror-read-remote-creds-%s",
+		"controller-read-remote-creds-%s",
+	}
 )
 
 type checkOptions struct {
@@ -480,54 +491,101 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 		err := healthcheck.CheckServiceAccounts(
 			ctx,
 			hc.KubeAPIClient(),
-			[]string{fmt.Sprintf(linkerdServiceMirrorServiceAccountName, link.Spec.TargetClusterName)},
+			[]string{fmt.Sprintf(linkerdServiceMirrorServiceAccountNames[0], link.Spec.TargetClusterName)},
 			link.Namespace,
 			serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
 		)
 		if err != nil {
-			messages = append(messages, err.Error())
+			err2 := healthcheck.CheckServiceAccounts(
+				ctx,
+				hc.KubeAPIClient(),
+				[]string{fmt.Sprintf(linkerdServiceMirrorServiceAccountNames[1], link.Spec.TargetClusterName)},
+				link.Namespace,
+				serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
+			)
+			if err2 != nil {
+				messages = append(messages, err.Error(), err2.Error())
+			}
 		}
 		err = healthcheck.CheckClusterRoles(
 			ctx,
 			hc.KubeAPIClient(),
 			true,
-			[]string{fmt.Sprintf(linkerdServiceMirrorClusterRoleName, link.Spec.TargetClusterName)},
+			[]string{fmt.Sprintf(linkerdServiceMirrorClusterRoleNames[0], link.Spec.TargetClusterName)},
 			serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
 		)
 		if err != nil {
-			messages = append(messages, err.Error())
+			err2 := healthcheck.CheckClusterRoles(
+				ctx,
+				hc.KubeAPIClient(),
+				true,
+				[]string{linkerdServiceMirrorClusterRoleNames[1]},
+				"component=controller",
+			)
+			if err2 != nil {
+				messages = append(messages, err.Error(), err2.Error())
+			}
 		}
 		err = healthcheck.CheckClusterRoleBindings(
 			ctx,
 			hc.KubeAPIClient(),
 			true,
-			[]string{fmt.Sprintf(linkerdServiceMirrorClusterRoleName, link.Spec.TargetClusterName)},
+			[]string{fmt.Sprintf(linkerdServiceMirrorClusterRoleNames[0], link.Spec.TargetClusterName)},
 			serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
 		)
 		if err != nil {
-			messages = append(messages, err.Error())
+			err2 := healthcheck.CheckClusterRoleBindings(
+				ctx,
+				hc.KubeAPIClient(),
+				true,
+				[]string{fmt.Sprintf("%s-%s", linkerdServiceMirrorClusterRoleNames[1], link.Spec.TargetClusterName)},
+				serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
+			)
+			if err2 != nil {
+				messages = append(messages, err.Error(), err2.Error())
+			}
 		}
 		err = healthcheck.CheckRoles(
 			ctx,
 			hc.KubeAPIClient(),
 			true,
 			link.Namespace,
-			[]string{fmt.Sprintf(linkerdServiceMirrorRoleName, link.Spec.TargetClusterName)},
+			[]string{fmt.Sprintf(linkerdServiceMirrorRoleNames[0], link.Spec.TargetClusterName)},
 			serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
 		)
 		if err != nil {
-			messages = append(messages, err.Error())
+			err2 := healthcheck.CheckRoles(
+				ctx,
+				hc.KubeAPIClient(),
+				true,
+				link.Namespace,
+				[]string{fmt.Sprintf(linkerdServiceMirrorRoleNames[1], link.Spec.TargetClusterName)},
+				serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
+			)
+			if err2 != nil {
+				messages = append(messages, err.Error(), err2.Error())
+			}
 		}
 		err = healthcheck.CheckRoleBindings(
 			ctx,
 			hc.KubeAPIClient(),
 			true,
 			link.Namespace,
-			[]string{fmt.Sprintf(linkerdServiceMirrorRoleName, link.Spec.TargetClusterName)},
+			[]string{fmt.Sprintf(linkerdServiceMirrorRoleNames[0], link.Spec.TargetClusterName)},
 			serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
 		)
 		if err != nil {
-			messages = append(messages, err.Error())
+			err2 := healthcheck.CheckRoleBindings(
+				ctx,
+				hc.KubeAPIClient(),
+				true,
+				link.Namespace,
+				[]string{fmt.Sprintf(linkerdServiceMirrorRoleNames[1], link.Spec.TargetClusterName)},
+				serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
+			)
+			if err2 != nil {
+				messages = append(messages, err.Error(), err2.Error())
+			}
 		}
 		links = append(links, fmt.Sprintf("\t* %s", link.Spec.TargetClusterName))
 	}
@@ -611,7 +669,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context,
 
 		// Get the service mirror component in the linkerd-multicluster
 		// namespace which corresponds to the current link.
-		selector = metav1.ListOptions{LabelSelector: fmt.Sprintf("component=linkerd-service-mirror,mirror.linkerd.io/cluster-name=%s", link.Spec.TargetClusterName)}
+		selector = metav1.ListOptions{LabelSelector: fmt.Sprintf("component in(linkerd-service-mirror, controller),mirror.linkerd.io/cluster-name=%s", link.Spec.TargetClusterName)}
 		pods, err := hc.KubeAPIClient().CoreV1().Pods(multiclusterNs.Name).List(ctx, selector)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("failed to get the service-mirror component for target cluster %s: %w", link.Spec.TargetClusterName, err))
@@ -742,7 +800,7 @@ func joinErrors(errs []error, tabDepth int) error {
 }
 
 func serviceMirrorComponentsSelector(targetCluster string) string {
-	return fmt.Sprintf("component=%s,%s=%s",
-		linkerdServiceMirrorComponentName,
+	return fmt.Sprintf("component in (%s),%s=%s",
+		strings.Join(linkerdServiceMirrorComponentNames, ", "),
 		k8s.RemoteClusterNameLabel, targetCluster)
 }

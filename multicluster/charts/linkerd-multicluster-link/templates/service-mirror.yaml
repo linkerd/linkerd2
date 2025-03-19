@@ -151,6 +151,7 @@ spec:
         - -enable-namespace-creation
         {{- end }}
         - -enable-pprof={{.Values.enablePprof | default false}}
+        - -probe-service=probe-gateway-{{.Values.targetClusterName}}
         - {{.Values.targetClusterName}}
         {{- if or .Values.serviceMirrorAdditionalEnv .Values.serviceMirrorExperimentalEnv }}
         env:

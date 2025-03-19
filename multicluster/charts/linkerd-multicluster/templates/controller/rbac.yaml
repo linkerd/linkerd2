@@ -1,0 +1,76 @@
+{{- range .Values.controllers }}
+{{- if empty ((.link).ref).name -}}
+{{- fail "the value link.ref.name is required" -}}
+{{ end -}}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: controller-{{.link.ref.name}}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    linkerd.io/extension: multicluster
+    component: controller
+    mirror.linkerd.io/cluster-name: {{.link.ref.name}}
+    {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+{{- include "partials.image-pull-secrets" $.Values.imagePullSecrets }}
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-multicluster-controller-access-local-resources-{{.link.ref.name}}
+  labels:
+    linkerd.io/extension: multicluster
+    component: controller
+    mirror.linkerd.io/cluster-name: {{.link.ref.name}}
+    {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-multicluster-controller-access-local-resources
+subjects:
+- kind: ServiceAccount
+  name: controller-{{.link.ref.name}}
+  namespace: {{$.Release.Namespace}}
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: controller-read-remote-creds-{{.link.ref.name}}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    linkerd.io/extension: multicluster
+    component: controller
+    mirror.linkerd.io/cluster-name: {{.link.ref.name}}
+    {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["cluster-credentials-{{.link.ref.name}}"]
+    verbs: ["list", "get", "watch"]
+  - apiGroups: ["multicluster.linkerd.io"]
+    resources: ["links/status"]
+    verbs: ["update", "patch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["create", "get", "update", "patch"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: controller-read-remote-creds-{{.link.ref.name}}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    linkerd.io/extension: multicluster
+    component: controller
+    mirror.linkerd.io/cluster-name: {{.link.ref.name}}
+    {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: controller-read-remote-creds-{{.link.ref.name}}
+subjects:
+  - kind: ServiceAccount
+    name: controller-{{.link.ref.name}}
+    namespace: {{$.Release.Namespace}}
+{{ end -}}

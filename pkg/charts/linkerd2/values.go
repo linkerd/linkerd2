@@ -121,9 +121,7 @@ type (
 
 	// Proxy contains the fields to set the proxy sidecar container
 	Proxy struct {
-		Capabilities *Capabilities `json:"capabilities"`
-		// This should match .Resources.CPU.Limit, but must be a whole number
-		Cores                                int64            `json:"cores,omitempty"`
+		Capabilities                         *Capabilities    `json:"capabilities"`
 		EnableExternalProfiles               bool             `json:"enableExternalProfiles"`
 		Image                                *Image           `json:"image"`
 		EnableShutdownEndpoint               bool             `json:"enableShutdownEndpoint"`
@@ -149,6 +147,7 @@ type (
 		OpaquePorts                          string           `json:"opaquePorts"`
 		Await                                bool             `json:"await"`
 		DefaultInboundPolicy                 string           `json:"defaultInboundPolicy"`
+		OutboundTransportMode                string           `json:"outboundTransportMode"`
 		AccessLog                            string           `json:"accessLog"`
 		ShutdownGracePeriod                  string           `json:"shutdownGracePeriod"`
 		NativeSidecar                        bool             `json:"nativeSidecar"`
@@ -162,6 +161,11 @@ type (
 
 		Inbound  ProxyParams `json:"inbound,omitempty"`
 		Outbound ProxyParams `json:"outbound,omitempty"`
+
+		// Deprecated: Use Runtime.Workers.Minimum.
+		Cores int64 `json:"cores,omitempty"`
+
+		Runtime ProxyRuntime `json:"runtime,omitempty"`
 	}
 
 	ProxyParams      = map[string]ProxyScopeParams
@@ -176,6 +180,17 @@ type (
 		InitialTimeout string `json:"initialTimeout"`
 		IdleTimeout    string `json:"idleTimeout"`
 		Lifetime       string `json:"lifetime"`
+	}
+
+	ProxyRuntime struct {
+		Workers ProxyRuntimeWorkers `json:"workers,omitempty"`
+	}
+
+	ProxyRuntimeWorkers struct {
+		Maximum int64 `json:"maximum,omitempty"`
+		Minimum int64 `json:"minimum,omitempty"`
+
+		MaximumCPURatio float64 `json:"maximumCPURatio,omitempty"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

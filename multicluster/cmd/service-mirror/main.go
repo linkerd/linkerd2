@@ -11,7 +11,6 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
-	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	servicemirror "github.com/linkerd/linkerd2/multicluster/service-mirror"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -57,6 +56,7 @@ func Main(args []string) {
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 	localMirror := cmd.Bool("local-mirror", false, "watch the local cluster for federated service members")
 	federatedServiceSelector := cmd.String("federated-service-selector", k8s.DefaultFederatedServiceSelector, "Selector (label query) for federated service members in the local cluster")
+	probeSvc := cmd.String("probe-service", "", "Name of the target cluster probe service")
 
 	flags.ConfigureAndParse(cmd, args)
 	linkName := cmd.Arg(0)
@@ -140,16 +140,8 @@ func Main(args []string) {
 			// Use a small buffered channel for Link updates to avoid dropping
 			// updates if there is an update burst.
 			results := make(chan *v1alpha3.Link, 100)
-			informerFactory := l5dcrdinformer.NewSharedInformerFactoryWithOptions(
-				l5dClient,
-				controllerK8s.ResyncTime,
-				l5dcrdinformer.WithNamespace(*namespace),
-			)
-			informer := informerFactory.Link().V1alpha3().Links().Informer()
-			log.Infof("Starting Link informer")
-			informerFactory.Start(ctx.Done())
 
-			_, err := informer.AddEventHandler(servicemirror.GetLinkHandlers(results, linkName))
+			_, err := controllerK8sAPI.Link().Informer().AddEventHandler(servicemirror.GetLinkHandlers(results, linkName))
 			if err != nil {
 				log.Fatalf("Failed to add event handler to Link informer: %s", err)
 			}
@@ -174,7 +166,7 @@ func Main(args []string) {
 						if err != nil {
 							log.Errorf("Failed to load remote cluster credentials: %s", err)
 						}
-						err = restartClusterWatcher(ctx, link, *namespace, creds, controllerK8sAPI, l5dClient, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *enableNamespaceCreation)
+						err = restartClusterWatcher(ctx, link, *namespace, *probeSvc, creds, controllerK8sAPI, l5dClient, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *enableNamespaceCreation)
 						if err != nil {
 							// failed to restart cluster watcher; give a bit of slack
 							// and requeue the link to give it another try
@@ -293,7 +285,8 @@ func loadCredentials(ctx context.Context, link *v1alpha3.Link, namespace string,
 func restartClusterWatcher(
 	ctx context.Context,
 	link *v1alpha3.Link,
-	namespace string,
+	namespace,
+	probeSvc string,
 	creds []byte,
 	controllerK8sAPI *controllerK8s.API,
 	linkClient l5dcrdclient.Interface,
@@ -315,7 +308,7 @@ func restartClusterWatcher(
 	// initialise the liveness channel
 	var ch chan bool
 	if link.Spec.ProbeSpec.Path != "" {
-		probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.Spec.TargetClusterName), &link.Spec.ProbeSpec, workerMetrics, link.Spec.TargetClusterName)
+		probeWorker = servicemirror.NewProbeWorker(probeSvc, &link.Spec.ProbeSpec, workerMetrics, link.Spec.TargetClusterName)
 		probeWorker.Start()
 		ch = probeWorker.Liveness
 	}
@@ -334,6 +327,7 @@ func restartClusterWatcher(
 		namespace,
 		controllerK8sAPI,
 		remoteAPI,
+		probeSvc,
 		linkClient,
 		link,
 		requeueLimit,
@@ -387,6 +381,7 @@ func startLocalClusterWatcher(
 		namespace,
 		controllerK8sAPI,
 		controllerK8sAPI,
+		"",
 		linkClient,
 		&link,
 		requeueLimit,

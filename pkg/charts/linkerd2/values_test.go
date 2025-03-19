@@ -154,6 +154,7 @@ func TestNewValues(t *testing.T) {
 			OpaquePorts:                          "25,587,3306,4444,5432,6379,9300,11211",
 			Await:                                true,
 			DefaultInboundPolicy:                 "all-unauthenticated",
+			OutboundTransportMode:                "transport-header",
 			OutboundDiscoveryCacheUnusedTimeout:  "5s",
 			InboundDiscoveryCacheUnusedTimeout:   "90s",
 			DisableOutboundProtocolDetectTimeout: false,
@@ -176,6 +177,11 @@ func TestNewValues(t *testing.T) {
 					InitialTimeout: "3s",
 					IdleTimeout:    "5m",
 					Lifetime:       "1h",
+				},
+			},
+			Runtime: ProxyRuntime{
+				Workers: ProxyRuntimeWorkers{
+					Minimum: 1,
 				},
 			},
 			Inbound: ProxyParams{

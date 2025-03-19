@@ -8,6 +8,7 @@ permissions:
 env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
+  CARGO_NEXTEST_VERSION: 0.9.92
   DOCKER_REGISTRY: ghcr.io/linkerd
   GH_ANNOTATION: true
   K3D_VERSION: v5.8.1
@@ -28,7 +29,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@dcc7a0cba800f454d79fff4b993e8c3555bcc0a8
+      - uses: tj-actions/changed-files@0b975f61488402a699abcebd6a1e25924cf85218
         id: core
         with:
           files: |
@@ -136,10 +137,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b
         with:
           go-version: "1.23"
-      - uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806
+      - uses: actions/download-artifact@b14cf4c92620c250e1c074ab0a5800e37df86765
         with:
           pattern: image-archives-*
           path: image-archives
@@ -166,12 +167,12 @@ jobs:
           - v1.23
           - v1.32
     steps:
-      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
+      - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806
+      - uses: actions/download-artifact@b14cf4c92620c250e1c074ab0a5800e37df86765
         with:
           pattern: image-archives-*
           path: image-archives
@@ -188,8 +189,11 @@ jobs:
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
           bin/scurl -vo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" && chmod +x /usr/local/bin/yq
+          bin/scurl -v "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/cargo-nextest-${CARGO_NEXTEST_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o nextest.tar.gz
+          tar -xzf nextest.tar.gz
+          mv cargo-nextest ~/.cargo/bin/
+          chmod +x ~/.cargo/bin/cargo-nextest
       - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3
-      - run: cargo install cargo-nextest@0.9.67 --locked
       - run: just policy-test-build
       - run: just k3d-k8s='${{ matrix.k8s }}' k3d-create
       - run: docker load <image-archives/controller.tar
@@ -263,10 +267,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b
         with:
           go-version: "1.23"
-      - uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806
+      - uses: actions/download-artifact@b14cf4c92620c250e1c074ab0a5800e37df86765
         with:
           pattern: image-archives-*
           path: image-archives
@@ -288,10 +292,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b
         with:
           go-version: "1.23"
-      - uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806
+      - uses: actions/download-artifact@b14cf4c92620c250e1c074ab0a5800e37df86765
         with:
           pattern: image-archives-*
           path: image-archives
@@ -314,18 +318,20 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        k8s:
-          - v1.23
-          - v1.32
+        cases:
+        - {k8s: "v1.23", manage-controllers: false}
+        - {k8s: "v1.32", manage-controllers: false}
+        - {k8s: "v1.32", manage-controllers: true}
+    name: "test-multicluster(${{ matrix.cases.k8s }}, ${{ matrix.cases.manage-controllers && 'managed-controllers' || 'unmanaged-controllers' }})"
     steps:
-      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
+      - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b
         with:
           go-version: "1.23"
-      - uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806
+      - uses: actions/download-artifact@b14cf4c92620c250e1c074ab0a5800e37df86765
         with:
           pattern: image-archives-*
           path: image-archives
@@ -347,13 +353,13 @@ jobs:
       - name: Run just mc-test-load
         run: |
           just linkerd-tag='${{ needs.meta.outputs.tag }}' \
-              k3d-k8s='${{ matrix.k8s }}' \
+              k3d-k8s='${{ matrix.cases.k8s }}' \
               mc-test-load
       - name: Run just mc-test-run
         run: |
           just linkerd-tag='${{ needs.meta.outputs.tag }}' \
-              k3d-k8s='${{ matrix.k8s }}' \
-              mc-test-run
+              k3d-k8s='${{ matrix.cases.k8s }}' \
+              mc-test-run -multicluster-manage-controllers=${{ matrix.cases.manage-controllers }}
 
   build-ok:
     needs: [build-cli, build-core, build-ext]

@@ -716,6 +716,7 @@ data:
             keepAliveTimeout: 3s
       outboundConnectTimeout: 1000ms
       outboundDiscoveryCacheUnusedTimeout: 5s
+      outboundTransportMode: transport-header
       podInboundPorts: ""
       ports:
         admin: 4191
@@ -736,6 +737,9 @@ data:
         memory:
           limit: ""
           request: ""
+      runtime:
+        workers:
+          minimum: 1
       saMountPath: null
       shutdownGracePeriod: ""
       startupProbe:
@@ -1009,7 +1013,11 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         - name: _pod_containerName
-          value: linkerd-proxy
+          value: &containerName linkerd-proxy
+        - name: LINKERD2_PROXY_CORES
+          value: "1"
+        - name: LINKERD2_PROXY_CORES_MIN
+          value: "1"
         - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
           value: "8080"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
@@ -1119,7 +1127,7 @@ spec:
             port: 4191
           initialDelaySeconds: 10
           timeoutSeconds: 1
-        name: linkerd-proxy
+        name: *containerName
         ports:
         - containerPort: 4143
           name: linkerd-proxy
@@ -1377,7 +1385,11 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         - name: _pod_containerName
-          value: linkerd-proxy
+          value: &containerName linkerd-proxy
+        - name: LINKERD2_PROXY_CORES
+          value: "1"
+        - name: LINKERD2_PROXY_CORES_MIN
+          value: "1"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
@@ -1485,7 +1497,7 @@ spec:
             port: 4191
           initialDelaySeconds: 10
           timeoutSeconds: 1
-        name: linkerd-proxy
+        name: *containerName
         ports:
         - containerPort: 4143
           name: linkerd-proxy
@@ -1523,6 +1535,7 @@ spec:
         - destination
         - -addr=:8086
         - -controller-namespace=linkerd
+        - -outbound-transport-mode=transport-header
         - -enable-h2-upgrade=true
         - -log-level=info
         - -log-format=plain
@@ -1881,7 +1894,11 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         - name: _pod_containerName
-          value: linkerd-proxy
+          value: &containerName linkerd-proxy
+        - name: LINKERD2_PROXY_CORES
+          value: "1"
+        - name: LINKERD2_PROXY_CORES_MIN
+          value: "1"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
@@ -1989,7 +2006,7 @@ spec:
             port: 4191
           initialDelaySeconds: 10
           timeoutSeconds: 1
-        name: linkerd-proxy
+        name: *containerName
         ports:
         - containerPort: 4143
           name: linkerd-proxy

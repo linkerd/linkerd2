@@ -344,13 +344,16 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 		flag.NewStringFlag(proxyFlags, "proxy-cpu-request", defaults.Proxy.Resources.CPU.Request, "Amount of CPU units that the proxy sidecar requests",
 			func(values *l5dcharts.Values, value string) error {
+				q, err := k8sResource.ParseQuantity(value)
+				if err != nil {
+					return err
+				}
+				c, err := inject.ToWholeCPUCores(q)
+				if err != nil {
+					return err
+				}
+				values.Proxy.Runtime.Workers.Minimum = c
 				values.Proxy.Resources.CPU.Request = value
-				return nil
-			}),
-
-		flag.NewStringFlag(proxyFlags, "proxy-memory-request", defaults.Proxy.Resources.Memory.Request, "Amount of Memory that the proxy sidecar requests",
-			func(values *l5dcharts.Values, value string) error {
-				values.Proxy.Resources.Memory.Request = value
 				return nil
 			}),
 
@@ -364,8 +367,14 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				if err != nil {
 					return err
 				}
-				values.Proxy.Cores = c
+				values.Proxy.Runtime.Workers.Maximum = c
 				values.Proxy.Resources.CPU.Limit = value
+				return nil
+			}),
+
+		flag.NewStringFlag(proxyFlags, "proxy-memory-request", defaults.Proxy.Resources.Memory.Request, "Amount of Memory that the proxy sidecar requests",
+			func(values *l5dcharts.Values, value string) error {
+				values.Proxy.Resources.Memory.Request = value
 				return nil
 			}),
 

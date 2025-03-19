@@ -99,11 +99,6 @@ func TestGetPodPatch(t *testing.T) {
 				conf:     confNsDisabled(),
 			},
 			{
-				filename: "pod-inject-enabled.yaml",
-				ns:       nsDisabled,
-				conf:     confNsDisabled(),
-			},
-			{
 				filename: "pod-with-debug-disabled.yaml",
 				ns:       nsDisabled,
 				conf:     confNsDisabled(),
@@ -157,6 +152,27 @@ func TestGetPodPatch(t *testing.T) {
 		}
 	})
 
+	t.Run("by checking annotations with custom debug image version", func(t *testing.T) {
+		_, expectedPatch := loadPatch(factory, t, "pod-with-custom-debug.patch.json")
+
+		pod := fileContents(factory, t, "pod-with-custom-debug-tag.yaml")
+		fakeReq := getFakePodReq(pod)
+		conf := confNsEnabled().WithKind(fakeReq.Kind.Kind).WithOwnerRetriever(ownerRetrieverFake)
+		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		patchJSON, err := conf.GetPodPatch(true)
+		if err != nil {
+			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+		}
+		actualPatch := unmarshalPatch(t, patchJSON)
+		if diff := deep.Equal(expectedPatch, actualPatch); diff != nil {
+			t.Fatalf("The actual patch didn't match what was expected.\n%+v", diff)
+		}
+	})
+
 	t.Run("by configuring log level", func(t *testing.T) {
 		_, expectedPatch := loadPatch(factory, t, "pod-log-level.json")
 
@@ -178,6 +194,33 @@ func TestGetPodPatch(t *testing.T) {
 		actualPatch := unmarshalPatch(t, patchJSON)
 		if diff := deep.Equal(expectedPatch, actualPatch); diff != nil {
 			t.Fatalf("The actual patch didn't match what was expected.\n%+v", diff)
+		}
+	})
+
+	t.Run("by configuring cpu limit by ratio", func(t *testing.T) {
+		_, expectedPatch := loadPatch(factory, t, "pod-cpu-ratio.json")
+
+		pod := fileContents(factory, t, "pod-inject-enabled-cpu-ratio.yaml")
+		fakeReq := getFakePodReq(pod)
+		conf := confNsWithoutOpaquePorts().
+			WithKind(fakeReq.Kind.Kind).
+			WithOwnerRetriever(ownerRetrieverFake)
+		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		patchJSON, err := conf.GetPodPatch(true)
+		if err != nil {
+			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+		}
+
+		actualPatch := unmarshalPatch(t, patchJSON)
+		if diff := deep.Equal(expectedPatch, actualPatch); diff != nil {
+			expectedJSON, _ := json.MarshalIndent(expectedPatch, "", "  ")
+			actualJSON, _ := json.MarshalIndent(actualPatch, "", "  ")
+			t.Fatalf("Expected:\n%s\n\nActual:\n%s\n\nDiff:%+v",
+				string(expectedJSON), string(actualJSON), diff)
 		}
 	})
 
