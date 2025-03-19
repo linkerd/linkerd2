@@ -25,15 +25,15 @@ env:
       fieldPath: spec.nodeName
 - name: _pod_containerName
   value: &containerName linkerd-proxy
-{{/* Configure CPU cores usage */}}
-{{/* 1. Fixed configuration (DEPRECATED) */}}
+{{/* Configure CPU cores usage */ -}}
+{{/* 1. Fixed configuration (DEPRECATED) */ -}}
 {{ if .Values.proxy.cores -}}
 - name: LINKERD2_PROXY_CORES
   value: {{ .Values.proxy.cores | quote }}
 - name: LINKERD2_PROXY_CORES_MIN
   value: {{ .Values.proxy.cores | quote }}
 {{ else -}}
-{{/* 2. Variable configuration */}}
+{{/* 2. Variable configuration */ -}}
 {{ with (.Values.proxy.runtime).workers -}}
 - name: LINKERD2_PROXY_CORES
   value: {{ .minimum | default 1 | quote }}
