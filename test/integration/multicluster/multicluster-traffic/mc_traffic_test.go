@@ -223,8 +223,22 @@ func TestTargetTraffic(t *testing.T) {
 		})
 
 		t.Run("Check if mirror service has correct metadata", func(t *testing.T) {
+
+			/// DEBUGGING LOGS DO NOT MERGE
+			out, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "get", "service", "web-svc", "--namespace", ns, "-o", "json")
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "failed to get service web-svc", "failed to get service web-svc: %s", err)
+			}
+			fmt.Println(out)
+			out, err = TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "get", "service", "web-svc-target", "--namespace", ns, "-o", "json")
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "failed to get service web-svc-target", "failed to get service web-svc-target: %s", err)
+			}
+			fmt.Println(out)
+			/// END DEBUGGING LOGS
+
 			timeout := time.Minute
-			err := testutil.RetryFor(timeout, func() error {
+			err = testutil.RetryFor(timeout, func() error {
 				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes")           // Should be included.
 				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good\\.linkerd/c", "d") // Should be included.
 				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil", "")              // Should be excluded.
