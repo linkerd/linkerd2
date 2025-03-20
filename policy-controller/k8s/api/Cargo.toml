@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 k8s-openapi = { workspace = true }
-gateway-api = "0.14"
+gateway-api = { workspace = true }
 kube = { workspace = true, default-features = false, features = [
     "client",
     "derive",

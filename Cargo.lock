@@ -1106,18 +1106,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "k8s-gateway-api"
-version = "0.16.0"
-source = "git+https://github.com/linkerd/k8s-gateway-api-rs#4a71642699c90f118f550475a9bb4af78948cbd9"
-dependencies = [
- "k8s-openapi",
- "kube",
- "schemars",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "k8s-openapi"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1491,7 +1479,6 @@ dependencies = [
  "hyper",
  "hyper-util",
  "ipnet",
- "k8s-gateway-api",
  "k8s-openapi",
  "kube",
  "linkerd-policy-controller-core",
