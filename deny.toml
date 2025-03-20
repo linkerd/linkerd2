@@ -9,10 +9,6 @@ targets = [
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = [
-    # instant is unmaintained, but pulled in via kube
-    "RUSTSEC-2024-0384",
-    # backoff is unmaintained, but pulled in via kube
-    "RUSTSEC-2025-0012",
 ]
 
 [licenses]
