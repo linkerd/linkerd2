@@ -367,6 +367,13 @@ func TestUpgradeCRDsWithGatewayAPI(t *testing.T) {
 }
 
 func TestUpgradeCRDsWithoutGatewayAPI(t *testing.T) {
+	gatewayAPIManifest := `---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: httproutes.gateway.networking.k8s.io
+`
+
 	installOpts := valuespkg.Options{
 		Values: []string{"installGatewayAPI=false"},
 	}
@@ -375,7 +382,7 @@ func TestUpgradeCRDsWithoutGatewayAPI(t *testing.T) {
 		t.Fatalf("could not render install manifests: %s", err)
 	}
 	installManifest := installBuf.String()
-	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(installManifest)})
+	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(installManifest), strings.NewReader(gatewayAPIManifest)})
 	if err != nil {
 		t.Fatalf("failed to initialize fake API: %s\n\n%s", err, installManifest)
 	}
