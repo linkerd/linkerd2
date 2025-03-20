@@ -80,11 +80,6 @@ func TestInstall(t *testing.T) {
 		testutil.AnnotatedFatal(t, "failed to create issuer key", err)
 	}
 
-	err = TestHelper.InstallGatewayAPI()
-	if err != nil {
-		testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
-	}
-
 	// Install CRDs
 	cmd := []string{
 		"install",
@@ -100,6 +95,12 @@ func TestInstall(t *testing.T) {
 	// Global state to keep track of clusters
 	contexts = TestHelper.GetMulticlusterContexts()
 	for _, ctx := range contexts {
+		TestHelper.SwitchContext(ctx)
+		err = TestHelper.InstallGatewayAPI()
+		if err != nil {
+			testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
+		}
+
 		// Pipe cmd & args to `linkerd`
 		cmd := append([]string{"--context=" + ctx}, cmd...)
 		out, err := TestHelper.LinkerdRun(cmd...)
