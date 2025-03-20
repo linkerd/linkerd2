@@ -28,6 +28,8 @@ const (
 	envControlListenAddr = "LINKERD2_PROXY_CONTROL_LISTEN_ADDR"
 
 	updateQueueCapacity = 100
+
+	defaultProxyInboundPort = 4143
 )
 
 // endpointTranslator satisfies EndpointUpdateListener and translates updates
@@ -565,10 +567,7 @@ func createWeightedAddrForExternalWorkload(
 	opaquePort = opaquePort || address.OpaqueProtocol
 
 	if forceOpaqueTransport || opaquePort {
-		port, err := getInboundPortFromExternalWorkload(&address.ExternalWorkload.Spec)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read inbound port from external workload: %w", err)
-		}
+		port := getInboundPortFromExternalWorkload(&address.ExternalWorkload.Spec)
 		weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{InboundPort: port}
 	}
 
@@ -793,12 +792,12 @@ func getPodPorts(podSpec *corev1.PodSpec, addrEnvNames map[string]struct{}) (map
 
 // getInboundPortFromExternalWorkload gets the inbound port from the ExternalWorkload spec
 // variable.
-func getInboundPortFromExternalWorkload(ewSpec *ewv1beta1.ExternalWorkloadSpec) (uint32, error) {
+func getInboundPortFromExternalWorkload(ewSpec *ewv1beta1.ExternalWorkloadSpec) uint32 {
 	for _, p := range ewSpec.Ports {
 		if p.Name == pkgK8s.ProxyPortName {
-			return uint32(p.Port), nil
+			return uint32(p.Port)
 		}
 	}
 
-	return 0, fmt.Errorf("failed to find %s port for given ExternalWorkloadSpec", pkgK8s.ProxyPortName)
+	return defaultProxyInboundPort
 }
