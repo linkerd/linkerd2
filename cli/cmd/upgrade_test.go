@@ -366,7 +366,7 @@ func TestUpgradeCRDsWithGatewayAPI(t *testing.T) {
 	}
 }
 
-func TestUpgradeCRDsWithoutGatewayAPI(t *testing.T) {
+func TestUpgradeCRDsWithExternalGatewayAPI(t *testing.T) {
 	gatewayAPIManifest := `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition

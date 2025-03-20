@@ -419,7 +419,6 @@ func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options 
 			}
 		}
 	}
-
 	buf, _, err := renderChartToBuffer(files, defaultValues, valuesOverrides)
 	if err != nil {
 		return err
