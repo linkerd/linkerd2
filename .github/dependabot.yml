@@ -62,13 +62,22 @@ updates:
         patterns:
           - futures
           - futures-*
-      kube:
+      kube-patch:
         patterns:
           - k8s-openapi
           - kube
           - kube-*
           - gateway-api
         update-types: [patch]
+      kube:
+        patterns:
+          - kubert
+          - kubert-*
+          - k8s-openapi
+          - kube
+          - kube-*
+          - gateway-api
+        update-types: [major, minor]
       grpc:
         patterns:
           - prost
