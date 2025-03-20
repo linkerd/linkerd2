@@ -146,8 +146,8 @@ func TestInstallMulticluster(t *testing.T) {
 		var out string
 		var err error
 		args := []string{"--context=" + ctx, "multicluster", "install",
-			"--excluded-annotations", "evil.linkerd/*,evil",
-			"--excluded-labels", "evil.linkerd/*,evil",
+			"--set", "localServiceMirror.excludedAnnotations=evil.linkerd/*,evil",
+			"--set", "localServiceMirror.excludedLabels=evil.linkerd/*,evil",
 		}
 
 		// Source context should be installed without a gateway
