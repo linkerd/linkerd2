@@ -225,15 +225,15 @@ func TestTargetTraffic(t *testing.T) {
 		t.Run("Check if mirror service has correct metadata", func(t *testing.T) {
 			timeout := time.Minute
 			err := testutil.RetryFor(timeout, func() error {
-				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil", "")              // Should be excluded.
-				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil\\.linkerd/a", "")  // Should be excluded.
 				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes")           // Should be included.
 				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good\\.linkerd/c", "d") // Should be included.
+				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil", "")              // Should be excluded.
+				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil\\.linkerd/a", "")  // Should be excluded.
 
-				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil", "")              // Should be excluded.
-				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil\\.linkerd/a", "")  // Should be excluded.
 				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes")           // Should be included.
 				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good\\.linkerd/c", "d") // Should be included.
+				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil", "")              // Should be excluded.
+				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil\\.linkerd/a", "")  // Should be excluded.
 				return nil
 			})
 			if err != nil {
@@ -400,22 +400,22 @@ func TestTargetResourcesAreCleaned(t *testing.T) {
 
 func CheckAnnotation(t *testing.T, context, ns, svc, annotation, expected string) {
 	t.Helper()
-	out, err := TestHelper.KubectlWithContext("", context, "--namespace", ns, "get", "service", svc, fmt.Sprintf("-ojsonpath='{.metadata.annotations.%s}'", annotation))
+	out, err := TestHelper.KubectlWithContext("", context, "--namespace", ns, "get", "service", svc, fmt.Sprintf("-ojsonpath={.metadata.annotations.%s}", annotation))
 	if err != nil {
 		t.Fatalf("Failed to get annotation %s on service %s: %s", annotation, svc, err)
 	}
 	if out != expected {
-		t.Fatalf("Expected annotation %s to be %s, got %s", annotation, expected, out)
+		t.Errorf("Expected annotation %s to be %s, got %s", annotation, expected, out)
 	}
 }
 
 func CheckLabel(t *testing.T, context, ns, svc, label, expected string) {
 	t.Helper()
-	out, err := TestHelper.KubectlWithContext("", context, "--namespace", ns, "get", "service", svc, fmt.Sprintf("-ojsonpath='{.metadata.labels.%s}'", label))
+	out, err := TestHelper.KubectlWithContext("", context, "--namespace", ns, "get", "service", svc, fmt.Sprintf("-ojsonpath={.metadata.labels.%s}", label))
 	if err != nil {
 		t.Fatalf("Failed to get label %s on service %s: %s", label, svc, err)
 	}
 	if out != expected {
-		t.Fatalf("Expected label %s to be %s, got %s", label, expected, out)
+		t.Errorf("Expected label %s to be %s, got %s", label, expected, out)
 	}
 }
