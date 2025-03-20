@@ -649,13 +649,13 @@ dependencies = [
 
 [[package]]
 name = "gateway-api"
-version = "0.14.2"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdca285b86710063162382f6d688fb67918fa8a231cb9248c817f53ddcb53491"
+checksum = "0ea401eaa9802293115029b448ef0f13ebc39cccfd9651aa2abac084aa4f4bef"
 dependencies = [
  "delegate",
  "k8s-openapi",
- "kube",
+ "kube 0.99.0",
  "once_cell",
  "regex-lite",
  "schemars",
@@ -1111,7 +1111,7 @@ version = "0.16.0"
 source = "git+https://github.com/linkerd/k8s-gateway-api-rs#4a71642699c90f118f550475a9bb4af78948cbd9"
 dependencies = [
  "k8s-openapi",
- "kube",
+ "kube 0.98.0",
  "schemars",
  "serde",
  "serde_json",
@@ -1138,10 +1138,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32053dc495efad4d188c7b33cc7c02ef4a6e43038115348348876efd39a53cba"
 dependencies = [
  "k8s-openapi",
- "kube-client",
- "kube-core",
- "kube-derive",
+ "kube-client 0.98.0",
+ "kube-core 0.98.0",
+ "kube-derive 0.98.0",
  "kube-runtime",
+]
+
+[[package]]
+name = "kube"
+version = "0.99.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a4eb20010536b48abe97fec37d23d43069bcbe9686adcf9932202327bc5ca6e"
+dependencies = [
+ "k8s-openapi",
+ "kube-client 0.99.0",
+ "kube-core 0.99.0",
+ "kube-derive 0.99.0",
 ]
 
 [[package]]
@@ -1167,7 +1179,7 @@ dependencies = [
  "hyper-util",
  "jsonpath-rust",
  "k8s-openapi",
- "kube-core",
+ "kube-core 0.98.0",
  "openssl",
  "pem",
  "rand 0.8.5",
@@ -1180,6 +1192,43 @@ dependencies = [
  "thiserror 2.0.12",
  "tokio",
  "tokio-tungstenite",
+ "tokio-util",
+ "tower 0.5.2",
+ "tower-http",
+ "tracing",
+]
+
+[[package]]
+name = "kube-client"
+version = "0.99.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fc2ed952042df20d15ac2fe9614d0ec14b6118eab89633985d4b36e688dccf1"
+dependencies = [
+ "base64 0.22.1",
+ "bytes",
+ "chrono",
+ "either",
+ "futures",
+ "home",
+ "http",
+ "http-body",
+ "http-body-util",
+ "hyper",
+ "hyper-http-proxy",
+ "hyper-rustls",
+ "hyper-timeout",
+ "hyper-util",
+ "jsonpath-rust",
+ "k8s-openapi",
+ "kube-core 0.99.0",
+ "pem",
+ "rustls",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror 2.0.12",
+ "tokio",
  "tokio-util",
  "tower 0.5.2",
  "tower-http",
@@ -1205,6 +1254,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "kube-core"
+version = "0.99.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff0d0793db58e70ca6d689489183816cb3aa481673e7433dc618cf7e8007c675"
+dependencies = [
+ "chrono",
+ "form_urlencoded",
+ "http",
+ "k8s-openapi",
+ "schemars",
+ "serde",
+ "serde-value",
+ "serde_json",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "kube-derive"
 version = "0.98.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1213,6 +1279,20 @@ dependencies = [
  "darling",
  "proc-macro2",
  "quote",
+ "serde_json",
+ "syn",
+]
+
+[[package]]
+name = "kube-derive"
+version = "0.99.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c562f58dc9f7ca5feac8a6ee5850ca221edd6f04ce0dd2ee873202a88cd494c9"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "serde",
  "serde_json",
  "syn",
 ]
@@ -1235,7 +1315,7 @@ dependencies = [
  "json-patch",
  "jsonptr",
  "k8s-openapi",
- "kube-client",
+ "kube-client 0.98.0",
  "parking_lot",
  "pin-project",
  "serde",
@@ -1265,8 +1345,8 @@ dependencies = [
  "hyper-openssl",
  "hyper-util",
  "k8s-openapi",
- "kube-client",
- "kube-core",
+ "kube-client 0.98.0",
+ "kube-core 0.98.0",
  "kube-runtime",
  "kubert-prometheus-process",
  "kubert-prometheus-tokio",
@@ -1391,7 +1471,7 @@ dependencies = [
  "gateway-api",
  "ipnet",
  "k8s-openapi",
- "kube",
+ "kube 0.98.0",
  "schemars",
  "serde",
  "serde_json",
@@ -1411,7 +1491,7 @@ dependencies = [
  "futures",
  "http",
  "k8s-openapi",
- "kube",
+ "kube 0.98.0",
  "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
@@ -1459,7 +1539,7 @@ dependencies = [
  "hyper",
  "ipnet",
  "k8s-openapi",
- "kube",
+ "kube 0.98.0",
  "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-grpc",
@@ -1493,7 +1573,7 @@ dependencies = [
  "ipnet",
  "k8s-gateway-api",
  "k8s-openapi",
- "kube",
+ "kube 0.98.0",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-grpc",
  "linkerd-policy-controller-k8s-api",
