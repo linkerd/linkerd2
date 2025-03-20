@@ -88,6 +88,11 @@ func TestInstallCNIPlugin(t *testing.T) {
 // TestInstall will install the linkerd control plane to be used in the rest of
 // the deep suite tests.
 func TestInstall(t *testing.T) {
+	err := TestHelper.InstallGatewayAPI()
+	if err != nil {
+		testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
+	}
+
 	// Install CRDs
 	cmd := []string{
 		"install",

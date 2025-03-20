@@ -80,6 +80,11 @@ func TestInstall(t *testing.T) {
 		testutil.AnnotatedFatal(t, "failed to create issuer key", err)
 	}
 
+	err = TestHelper.InstallGatewayAPI()
+	if err != nil {
+		testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
+	}
+
 	// Install CRDs
 	cmd := []string{
 		"install",
