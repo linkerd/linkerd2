@@ -17,7 +17,7 @@ rustls-tls = ["kube/rustls-tls", "kubert/rustls-tls"]
 anyhow = "1"
 async-trait = "0.1"
 bytes = "1"
-drain = "0.1"
+drain = "0.2"
 futures = { version = "0.3", default-features = false }
 k8s-openapi = { workspace = true }
 http-body-util = "0.1"
