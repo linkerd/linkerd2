@@ -1526,8 +1526,5 @@ rules:
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list", "get", "watch"]
-- apiGroups: ["multicluster.linkerd.io"]
-  resources: ["links"]
-  verbs: ["list", "get", "watch"]
 
 

@@ -43,6 +43,7 @@ type API struct {
 	promGauges
 
 	Client        kubernetes.Interface
+	L5dClient     l5dcrdclient.Interface
 	DynamicClient dynamic.Interface
 
 	cj       batchv1informers.CronJobInformer
@@ -137,11 +138,6 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 			if err != nil {
 				return nil, err
 			}
-		case res == Link:
-			err := k8s.LinksAccess(ctx, k8sClient)
-			if err != nil {
-				return nil, err
-			}
 		default:
 			continue
 		}
@@ -192,6 +188,59 @@ func NewNamespacedAPI(
 	return newAPI(k8sClient, dynamicClient, l5dCrdClient, sharedInformers, cluster, resources...)
 }
 
+func NewL5dNamespacedAPI(
+	l5dCrdClient l5dcrdclient.Interface,
+	namespace string,
+	cluster string,
+	resources ...APIResource,
+) *API {
+	l5dCrdSharedInformers := l5dcrdinformer.NewSharedInformerFactoryWithOptions(l5dCrdClient, ResyncTime, l5dcrdinformer.WithNamespace(namespace))
+
+	api := &API{
+		L5dClient:             l5dCrdClient,
+		syncChecks:            make([]cache.InformerSynced, 0),
+		l5dCrdSharedInformers: l5dCrdSharedInformers,
+	}
+
+	informerLabels := prometheus.Labels{
+		"cluster": cluster,
+	}
+
+	for _, resource := range resources {
+		switch resource {
+		case ExtWorkload:
+			if l5dCrdSharedInformers == nil {
+				panic("Linkerd CRD shared informer not configured")
+			}
+			api.ew = l5dCrdSharedInformers.Externalworkload().V1beta1().ExternalWorkloads()
+			api.syncChecks = append(api.syncChecks, api.ew.Informer().HasSynced)
+			api.promGauges.addInformerSize(k8s.ExtWorkload, informerLabels, api.ew.Informer())
+		case Link:
+			if l5dCrdSharedInformers == nil {
+				panic("Linkerd CRD shared informer not configured")
+			}
+			api.link = l5dCrdSharedInformers.Link().V1alpha3().Links()
+			api.syncChecks = append(api.syncChecks, api.link.Informer().HasSynced)
+			api.promGauges.addInformerSize(k8s.Link, informerLabels, api.link.Informer())
+		case SP:
+			if l5dCrdSharedInformers == nil {
+				panic("Linkerd CRD shared informer not configured")
+			}
+			api.sp = l5dCrdSharedInformers.Linkerd().V1alpha2().ServiceProfiles()
+			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
+			api.promGauges.addInformerSize(k8s.ServiceProfile, informerLabels, api.sp.Informer())
+		case Srv:
+			if l5dCrdSharedInformers == nil {
+				panic("Linkerd CRD shared informer not configured")
+			}
+			api.srv = l5dCrdSharedInformers.Server().V1beta3().Servers()
+			api.syncChecks = append(api.syncChecks, api.srv.Informer().HasSynced)
+			api.promGauges.addInformerSize(k8s.Server, informerLabels, api.srv.Informer())
+		}
+	}
+	return api
+}
+
 // newAPI takes a Kubernetes client and returns an initialized API.
 func newAPI(
 	k8sClient kubernetes.Interface,
@@ -208,6 +257,7 @@ func newAPI(
 
 	api := &API{
 		Client:                k8sClient,
+		L5dClient:             l5dCrdClient,
 		DynamicClient:         dynamicClient,
 		syncChecks:            make([]cache.InformerSynced, 0),
 		sharedInformers:       sharedInformers,
@@ -319,7 +369,9 @@ func newAPI(
 
 // Sync waits for all informers to be synced.
 func (api *API) Sync(stopCh <-chan struct{}) {
-	api.sharedInformers.Start(stopCh)
+	if api.sharedInformers != nil {
+		api.sharedInformers.Start(stopCh)
+	}
 
 	if api.l5dCrdSharedInformers != nil {
 		api.l5dCrdSharedInformers.Start(stopCh)
