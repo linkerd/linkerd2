@@ -241,6 +241,12 @@ func TestTargetTraffic(t *testing.T) {
 			fmt.Println(webSvc)
 			fmt.Println("web-svc-target:")
 			fmt.Println(webSvcTarget)
+			fmt.Println("logs:")
+			logs, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "--namespace", "linkerd-multicluster", "logs", "deploy", "controller-target", "-c", "controller")
+			if err != nil {
+				t.Fatalf("Failed to get controller-target logs: %s", err)
+			}
+			fmt.Println(logs)
 			// End of debug log lines.
 
 			timeout := 5 * time.Minute
