@@ -245,16 +245,37 @@ func TestTargetTraffic(t *testing.T) {
 
 			timeout := time.Minute
 			err = testutil.RetryFor(timeout, func() error {
-				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes")           // Should be included.
-				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good\\.linkerd/c", "d") // Should be included.
-				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil", "")              // Should be excluded.
-				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil\\.linkerd/a", "")  // Should be excluded.
+				err = CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes") // Should be included.
+				if err != nil {
+					return err
+				}
+				err = CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-target", "good\\.linkerd/c", "d") // Should be included.
+				if err != nil {
+					return err
+				}
+				err = CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil", "") // Should be excluded.
+				if err != nil {
+					return err
+				}
+				err = CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil\\.linkerd/a", "") // Should be excluded.
+				if err != nil {
+					return err
+				}
 
-				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes")           // Should be included.
-				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good\\.linkerd/c", "d") // Should be included.
-				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil", "")              // Should be excluded.
-				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil\\.linkerd/a", "")  // Should be excluded.
-				return nil
+				err = CheckLabel(contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes") // Should be included.
+				if err != nil {
+					return err
+				}
+				err = CheckLabel(contexts[testutil.SourceContextKey], ns, "web-svc-target", "good\\.linkerd/c", "d") // Should be included.
+				if err != nil {
+					return err
+				}
+				err = CheckLabel(contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil", "") // Should be excluded.
+				if err != nil {
+					return err
+				}
+				err = CheckLabel(contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil\\.linkerd/a", "") // Should be excluded.
+				return err
 			})
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "incorrect service metadata", "incorrect service metadata: %s\nweb-svc: %s\nweb-svc-target: %s", err, webSvc, webSvcTarget)
@@ -418,24 +439,24 @@ func TestTargetResourcesAreCleaned(t *testing.T) {
 	}
 }
 
-func CheckAnnotation(t *testing.T, context, ns, svc, annotation, expected string) {
-	t.Helper()
+func CheckAnnotation(context, ns, svc, annotation, expected string) error {
 	out, err := TestHelper.KubectlWithContext("", context, "--namespace", ns, "get", "service", svc, fmt.Sprintf("-ojsonpath={.metadata.annotations.%s}", annotation))
 	if err != nil {
-		t.Fatalf("Failed to get annotation %s on service %s: %s", annotation, svc, err)
+		return fmt.Errorf("Failed to get annotation %s on service %s: %w", annotation, svc, err)
 	}
 	if out != expected {
-		t.Errorf("Expected annotation %s to be %s, got %s", annotation, expected, out)
+		return fmt.Errorf("Expected annotation %s to be %s, got %s", annotation, expected, out)
 	}
+	return nil
 }
 
-func CheckLabel(t *testing.T, context, ns, svc, label, expected string) {
-	t.Helper()
+func CheckLabel(context, ns, svc, label, expected string) error {
 	out, err := TestHelper.KubectlWithContext("", context, "--namespace", ns, "get", "service", svc, fmt.Sprintf("-ojsonpath={.metadata.labels.%s}", label))
 	if err != nil {
-		t.Fatalf("Failed to get label %s on service %s: %s", label, svc, err)
+		return fmt.Errorf("Failed to get label %s on service %s: %w", label, svc, err)
 	}
 	if out != expected {
-		t.Errorf("Expected label %s to be %s, got %s", label, expected, out)
+		return fmt.Errorf("Expected label %s to be %s, got %s", label, expected, out)
 	}
+	return nil
 }

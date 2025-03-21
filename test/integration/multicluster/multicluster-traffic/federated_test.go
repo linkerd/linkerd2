@@ -182,16 +182,33 @@ func TestFederatedService(t *testing.T) {
 		t.Run("Check if federated service has correct metadata", func(t *testing.T) {
 			timeout := time.Minute
 			err := testutil.RetryFor(timeout, func() error {
-				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-federated", "evil", "")              // Should be excluded.
-				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-federated", "evil\\.linkerd/a", "")  // Should be excluded.
-				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-federated", "good", "yes")           // Should be included.
-				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-federated", "good\\.linkerd/c", "d") // Should be included.
+				err := CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "evil\\.linkerd/a", "") // Should be excluded.
+				if err != nil {
+					return err
+				}
+				err = CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "good", "yes") // Should be included.
+				if err != nil {
+					return err
+				}
+				err = CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "good\\.linkerd/c", "d") // Should be included.
+				if err != nil {
+					return err
+				}
 
-				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-federated", "evil", "")              // Should be excluded.
-				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-federated", "evil\\.linkerd/a", "")  // Should be excluded.
-				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-federated", "good", "yes")           // Should be included.
-				CheckLabel(t, contexts[testutil.SourceContextKey], ns, "web-svc-federated", "good\\.linkerd/c", "d") // Should be included.
-				return nil
+				err = CheckLabel(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "evil", "") // Should be excluded.
+				if err != nil {
+					return err
+				}
+				err = CheckLabel(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "evil\\.linkerd/a", "") // Should be excluded.
+				if err != nil {
+					return err
+				}
+				err = CheckLabel(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "good", "yes") // Should be included.
+				if err != nil {
+					return err
+				}
+				err = CheckLabel(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "good\\.linkerd/c", "d") // Should be included.
+				return err
 			})
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "incorrect service metadata", "incorrect service metadata: %s", err)
