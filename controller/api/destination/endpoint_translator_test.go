@@ -397,6 +397,49 @@ var (
 		OpaqueProtocol: true,
 	}
 
+	ewNoProxyPort = watcher.Address{
+		IP:   "1.1.1.1",
+		Port: 1,
+		ExternalWorkload: &ewv1beta1.ExternalWorkload{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ew-4",
+				Namespace: "ns",
+			},
+			Spec: ewv1beta1.ExternalWorkloadSpec{
+				MeshTLS: ewv1beta1.MeshTLS{
+					Identity:   "spiffe://some-domain/ew-4",
+					ServerName: "server.local",
+				},
+				Ports: []ewv1beta1.PortSpec{},
+			},
+		},
+		OwnerKind: "workloadgroup",
+		OwnerName: "wg-name",
+	}
+
+	ewOverrideProxyPort = watcher.Address{
+		IP:   "1.1.1.1",
+		Port: 1,
+		ExternalWorkload: &ewv1beta1.ExternalWorkload{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ew-4",
+				Namespace: "ns",
+			},
+			Spec: ewv1beta1.ExternalWorkloadSpec{
+				MeshTLS: ewv1beta1.MeshTLS{
+					Identity:   "spiffe://some-domain/ew-4",
+					ServerName: "server.local",
+				},
+				Ports: []ewv1beta1.PortSpec{{
+					Port: 1111,
+					Name: "linkerd-proxy",
+				}},
+			},
+		},
+		OwnerKind: "workloadgroup",
+		OwnerName: "wg-name",
+	}
+
 	remoteGateway1 = watcher.Address{
 		IP:   "1.1.1.1",
 		Port: 1,
@@ -953,6 +996,60 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 		defer translator.Stop()
 
 		translator.Add(mkAddressSetForExternalWorkloads(ewOpaque))
+
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] address returned, got %v", addrs)
+		}
+
+		actualProtocolHint := addrs[0].GetProtocolHint()
+		if diff := deep.Equal(actualProtocolHint, expectedProtocolHint); diff != nil {
+			t.Fatalf("ProtocolHint: %v", diff)
+		}
+	})
+
+	t.Run("(forced opaque transport): Works with default proxy port when port missing from definition", func(t *testing.T) {
+		expectedProtocolHint := &pb.ProtocolHint{
+			Protocol: &pb.ProtocolHint_H2_{
+				H2: &pb.ProtocolHint_H2{},
+			},
+			OpaqueTransport: &pb.ProtocolHint_OpaqueTransport{
+				InboundPort: 4143,
+			},
+		}
+
+		mockGetServer, translator := makeEndpointTranslatorWithOpaqueTransport(t, true)
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForExternalWorkloads(ewNoProxyPort))
+
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] address returned, got %v", addrs)
+		}
+
+		actualProtocolHint := addrs[0].GetProtocolHint()
+		if diff := deep.Equal(actualProtocolHint, expectedProtocolHint); diff != nil {
+			t.Fatalf("ProtocolHint: %v", diff)
+		}
+	})
+
+	t.Run("(forced opaque transport): Works with override proxy port", func(t *testing.T) {
+		expectedProtocolHint := &pb.ProtocolHint{
+			Protocol: &pb.ProtocolHint_H2_{
+				H2: &pb.ProtocolHint_H2{},
+			},
+			OpaqueTransport: &pb.ProtocolHint_OpaqueTransport{
+				InboundPort: 1111,
+			},
+		}
+
+		mockGetServer, translator := makeEndpointTranslatorWithOpaqueTransport(t, true)
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForExternalWorkloads(ewOverrideProxyPort))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
