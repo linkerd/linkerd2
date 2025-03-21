@@ -209,30 +209,18 @@ func NewL5dNamespacedAPI(
 	for _, resource := range resources {
 		switch resource {
 		case ExtWorkload:
-			if l5dCrdSharedInformers == nil {
-				panic("Linkerd CRD shared informer not configured")
-			}
 			api.ew = l5dCrdSharedInformers.Externalworkload().V1beta1().ExternalWorkloads()
 			api.syncChecks = append(api.syncChecks, api.ew.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.ExtWorkload, informerLabels, api.ew.Informer())
 		case Link:
-			if l5dCrdSharedInformers == nil {
-				panic("Linkerd CRD shared informer not configured")
-			}
 			api.link = l5dCrdSharedInformers.Link().V1alpha3().Links()
 			api.syncChecks = append(api.syncChecks, api.link.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.Link, informerLabels, api.link.Informer())
 		case SP:
-			if l5dCrdSharedInformers == nil {
-				panic("Linkerd CRD shared informer not configured")
-			}
 			api.sp = l5dCrdSharedInformers.Linkerd().V1alpha2().ServiceProfiles()
 			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.ServiceProfile, informerLabels, api.sp.Informer())
 		case Srv:
-			if l5dCrdSharedInformers == nil {
-				panic("Linkerd CRD shared informer not configured")
-			}
 			api.srv = l5dCrdSharedInformers.Server().V1beta3().Servers()
 			api.syncChecks = append(api.syncChecks, api.srv.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.Server, informerLabels, api.srv.Informer())
