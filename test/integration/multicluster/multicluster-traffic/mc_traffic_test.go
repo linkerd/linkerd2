@@ -222,13 +222,29 @@ func TestTargetTraffic(t *testing.T) {
 				return nil
 			})
 			if err != nil {
-				testutil.AnnotatedFatalf(t, "failed to label web-svc", "%s\n%s", err, out)
+				testutil.AnnotatedFatalf(t, "failed to annotate web-svc", "%s\n%s", err, out)
 			}
 		})
 
 		t.Run("Check if mirror service has correct metadata", func(t *testing.T) {
+
+			// Debug log lines, to be removed after debugging.
+			webSvc, err := TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace", ns, "get", "service", "web-svc", "-ojson")
+			if err != nil {
+				t.Fatalf("Failed to get service web-svc: %s", err)
+			}
+			webSvcTarget, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "--namespace", ns, "get", "service", "web-svc-target", "-ojson")
+			if err != nil {
+				t.Fatalf("Failed to get service web-svc-target: %s", err)
+			}
+			fmt.Println("web-svc:")
+			fmt.Println(webSvc)
+			fmt.Println("web-svc-target:")
+			fmt.Println(webSvcTarget)
+			// End of debug log lines.
+
 			timeout := time.Minute
-			err := testutil.RetryFor(timeout, func() error {
+			err = testutil.RetryFor(timeout, func() error {
 				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes")           // Should be included.
 				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "good\\.linkerd/c", "d") // Should be included.
 				CheckAnnotation(t, contexts[testutil.SourceContextKey], ns, "web-svc-target", "evil", "")              // Should be excluded.
@@ -241,7 +257,7 @@ func TestTargetTraffic(t *testing.T) {
 				return nil
 			})
 			if err != nil {
-				testutil.AnnotatedFatalf(t, "incorrect service metadata", "incorrect service metadata: %s", err)
+				testutil.AnnotatedFatalf(t, "incorrect service metadata", "incorrect service metadata: %s\nweb-svc: %s\nweb-svc-target: %s", err, webSvc, webSvcTarget)
 			}
 		})
 
