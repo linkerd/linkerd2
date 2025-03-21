@@ -216,7 +216,6 @@ func joinFederatedService() *testEnvironment {
 	return &testEnvironment{
 		events: []interface{}{
 			&RemoteServiceJoinsFederatedService{
-				localService: fedSvc,
 				remoteUpdate: remoteService("service-one", "ns1", "111", map[string]string{
 					consts.DefaultFederatedServiceSelector: "member",
 				}, []corev1.ServicePort{
@@ -349,7 +348,6 @@ func joinLocalFederatedService() *testEnvironment {
 	return &testEnvironment{
 		events: []interface{}{
 			&RemoteServiceJoinsFederatedService{
-				localService: fedSvc,
 				remoteUpdate: remoteService("service-one", "ns1", "111", map[string]string{
 					consts.DefaultFederatedServiceSelector: "member",
 				}, []corev1.ServicePort{
@@ -550,30 +548,6 @@ var updateServiceWithChangedPorts = &testEnvironment{
 					Name:     "port3",
 					Protocol: "TCP",
 					Port:     333,
-				},
-			}),
-			localService: mirrorService("test-service-remote", "test-namespace", "pastServiceResVersion", nil, []corev1.ServicePort{
-				{
-					Name:     "port1",
-					Protocol: "TCP",
-					Port:     111,
-				},
-				{
-					Name:     "port2",
-					Protocol: "TCP",
-					Port:     222,
-				},
-			}),
-			localEndpoints: endpoints("test-service-remote", "test-namespace", nil, "192.0.2.127", "", []corev1.EndpointPort{
-				{
-					Name:     "port1",
-					Port:     888,
-					Protocol: "TCP",
-				},
-				{
-					Name:     "port2",
-					Port:     888,
-					Protocol: "TCP",
 				},
 			}),
 		},

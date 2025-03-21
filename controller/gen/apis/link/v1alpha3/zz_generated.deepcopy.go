@@ -59,7 +59,11 @@ func (in *LinkCondition) DeepCopyInto(out *LinkCondition) {
 	*out = *in
 	in.LastProbeTime.DeepCopyInto(&out.LastProbeTime)
 	in.LastTransitionTime.DeepCopyInto(&out.LastTransitionTime)
-	out.LocalRef = in.LocalRef
+	if in.LocalRef != nil {
+		in, out := &in.LocalRef, &out.LocalRef
+		*out = new(ObjectRef)
+		**out = **in
+	}
 	return
 }
 
