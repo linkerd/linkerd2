@@ -227,37 +227,9 @@ func TestTargetTraffic(t *testing.T) {
 		})
 
 		t.Run("Check if mirror service has correct metadata", func(t *testing.T) {
-
-			// Debug log lines, to be removed after debugging.
-			webSvc, err := TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace", ns, "get", "service", "web-svc", "-ojson")
-			if err != nil {
-				t.Fatalf("Failed to get service web-svc: %s", err)
-			}
-			webSvcTarget, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "--namespace", ns, "get", "service", "web-svc-target", "-ojson")
-			if err != nil {
-				t.Fatalf("Failed to get service web-svc-target: %s", err)
-			}
-			fmt.Println("web-svc:")
-			fmt.Println(webSvc)
-			fmt.Println("web-svc-target:")
-			fmt.Println(webSvcTarget)
-			fmt.Println("logs (managed):")
-			logs, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "--namespace", "linkerd-multicluster", "logs", "deploy/controller-target", "-c", "controller")
-			if err != nil {
-				fmt.Println("Failed to get controller-target logs: %w", err)
-			}
-			fmt.Println(logs)
-			fmt.Println("logs (unmanaged):")
-			logs, err = TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "--namespace", "linkerd-multicluster", "logs", "deploy/linkerd-service-mirror-target", "-c", "service-mirror")
-			if err != nil {
-				fmt.Println("Failed to get linkerd-service-mirror-target logs: %w", err)
-			}
-			fmt.Println(logs)
-			// End of debug log lines.
-
-			timeout := 5 * time.Minute
-			err = testutil.RetryFor(timeout, func() error {
-				err = CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes") // Should be included.
+			timeout := time.Minute
+			err := testutil.RetryFor(timeout, func() error {
+				err := CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes") // Should be included.
 				if err != nil {
 					return err
 				}
@@ -290,7 +262,7 @@ func TestTargetTraffic(t *testing.T) {
 				return err
 			})
 			if err != nil {
-				testutil.AnnotatedFatalf(t, "incorrect service metadata", "incorrect service metadata: %s\nweb-svc: %s\nweb-svc-target: %s", err, webSvc, webSvcTarget)
+				testutil.AnnotatedFatalf(t, "incorrect service metadata", "incorrect service metadata: %s", err)
 			}
 		})
 
