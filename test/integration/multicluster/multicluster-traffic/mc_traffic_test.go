@@ -242,13 +242,13 @@ func TestTargetTraffic(t *testing.T) {
 			fmt.Println("web-svc-target:")
 			fmt.Println(webSvcTarget)
 			fmt.Println("logs (managed):")
-			logs, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "--namespace", "linkerd-multicluster", "logs", "deploy", "controller-target", "-c", "controller")
+			logs, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "--namespace", "linkerd-multicluster", "logs", "deploy/controller-target", "-c", "controller")
 			if err != nil {
 				fmt.Println("Failed to get controller-target logs: %w", err)
 			}
 			fmt.Println(logs)
 			fmt.Println("logs (unmanaged):")
-			logs, err = TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "--namespace", "linkerd-multicluster", "logs", "deploy", "linkerd-service-mirror-target", "-c", "service-mirror")
+			logs, err = TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "--namespace", "linkerd-multicluster", "logs", "deploy/linkerd-service-mirror-target", "-c", "service-mirror")
 			if err != nil {
 				fmt.Println("Failed to get linkerd-service-mirror-target logs: %w", err)
 			}
