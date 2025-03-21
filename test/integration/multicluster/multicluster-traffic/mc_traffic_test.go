@@ -225,16 +225,16 @@ func TestTargetTraffic(t *testing.T) {
 		t.Run("Check if mirror service has correct metadata", func(t *testing.T) {
 
 			/// DEBUGGING LOGS DO NOT MERGE
-			out, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "get", "service", "web-svc", "--namespace", ns, "-o", "json")
+			web_svc, err := TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "get", "service", "web-svc", "--namespace", ns, "-o", "json")
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to get service web-svc", "failed to get service web-svc: %s", err)
 			}
-			fmt.Println(out)
-			out, err = TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "get", "service", "web-svc-target", "--namespace", ns, "-o", "json")
+			fmt.Println(web_svc)
+			web_svc_target, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "get", "service", "web-svc-target", "--namespace", ns, "-o", "json")
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to get service web-svc-target", "failed to get service web-svc-target: %s", err)
 			}
-			fmt.Println(out)
+			fmt.Println(web_svc_target)
 			/// END DEBUGGING LOGS
 
 			timeout := time.Minute
@@ -251,7 +251,7 @@ func TestTargetTraffic(t *testing.T) {
 				return nil
 			})
 			if err != nil {
-				testutil.AnnotatedFatalf(t, "incorrect service metadata", "incorrect service metadata: %s", err)
+				testutil.AnnotatedFatalf(t, "incorrect service metadata", "incorrect service metadata: %s\nweb-svc: %s\nweb-svc-target: %s", err, web_svc, web_svc_target)
 			}
 		})
 
