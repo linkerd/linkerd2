@@ -52,25 +52,55 @@ func TestFederatedService(t *testing.T) {
 					testutil.AnnotatedFatalf(t, "failed to install emojivoto", "failed to install emojivoto: %s\n%s", err, out)
 				}
 
-				// Label the service to join the federated service.
+				// Label the service to join the federated service and add
+				// labels to the service so we can ensure they are copied
+				// correctly to the federated service.
 				timeout := time.Minute
 				err = testutil.RetryFor(timeout, func() error {
-					out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "label", "service/web-svc", "mirror.linkerd.io/federated=member")
-					return err
+					for _, label := range []string{
+						"mirror.linkerd.io/federated=member",
+						"evil.linkerd/a=b",
+						"evil=yes",
+						"good.linkerd/c=d",
+						"good=yes",
+					} {
+						out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "label", "service/web-svc", label)
+						if err != nil {
+							return err
+						}
+					}
+					out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "label", "service/web-svc", "test-context="+ctx)
+					if err != nil {
+						return err
+					}
+					return nil
 				})
 				if err != nil {
 					testutil.AnnotatedFatalf(t, "failed to label web-svc", "%s\n%s", err, out)
 				}
 
-				// Add metadata to each service so we can ensure it is copied
-				// correctly to the federated service.
-				out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "annotate", "service/web-svc", "test-context="+ctx)
+				// Add annotations to the service so we can ensure they are
+				// copied correctly to the federated service.
+				err = testutil.RetryFor(timeout, func() error {
+					for _, annotation := range []string{
+						"evil.linkerd/a=b",
+						"evil=yes",
+						"good.linkerd/c=d",
+						"good=yes",
+					} {
+						out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "annotate", "service/web-svc", annotation)
+						if err != nil {
+							return err
+						}
+					}
+					out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "annotate", "service/web-svc", "test-context="+ctx)
+					if err != nil {
+						return err
+					}
+					return nil
+				})
 				if err != nil {
 					testutil.AnnotatedFatalf(t, "failed to annotate web-svc", "%s\n%s", err, out)
-				}
-				out, err = TestHelper.KubectlWithContext("", ctx, "--namespace", ns, "label", "service/web-svc", "test-context="+ctx)
-				if err != nil {
-					testutil.AnnotatedFatalf(t, "failed to label web-svc", "%s\n%s", err, out)
 				}
 			}
 		})
@@ -146,6 +176,42 @@ func TestFederatedService(t *testing.T) {
 			})
 			if err != nil {
 				testutil.AnnotatedFatal(t, "timed-out verifying federated service", err)
+			}
+		})
+
+		t.Run("Check if federated service has correct metadata", func(t *testing.T) {
+			timeout := time.Minute
+			err := testutil.RetryFor(timeout, func() error {
+				err := CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "evil\\.linkerd/a", "") // Should be excluded.
+				if err != nil {
+					return err
+				}
+				err = CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "good", "yes") // Should be included.
+				if err != nil {
+					return err
+				}
+				err = CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "good\\.linkerd/c", "d") // Should be included.
+				if err != nil {
+					return err
+				}
+
+				err = CheckLabel(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "evil", "") // Should be excluded.
+				if err != nil {
+					return err
+				}
+				err = CheckLabel(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "evil\\.linkerd/a", "") // Should be excluded.
+				if err != nil {
+					return err
+				}
+				err = CheckLabel(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "good", "yes") // Should be included.
+				if err != nil {
+					return err
+				}
+				err = CheckLabel(contexts[testutil.SourceContextKey], ns, "web-svc-federated", "good\\.linkerd/c", "d") // Should be included.
+				return err
+			})
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "incorrect service metadata", "incorrect service metadata: %s", err)
 			}
 		})
 

@@ -145,7 +145,10 @@ func TestInstallMulticluster(t *testing.T) {
 	for k, ctx := range contexts {
 		var out string
 		var err error
-		args := []string{"--context=" + ctx, "multicluster", "install"}
+		args := []string{"--context=" + ctx, "multicluster", "install",
+			"--set", "localServiceMirror.excludedAnnotations=evil.linkerd/*\\,evil",
+			"--set", "localServiceMirror.excludedLabels=evil.linkerd/*\\,evil",
+		}
 
 		// Source context should be installed without a gateway
 		if k == testutil.SourceContextKey {
@@ -222,6 +225,8 @@ func TestLinkClusters(t *testing.T) {
 		"--cluster-name", linkName,
 		"--api-server-address", fmt.Sprintf("https://%s:6443", lbIP),
 		"multicluster", "link",
+		"--excluded-annotations", "evil.linkerd/*,evil",
+		"--excluded-labels", "evil.linkerd/*,evil",
 	}
 	if TestHelper.GetMulticlusterManageControllers() {
 		linkCmd = append(

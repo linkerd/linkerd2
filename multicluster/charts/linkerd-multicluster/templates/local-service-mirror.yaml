@@ -102,6 +102,8 @@ spec:
         - -enable-pprof={{.Values.localServiceMirror.enablePprof | default false}}
         - -local-mirror
         - -federated-service-selector={{.Values.localServiceMirror.federatedServiceSelector}}
+        - -excluded-labels={{.Values.localServiceMirror.excludedLabels}}
+        - -excluded-annotations={{.Values.localServiceMirror.excludedAnnotations}}
         {{- if or .Values.localServiceMirror.additionalEnv .Values.localServiceMirror.experimentalEnv }}
         env:
         {{- with .Values.localServiceMirror.additionalEnv }}
