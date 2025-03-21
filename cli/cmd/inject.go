@@ -458,6 +458,10 @@ func getOverrideAnnotations(values *linkerd2.Values, base *linkerd2.Values) map[
 		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = strconv.FormatBool(proxy.EnableExternalProfiles)
 	}
 
+	if proxy.Metrics.Outbound.HostnameLabels != baseProxy.Metrics.Outbound.HostnameLabels {
+		overrideAnnotations[k8s.ProxyEnableHostnameLabels] = strconv.FormatBool(proxy.Metrics.Outbound.HostnameLabels)
+	}
+
 	if proxy.IsIngress != baseProxy.IsIngress {
 		overrideAnnotations[k8s.ProxyInjectAnnotation] = k8s.ProxyInjectIngress
 	}

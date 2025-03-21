@@ -155,6 +155,7 @@ type (
 		ReadinessProbe                       *Probe           `json:"readinessProbe"`
 		LivenessProbe                        *Probe           `json:"livenessProbe"`
 		Control                              *ProxyControl    `json:"control"`
+		Metrics                              *ProxyMetrics    `json:"metrics"`
 
 		AdditionalEnv   []corev1.EnvVar `json:"additionalEnv"`
 		ExperimentalEnv []corev1.EnvVar `json:"experimentalEnv"`
@@ -180,6 +181,14 @@ type (
 		InitialTimeout string `json:"initialTimeout"`
 		IdleTimeout    string `json:"idleTimeout"`
 		Lifetime       string `json:"lifetime"`
+	}
+
+	ProxyMetrics struct {
+		Outbound ProxyMetricsOutbound `json:"outbound"`
+	}
+
+	ProxyMetricsOutbound struct {
+		HostnameLabels bool `json:"hostnameLabels"`
 	}
 
 	ProxyRuntime struct {

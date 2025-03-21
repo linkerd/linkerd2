@@ -179,6 +179,11 @@ func TestNewValues(t *testing.T) {
 					Lifetime:       "1h",
 				},
 			},
+			Metrics: &ProxyMetrics{
+				Outbound: ProxyMetricsOutbound{
+					HostnameLabels: false,
+				},
+			},
 			Runtime: ProxyRuntime{
 				Workers: ProxyRuntimeWorkers{
 					Minimum: 1,
