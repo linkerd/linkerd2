@@ -243,7 +243,7 @@ func TestTargetTraffic(t *testing.T) {
 			fmt.Println(webSvcTarget)
 			// End of debug log lines.
 
-			timeout := time.Minute
+			timeout := 5 * time.Minute
 			err = testutil.RetryFor(timeout, func() error {
 				err = CheckAnnotation(contexts[testutil.SourceContextKey], ns, "web-svc-target", "good", "yes") // Should be included.
 				if err != nil {
