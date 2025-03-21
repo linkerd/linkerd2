@@ -222,8 +222,6 @@ func checkGatewayAPICRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI) (Gatewa
 	names := []string{
 		"httproutes.gateway.networking.k8s.io",
 		"grpcroutes.gateway.networking.k8s.io",
-		"tlsroutes.gateway.networking.k8s.io",
-		"tcproutes.gateway.networking.k8s.io",
 	}
 	for _, name := range names {
 		crd, err := crds.Get(ctx, name, metav1.GetOptions{})
