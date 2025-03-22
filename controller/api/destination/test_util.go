@@ -957,7 +957,7 @@ spec:
 	res = append(res, externalNameResources...)
 	res = append(res, ipv6...)
 	res = append(res, dualStack...)
-	k8sAPI, l5dClient, err := k8s.NewFakeAPIWithL5dClient(res...)
+	k8sAPI, err := k8s.NewFakeAPIWithL5dClient(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPIWithL5dClient returned an error: %s", err)
 	}
@@ -1034,7 +1034,7 @@ spec:
 		metadataAPI,
 		log,
 		make(<-chan struct{}),
-	}, l5dClient
+	}, k8sAPI.L5dClient
 }
 
 type bufferingGetStream struct {

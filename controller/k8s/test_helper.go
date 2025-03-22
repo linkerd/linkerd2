@@ -35,13 +35,13 @@ func NewFakeAPIWithActions(configs ...string) (*API, func() []testing.Action, er
 
 // NewFakeAPIWithL5dClient provides a mock Kubernetes API for testing like
 // NewFakeAPI, but it also returns the mock client for linkerd CRDs
-func NewFakeAPIWithL5dClient(configs ...string) (*API, l5dcrdclient.Interface, error) {
+func NewFakeAPIWithL5dClient(configs ...string) (*API, error) {
 	clientSet, _, _, l5dClientSet, dynamicClient, err := k8s.NewFakeClientSets(configs...)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return NewFakeClusterScopedAPI(clientSet, l5dClientSet, dynamicClient), l5dClientSet, nil
+	return NewFakeClusterScopedAPI(clientSet, l5dClientSet, dynamicClient), nil
 }
 
 // NewFakeClusterScopedAPI provides a mock Kubernetes API for testing.
@@ -57,7 +57,6 @@ func NewFakeClusterScopedAPI(clientSet kubernetes.Interface, l5dClientSet l5dcrd
 		DS,
 		Endpoint,
 		Job,
-		Link,
 		MWC,
 		NS,
 		Pod,

@@ -47,18 +47,20 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.TypedRateLimiti
 	if err != nil {
 		return nil, err
 	}
-	localAPI, l5dAPI, err := k8s.NewFakeAPIWithL5dClient(te.localResources...)
+	localAPI, err := k8s.NewFakeAPIWithL5dClient(te.localResources...)
 	if err != nil {
 		return nil, err
 	}
+	linksAPI := k8s.NewNamespacedAPI(nil, nil, localAPI.L5dClient, "default", "local", k8s.Link)
 	remoteAPI.Sync(nil)
 	localAPI.Sync(nil)
+	linksAPI.Sync(nil)
 
 	watcher := RemoteClusterServiceWatcher{
 		link:                    &te.link,
 		remoteAPIClient:         remoteAPI,
 		localAPIClient:          localAPI,
-		linkClient:              l5dAPI,
+		linksAPIClient:          linksAPI,
 		stopper:                 nil,
 		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:             watcherQueue,
