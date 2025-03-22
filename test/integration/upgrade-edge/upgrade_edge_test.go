@@ -62,6 +62,11 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 	// Nest all pre-upgrade tests here so they can install and check resources
 	// using the latest edge CLI
 	t.Run(fmt.Sprintf("installing Linkerd %s control plane", linkerdBaseEdgeVersion), func(t *testing.T) {
+		err := TestHelper.InstallGatewayAPI()
+		if err != nil {
+			testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
+		}
+
 		out, err := TestHelper.CmdRun(cliPath, "install", "--crds")
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'linkerd install --crds' command failed", "'linkerd install --crds' command failed:\n%v", err)

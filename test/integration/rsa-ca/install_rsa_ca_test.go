@@ -27,7 +27,12 @@ func TestMain(m *testing.M) {
 //////////////////////
 
 func TestRsaCa(t *testing.T) {
-	err := TestHelper.CreateControlPlaneNamespaceIfNotExists(context.Background(), TestHelper.GetLinkerdNamespace())
+	err := TestHelper.InstallGatewayAPI()
+	if err != nil {
+		testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
+	}
+
+	err = TestHelper.CreateControlPlaneNamespaceIfNotExists(context.Background(), TestHelper.GetLinkerdNamespace())
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", TestHelper.GetLinkerdNamespace()),
 			"failed to create %s namespace: %s", TestHelper.GetLinkerdNamespace(), err)

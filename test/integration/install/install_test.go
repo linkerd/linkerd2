@@ -188,6 +188,11 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			args = append(args, []string{"--skip-outbound-ports", skippedOutboundPorts}...)
 		}
 	} else {
+		err := TestHelper.InstallGatewayAPI()
+		if err != nil {
+			testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
+		}
+
 		// install CRDs first
 		exec := append([]string{cmd}, append(args, "--crds")...)
 		out, err := TestHelper.LinkerdRun(exec...)

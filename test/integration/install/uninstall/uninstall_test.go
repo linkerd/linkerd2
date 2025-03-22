@@ -21,6 +21,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestInstall(t *testing.T) {
+	err := TestHelper.InstallGatewayAPI()
+	if err != nil {
+		testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
+	}
+
 	args := []string{
 		"install",
 		"--crds",

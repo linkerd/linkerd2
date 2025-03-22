@@ -95,6 +95,11 @@ func TestInstall(t *testing.T) {
 	// Global state to keep track of clusters
 	contexts = TestHelper.GetMulticlusterContexts()
 	for _, ctx := range contexts {
+		err = TestHelper.InstallGatewayAPIWithContext(ctx)
+		if err != nil {
+			testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
+		}
+
 		// Pipe cmd & args to `linkerd`
 		cmd := append([]string{"--context=" + ctx}, cmd...)
 		out, err := TestHelper.LinkerdRun(cmd...)
