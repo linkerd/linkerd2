@@ -34,7 +34,6 @@ class Tap extends React.Component {
       tapResultsById: this.tapResultsById,
       error: null,
       resourcesByNs: {},
-      authoritiesByNs: {},
       query: {
         resource: '',
         namespace: '',
@@ -43,7 +42,6 @@ class Tap extends React.Component {
         method: '',
         path: '',
         scheme: '',
-        authority: '',
         maxRps: '',
       },
       maxLinesToDisplay: 40,
@@ -269,15 +267,12 @@ class Tap extends React.Component {
     });
 
     const url = this.api.urlsForResourceNoStats('all');
-    const authorityUrl = this.api.urlsForResource('authority');
-    this.api.setCurrentRequests([this.api.fetchMetrics(url), this.api.fetchMetrics(authorityUrl)]);
+    this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
     Promise.all(this.api.getCurrentPromises())
       .then(rsp => {
         const { resourcesByNs } = groupResourcesByNs(rsp[0]);
-        const { authoritiesByNs } = groupResourcesByNs(rsp[1]);
         this.setState({
           resourcesByNs,
-          authoritiesByNs,
           pendingRequests: false,
         });
       })
@@ -292,7 +287,7 @@ class Tap extends React.Component {
   };
 
   render() {
-    const { tapResultsById, tapRequestInProgress, tapIsClosing, resourcesByNs, authoritiesByNs, query, showTapEnabledWarning, error } = this.state;
+    const { tapResultsById, tapRequestInProgress, tapIsClosing, resourcesByNs, query, showTapEnabledWarning, error } = this.state;
     const tableRows = _orderBy(_values(tapResultsById), r => r.lastUpdated, 'desc');
 
     return (
@@ -308,7 +303,6 @@ class Tap extends React.Component {
           handleTapStop={this.handleTapStop}
           handleTapClear={this.handleTapClear}
           resourcesByNs={resourcesByNs}
-          authoritiesByNs={authoritiesByNs}
           updateQuery={this.updateQuery}
           currentQuery={query} />
         {showTapEnabledWarning &&
