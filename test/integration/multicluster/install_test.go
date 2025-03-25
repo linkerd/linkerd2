@@ -221,16 +221,17 @@ func TestLinkClusters(t *testing.T) {
 		"--context=" + contexts[testutil.TargetContextKey],
 		"--cluster-name", linkName,
 		"--api-server-address", fmt.Sprintf("https://%s:6443", lbIP),
-		"multicluster", "link",
+		"multicluster",
 	}
 	if TestHelper.GetMulticlusterManageControllers() {
 		linkCmd = append(
 			linkCmd,
-			"--service-mirror=false",
+			"link-gen",
 		)
 	} else {
 		linkCmd = append(
 			linkCmd,
+			"link",
 			"--set", "enableHeadlessServices=true",
 			"--log-format", "json",
 			"--log-level", "debug",
@@ -261,16 +262,17 @@ func TestLinkClusters(t *testing.T) {
 		"--context=" + contexts[testutil.SourceContextKey],
 		"--cluster-name", linkName, "--gateway=false",
 		"--api-server-address", fmt.Sprintf("https://%s:6443", lbIP),
-		"multicluster", "link",
+		"multicluster",
 	}
 	if TestHelper.GetMulticlusterManageControllers() {
 		linkCmd = append(
 			linkCmd,
-			"--service-mirror=false",
+			"link-gen",
 		)
 	} else {
 		linkCmd = append(
 			linkCmd,
+			"link",
 			"--log-format", "json",
 			"--log-level", "debug",
 		)

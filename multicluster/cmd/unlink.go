@@ -27,9 +27,10 @@ func newUnlinkCommand() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "unlink",
-		Short: "Outputs link resources for deletion",
-		Args:  cobra.NoArgs,
+		Use:        "unlink",
+		Deprecated: "only use for removing service mirror resources created by the (also deprecated) 'linkerd multicluster link' command (Linkerd 2.17 and earlier).",
+		Short:      "Outputs link resources for deletion",
+		Args:       cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if opts.clusterName == "" {

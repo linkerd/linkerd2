@@ -23,6 +23,10 @@ const (
 
 	saNameAnnotationKey       = "kubernetes.io/service-account.name"
 	defaultServiceAccountName = "linkerd-service-mirror-remote-access-default"
+
+	clusterNameLabel        = "multicluster.linkerd.io/cluster-name"
+	trustDomainAnnotation   = "multicluster.linkerd.io/trust-domain"
+	clusterDomainAnnotation = "multicluster.linkerd.io/cluster-domain"
 )
 
 var (
@@ -81,6 +85,7 @@ components on a cluster, manage credentials and link clusters together.`,
 	multiclusterCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 	multiclusterCmd.AddCommand(newLinkCommand())
 	multiclusterCmd.AddCommand(newUnlinkCommand())
+	multiclusterCmd.AddCommand(newGenCommand())
 	multiclusterCmd.AddCommand(newMulticlusterInstallCommand())
 	multiclusterCmd.AddCommand(NewCmdCheck())
 	multiclusterCmd.AddCommand(newMulticlusterUninstallCommand())
