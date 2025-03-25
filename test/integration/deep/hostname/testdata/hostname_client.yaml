@@ -1,0 +1,51 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slow-cooker-disabled
+spec:
+  selector:
+    matchLabels:
+      app: slow-cooker-disabled
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: "enabled"
+      labels:
+        app: slow-cooker-disabled
+    spec:
+      containers:
+      - name: slow-cooker-opdisabledque
+        image: buoyantio/slow_cooker:1.3.0
+        args:
+        - -qps=1
+        - -metric-addr=0.0.0.0:9999
+        - http://{{ .ServiceCookerDisabledTargetHost}}:8080
+        ports:
+        - containerPort: 9999
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slow-cooker-enabled
+spec:
+  selector:
+    matchLabels:
+      app: slow-cooker-enabled
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: "enabled"
+        config.linkerd.io/proxy-metrics-hostname-labels: "true"
+      labels:
+        app: slow-cooker-enabled
+    spec:
+      containers:
+      - name: slow-cooker-opaque
+        image: buoyantio/slow_cooker:1.3.0
+        args:
+        - -qps=1
+        - -metric-addr=0.0.0.0:9999
+        - http://{{ .ServiceCookerEnabledTargetHost}}:8080
+        ports:
+        - containerPort: 9999
