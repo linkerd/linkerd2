@@ -36,13 +36,16 @@ const (
 
 	// LinkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
 	LinkerdMulticlusterExtensionCheck healthcheck.CategoryID = "linkerd-multicluster"
+
+	legacyServiceMirrorComponentName = "service-mirror"
+	serviceMirrorComponentName       = "controller"
 )
 
 // For these vars, the second name is for service mirror controllers
 // managed by the linkerd-multicluster chart
 var (
 	linkerdServiceMirrorServiceAccountNames = []string{"linkerd-service-mirror-%s", "controller-%s"}
-	linkerdServiceMirrorComponentNames      = []string{"service-mirror", "controller"}
+	linkerdServiceMirrorComponentNames      = []string{legacyServiceMirrorComponentName, serviceMirrorComponentName}
 
 	linkerdServiceMirrorClusterRoleNames = []string{
 		"linkerd-service-mirror-access-local-resources-%s",
@@ -219,6 +222,15 @@ func multiclusterCategory(hc *healthChecker, wait time.Duration) *healthcheck.Ca
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
 				return hc.checkServiceMirrorController(ctx)
+			}))
+	checkers = append(checkers,
+		*healthcheck.NewChecker("extension is managing controllers").
+			WithHintAnchor("l5d-multicluster-managed-controllers").
+			WithRetryDeadline(hc.RetryDeadline).
+			SurfaceErrorOnRetry().
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				return hc.checkLegacyController(ctx)
 			}))
 	checkers = append(checkers,
 		*healthcheck.NewChecker("probe services able to communicate with all gateway mirrors").
@@ -620,6 +632,36 @@ func (hc *healthChecker) checkServiceMirrorController(ctx context.Context) error
 		controller := result.Items[0]
 		if controller.Status.AvailableReplicas < 1 {
 			errors = append(errors, fmt.Errorf("* service mirror controller is not available: %s/%s", controller.Namespace, controller.Name))
+			continue
+		}
+		clusterNames = append(clusterNames, fmt.Sprintf("\t* %s", link.Spec.TargetClusterName))
+	}
+	if len(errors) > 0 {
+		return joinErrors(errors, 2)
+	}
+	if len(clusterNames) == 0 {
+		return healthcheck.SkipError{Reason: "no links"}
+	}
+	return healthcheck.VerboseSuccess{Message: strings.Join(clusterNames, "\n")}
+}
+
+func (hc *healthChecker) checkLegacyController(ctx context.Context) error {
+	errors := []error{}
+	clusterNames := []string{}
+	for _, link := range hc.links {
+		options := metav1.ListOptions{
+			LabelSelector: serviceMirrorComponentsSelector(link.Spec.TargetClusterName),
+		}
+		result, err := hc.KubeAPIClient().AppsV1().Deployments(corev1.NamespaceAll).List(ctx, options)
+		if err != nil {
+			return err
+		}
+		if len(result.Items) == 0 {
+			continue
+		}
+		controller := result.Items[0]
+		if controller.GetLabels()["component"] == legacyServiceMirrorComponentName {
+			errors = append(errors, fmt.Errorf("* using legacy service mirror controller for Link: %s", link.Spec.TargetClusterName))
 			continue
 		}
 		clusterNames = append(clusterNames, fmt.Sprintf("\t* %s", link.Spec.TargetClusterName))
