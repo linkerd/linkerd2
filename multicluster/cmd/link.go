@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -40,12 +39,7 @@ type (
 )
 
 func newGenCommand() *cobra.Command {
-	opts, err := newLinkGenOptionsWithDefault()
-
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	opts := newLinkGenOptionsWithDefault()
 
 	cmd := &cobra.Command{
 		Use:   "link-gen",
@@ -335,7 +329,7 @@ each cluster and applied to the other.`,
 	return cmd
 }
 
-func newLinkGenOptionsWithDefault() (*linkGenOptions, error) {
+func newLinkGenOptionsWithDefault() *linkGenOptions {
 	return &linkGenOptions{
 		namespace:                defaultMulticlusterNamespace,
 		selector:                 fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "true"),
@@ -344,7 +338,7 @@ func newLinkGenOptionsWithDefault() (*linkGenOptions, error) {
 		gatewayAddresses:         "",
 		gatewayPort:              0,
 		enableGateway:            true,
-	}, nil
+	}
 }
 
 func extractGatewayPort(gateway *corev1.Service) (uint32, error) {
