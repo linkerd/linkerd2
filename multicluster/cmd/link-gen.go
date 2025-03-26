@@ -34,6 +34,8 @@ type (
 		federatedServiceSelector string
 		gatewayAddresses         string
 		gatewayPort              uint32
+		excludedAnnotations      []string
+		excludedLabels           []string
 		enableGateway            bool
 		output                   string
 	}
@@ -126,6 +128,8 @@ each cluster and applied to the other.`,
 	cmd.Flags().StringVar(&opts.federatedServiceSelector, "federated-service-selector", opts.federatedServiceSelector, "Selector (label query) for federated service members in the target cluster")
 	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified, overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
+	cmd.Flags().StringSliceVar(&opts.excludedAnnotations, "excluded-annotations", opts.excludedAnnotations, "Annotations to exclude when mirroring services")
+	cmd.Flags().StringSliceVar(&opts.excludedLabels, "excluded-labels", opts.excludedLabels, "Labels to exclude when mirroring services")
 	cmd.Flags().BoolVar(&opts.enableGateway, "gateway", opts.enableGateway, "If false, allows a link to be created against a cluster that does not have a gateway service")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
@@ -257,6 +261,8 @@ func getLink(ctx context.Context, k *k8s.KubernetesAPI, clusterDomain string, op
 			ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
 			RemoteDiscoverySelector:       remoteDiscoverySelector,
 			FederatedServiceSelector:      federatedServiceSelector,
+			ExcludedAnnotations:           opts.excludedAnnotations,
+			ExcludedLabels:                opts.excludedLabels,
 		},
 	}
 
@@ -344,6 +350,8 @@ func newLinkGenOptionsWithDefault() *linkGenOptions {
 		federatedServiceSelector: fmt.Sprintf("%s=%s", k8s.DefaultFederatedServiceSelector, "member"),
 		gatewayAddresses:         "",
 		gatewayPort:              0,
+		excludedAnnotations:      []string{},
+		excludedLabels:           []string{},
 		enableGateway:            true,
 	}
 }
