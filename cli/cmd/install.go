@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -205,6 +206,39 @@ func checkNoConfig(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
 	return nil
 }
 
+type GatewayAPICRDs int
+
+const (
+	Absent GatewayAPICRDs = iota
+	Linkerd
+	External
+)
+
+// checkGatewayAPICRDs returns true if the Gateway API CRDs are installed in the
+// cluster, and false otherwise.
+func checkGatewayAPICRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI) (GatewayAPICRDs, error) {
+	crds := k8sAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions()
+	result := Absent
+	names := []string{
+		"httproutes.gateway.networking.k8s.io",
+		"grpcroutes.gateway.networking.k8s.io",
+	}
+	for _, name := range names {
+		crd, err := crds.Get(ctx, name, metav1.GetOptions{})
+		if err == nil && crd != nil {
+			if crd.Annotations[k8s.CreatedByAnnotation] != "" {
+				return Linkerd, nil
+			}
+			result = External
+		} else if kerrors.IsNotFound(err) {
+			// No action if CRD is not found.
+		} else {
+			return Absent, err
+		}
+	}
+	return result, nil
+}
+
 func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, options valuespkg.Options, format string) error {
 	if err := checkNoConfig(ctx, k8sAPI); err != nil {
 		return err
@@ -359,38 +393,30 @@ func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options 
 	}
 	defaultValues["cliVersion"] = k8s.CreatedByAnnotationValue()
 
-	// If any of the Gateway API CRDs are installed, we default to rendering the
-	// Gateway API CRDs.
-	if k != nil {
-		defaultValues["installGatewayAPI"] = false
-		crds := k.Apiextensions.ApiextensionsV1().CustomResourceDefinitions()
-		names := []string{
-			"httproutes.gateway.networking.k8s.io",
-			"grpcroutes.gateway.networking.k8s.io",
-			"tlsroutes.gateway.networking.k8s.io",
-			"tcproutes.gateway.networking.k8s.io",
-		}
-		for _, name := range names {
-			crd, err := crds.Get(ctx, name, metav1.GetOptions{})
-			if err == nil {
-				if crd != nil && crd.Annotations[k8s.CreatedByAnnotation] != "" {
-					defaultValues["installGatewayAPI"] = true
-					break
-				}
-			} else if kerrors.IsNotFound(err) {
-				// No action if CRD is not found.
-			} else {
-				return err
-			}
-		}
-	}
-
 	// Create values override
 	valuesOverrides, err := options.MergeValues(nil)
 	if err != nil {
 		return err
 	}
 
+	// If any of the Gateway API CRDs are installed, we default to rendering the
+	// Gateway API CRDs.
+	if k != nil {
+		installed, err := checkGatewayAPICRDs(ctx, k)
+		if err != nil {
+			return err
+		}
+		if installed == Absent {
+			return errors.New("The Gateway API CRDs must be installed prior to installing Linkerd: https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api")
+		} else if installed == Linkerd {
+			defaultValues["installGatewayAPI"] = true
+		} else if installed == External {
+			defaultValues["installGatewayAPI"] = false
+			if valuesOverrides["installGatewayAPI"] == true {
+				return errors.New("Linkerd cannot install the Gateway API CRDs because they are already installed by an external source. Please set `installGatewayAPI` to `false`.")
+			}
+		}
+	}
 	buf, _, err := renderChartToBuffer(files, defaultValues, valuesOverrides)
 	if err != nil {
 		return err

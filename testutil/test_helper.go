@@ -22,6 +22,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const GATEWAY_API_VERSION = "v1.1.1"
+
 // TestHelper provides helpers for running the linkerd integration tests.
 type TestHelper struct {
 	linkerd                       string
@@ -738,6 +740,18 @@ func (h *TestHelper) DownloadCLIBinary(filepath, version string) error {
 	defer out.Close()
 
 	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func (h *TestHelper) InstallGatewayAPI() error {
+	url := fmt.Sprintf("https://github.com/kubernetes-sigs/gateway-api/releases/download/%s/experimental-install.yaml", GATEWAY_API_VERSION)
+	_, err := h.Kubectl("", "apply", "-f", url)
+	return err
+}
+
+func (h *TestHelper) InstallGatewayAPIWithContext(ctx string) error {
+	url := fmt.Sprintf("https://github.com/kubernetes-sigs/gateway-api/releases/download/%s/experimental-install.yaml", GATEWAY_API_VERSION)
+	_, err := h.KubectlWithContext("", ctx, "apply", "-f", url)
 	return err
 }
 

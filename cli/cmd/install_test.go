@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"helm.sh/helm/v3/pkg/cli/values"
 	corev1 "k8s.io/api/core/v1"
@@ -291,13 +294,40 @@ func TestIgnoreCluster(t *testing.T) {
 	}
 }
 
-func TestRenderCRDs(t *testing.T) {
+func TestRenderCRDsWithExternalGatewayAPI(t *testing.T) {
+
+	gatewayAPIManifest := `---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: httproutes.gateway.networking.k8s.io
+`
+
+	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(gatewayAPIManifest)})
+	if err != nil {
+		t.Fatalf("failed to initialize fake API: %s", err)
+	}
+
 	var buf bytes.Buffer
-	if err := renderCRDs(context.Background(), nil, &buf, values.Options{}, "yaml"); err != nil {
+	if err := renderCRDs(context.Background(), k, &buf, values.Options{}, "yaml"); err != nil {
 		t.Fatalf("Failed to render templates: %v", err)
 	}
 	if err := testDataDiffer.DiffTestYAML("install_crds.golden", buf.String()); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestRenderCRDsWithMissingGatewayAPI(t *testing.T) {
+
+	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{})
+	if err != nil {
+		t.Fatalf("failed to initialize fake API: %s", err)
+	}
+
+	var buf bytes.Buffer
+	err = renderCRDs(context.Background(), k, &buf, values.Options{}, "yaml")
+	if err == nil {
+		t.Fatalf("Installing with missing Gateway API CRDs should fail")
 	}
 }
 
@@ -311,6 +341,30 @@ func TestRenderCRDsWithGatewayAPI(t *testing.T) {
 	}
 	if err := testDataDiffer.DiffTestYAML("install_crds_with_gateway_api.golden", buf.String()); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestRenderCRDsWithConflictingGatewayAPI(t *testing.T) {
+
+	gatewayAPIManifest := `---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: httproutes.gateway.networking.k8s.io
+`
+
+	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(gatewayAPIManifest)})
+	if err != nil {
+		t.Fatalf("failed to initialize fake API: %s", err)
+	}
+
+	options := values.Options{
+		Values: []string{"installGatewayAPI=true"},
+	}
+	var buf bytes.Buffer
+	err = renderCRDs(context.Background(), k, &buf, options, "yaml")
+	if err == nil {
+		t.Fatalf("Installing with conflicting Gateway API CRDs should fail")
 	}
 }
 
