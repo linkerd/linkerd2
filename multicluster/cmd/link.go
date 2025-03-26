@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
 	"github.com/linkerd/linkerd2/multicluster/static"
@@ -34,12 +32,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const (
-	clusterNameLabel        = "multicluster.linkerd.io/cluster-name"
-	trustDomainAnnotation   = "multicluster.linkerd.io/trust-domain"
-	clusterDomainAnnotation = "multicluster.linkerd.io/cluster-domain"
-)
-
 type (
 	linkOptions struct {
 		namespace                string
@@ -62,7 +54,6 @@ type (
 		excludedLabels           []string
 		ha                       bool
 		enableGateway            bool
-		enableServiceMirror      bool
 		output                   string
 	}
 )
@@ -84,8 +75,9 @@ func newLinkCommand() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "link",
-		Short: "Outputs resources that allow another cluster to mirror services from this one",
+		Use:        "link",
+		Deprecated: "please use `multicluster link-gen` instead.",
+		Short:      "Outputs resources that allow another cluster to mirror services from this one",
 		Long: `Outputs resources that allow another cluster to mirror services from this one.
 
 Note that the Link resource applies only in one direction. In order for two
@@ -377,10 +369,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			stdout.Write(separator)
 			stdout.Write(linkOut)
 			stdout.Write(separator)
-			if opts.enableServiceMirror {
-				stdout.Write(serviceMirrorOut)
-				stdout.Write(separator)
-			}
+			stdout.Write(serviceMirrorOut)
+			stdout.Write(separator)
 
 			return nil
 		},
@@ -408,7 +398,6 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringSliceVar(&opts.excludedLabels, "excluded-labels", opts.excludedLabels, "Labels to exclude when mirroring services")
 	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enable HA configuration for the service-mirror deployment (default false)")
 	cmd.Flags().BoolVar(&opts.enableGateway, "gateway", opts.enableGateway, "If false, allows a link to be created against a cluster that does not have a gateway service")
-	cmd.Flags().BoolVar(&opts.enableServiceMirror, "service-mirror", opts.enableServiceMirror, "If false, only outputs link manifest and credentials secrets")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
@@ -518,7 +507,6 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 		excludedLabels:           []string{},
 		ha:                       false,
 		enableGateway:            true,
-		enableServiceMirror:      true,
 	}, nil
 }
 
@@ -568,77 +556,4 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 	defaults.ControllerImage = fmt.Sprintf("%s/controller", opts.dockerRegistry)
 
 	return defaults, nil
-}
-
-func extractGatewayPort(gateway *corev1.Service) (uint32, error) {
-	for _, port := range gateway.Spec.Ports {
-		if port.Name == k8s.GatewayPortName {
-			if gateway.Spec.Type == "NodePort" {
-				return uint32(port.NodePort), nil
-			}
-			return uint32(port.Port), nil
-		}
-	}
-	return 0, fmt.Errorf("gateway service %s has no gateway port named %s", gateway.Name, k8s.GatewayPortName)
-}
-
-func extractSAToken(secrets []corev1.Secret, saName string) (string, error) {
-	for _, secret := range secrets {
-		boundSA := secret.Annotations[saNameAnnotationKey]
-		if saName == boundSA {
-			token, ok := secret.Data[tokenKey]
-			if !ok {
-				return "", fmt.Errorf("could not find the token data in service account secret %s", secret.Name)
-			}
-
-			return string(token), nil
-		}
-	}
-
-	return "", fmt.Errorf("could not find service account token secret for %s", saName)
-}
-
-// ExtractProbeSpec parses the ProbSpec from a gateway service's annotations.
-// For now we're not including the failureThreshold and timeout fields which
-// are new since edge-24.9.3, to avoid errors when attempting to apply them in
-// clusters with an older Link CRD.
-func extractProbeSpec(gateway *corev1.Service) (v1alpha3.ProbeSpec, error) {
-	path := gateway.Annotations[k8s.GatewayProbePath]
-	if path == "" {
-		return v1alpha3.ProbeSpec{}, errors.New("probe path is empty")
-	}
-
-	port, err := extractPort(gateway.Spec, k8s.ProbePortName)
-	if err != nil {
-		return v1alpha3.ProbeSpec{}, err
-	}
-
-	// the `mirror.linkerd.io/probe-period` annotation is initialized with a
-	// default value of "3", but we require a duration-formatted string. So we
-	// perform the conversion, if required.
-	period := gateway.Annotations[k8s.GatewayProbePeriod]
-	if secs, err := strconv.ParseInt(period, 10, 64); err == nil {
-		dur := time.Duration(secs) * time.Second
-		period = dur.String()
-	} else if _, err := time.ParseDuration(period); err != nil {
-		return v1alpha3.ProbeSpec{}, fmt.Errorf("could not parse probe period: %w", err)
-	}
-
-	return v1alpha3.ProbeSpec{
-		Path:   path,
-		Port:   fmt.Sprintf("%d", port),
-		Period: period,
-	}, nil
-}
-
-func extractPort(spec corev1.ServiceSpec, portName string) (uint32, error) {
-	for _, p := range spec.Ports {
-		if p.Name == portName {
-			if spec.Type == "NodePort" {
-				return uint32(p.NodePort), nil
-			}
-			return uint32(p.Port), nil
-		}
-	}
-	return 0, fmt.Errorf("could not find port with name %s", portName)
 }
