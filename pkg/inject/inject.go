@@ -69,6 +69,7 @@ var (
 		k8s.ProxyIgnoreInboundPortsAnnotation,
 		k8s.ProxyOpaquePortsAnnotation,
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
+		k8s.ProxyEnableHostnameLabels,
 		k8s.ProxyOutboundConnectTimeout,
 		k8s.ProxyInboundConnectTimeout,
 		k8s.ProxyAwait,
@@ -274,6 +275,13 @@ func applyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 
 	if override, ok := annotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation]; ok {
 		values.Proxy.RequireIdentityOnInboundPorts = override
+	}
+
+	if override, ok := annotations[k8s.ProxyEnableHostnameLabels]; ok {
+		value, err := strconv.ParseBool(override)
+		if err == nil {
+			values.Proxy.Metrics.HostnameLabels = value
+		}
 	}
 
 	if override, ok := annotations[k8s.ProxyOutboundConnectTimeout]; ok {

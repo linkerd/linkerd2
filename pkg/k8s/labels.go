@@ -239,6 +239,10 @@ const (
 
 	// ProxyOutboundConnectTimeout can be used to configure the outbound TCP connection
 	// timeout in the proxy
+	ProxyEnableHostnameLabels = ProxyConfigAnnotationsPrefix + "/proxy-metrics-hostname-labels"
+
+	// ProxyOutboundConnectTimeout can be used to configure the outbound TCP connection
+	// timeout in the proxy
 	ProxyOutboundConnectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-outbound-connect-timeout"
 
 	// ProxyInboundConnectTimeout can be used to configure the inbound TCP connection

@@ -8,15 +8,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func formatAddresses(addresses []corev1.EndpointAddress) string {
-	var addrs []string
-
-	for _, a := range addresses {
-		addrs = append(addrs, a.IP)
-	}
-	return fmt.Sprintf("[%s]", strings.Join(addrs, ","))
-}
-
 func formatMetadata(meta map[string]string) string {
 	var metadata []string
 
@@ -28,33 +19,11 @@ func formatMetadata(meta map[string]string) string {
 	return fmt.Sprintf("[%s]", strings.Join(metadata, ","))
 }
 
-func formatPorts(ports []corev1.EndpointPort) string {
-	var formattedPorts []string
-
-	for _, p := range ports {
-		formattedPorts = append(formattedPorts, fmt.Sprintf("Port: {name: %s, port: %d}", p.Name, p.Port))
-	}
-	return fmt.Sprintf("[%s]", strings.Join(formattedPorts, ","))
-}
-
 func formatService(svc *corev1.Service) string {
 	if svc == nil {
 		return "Service: nil"
 	}
 	return fmt.Sprintf("Service: {name: %s, namespace: %s, annotations: [%s], labels [%s]}", svc.Name, svc.Namespace, formatMetadata(svc.Annotations), formatMetadata(svc.Labels))
-}
-
-func formatEndpoints(endpoints *corev1.Endpoints) string {
-	if endpoints == nil {
-		return "Endpoints: nil"
-	}
-	var subsets []string
-
-	for _, ss := range endpoints.Subsets {
-		subsets = append(subsets, fmt.Sprintf("%s:%s", formatAddresses(ss.Addresses), formatPorts(ss.Ports)))
-	}
-
-	return fmt.Sprintf("Endpoints: {name: %s, namespace: %s, annotations: [%s], labels: [%s], subsets: [%s]}", endpoints.Name, endpoints.Namespace, formatMetadata(endpoints.Annotations), formatMetadata(endpoints.Labels), strings.Join(subsets, ","))
 }
 
 // Events for cluster watcher
@@ -63,7 +32,7 @@ func (rsc RemoteServiceExported) String() string {
 }
 
 func (rsu RemoteExportedServiceUpdated) String() string {
-	return fmt.Sprintf("RemoteExportedServiceUpdated: {localService: %s, localEndpoints: %s, remoteUpdate: %s}", formatService(rsu.localService), formatEndpoints(rsu.localEndpoints), formatService(rsu.remoteUpdate))
+	return fmt.Sprintf("RemoteExportedServiceUpdated: {remoteUpdate: %s}", formatService(rsu.remoteUpdate))
 }
 
 func (rsd RemoteServiceUnexported) String() string {
@@ -75,7 +44,7 @@ func (cfs CreateFederatedService) String() string {
 }
 
 func (jfs RemoteServiceJoinsFederatedService) String() string {
-	return fmt.Sprintf("RemoteServiceJoinsFederatedService: {localService: %s, remoteUpdate: %s}", formatService(jfs.localService), formatService(jfs.remoteUpdate))
+	return fmt.Sprintf("RemoteServiceJoinsFederatedService: {remoteUpdate: %s}", formatService(jfs.remoteUpdate))
 }
 
 func (lfs RemoteServiceLeavesFederatedService) String() string {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
@@ -596,8 +597,6 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 	// update svc-remote; the gateway is still not alive though so we expect
 	// the Endpoints of svc-remote to still have no ready addresses.
 	events.Add(&RemoteExportedServiceUpdated{
-		localService:   remoteService("svc-remote", "ns", "2", nil, nil),
-		localEndpoints: endpoints,
 		remoteUpdate: remoteService("svc", "ns", "2", map[string]string{
 			consts.DefaultExportedServiceSelector: "true",
 			"new-label":                           "hi",
@@ -609,6 +608,13 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 			},
 		}),
 	})
+
+	// Processing the RemoteExportedServiceUpdated involves reading from the
+	// localAPI informer cache. Since this cache is updated asyncronously, we
+	// pause briefly here to give a chance for updates to the localAPI to be
+	// reflected in the cache.
+	time.Sleep(100 * time.Millisecond)
+
 	for events.Len() > 0 {
 		watcher.processNextEvent(context.Background())
 	}
@@ -1017,8 +1023,6 @@ func onAddOrUpdateTestCases(isAdd bool) []mirroringTestCase {
 			description: fmt.Sprintf("enqueue a RemoteServiceUpdated event if this is a service that we have already mirrored and its res version is different (%s)", testType),
 			environment: onAddOrUpdateRemoteServiceUpdated(isAdd),
 			expectedEventsInQueue: []interface{}{&RemoteExportedServiceUpdated{
-				localService:   mirrorService("test-service-remote", "test-namespace", "pastResourceVersion", nil, nil),
-				localEndpoints: endpoints("test-service-remote", "test-namespace", nil, "0.0.0.0", "", nil),
 				remoteUpdate: remoteService("test-service", "test-namespace", "currentResVersion", map[string]string{
 					consts.DefaultExportedServiceSelector: "true",
 				}, nil),
