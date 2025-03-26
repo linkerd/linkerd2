@@ -19,14 +19,16 @@ const nsName = "ns1"
 const linkName = "linkName"
 
 func TestLinkHandlers(t *testing.T) {
-	k8sAPI, l5dAPI, err := k8s.NewFakeAPIWithL5dClient()
+	k8sAPI, err := k8s.NewFakeAPIWithL5dClient()
 	if err != nil {
 		t.Fatal(err)
 	}
+	linksAPI := k8s.NewL5dNamespacedAPI(k8sAPI.L5dClient, "linkerd-multicluster", "local", k8s.Link)
 	k8sAPI.Sync(nil)
+	linksAPI.Sync(nil)
 
 	informerFactory := l5dcrdinformer.NewSharedInformerFactoryWithOptions(
-		l5dAPI,
+		k8sAPI.L5dClient,
 		k8s.ResyncTime,
 		l5dcrdinformer.WithNamespace(nsName),
 	)
@@ -52,7 +54,7 @@ func TestLinkHandlers(t *testing.T) {
 		},
 		Spec: v1alpha3.LinkSpec{ProbeSpec: v1alpha3.ProbeSpec{Timeout: "30s"}},
 	}
-	_, err = l5dAPI.LinkV1alpha3().Links(nsName).Create(context.Background(), link, metav1.CreateOptions{})
+	_, err = linksAPI.L5dClient.LinkV1alpha3().Links(nsName).Create(context.Background(), link, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +80,7 @@ func TestLinkHandlers(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Failed to marshal patch: %v", err)
 	}
-	_, err = l5dAPI.LinkV1alpha3().Links(nsName).Patch(
+	_, err = linksAPI.L5dClient.LinkV1alpha3().Links(nsName).Patch(
 		context.Background(),
 		linkName,
 		types.MergePatchType,
@@ -108,7 +110,7 @@ func TestLinkHandlers(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Failed to marshal patch: %v", err)
 	}
-	_, err = l5dAPI.LinkV1alpha3().Links(nsName).Patch(
+	_, err = linksAPI.L5dClient.LinkV1alpha3().Links(nsName).Patch(
 		context.Background(),
 		linkName,
 		types.MergePatchType,
@@ -127,7 +129,7 @@ func TestLinkHandlers(t *testing.T) {
 	}
 
 	// test that a nil message is received when a link is deleted
-	if err := l5dAPI.LinkV1alpha3().Links(nsName).Delete(context.Background(), linkName, metav1.DeleteOptions{}); err != nil {
+	if err := linksAPI.L5dClient.LinkV1alpha3().Links(nsName).Delete(context.Background(), linkName, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Failed to delete link: %s", err)
 	}
 	select {

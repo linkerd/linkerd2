@@ -280,6 +280,10 @@ proxy:
       # -- The maximum duration for a response stream (i.e. before it will be
       # reinitialized).
       lifetime: "1h"
+  # Configures proxy metrics
+  metrics:
+      # -- Whether or not to export hostname labels in outbound request metrics.
+      hostnameLabels: false
   inbound:
     server:
       http2:

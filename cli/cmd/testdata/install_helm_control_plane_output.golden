@@ -684,6 +684,8 @@ data:
       logFormat: plain
       logHTTPHeaders: "off"
       logLevel: warn,linkerd=info,hickory=error
+      metrics:
+        hostnameLabels: false
       nativeSidecar: false
       opaquePorts: 25,587,3306,4444,5432,6379,9300,11211
       outbound:
@@ -1052,6 +1054,8 @@ spec:
           value: 30s
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_USER_TIMEOUT
           value: 30s
+        - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
+          value: "false"
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
           value: "10s"
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
@@ -1433,6 +1437,8 @@ spec:
           value: 30s
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_USER_TIMEOUT
           value: 30s
+        - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
+          value: "false"
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
           value: "10s"
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
@@ -1955,6 +1961,8 @@ spec:
           value: 30s
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_USER_TIMEOUT
           value: 30s
+        - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
+          value: "false"
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
           value: "10s"
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT

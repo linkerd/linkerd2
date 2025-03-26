@@ -400,12 +400,14 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	localAPI, l5dAPI, err := k8s.NewFakeAPIWithL5dClient()
+	localAPI, err := k8s.NewFakeAPIWithL5dClient()
 	if err != nil {
 		t.Fatal(err)
 	}
+	linksAPI := k8s.NewL5dNamespacedAPI(localAPI.L5dClient, "linkerd-multicluster", "local", k8s.Link)
 	remoteAPI.Sync(nil)
 	localAPI.Sync(nil)
+	linksAPI.Sync(nil)
 
 	q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]())
 	eventRecorder := record.NewFakeRecorder(100)
@@ -425,7 +427,7 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 		},
 		remoteAPIClient:         remoteAPI,
 		localAPIClient:          localAPI,
-		linkClient:              l5dAPI,
+		linksAPIClient:          linksAPI,
 		stopper:                 nil,
 		recorder:                eventRecorder,
 		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
@@ -492,14 +494,16 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	localAPI, l5dAPI, err := k8s.NewFakeAPIWithL5dClient(
+	localAPI, err := k8s.NewFakeAPIWithL5dClient(
 		asYaml(namespace("ns")),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
+	linksAPI := k8s.NewL5dNamespacedAPI(localAPI.L5dClient, "linkerd-multicluster", "local", k8s.Link)
 	remoteAPI.Sync(nil)
 	localAPI.Sync(nil)
+	linksAPI.Sync(nil)
 
 	events := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]())
 	watcher := RemoteClusterServiceWatcher{
@@ -517,7 +521,7 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 		},
 		remoteAPIClient: remoteAPI,
 		localAPIClient:  localAPI,
-		linkClient:      l5dAPI,
+		linksAPIClient:  linksAPI,
 		log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:     events,
 		requeueLimit:    0,
@@ -648,14 +652,16 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	localAPI, l5dAPI, err := k8s.NewFakeAPIWithL5dClient(
+	localAPI, err := k8s.NewFakeAPIWithL5dClient(
 		asYaml(namespace("ns")),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
+	linksAPI := k8s.NewL5dNamespacedAPI(localAPI.L5dClient, "linkerd-multicluster", "local", k8s.Link)
 	remoteAPI.Sync(nil)
 	localAPI.Sync(nil)
+	linksAPI.Sync(nil)
 
 	events := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]())
 	watcher := RemoteClusterServiceWatcher{
@@ -673,7 +679,7 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 		},
 		remoteAPIClient: remoteAPI,
 		localAPIClient:  localAPI,
-		linkClient:      l5dAPI,
+		linksAPIClient:  linksAPI,
 		log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:     events,
 		requeueLimit:    0,

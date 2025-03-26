@@ -142,6 +142,8 @@ env:
   value: 30s
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_USER_TIMEOUT
   value: 30s
+- name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
+  value: {{ .Values.proxy.metrics.hostnameLabels | quote }}
 {{- /* Configure inbound and outbound parameters, e.g. for HTTP/2 servers. */}}
 {{ range $proxyK, $proxyV := (dict "inbound" .Values.proxy.inbound "outbound" .Values.proxy.outbound) -}}
 {{   range $scopeK, $scopeV := $proxyV -}}

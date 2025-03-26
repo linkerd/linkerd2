@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
-	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	servicemirror "github.com/linkerd/linkerd2/multicluster/service-mirror"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -101,7 +100,6 @@ func Main(args []string) {
 		controllerK8s.NS,
 		controllerK8s.Svc,
 		controllerK8s.Endpoint,
-		controllerK8s.Link,
 	)
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
@@ -118,6 +116,10 @@ func Main(args []string) {
 	metrics := servicemirror.NewProbeMetricVecs()
 	controllerK8sAPI.Sync(nil)
 	ready = true
+
+	linksAPI := controllerK8s.NewL5dNamespacedAPI(l5dClient, *namespace, "local", controllerK8s.Link)
+	log.Infof("Starting Link informer")
+	linksAPI.Sync(rootCtx.Done())
 
 	var run func(context.Context)
 
@@ -151,7 +153,7 @@ func Main(args []string) {
 					ExcludedLabels:           excludedLabelList,
 				},
 			}
-			err = startLocalClusterWatcher(ctx, *namespace, controllerK8sAPI, l5dClient, *requeueLimit, *repairPeriod, *enableHeadlessSvc, *enableNamespaceCreation, link)
+			err = startLocalClusterWatcher(ctx, *namespace, controllerK8sAPI, linksAPI, *requeueLimit, *repairPeriod, *enableHeadlessSvc, *enableNamespaceCreation, link)
 			if err != nil {
 				log.Fatalf("Failed to start local cluster watcher: %s", err)
 			}
@@ -172,7 +174,8 @@ func Main(args []string) {
 			// updates if there is an update burst.
 			results := make(chan *v1alpha3.Link, 100)
 
-			_, err := controllerK8sAPI.Link().Informer().AddEventHandler(servicemirror.GetLinkHandlers(results, linkName))
+			_, err := linksAPI.Link().Informer().AddEventHandler(servicemirror.GetLinkHandlers(results, linkName))
+
 			if err != nil {
 				log.Fatalf("Failed to add event handler to Link informer: %s", err)
 			}
@@ -197,7 +200,7 @@ func Main(args []string) {
 						if err != nil {
 							log.Errorf("Failed to load remote cluster credentials: %s", err)
 						}
-						err = restartClusterWatcher(ctx, link, *namespace, *probeSvc, creds, controllerK8sAPI, l5dClient, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *enableNamespaceCreation)
+						err = restartClusterWatcher(ctx, link, *namespace, *probeSvc, creds, controllerK8sAPI, linksAPI, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *enableNamespaceCreation)
 						if err != nil {
 							// failed to restart cluster watcher; give a bit of slack
 							// and requeue the link to give it another try
@@ -320,7 +323,7 @@ func restartClusterWatcher(
 	probeSvc string,
 	creds []byte,
 	controllerK8sAPI *controllerK8s.API,
-	linkClient l5dcrdclient.Interface,
+	linksAPI *controllerK8s.API,
 	requeueLimit int,
 	repairPeriod time.Duration,
 	metrics servicemirror.ProbeMetricVecs,
@@ -358,8 +361,8 @@ func restartClusterWatcher(
 		namespace,
 		controllerK8sAPI,
 		remoteAPI,
+		linksAPI,
 		probeSvc,
-		linkClient,
 		link,
 		requeueLimit,
 		repairPeriod,
@@ -383,7 +386,7 @@ func startLocalClusterWatcher(
 	ctx context.Context,
 	namespace string,
 	controllerK8sAPI *controllerK8s.API,
-	linkClient l5dcrdclient.Interface,
+	linksAPI *controllerK8s.API,
 	requeueLimit int,
 	repairPeriod time.Duration,
 	enableHeadlessSvc bool,
@@ -395,8 +398,8 @@ func startLocalClusterWatcher(
 		namespace,
 		controllerK8sAPI,
 		controllerK8sAPI,
+		linksAPI,
 		"",
-		linkClient,
 		&link,
 		requeueLimit,
 		repairPeriod,

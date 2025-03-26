@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
-	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
@@ -52,8 +51,8 @@ type (
 		link                     *v1alpha3.Link
 		remoteAPIClient          *k8s.API
 		localAPIClient           *k8s.API
+		linksAPIClient           *k8s.API
 		probeSvc                 string
-		linkClient               l5dcrdclient.Interface
 		stopper                  chan struct{}
 		eventBroadcaster         record.EventBroadcaster
 		recorder                 record.EventRecorder
@@ -192,8 +191,8 @@ func NewRemoteClusterServiceWatcher(
 	serviceMirrorNamespace string,
 	localAPI *k8s.API,
 	remoteAPI *k8s.API,
+	linksAPI *k8s.API,
 	probeSvc string,
-	linkClient l5dcrdclient.Interface,
 	link *v1alpha3.Link,
 	requeueLimit int,
 	repairPeriod time.Duration,
@@ -222,8 +221,8 @@ func NewRemoteClusterServiceWatcher(
 		link:                   link,
 		remoteAPIClient:        remoteAPI,
 		localAPIClient:         localAPI,
+		linksAPIClient:         linksAPI,
 		probeSvc:               probeSvc,
-		linkClient:             linkClient,
 		stopper:                stopper,
 		eventBroadcaster:       eventBroadcaster,
 		recorder:               recorder,
@@ -814,7 +813,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceJoin(ctx context.
 				continue
 			}
 			cluster := target[1]
-			link, err := rcsw.localAPIClient.Link().Lister().Links(rcsw.serviceMirrorNamespace).Get(cluster)
+			link, err := rcsw.linksAPIClient.Link().Lister().Links(rcsw.serviceMirrorNamespace).Get(cluster)
 			if err != nil {
 				rcsw.log.Errorf("Failed to get link %s: %s", cluster, err)
 				continue
@@ -1851,7 +1850,7 @@ func (rcsw *RemoteClusterServiceWatcher) updateLinkMirrorStatus(remoteName, name
 		// The local cluster has no Link resource.
 		return
 	}
-	link, err := rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
+	link, err := rcsw.linksAPIClient.L5dClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
 	if err != nil {
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 		return
@@ -1865,7 +1864,7 @@ func (rcsw *RemoteClusterServiceWatcher) updateLinkFederatedStatus(remoteName, n
 		// The local cluster has no Link resource.
 		return
 	}
-	link, err := rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
+	link, err := rcsw.linksAPIClient.L5dClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
 	if err != nil {
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
@@ -1878,7 +1877,7 @@ func (rcsw *RemoteClusterServiceWatcher) deleteLinkMirrorStatus(remoteName, name
 		// The local cluster has no Link resource.
 		return
 	}
-	link, err := rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
+	link, err := rcsw.linksAPIClient.L5dClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
 	if err != nil {
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
@@ -1891,7 +1890,7 @@ func (rcsw *RemoteClusterServiceWatcher) deleteLinkFederatedStatus(remoteName, n
 		// The local cluster has no Link resource.
 		return
 	}
-	link, err := rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
+	link, err := rcsw.linksAPIClient.L5dClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Get(context.Background(), rcsw.link.Name, metav1.GetOptions{})
 	if err != nil {
 		rcsw.log.Errorf("Failed to get link %s/%s: %s", rcsw.link.Namespace, rcsw.link.Name, err)
 	}
@@ -1905,7 +1904,7 @@ func (rcsw *RemoteClusterServiceWatcher) patchLinkStatus(status v1alpha3.LinkSta
 	if err != nil {
 		rcsw.log.Errorf("Failed to marshal link status: %s", err)
 	}
-	_, err = rcsw.linkClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Patch(
+	_, err = rcsw.linksAPIClient.L5dClient.LinkV1alpha3().Links(rcsw.link.GetNamespace()).Patch(
 		context.Background(),
 		rcsw.link.Name,
 		types.MergePatchType,
