@@ -91,7 +91,7 @@ type LinkCondition struct {
 	// +optional
 	Message string `json:"message"`
 	// LocalRef is a reference to the local mirror or federated service.
-	LocalRef ObjectRef `json:"localRef,omitempty"`
+	LocalRef *ObjectRef `json:"localRef,omitempty"`
 }
 
 type ObjectRef struct {

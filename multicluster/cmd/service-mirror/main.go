@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -55,6 +56,8 @@ func Main(args []string) {
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 	localMirror := cmd.Bool("local-mirror", false, "watch the local cluster for federated service members")
 	federatedServiceSelector := cmd.String("federated-service-selector", k8s.DefaultFederatedServiceSelector, "Selector (label query) for federated service members in the local cluster")
+	exludedAnnotations := cmd.String("excluded-annotations", "", "Annotations to exclude when mirroring services")
+	excludedLabels := cmd.String("excluded-labels", "", "Labels to exclude when mirroring services")
 	probeSvc := cmd.String("probe-service", "", "Name of the target cluster probe service")
 
 	flags.ConfigureAndParse(cmd, args)
@@ -122,7 +125,35 @@ func Main(args []string) {
 
 	if *localMirror {
 		run = func(ctx context.Context) {
-			err = startLocalClusterWatcher(ctx, *namespace, controllerK8sAPI, linksAPI, *requeueLimit, *repairPeriod, *enableHeadlessSvc, *enableNamespaceCreation, *federatedServiceSelector)
+			federatedLabelSelector, err := metav1.ParseToLabelSelector(*federatedServiceSelector)
+			if err != nil {
+				log.Fatalf("failed to parse federated service selector: %s", err)
+			}
+
+			excludedLabelList := []string{}
+			if *excludedLabels != "" {
+				excludedLabelList = strings.Split(*excludedLabels, ",")
+			}
+			excludedAnnotationList := []string{}
+			if *exludedAnnotations != "" {
+				excludedAnnotationList = strings.Split(*exludedAnnotations, ",")
+			}
+
+			link := v1alpha3.Link{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "local",
+					Namespace: *namespace,
+				},
+				Spec: v1alpha3.LinkSpec{
+					TargetClusterName:        "",
+					Selector:                 nil,
+					RemoteDiscoverySelector:  nil,
+					FederatedServiceSelector: federatedLabelSelector,
+					ExcludedAnnotations:      excludedAnnotationList,
+					ExcludedLabels:           excludedLabelList,
+				},
+			}
+			err = startLocalClusterWatcher(ctx, *namespace, controllerK8sAPI, linksAPI, *requeueLimit, *repairPeriod, *enableHeadlessSvc, *enableNamespaceCreation, link)
 			if err != nil {
 				log.Fatalf("Failed to start local cluster watcher: %s", err)
 			}
@@ -360,25 +391,8 @@ func startLocalClusterWatcher(
 	repairPeriod time.Duration,
 	enableHeadlessSvc bool,
 	enableNamespaceCreation bool,
-	federatedServiceSelector string,
+	link v1alpha3.Link,
 ) error {
-	federatedLabelSelector, err := metav1.ParseToLabelSelector(federatedServiceSelector)
-	if err != nil {
-		return fmt.Errorf("failed to parse federated service selector: %w", err)
-	}
-
-	link := v1alpha3.Link{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "local",
-			Namespace: namespace,
-		},
-		Spec: v1alpha3.LinkSpec{
-			TargetClusterName:        "",
-			Selector:                 nil,
-			RemoteDiscoverySelector:  nil,
-			FederatedServiceSelector: federatedLabelSelector,
-		},
-	}
 	cw, err := servicemirror.NewRemoteClusterServiceWatcher(
 		ctx,
 		namespace,

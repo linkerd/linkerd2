@@ -58,6 +58,8 @@ type (
 		federatedServiceSelector string
 		gatewayAddresses         string
 		gatewayPort              uint32
+		excludedAnnotations      []string
+		excludedLabels           []string
 		ha                       bool
 		enableGateway            bool
 		enableServiceMirror      bool
@@ -262,6 +264,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 					ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
 					RemoteDiscoverySelector:       remoteDiscoverySelector,
 					FederatedServiceSelector:      federatedServiceSelector,
+					ExcludedAnnotations:           opts.excludedAnnotations,
+					ExcludedLabels:                opts.excludedLabels,
 				},
 			}
 
@@ -400,6 +404,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVar(&opts.federatedServiceSelector, "federated-service-selector", opts.federatedServiceSelector, "Selector (label query) for federated service members in the target cluster")
 	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified, overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
+	cmd.Flags().StringSliceVar(&opts.excludedAnnotations, "excluded-annotations", opts.excludedAnnotations, "Annotations to exclude when mirroring services")
+	cmd.Flags().StringSliceVar(&opts.excludedLabels, "excluded-labels", opts.excludedLabels, "Labels to exclude when mirroring services")
 	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enable HA configuration for the service-mirror deployment (default false)")
 	cmd.Flags().BoolVar(&opts.enableGateway, "gateway", opts.enableGateway, "If false, allows a link to be created against a cluster that does not have a gateway service")
 	cmd.Flags().BoolVar(&opts.enableServiceMirror, "service-mirror", opts.enableServiceMirror, "If false, only outputs link manifest and credentials secrets")
@@ -508,6 +514,8 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 		federatedServiceSelector: fmt.Sprintf("%s=%s", k8s.DefaultFederatedServiceSelector, "member"),
 		gatewayAddresses:         "",
 		gatewayPort:              0,
+		excludedAnnotations:      []string{},
+		excludedLabels:           []string{},
 		ha:                       false,
 		enableGateway:            true,
 		enableServiceMirror:      true,
