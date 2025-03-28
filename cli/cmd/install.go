@@ -399,6 +399,8 @@ func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options 
 		return err
 	}
 
+	finalValues := charts.MergeMaps(defaultValues, valuesOverrides)
+
 	// If any of the Gateway API CRDs are installed, we default to rendering the
 	// Gateway API CRDs.
 	if k != nil {
@@ -406,11 +408,14 @@ func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options 
 		if err != nil {
 			return err
 		}
-		if installed == Absent {
+		if installed == Absent && finalValues["installGatewayAPI"] == false {
+			// if we are not installing GW API Resources and they are not present, error
 			return errors.New("The Gateway API CRDs must be installed prior to installing Linkerd: https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api")
 		} else if installed == Linkerd {
+			// if they are installed and managed by Linkerd, set to true
 			defaultValues["installGatewayAPI"] = true
 		} else if installed == External {
+			// if they are installed but are external, set to false
 			defaultValues["installGatewayAPI"] = false
 			if valuesOverrides["installGatewayAPI"] == true {
 				return errors.New("Linkerd cannot install the Gateway API CRDs because they are already installed by an external source. Please set `installGatewayAPI` to `false`.")
