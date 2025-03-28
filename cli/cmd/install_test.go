@@ -318,25 +318,31 @@ metadata:
 }
 
 func TestRenderCRDsWithMissingGatewayAPI(t *testing.T) {
-
 	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{})
 	if err != nil {
 		t.Fatalf("failed to initialize fake API: %s", err)
 	}
 
 	var buf bytes.Buffer
-	err = renderCRDs(context.Background(), k, &buf, values.Options{}, "yaml")
+	err = renderCRDs(context.Background(), k, &buf, values.Options{
+		Values: []string{"installGatewayAPI=false"},
+	}, "yaml")
 	if err == nil {
 		t.Fatalf("Installing with missing Gateway API CRDs should fail")
 	}
 }
 
 func TestRenderCRDsWithGatewayAPI(t *testing.T) {
+	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{})
+	if err != nil {
+		t.Fatalf("failed to initialize fake API: %s", err)
+	}
+
 	options := values.Options{
 		Values: []string{"installGatewayAPI=true"},
 	}
 	var buf bytes.Buffer
-	if err := renderCRDs(context.Background(), nil, &buf, options, "yaml"); err != nil {
+	if err := renderCRDs(context.Background(), k, &buf, options, "yaml"); err != nil {
 		t.Fatalf("Failed to render templates: %v", err)
 	}
 	if err := testDataDiffer.DiffTestYAML("install_crds_with_gateway_api.golden", buf.String()); err != nil {
