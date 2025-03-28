@@ -2,6 +2,8 @@ module github.com/linkerd/linkerd2
 
 go 1.23.0
 
+toolchain go1.24.1
+
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24
@@ -35,7 +37,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	go.opencensus.io v0.24.0
-	golang.org/x/net v0.37.0
+	golang.org/x/net v0.38.0
 	golang.org/x/tools v0.31.0
 	google.golang.org/grpc v1.71.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1
