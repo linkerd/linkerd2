@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -28,13 +29,13 @@ func newUnlinkCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:        "unlink",
-		Deprecated: "only use for removing service mirror resources created by the (also deprecated) 'linkerd multicluster link' command (Linkerd 2.17 and earlier).",
+		Deprecated: "only use for removing service mirror resources created by the (also deprecated) 'linkerd multicluster link' command (Linkerd 2.17 and earlier), using the flag --only-controller",
 		Short:      "Outputs link resources for deletion",
 		Args:       cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if opts.clusterName == "" {
-				return errors.New("You need to specify cluster name")
+				return errors.New("you need to specify cluster name")
 			}
 
 			rules := clientcmd.NewDefaultClientConfigLoadingRules()
@@ -70,8 +71,8 @@ func newUnlinkCommand() *cobra.Command {
 			lease := resource.NewNamespaced(coordinationv1.SchemeGroupVersion.String(), "Lease", fmt.Sprintf("service-mirror-write-%s", opts.clusterName), opts.namespace)
 
 			resources := []resource.Kubernetes{
-				secret, link, clusterRole, clusterRoleBinding,
-				role, roleBinding, serviceAccount, serviceMirror, lease,
+				clusterRole, clusterRoleBinding,
+				role, roleBinding, serviceAccount, serviceMirror,
 			}
 
 			if l.Spec.ProbeSpec.Path != "" {
@@ -79,41 +80,33 @@ func newUnlinkCommand() *cobra.Command {
 				resources = append(resources, gatewayMirror)
 			}
 
-			selector := fmt.Sprintf("%s=%s,%s=%s",
-				k8s.MirroredResourceLabel, "true",
-				k8s.RemoteClusterNameLabel, opts.clusterName,
-			)
-			svcList, err := k.CoreV1().Services(metav1.NamespaceAll).List(cmd.Context(), metav1.ListOptions{LabelSelector: selector})
-			if err != nil {
-				return err
-			}
-			for _, svc := range svcList.Items {
-				resources = append(resources,
-					resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "Service", svc.Name, svc.Namespace),
-				)
-			}
+			if !opts.onlyController {
+				resources = append(resources, secret, link, lease)
 
-			selector = fmt.Sprintf("%s=%s", clusterNameLabel, opts.clusterName)
-			destinationCredentials, err := k.CoreV1().Secrets(controlPlaneNamespace).List(cmd.Context(), metav1.ListOptions{LabelSelector: selector})
-			if err != nil {
-				return err
-			}
-			for _, secret := range destinationCredentials.Items {
-				resources = append(resources,
-					resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "Secret", secret.Name, secret.Namespace),
-				)
+				svcs, err := getServiceMirrors(cmd.Context(), k, opts.clusterName)
+				if err != nil {
+					return err
+				}
+				resources = append(resources, svcs...)
+
+				creds, err := getDestinationCredentials(cmd.Context(), k, opts.clusterName)
+				if err != nil {
+					return err
+				}
+				resources = append(resources, creds...)
 			}
 
 			for _, r := range resources {
-				if opts.output == "yaml" {
+				switch opts.output {
+				case "yaml":
 					if err := r.RenderResource(stdout); err != nil {
 						log.Errorf("failed to render resource %s: %s", r.Name, err)
 					}
-				} else if opts.output == "json" {
+				case "json":
 					if err := r.RenderResourceJSON(stdout); err != nil {
 						log.Errorf("failed to render resource %s: %s", r.Name, err)
 					}
-				} else {
+				default:
 					return fmt.Errorf("unsupported format: %s", opts.output)
 				}
 			}
@@ -124,6 +117,7 @@ func newUnlinkCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The namespace for the service account")
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "Cluster name")
+	cmd.Flags().BoolVar(&opts.onlyController, "only-controller", false, "Only output the service-mirror controller and related resources. Leave out Link CR, credentials, Lease and mirror services.")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
@@ -132,6 +126,43 @@ func newUnlinkCommand() *cobra.Command {
 
 	configureClusterNameFlagCompletion(cmd)
 	return cmd
+}
+
+func getServiceMirrors(ctx context.Context, k *k8s.KubernetesAPI, clusterName string) ([]resource.Kubernetes, error) {
+	selector := fmt.Sprintf("%s=%s,%s=%s",
+		k8s.MirroredResourceLabel, "true",
+		k8s.RemoteClusterNameLabel, clusterName,
+	)
+	svcList, err := k.CoreV1().Services(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return nil, err
+	}
+
+	resources := []resource.Kubernetes{}
+	for _, svc := range svcList.Items {
+		resources = append(resources,
+			resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "Service", svc.Name, svc.Namespace),
+		)
+	}
+
+	return resources, nil
+}
+
+func getDestinationCredentials(ctx context.Context, k *k8s.KubernetesAPI, clusterName string) ([]resource.Kubernetes, error) {
+	selector := fmt.Sprintf("%s=%s", clusterNameLabel, clusterName)
+	destinationCredentials, err := k.CoreV1().Secrets(controlPlaneNamespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return nil, err
+	}
+
+	resources := []resource.Kubernetes{}
+	for _, secret := range destinationCredentials.Items {
+		resources = append(resources,
+			resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "Secret", secret.Name, secret.Namespace),
+		)
+	}
+
+	return resources, nil
 }
 
 func configureClusterNameFlagCompletion(cmd *cobra.Command) {
