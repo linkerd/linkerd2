@@ -97,16 +97,15 @@ func newUnlinkCommand() *cobra.Command {
 			}
 
 			for _, r := range resources {
-				switch opts.output {
-				case "yaml":
+				if opts.output == "yaml" {
 					if err := r.RenderResource(stdout); err != nil {
 						log.Errorf("failed to render resource %s: %s", r.Name, err)
 					}
-				case "json":
+				} else if opts.output == "json" {
 					if err := r.RenderResourceJSON(stdout); err != nil {
 						log.Errorf("failed to render resource %s: %s", r.Name, err)
 					}
-				default:
+				} else {
 					return fmt.Errorf("unsupported format: %s", opts.output)
 				}
 			}
