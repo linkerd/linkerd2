@@ -1,3 +1,5 @@
+#![cfg(feature = "gateway-api-experimental")]
+
 use linkerd_policy_controller_k8s_api::{self as api, gateway};
 use linkerd_policy_test::admission;
 
