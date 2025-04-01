@@ -166,6 +166,9 @@ jobs:
         k8s:
           - v1.23
           - v1.32
+        linkerd-managed-gw-crds:
+          - true
+          - false
     steps:
       - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
         env:
@@ -200,7 +203,7 @@ jobs:
       - run: docker load <image-archives/policy-controller.tar
       - run: docker load <image-archives/proxy.tar
       - run: docker image ls
-      - run: just linkerd-tag='${{ needs.meta.outputs.tag }}' linkerd-exec="$HOME/linkerd" linkerd-install
+      - run: just linkerd-tag='${{ needs.meta.outputs.tag }}' linkerd-exec="$HOME/linkerd" linkerd-managed-gateway-api='${{ matrix.linkerd-managed-gw-crds }}' linkerd-install
       - name: Load images
         run: |
           # Image loading is flakey in CI, so retry!

@@ -288,6 +288,7 @@ proxy-image := DOCKER_REGISTRY + "/proxy"
 policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
 
 gateway-api-version := "v1.2.1"
+linkerd-managed-gateway-api := "true"
 
 # External dependencies
 #
@@ -301,12 +302,16 @@ linkerd *flags:
     {{ _linkerd }} {{ flags }}
 
 gateway-api-install:
-    curl --proto '=https' --tlsv1.2 -sSfL https://github.com/kubernetes-sigs/gateway-api/releases/download/{{ gateway-api-version }}/experimental-install.yaml \
-        | {{ _kubectl }} apply -f -
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ {{ linkerd-managed-gateway-api }} == "false" ]; then
+        curl --proto '=https' --tlsv1.2 -sSfL https://github.com/kubernetes-sigs/gateway-api/releases/download/{{ gateway-api-version }}/experimental-install.yaml \
+            | {{ _kubectl }} apply -f -
+    fi
 
 # Install crds on the test cluster.
 linkerd-crds-install: _k3d-init
-    {{ _linkerd }} install --crds \
+    {{ _linkerd }} install --crds --set installGatewayAPI={{ linkerd-managed-gateway-api }} \
         | {{ _kubectl }} apply -f -
     {{ _kubectl }} wait crd --for condition=established \
         --selector='linkerd.io/control-plane-ns' \
