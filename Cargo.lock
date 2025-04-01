@@ -1451,6 +1451,7 @@ dependencies = [
  "futures",
  "http-body-util",
  "hyper",
+ "hyper-util",
  "ipnet",
  "k8s-openapi",
  "kube",
