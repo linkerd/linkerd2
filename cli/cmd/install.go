@@ -366,6 +366,52 @@ func renderChartToBuffer(files []*loader.BufferedFile, values map[string]interfa
 	return &buf, vals, nil
 }
 
+func updateDefaultValues(installed GatewayAPICRDs, defaultValues map[string]interface{}) map[string]interface{} {
+	if installed == Absent {
+		// if GW API is not installed, default to false
+		defaultValues["installGatewayAPI"] = false
+	} else if installed == Linkerd {
+		// if it is installed by Linkerd, default to true
+		defaultValues["installGatewayAPI"] = true
+	} else if installed == External {
+		// if it is external, default to false as we are not managing it
+		defaultValues["installGatewayAPI"] = false
+	}
+
+	return defaultValues
+}
+
+func validateFinalValues(installed GatewayAPICRDs, finalValues map[string]interface{}) error {
+	installing := false
+
+	if installGatewayAPI, ok := finalValues["installGatewayAPI"]; ok {
+		installing = installGatewayAPI == true
+	}
+
+	if enableHttpRoutes, ok := finalValues["enableHttpRoutes"]; ok {
+		installing = enableHttpRoutes == true
+	}
+
+	if installed == Absent {
+		if !installing {
+			// if we are not installing GW API Resources and they are not present, error
+			return errors.New("The Gateway API CRDs must be installed prior to installing Linkerd: https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api")
+		}
+	} else if installed == Linkerd {
+		if !installing {
+			// if they are installed and managed by Linkerd, we cannot uninstall them
+			return errors.New("Linkerd is providing GW API, but your current install configuration will remove it")
+		}
+	} else if installed == External {
+		if installing {
+			// if they are installed but are external, we cannot be installing as well
+			return errors.New("Linkerd cannot install the Gateway API CRDs because they are already installed by an external source. Please set `installGatewayAPI` to `false`.")
+		}
+	}
+
+	return nil
+}
+
 func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options valuespkg.Options, format string) error {
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
@@ -399,8 +445,6 @@ func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options 
 		return err
 	}
 
-	finalValues := charts.MergeMaps(defaultValues, valuesOverrides)
-
 	// If any of the Gateway API CRDs are installed, we default to rendering the
 	// Gateway API CRDs.
 	if k != nil {
@@ -408,20 +452,15 @@ func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options 
 		if err != nil {
 			return err
 		}
-		if installed == Absent && finalValues["installGatewayAPI"] == false {
-			// if we are not installing GW API Resources and they are not present, error
-			return errors.New("The Gateway API CRDs must be installed prior to installing Linkerd: https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api")
-		} else if installed == Linkerd {
-			// if they are installed and managed by Linkerd, set to true
-			defaultValues["installGatewayAPI"] = true
-		} else if installed == External {
-			// if they are installed but are external, set to false
-			defaultValues["installGatewayAPI"] = false
-			if valuesOverrides["installGatewayAPI"] == true {
-				return errors.New("Linkerd cannot install the Gateway API CRDs because they are already installed by an external source. Please set `installGatewayAPI` to `false`.")
-			}
+
+		defaultValues = updateDefaultValues(installed, defaultValues)
+		finalValues := charts.MergeMaps(defaultValues, valuesOverrides)
+
+		if err := validateFinalValues(installed, finalValues); err != nil {
+			return err
 		}
 	}
+
 	buf, _, err := renderChartToBuffer(files, defaultValues, valuesOverrides)
 	if err != nil {
 		return err
