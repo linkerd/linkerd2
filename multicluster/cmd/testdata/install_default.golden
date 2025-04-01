@@ -1247,8 +1247,12 @@ metadata:
     component: linkerd-service-mirror
 spec:
   podSelector:
-    matchLabels:
-      component: linkerd-service-mirror
+    matchExpressions:
+    - key: component
+      operator: In
+      values:
+      - linkerd-service-mirror
+      - controller
   port: admin-http
   proxyProtocol: HTTP/1
 ---

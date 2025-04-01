@@ -261,7 +261,7 @@ func getServiceMirrorContainer(pod corev1.Pod) (corev1.Container, error) {
 			return c, nil
 		}
 	}
-	return corev1.Container{}, fmt.Errorf("pod %s did not have 'service-mirror' container", pod.GetName())
+	return corev1.Container{}, fmt.Errorf("pod %s did not have a 'service-mirror' nor a 'controller' container", pod.GetName())
 }
 
 func isTargetClusterMetric(metric *io_prometheus_client.Metric, targetClusterName string) bool {
