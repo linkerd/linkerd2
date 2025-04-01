@@ -4,7 +4,9 @@ use linkerd_policy_controller_k8s_api::{
     self as k8s, gateway, policy, Condition, Resource as _, ResourceExt,
 };
 
-use crate::outbound_api::{detect_http_routes, grpc_routes, tcp_routes, tls_routes};
+use crate::outbound_api::{detect_http_routes, grpc_routes};
+#[cfg(feature = "gateway-api-experimental")]
+use crate::outbound_api::{tcp_routes, tls_routes};
 
 pub trait TestRoute:
     kube::Resource<Scope = kube::core::NamespaceResourceScope, DynamicType: Default>
@@ -482,6 +484,7 @@ impl TestRoute for gateway::GRPCRoute {
     }
 }
 
+#[cfg(feature = "gateway-api-experimental")]
 impl TestRoute for gateway::TLSRoute {
     type Route = outbound::TlsRoute;
     type Backend = outbound::tls_route::RouteBackend;
@@ -626,6 +629,7 @@ impl TestRoute for gateway::TLSRoute {
     }
 }
 
+#[cfg(feature = "gateway-api-experimental")]
 impl TestRoute for gateway::TCPRoute {
     type Route = outbound::OpaqueRoute;
     type Backend = outbound::opaque_route::RouteBackend;
