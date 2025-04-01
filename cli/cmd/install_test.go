@@ -294,78 +294,127 @@ func TestIgnoreCluster(t *testing.T) {
 	}
 }
 
-func TestRenderCRDsWithExternalGatewayAPI(t *testing.T) {
-
-	gatewayAPIManifest := `---
+func TestGWApi(t *testing.T) {
+	externalGatewayAPIManifest := `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: httproutes.gateway.networking.k8s.io
 `
 
-	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(gatewayAPIManifest)})
-	if err != nil {
-		t.Fatalf("failed to initialize fake API: %s", err)
-	}
-
-	var buf bytes.Buffer
-	if err := renderCRDs(context.Background(), k, &buf, values.Options{}, "yaml"); err != nil {
-		t.Fatalf("Failed to render templates: %v", err)
-	}
-	if err := testDataDiffer.DiffTestYAML("install_crds.golden", buf.String()); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestRenderCRDsWithMissingGatewayAPI(t *testing.T) {
-
-	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{})
-	if err != nil {
-		t.Fatalf("failed to initialize fake API: %s", err)
-	}
-
-	var buf bytes.Buffer
-	err = renderCRDs(context.Background(), k, &buf, values.Options{}, "yaml")
-	if err == nil {
-		t.Fatalf("Installing with missing Gateway API CRDs should fail")
-	}
-}
-
-func TestRenderCRDsWithGatewayAPI(t *testing.T) {
-	options := values.Options{
-		Values: []string{"installGatewayAPI=true"},
-	}
-	var buf bytes.Buffer
-	if err := renderCRDs(context.Background(), nil, &buf, options, "yaml"); err != nil {
-		t.Fatalf("Failed to render templates: %v", err)
-	}
-	if err := testDataDiffer.DiffTestYAML("install_crds_with_gateway_api.golden", buf.String()); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestRenderCRDsWithConflictingGatewayAPI(t *testing.T) {
-
-	gatewayAPIManifest := `---
+	linkerdGatewayAPIManifest := `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: httproutes.gateway.networking.k8s.io
+  annotations:
+    linkerd.io/created-by: linkerd
 `
 
-	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(gatewayAPIManifest)})
-	if err != nil {
-		t.Fatalf("failed to initialize fake API: %s", err)
+	testCases := []struct {
+		name        string
+		resources   string
+		values      values.Options
+		expectError bool
+		goldenFile  string
+	}{
+		{
+			"render with external GW API",
+			externalGatewayAPIManifest,
+			values.Options{},
+			false,
+			"install_crds.golden",
+		},
+		{
+			"render with missing GW API",
+			"",
+			values.Options{},
+			true,
+			"",
+		},
+		{
+			"render with GW API (installGatewayAPI flag)",
+			"",
+			values.Options{
+				Values: []string{"installGatewayAPI=true"},
+			},
+			false,
+			"install_crds_with_gateway_api.golden",
+		},
+		{
+			"render with GW API (lagecy flags)",
+			"",
+			values.Options{
+				Values: []string{
+					"enableHttpRoutes=true",
+					"enableTlsRoutes=true",
+					"enableTcpRoutes=true",
+				},
+			},
+			false,
+			"install_crds_with_gateway_api.golden",
+		},
+		{
+			"render with conflicting GW API (installGatewayAPI flag)",
+			externalGatewayAPIManifest,
+			values.Options{
+				Values: []string{"installGatewayAPI=true"},
+			},
+			true,
+			"",
+		},
+		{
+			"render with conflicting GW API (legacy flags)",
+			externalGatewayAPIManifest,
+			values.Options{
+				Values: []string{
+					"enableHttpRoutes=true",
+					"enableTlsRoutes=true",
+					"enableTcpRoutes=true",
+				},
+			},
+			true,
+			"",
+		},
+		{
+			"error on attempt to remove a Linkerd managed version via installGatewayAPI=false",
+			linkerdGatewayAPIManifest,
+			values.Options{
+				Values: []string{"installGatewayAPI=false"},
+			},
+			true,
+			"",
+		},
 	}
 
-	options := values.Options{
-		Values: []string{"installGatewayAPI=true"},
+	for _, tc := range testCases {
+		tc := tc // pin
+		t.Run(tc.name, func(t *testing.T) {
+			k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(tc.resources)})
+			if err != nil {
+				t.Fatalf("failed to initialize fake API: %s", err)
+			}
+
+			var buf bytes.Buffer
+			err = renderCRDs(context.Background(), k, &buf, tc.values, "yaml")
+			if err != nil {
+				if tc.expectError {
+					return
+				}
+				t.Fatalf("Failed to render templates: %v", err)
+			}
+
+			if tc.expectError && err == nil {
+				t.Fatal("an error was expected")
+
+			}
+
+			if err := testDataDiffer.DiffTestYAML(tc.goldenFile, buf.String()); err != nil {
+				t.Error(err)
+			}
+		})
 	}
-	var buf bytes.Buffer
-	err = renderCRDs(context.Background(), k, &buf, options, "yaml")
-	if err == nil {
-		t.Fatalf("Installing with conflicting Gateway API CRDs should fail")
-	}
+
 }
 
 func TestValidateAndBuild_Errors(t *testing.T) {
