@@ -5,12 +5,16 @@ edition = "2021"
 license = "Apache-2.0"
 publish = false
 
+[features]
+default = ["gateway-api-experimental"]
+gateway-api-experimental = []
+
 [dependencies]
 anyhow = "1"
 bytes = "1"
 http-body-util = "0.1"
 hyper = { workspace = true, features = ["client", "http2"] }
-hyper-util = { version = "0.1" }
+hyper-util = { workspace = true }
 futures = { version = "0.3", default-features = false }
 ipnet = "2"
 k8s-openapi = { workspace = true }

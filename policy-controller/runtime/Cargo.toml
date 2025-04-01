@@ -22,6 +22,7 @@ futures = { version = "0.3", default-features = false }
 k8s-openapi = { workspace = true }
 http-body-util = "0.1"
 hyper = { workspace = true, features = ["http1", "http2", "server"] }
+hyper-util = { workspace = true }
 ipnet = { version = "2", default-features = false }
 openssl = { version = "0.10.71", optional = true }
 parking_lot = "0.12"

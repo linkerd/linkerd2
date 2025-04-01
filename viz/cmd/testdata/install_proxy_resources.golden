@@ -628,7 +628,7 @@ data:
         action: replace
         target_label: component
 
-    - job_name: 'linkerd-service-mirror'
+    - job_name: 'linkerd-multicluster-controller'
       kubernetes_sd_configs:
       - role: pod
       relabel_configs:
@@ -636,7 +636,7 @@ data:
         - __meta_kubernetes_pod_label_component
         - __meta_kubernetes_pod_container_port_name
         action: keep
-        regex: linkerd-service-mirror;admin-http$
+        regex: (linkerd-service-mirror|controller);admin-http$
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: component

@@ -40,7 +40,7 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: "linkerd-service-mirror"
+  name: "linkerd-multicluster-controller"
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-ns: {{ .Release.Namespace }}
@@ -61,7 +61,7 @@ spec:
             - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
             - __meta_kubernetes_pod_container_port_name
           action: keep
-          regex: linkerd-service-mirror;admin-http$
+          regex: (linkerd-service-mirror|controller);admin-http$
         - sourceLabels:
             - __meta_kubernetes_pod_container_name
           action: replace

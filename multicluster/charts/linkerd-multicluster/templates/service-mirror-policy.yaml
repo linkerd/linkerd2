@@ -10,8 +10,12 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   podSelector:
-    matchLabels:
-      component: linkerd-service-mirror
+    matchExpressions:
+    - key: component
+      operator: In
+      values:
+      - linkerd-service-mirror
+      - controller
   port: admin-http
   proxyProtocol: HTTP/1
 ---

@@ -293,6 +293,7 @@ pub async fn await_grpc_route_status(
     route_status
 }
 
+#[cfg(feature = "gateway-api-experimental")]
 // Waits until an TlsRoute with the given namespace and name has a status set
 // on it, then returns the generic route status representation.
 pub async fn await_tls_route_status(
@@ -316,6 +317,7 @@ pub async fn await_tls_route_status(
     route_status
 }
 
+#[cfg(feature = "gateway-api-experimental")]
 // Waits until an TcpRoute with the given namespace and name has a status set
 // on it, then returns the generic route status representation.
 pub async fn await_tcp_route_status(
