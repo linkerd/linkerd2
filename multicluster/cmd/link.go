@@ -54,6 +54,7 @@ type (
 		excludedLabels           []string
 		ha                       bool
 		enableGateway            bool
+		onlyController           bool
 		output                   string
 	}
 )
