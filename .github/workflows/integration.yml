@@ -163,9 +163,24 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
+        # Test the latest Kubernetes version with the latest Gateway API
+        # version, as well as the vendored Gateway API CRDs.
         k8s:
-          - v1.23
           - v1.32
+        gateway-api:
+          - version: linkerd
+            channel: experimental
+          - version: v1.3.0-rc.1
+            channel: experimental
+        # Also test the Minimum Supported Kubernetes Version with the Minimum
+        # Supported Gateway API version.
+        include:
+          - k8s: v1.23
+            version: v1.1.1
+            channel: standard
+    env:
+      GATEWAY_API_VERSION: ${{ matrix.gateway-api.version }}
+      GATEWAY_API_CHANNEL: ${{ matrix.gateway-api.channel }}
     steps:
       - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
         env:

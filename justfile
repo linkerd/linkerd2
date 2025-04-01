@@ -137,13 +137,15 @@ export POLICY_TEST_CONTEXT := env_var_or_default("POLICY_TEST_CONTEXT", "k3d-" +
 # Install linkerd in the test cluster and run the policy tests.
 policy-test: linkerd-install policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
 
+_policy-test-flags := "--no-default-features" + if GATEWAY_API_CHANNEL == "experimental" { " --features=gateway-api-experimental" } else { "" }
+
 # Run the policy tests without installing linkerd.
 policy-test-run *flags:
-    cd policy-test && {{ _cargo-test }} {{ flags }}
+    cd policy-test && {{ _cargo-test }} {{ _policy-test-flags }} {{ flags }}
 
 # Build the policy tests without running them.
 policy-test-build:
-    cd policy-test && {{ _cargo-test }} --no-run
+    cd policy-test && {{ _cargo-test }} --no-run {{ _policy-test-flags }}
 
 # Delete all test namespaces and remove linkerd from the cluster.
 policy-test-cleanup:
@@ -287,7 +289,17 @@ controller-image := DOCKER_REGISTRY + "/controller"
 proxy-image := DOCKER_REGISTRY + "/proxy"
 policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
 
-gateway-api-version := "v1.2.1"
+# When GATEWAY_API_VERSION is 'linkerd' we use the CLI's vendored gateway API
+# CRDs. Otherwise, we install the CRDs from the upstream release.
+# This should be kept up-to-date with the latest stable release of the gateway API.
+export GATEWAY_API_VERSION := env_var_or_default("GATEWAY_API_VERSION", "v1.2.1")
+
+# When GATEWAY_API_CHANNEL is 'experimental', we enable testing of experimental
+# resource types (TCPRoute, TLSRoute). Alternatively, the 'standard' channel may
+# be used.
+export GATEWAY_API_CHANNEL := env_var_or_default("GATEWAY_API_CHANNEL", "experimental")
+
+_gateway-url := if GATEWAY_API_VERSION != "linkerd" { "https://github.com/kubernetes-sigs/gateway-api/releases/download/" + GATEWAY_API_VERSION + "/" + GATEWAY_API_CHANNEL + "-install.yaml" } else { "" }
 
 # External dependencies
 #
@@ -300,20 +312,19 @@ _prometheus-image-cmd := "yq '.prometheus.image | .registry + \"/\" + .name + \"
 linkerd *flags:
     {{ _linkerd }} {{ flags }}
 
-gateway-api-install:
-    curl --proto '=https' --tlsv1.2 -sSfL https://github.com/kubernetes-sigs/gateway-api/releases/download/{{ gateway-api-version }}/experimental-install.yaml \
-        | {{ _kubectl }} apply -f -
-
 # Install crds on the test cluster.
 linkerd-crds-install: _k3d-init
-    {{ _linkerd }} install --crds \
+    if [ -n "{{ _gateway-url }}" ]; then {{ _kubectl }} apply -f "{{ _gateway-url }}" ; fi
+    {{ _linkerd }} install --crds --set installGatewayAPI={{ if _gateway-url == "" { "true "} else { "false "} }} \
         | {{ _kubectl }} apply -f -
     {{ _kubectl }} wait crd --for condition=established \
         --selector='linkerd.io/control-plane-ns' \
         --timeout=1m
+    {{ _kubectl }} get crds -o json | jq -r '.items[] | select(.spec.group=="gateway.networking.k8s.io") | .metadata.name' \
+        | xargs {{ _kubectl }} wait crd --for condition=established  --timeout=1m
 
 # Install linkerd on the test cluster using test images.
-linkerd-install *args='': linkerd-load gateway-api-install linkerd-crds-install && _linkerd-ready
+linkerd-install *args='': linkerd-load linkerd-crds-install && _linkerd-ready
     {{ _linkerd }} install \
             --set='imagePullPolicy=Never' \
             --set='controllerImage={{ controller-image }}' \
