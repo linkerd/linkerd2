@@ -1,9 +1,10 @@
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway};
 use linkerd_policy_test::{
     assert_status_accepted, await_condition, await_egress_net_status, await_gateway_route_status,
-    await_tcp_route_status, await_tls_route_status, create, create_ready_pod, curl,
-    endpoints_ready, web, with_temp_ns, LinkerdInject,
+    create, create_ready_pod, curl, endpoints_ready, web, with_temp_ns, LinkerdInject,
 };
+#[cfg(feature = "gateway-api-experimental")]
+use linkerd_policy_test::{await_tcp_route_status, await_tls_route_status};
 
 #[tokio::test(flavor = "current_thread")]
 async fn default_traffic_policy_http_allow() {
@@ -253,6 +254,7 @@ async fn explicit_allow_http_route() {
     .await;
 }
 
+#[cfg(feature = "gateway-api-experimental")]
 #[tokio::test(flavor = "current_thread")]
 async fn explicit_allow_tls_route() {
     with_temp_ns(|client, ns| async move {
@@ -357,6 +359,7 @@ async fn explicit_allow_tls_route() {
     .await;
 }
 
+#[cfg(feature = "gateway-api-experimental")]
 #[tokio::test(flavor = "current_thread")]
 async fn explicit_allow_tcp_route() {
     with_temp_ns(|client, ns| async move {
@@ -564,6 +567,7 @@ async fn routing_back_to_cluster_http_route() {
     .await;
 }
 
+#[cfg(feature = "gateway-api-experimental")]
 #[tokio::test(flavor = "current_thread")]
 async fn routing_back_to_cluster_tls_route() {
     with_temp_ns(|client, ns| async move {
@@ -655,6 +659,7 @@ async fn routing_back_to_cluster_tls_route() {
     .await;
 }
 
+#[cfg(feature = "gateway-api-experimental")]
 #[tokio::test(flavor = "current_thread")]
 async fn routing_back_to_cluster_tcp_route() {
     with_temp_ns(|client, ns| async move {

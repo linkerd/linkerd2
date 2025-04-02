@@ -285,13 +285,16 @@ async fn routes_with_backend() {
     test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
     test::<k8s::Service, gateway::GRPCRoute>().await;
-    test::<k8s::Service, gateway::TLSRoute>().await;
-    test::<k8s::Service, gateway::TCPRoute>().await;
     test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
     test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
-    test::<policy::EgressNetwork, gateway::TLSRoute>().await;
-    test::<policy::EgressNetwork, gateway::TCPRoute>().await;
+    #[cfg(feature = "gateway-api-experimental")]
+    {
+        test::<k8s::Service, gateway::TLSRoute>().await;
+        test::<k8s::Service, gateway::TCPRoute>().await;
+        test::<policy::EgressNetwork, gateway::TLSRoute>().await;
+        test::<policy::EgressNetwork, gateway::TCPRoute>().await;
+    }
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -390,8 +393,11 @@ async fn service_with_routes_with_cross_namespace_backend() {
     test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
     test::<k8s::Service, gateway::GRPCRoute>().await;
-    test::<k8s::Service, gateway::TLSRoute>().await;
-    test::<k8s::Service, gateway::TCPRoute>().await;
+    #[cfg(feature = "gateway-api-experimental")]
+    {
+        test::<k8s::Service, gateway::TLSRoute>().await;
+        test::<k8s::Service, gateway::TCPRoute>().await;
+    }
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -473,13 +479,16 @@ async fn routes_with_invalid_backend() {
     test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
     test::<k8s::Service, gateway::GRPCRoute>().await;
-    test::<k8s::Service, gateway::TLSRoute>().await;
-    test::<k8s::Service, gateway::TCPRoute>().await;
     test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
     test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
-    test::<policy::EgressNetwork, gateway::TLSRoute>().await;
-    test::<policy::EgressNetwork, gateway::TCPRoute>().await;
+    #[cfg(feature = "gateway-api-experimental")]
+    {
+        test::<k8s::Service, gateway::TLSRoute>().await;
+        test::<k8s::Service, gateway::TCPRoute>().await;
+        test::<policy::EgressNetwork, gateway::TLSRoute>().await;
+        test::<policy::EgressNetwork, gateway::TCPRoute>().await;
+    }
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -573,11 +582,14 @@ async fn multiple_routes() {
     test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
     test::<k8s::Service, gateway::GRPCRoute>().await;
-    test::<k8s::Service, gateway::TLSRoute>().await;
     test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
     test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
-    test::<policy::EgressNetwork, gateway::TLSRoute>().await;
+    #[cfg(feature = "gateway-api-experimental")]
+    {
+        test::<k8s::Service, gateway::TLSRoute>().await;
+        test::<policy::EgressNetwork, gateway::TLSRoute>().await;
+    }
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -713,8 +725,11 @@ async fn route_with_no_port() {
     test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
     test::<k8s::Service, gateway::GRPCRoute>().await;
-    test::<k8s::Service, gateway::TLSRoute>().await;
-    test::<k8s::Service, gateway::TCPRoute>().await;
+    #[cfg(feature = "gateway-api-experimental")]
+    {
+        test::<k8s::Service, gateway::TLSRoute>().await;
+        test::<k8s::Service, gateway::TCPRoute>().await;
+    }
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -812,8 +827,11 @@ async fn producer_route() {
     test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
     test::<k8s::Service, gateway::GRPCRoute>().await;
-    test::<k8s::Service, gateway::TLSRoute>().await;
-    test::<k8s::Service, gateway::TCPRoute>().await;
+    #[cfg(feature = "gateway-api-experimental")]
+    {
+        test::<k8s::Service, gateway::TLSRoute>().await;
+        test::<k8s::Service, gateway::TCPRoute>().await;
+    }
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -887,8 +905,11 @@ async fn pre_existing_producer_route() {
     test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
     test::<k8s::Service, gateway::GRPCRoute>().await;
-    test::<k8s::Service, gateway::TLSRoute>().await;
-    test::<k8s::Service, gateway::TCPRoute>().await;
+    #[cfg(feature = "gateway-api-experimental")]
+    {
+        test::<k8s::Service, gateway::TLSRoute>().await;
+        test::<k8s::Service, gateway::TCPRoute>().await;
+    }
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -1015,8 +1036,11 @@ async fn consumer_route() {
     test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
     test::<k8s::Service, gateway::GRPCRoute>().await;
-    test::<k8s::Service, gateway::TLSRoute>().await;
-    test::<k8s::Service, gateway::TCPRoute>().await;
+    #[cfg(feature = "gateway-api-experimental")]
+    {
+        test::<k8s::Service, gateway::TLSRoute>().await;
+        test::<k8s::Service, gateway::TCPRoute>().await;
+    }
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -1109,11 +1133,14 @@ async fn route_reattachment() {
     test::<k8s::Service, gateway::HTTPRoute>().await;
     test::<k8s::Service, policy::HttpRoute>().await;
     test::<k8s::Service, gateway::GRPCRoute>().await;
-    test::<k8s::Service, gateway::TLSRoute>().await;
-    test::<k8s::Service, gateway::TCPRoute>().await;
     test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
     test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
-    test::<policy::EgressNetwork, gateway::TLSRoute>().await;
-    test::<policy::EgressNetwork, gateway::TCPRoute>().await;
+    #[cfg(feature = "gateway-api-experimental")]
+    {
+        test::<k8s::Service, gateway::TLSRoute>().await;
+        test::<k8s::Service, gateway::TCPRoute>().await;
+        test::<policy::EgressNetwork, gateway::TLSRoute>().await;
+        test::<policy::EgressNetwork, gateway::TCPRoute>().await;
+    }
 }
