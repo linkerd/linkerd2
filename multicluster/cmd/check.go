@@ -226,8 +226,6 @@ func multiclusterCategory(hc *healthChecker, wait time.Duration) *healthcheck.Ca
 	checkers = append(checkers,
 		*healthcheck.NewChecker("extension is managing controllers").
 			WithHintAnchor("l5d-multicluster-managed-controllers").
-			WithRetryDeadline(hc.RetryDeadline).
-			SurfaceErrorOnRetry().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
 				return hc.checkLegacyController(ctx)
