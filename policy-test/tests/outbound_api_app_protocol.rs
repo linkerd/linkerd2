@@ -5,12 +5,13 @@ use linkerd_policy_test::{
     assert_resource_meta, create,
     outbound_api::{
         assert_route_is_default, assert_singleton, http1_routes, http2_routes,
-        retry_watch_outbound_policy, tcp_routes,
+        retry_watch_outbound_policy,
     },
     test_route::TestParent,
     with_temp_ns,
 };
 
+#[cfg(feature = "gateway-api-experimental")]
 #[tokio::test(flavor = "current_thread")]
 async fn opaque_parent() {
     async fn test<P: TestParent>() {
@@ -37,7 +38,7 @@ async fn opaque_parent() {
 
             assert_resource_meta(&config.metadata, parent.obj_ref(), port);
 
-            let routes = tcp_routes(&config);
+            let routes = linkerd_policy_test::outbound_api::tcp_routes(&config);
             let route = assert_singleton(routes);
             assert_route_is_default::<gateway::TCPRoute>(route, &parent.obj_ref(), port);
         })

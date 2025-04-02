@@ -1,3 +1,5 @@
+#![cfg(feature = "gateway-api-experimental")]
+
 use futures::StreamExt;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy};
 use linkerd_policy_test::{
