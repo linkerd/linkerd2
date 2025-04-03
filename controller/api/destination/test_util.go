@@ -20,6 +20,7 @@ func makeServer(t *testing.T) *server {
 }
 
 func getServerWithClient(t *testing.T) (*server, l5dcrdclient.Interface) {
+	t.Helper()
 	meshedPodResources := []string{`
 apiVersion: v1
 kind: Namespace
@@ -1089,6 +1090,7 @@ func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) e
 }
 
 func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointTranslator) {
+	t.Helper()
 	return makeEndpointTranslatorWithOpaqueTransport(t, false)
 }
 
