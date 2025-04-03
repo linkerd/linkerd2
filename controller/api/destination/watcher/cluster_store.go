@@ -34,8 +34,6 @@ type (
 		// Function used to parse a kubeconfig from a byte buffer. Based on the
 		// kubeconfig, it creates API Server clients
 		decodeFn configDecoder
-
-		sizeGauge prometheus.GaugeFunc
 	}
 
 	// remoteCluster is a helper struct that represents a store item
