@@ -18,7 +18,6 @@ func TestIPv6(t *testing.T) {
 	protocol := corev1.ProtocolTCP
 
 	server := makeServer(t)
-	defer server.clusterStore.UnregisterGauges()
 
 	stream := &bufferingGetStream{
 		updates:          make(chan *pb.Update, 50),

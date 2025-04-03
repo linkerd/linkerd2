@@ -157,10 +157,6 @@ func mockFederatedServiceWatcher(t *testing.T) (*federatedServiceWatcher, error)
 	metadataAPI.Sync(nil)
 	clusterStore.Sync(nil)
 
-	t.Cleanup(func() {
-		clusterStore.UnregisterGauges()
-	})
-
 	return fsw, nil
 }
 

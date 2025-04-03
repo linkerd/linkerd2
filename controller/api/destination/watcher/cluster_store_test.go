@@ -141,8 +141,6 @@ func TestClusterStoreHandlers(t *testing.T) {
 				}
 
 			}
-
-			cs.UnregisterGauges()
 		})
 	}
 }

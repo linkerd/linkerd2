@@ -79,10 +79,6 @@ func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
 	cs.api.Sync(stopCh)
 }
 
-func (cs *ClusterStore) UnregisterGauges() {
-	prometheus.Unregister(cs.sizeGauge)
-}
-
 // newClusterStoreWithDecoder is a helper function that allows the creation of a
 // store with an arbitrary `configDecoder` function.
 func NewClusterStoreWithDecoder(
@@ -103,17 +99,16 @@ func NewClusterStoreWithDecoder(
 		decodeFn:             decodeFn,
 	}
 
-	sizeGauge := prometheus.NewGaugeFunc(prometheus.GaugeOpts{
-		Name: "cluster_store_size",
-		Help: "The number of linked clusters in the remote discovery cluster store",
-	}, func() float64 { return (float64)(len(cs.store)) })
 	if prom != nil {
+		sizeGauge := prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+			Name: "cluster_store_size",
+			Help: "The number of linked clusters in the remote discovery cluster store",
+		}, func() float64 { return (float64)(len(cs.store)) })
 		if err := prom.Register(sizeGauge); err != nil {
 			// If we can't register the metric, log the error but continue
 			cs.log.Warnf("Failed to register cluster_store_size metric: %v", err)
 		}
 	}
-	cs.sizeGauge = sizeGauge
 
 	_, err := cs.api.Secret().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
