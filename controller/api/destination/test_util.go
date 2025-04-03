@@ -9,6 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 )
 
@@ -19,6 +20,7 @@ func makeServer(t *testing.T) *server {
 }
 
 func getServerWithClient(t *testing.T) (*server, l5dcrdclient.Interface) {
+	t.Helper()
 	meshedPodResources := []string{`
 apiVersion: v1
 kind: Namespace
@@ -998,7 +1000,8 @@ spec:
 		t.Fatalf("can't create profile watcher: %s", err)
 	}
 
-	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", true, watcher.CreateMockDecoder(exportedServiceResources...))
+	prom := prometheus.NewRegistry()
+	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", true, watcher.CreateMockDecoder(exportedServiceResources...), prom)
 	if err != nil {
 		t.Fatalf("can't create cluster store: %s", err)
 	}
@@ -1087,6 +1090,7 @@ func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) e
 }
 
 func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointTranslator) {
+	t.Helper()
 	return makeEndpointTranslatorWithOpaqueTransport(t, false)
 }
 

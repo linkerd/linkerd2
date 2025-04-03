@@ -56,7 +56,6 @@ const skippedPort uint32 = 24224
 func TestGet(t *testing.T) {
 	t.Run("Returns error if not valid service name", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := &bufferingGetStream{
 			updates:          make(chan *pb.Update, 50),
@@ -71,7 +70,6 @@ func TestGet(t *testing.T) {
 
 	t.Run("Returns InvalidArgument for ExternalName service", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := &bufferingGetStream{
 			updates:          make(chan *pb.Update, 50),
@@ -107,7 +105,6 @@ func TestGet(t *testing.T) {
 			},
 		}
 		server.config.MeshedHttp2ClientParams = &http2Params
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := &bufferingGetStream{
 			updates:          make(chan *pb.Update, 50),
@@ -149,7 +146,6 @@ func TestGet(t *testing.T) {
 			},
 		}
 		server.config.MeshedHttp2ClientParams = &http2Params
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := &bufferingGetStream{
 			updates:          make(chan *pb.Update, 50),
@@ -184,7 +180,6 @@ func TestGet(t *testing.T) {
 
 	t.Run("Return endpoint with unknown protocol hint and identity when service name contains skipped inbound port", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := &bufferingGetStream{
 			updates:          make(chan *pb.Update, 50),
@@ -236,7 +231,6 @@ func TestGet(t *testing.T) {
 
 	t.Run("Remote discovery", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		// Wait for cluster store to be synced.
 		time.Sleep(50 * time.Millisecond)
@@ -275,7 +269,6 @@ func TestGet(t *testing.T) {
 
 func testOpaque(t *testing.T, name string) {
 	server, client := getServerWithClient(t)
-	defer server.clusterStore.UnregisterGauges()
 
 	stream := &bufferingGetStream{
 		updates:          make(chan *pb.Update, 50),
@@ -368,7 +361,6 @@ func testOpaque(t *testing.T, name string) {
 func TestGetProfiles(t *testing.T) {
 	t.Run("Returns error if not valid service name", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := &bufferingGetProfileStream{
 			updates:          []*pb.DestinationProfile{},
@@ -383,7 +375,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Returns InvalidArgument for ExternalName service", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := &bufferingGetProfileStream{
 			updates:          []*pb.DestinationProfile{},
@@ -400,7 +391,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Returns server profile", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, fullyQualifiedName, port, "ns:other")
 		defer stream.Cancel()
@@ -420,7 +410,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return service profile when using json token", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, fullyQualifiedName, port, `{"ns":"other"}`)
 		defer stream.Cancel()
@@ -436,7 +425,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Returns client profile", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, fullyQualifiedName, port, `{"ns":"client-ns"}`)
 		defer stream.Cancel()
@@ -452,7 +440,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile when using cluster IP", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, clusterIP, port, "")
 		defer stream.Cancel()
@@ -471,7 +458,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile when using secondary cluster IP", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, clusterIPv6, port, "")
 		defer stream.Cancel()
@@ -490,7 +476,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with endpoint when using pod DNS", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, fullyQualifiedPodDNS, port, "ns:ns")
 		defer stream.Cancel()
@@ -541,7 +526,6 @@ func TestGetProfiles(t *testing.T) {
 			},
 		}
 		server.config.MeshedHttp2ClientParams = &http2Params
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, podIP1, port, "ns:ns")
 		defer stream.Cancel()
@@ -588,7 +572,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with endpoint when using pod secondary IP", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, podIPv6Dual, port, "ns:ns")
 		defer stream.Cancel()
@@ -639,7 +622,6 @@ func TestGetProfiles(t *testing.T) {
 			},
 		}
 		server.config.MeshedHttp2ClientParams = &http2Params
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, externalWorkloadIP, port, "ns:ns")
 		defer stream.Cancel()
@@ -686,7 +668,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return default profile when IP does not map to service or pod", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, "172.0.0.0", 1234, "")
 		defer stream.Cancel()
@@ -698,7 +679,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with no opaque transport when pod does not have label and port is opaque", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		// port 3306 is in the default opaque port list
 		stream := profileStream(t, server, podIP2, 3306, "")
@@ -718,7 +698,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with no protocol hint when pod does not have label", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, podIP2, port, "")
 		defer stream.Cancel()
@@ -733,7 +712,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with protocol hint for default opaque port when pod is unmeshed", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		// 3306 is in the default opaque list
 		stream := profileStream(t, server, podIP2, 3306, "")
@@ -752,7 +730,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return non-opaque protocol profile when using cluster IP and opaque protocol port", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, clusterIPOpaque, opaquePort, "")
 		defer stream.Cancel()
@@ -767,7 +744,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return opaque protocol profile with endpoint when using pod IP and opaque protocol port", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, podIPOpaque, opaquePort, "")
 		defer stream.Cancel()
@@ -811,7 +787,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return opaque protocol profile when using service name with opaque port annotation", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, fullyQualifiedNameOpaqueService, opaquePort, "")
 		defer stream.Cancel()
@@ -826,7 +801,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with unknown protocol hint and identity when pod contains skipped inbound port", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, podIPSkipped, skippedPort, "")
 		defer stream.Cancel()
@@ -845,7 +819,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return opaque protocol profile with endpoint when using externalworkload IP and opaque protocol port", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, externalWorkloadIP, opaquePort, "")
 		defer stream.Cancel()
@@ -889,7 +862,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with opaque protocol when using Pod IP selected by a Server", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, podIPPolicy, 80, "")
 		defer stream.Cancel()
@@ -910,7 +882,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with opaque protocol when using externalworkload IP selected by a Server", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, externalWorkloadIPPolicy, 80, "")
 		defer stream.Cancel()
@@ -931,7 +902,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with opaque protocol when using an opaque port with an external IP", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, externalIP, 3306, "")
 		defer stream.Cancel()
@@ -944,7 +914,6 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with non-opaque protocol when using an arbitrary port with an external IP", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, externalIP, 80, "")
 		defer stream.Cancel()
@@ -958,7 +927,6 @@ func TestGetProfiles(t *testing.T) {
 		hostPort := uint32(7777)
 		containerPort := uint32(80)
 		server, l5dClient := getServerWithClient(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, externalIP, hostPort, "")
 		defer stream.Cancel()
@@ -1121,7 +1089,6 @@ func TestGetProfiles(t *testing.T) {
 func TestTokenStructure(t *testing.T) {
 	t.Run("when JSON is valid", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		dest := &pb.GetDestination{ContextToken: "{\"ns\":\"ns-1\",\"nodeName\":\"node-1\"}\n"}
 		token := server.parseContextToken(dest.ContextToken)
@@ -1137,7 +1104,6 @@ func TestTokenStructure(t *testing.T) {
 
 	t.Run("when JSON is invalid and old token format used", func(t *testing.T) {
 		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
 
 		dest := &pb.GetDestination{ContextToken: "ns:ns-2"}
 		token := server.parseContextToken(dest.ContextToken)
@@ -1148,7 +1114,6 @@ func TestTokenStructure(t *testing.T) {
 
 	t.Run("when invalid JSON and invalid old format", func(t *testing.T) {
 		server := makeServer(t)
-		server.clusterStore.UnregisterGauges()
 
 		dest := &pb.GetDestination{ContextToken: "123fa-test"}
 		token := server.parseContextToken(dest.ContextToken)
@@ -1270,7 +1235,6 @@ func testReturnEndpoints(t *testing.T, fqdn, ip string, port uint32) {
 	t.Helper()
 
 	server := makeServer(t)
-	defer server.clusterStore.UnregisterGauges()
 
 	stream := &bufferingGetStream{
 		updates:          make(chan *pb.Update, 50),
