@@ -1108,36 +1108,6 @@ func TestTokenStructure(t *testing.T) {
 		dest := &pb.GetDestination{ContextToken: "ns:ns-2"}
 		token := server.parseContextToken(dest.ContextToken)
 		if token.Ns != "ns-2" {
-
-		profile = stream.Updates()[3]
-		if !profile.OpaqueProtocol {
-			t.Fatal("Expected OpaqueProtocol=true")
-		}
-	})
-}
-
-func TestTokenStructure(t *testing.T) {
-	t.Run("when JSON is valid", func(t *testing.T) {
-		server := makeServer(t)
-
-		dest := &pb.GetDestination{ContextToken: "{\"ns\":\"ns-1\",\"nodeName\":\"node-1\"}\n"}
-		token := server.parseContextToken(dest.ContextToken)
-
-		if token.Ns != "ns-1" {
-			t.Fatalf("Expected token namespace to be %s got %s", "ns-1", token.Ns)
-		}
-
-		if token.NodeName != "node-1" {
-			t.Fatalf("Expected token nodeName to be %s got %s", "node-1", token.NodeName)
-		}
-	})
-
-	t.Run("when JSON is invalid and old token format used", func(t *testing.T) {
-		server := makeServer(t)
-
-		dest := &pb.GetDestination{ContextToken: "ns:ns-2"}
-		token := server.parseContextToken(dest.ContextToken)
-		if token.Ns != "ns-2" {
 			t.Fatalf("Expected %s got %s", "ns-2", token.Ns)
 		}
 	})
