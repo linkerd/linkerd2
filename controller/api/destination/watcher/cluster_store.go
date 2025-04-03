@@ -9,7 +9,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	logging "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -36,7 +35,7 @@ type (
 		// kubeconfig, it creates API Server clients
 		decodeFn configDecoder
 
-		size_gauge prometheus.GaugeFunc
+		sizeGauge prometheus.GaugeFunc
 	}
 
 	// remoteCluster is a helper struct that represents a store item
@@ -73,7 +72,7 @@ const (
 // Secret informer. The event handlers are responsible for driving the discovery
 // of remote clusters and their configuration
 func NewClusterStore(client kubernetes.Interface, namespace string, enableEndpointSlices bool) (*ClusterStore, error) {
-	return NewClusterStoreWithDecoder(client, namespace, enableEndpointSlices, decodeK8sConfigFromSecret)
+	return NewClusterStoreWithDecoder(client, namespace, enableEndpointSlices, decodeK8sConfigFromSecret, prometheus.DefaultRegisterer)
 }
 
 func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
@@ -81,12 +80,17 @@ func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
 }
 
 func (cs *ClusterStore) UnregisterGauges() {
-	prometheus.Unregister(cs.size_gauge)
+	prometheus.Unregister(cs.sizeGauge)
 }
 
 // newClusterStoreWithDecoder is a helper function that allows the creation of a
 // store with an arbitrary `configDecoder` function.
-func NewClusterStoreWithDecoder(client kubernetes.Interface, namespace string, enableEndpointSlices bool, decodeFn configDecoder) (*ClusterStore, error) {
+func NewClusterStoreWithDecoder(
+	client kubernetes.Interface,
+	namespace string, enableEndpointSlices bool,
+	decodeFn configDecoder,
+	prom prometheus.Registerer,
+) (*ClusterStore, error) {
 	api := k8s.NewNamespacedAPI(client, nil, nil, namespace, "local", k8s.Secret)
 
 	cs := &ClusterStore{
@@ -99,10 +103,17 @@ func NewClusterStoreWithDecoder(client kubernetes.Interface, namespace string, e
 		decodeFn:             decodeFn,
 	}
 
-	cs.size_gauge = promauto.NewGaugeFunc(prometheus.GaugeOpts{
+	sizeGauge := prometheus.NewGaugeFunc(prometheus.GaugeOpts{
 		Name: "cluster_store_size",
 		Help: "The number of linked clusters in the remote discovery cluster store",
 	}, func() float64 { return (float64)(len(cs.store)) })
+	if prom != nil {
+		if err := prom.Register(sizeGauge); err != nil {
+			// If we can't register the metric, log the error but continue
+			cs.log.Warnf("Failed to register cluster_store_size metric: %v", err)
+		}
+	}
+	cs.sizeGauge = sizeGauge
 
 	_, err := cs.api.Secret().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {

@@ -11,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func TestFederatedService(t *testing.T) {
@@ -135,11 +136,14 @@ func mockFederatedServiceWatcher(t *testing.T) (*federatedServiceWatcher, error)
 	if err != nil {
 		return nil, fmt.Errorf("NewEndpointsWatcher returned an error: %w", err)
 	}
+
+	prom := prometheus.NewRegistry()
 	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", false,
 		watcher.CreateMulticlusterDecoder(map[string][]string{
 			"east":  eastConfigs,
 			"north": northConfigs,
 		}),
+		prom,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("NewClusterStoreWithDecoder returned an error: %w", err)

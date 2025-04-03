@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func TestClusterStoreHandlers(t *testing.T) {
@@ -80,7 +81,8 @@ func TestClusterStoreHandlers(t *testing.T) {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			cs, err := NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", tt.enableEndpointSlices, CreateMockDecoder())
+			prom := prometheus.NewRegistry()
+			cs, err := NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", tt.enableEndpointSlices, CreateMockDecoder(), prom)
 			if err != nil {
 				t.Fatalf("Unexpected error when starting watcher cache: %s", err)
 			}
