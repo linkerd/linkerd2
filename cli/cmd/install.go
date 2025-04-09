@@ -158,10 +158,9 @@ A full list of configurable values can be found at https://artifacthub.io/packag
 			}
 
 			if crds {
-				// The CRD chart is not configurable.
-				// TODO(ver): Error if values have been configured?
 				if err = installCRDs(cmd.Context(), k8sAPI, os.Stdout, options, output); err != nil {
-					return err
+					fmt.Fprintf(os.Stderr, "%s\n", err)
+					os.Exit(1)
 				}
 
 				fmt.Fprintln(os.Stderr, "Rendering Linkerd CRDs...")
