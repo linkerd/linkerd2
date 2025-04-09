@@ -11,7 +11,7 @@ require (
 	github.com/emicklei/proto v1.14.0
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/fatih/color v1.18.0
-	github.com/fsnotify/fsnotify v1.8.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-openapi/spec v0.21.0
 	github.com/go-test/deep v1.1.1
 	github.com/golang/protobuf v1.5.4
