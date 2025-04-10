@@ -17,6 +17,7 @@ import (
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
+	"github.com/linkerd/linkerd2/pkg/healthcheck/gwapi"
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -559,6 +560,21 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "pre-ns",
 					check: func(ctx context.Context) error {
 						return hc.CheckNamespace(ctx, hc.ControlPlaneNamespace, false)
+					},
+				},
+				{
+					description: "Gateway API is installed",
+					hintAnchor:  "gwapi",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						installed, err := gwapi.CheckGatewayAPICRDs(ctx, hc.kubeAPI)
+						if err != nil {
+							return err
+						}
+						if installed == gwapi.Absent {
+							return errors.New("The Gateway API CRDs should be pre-installed, unless Linkerd is explicitly set to deploy them")
+						}
+						return nil
 					},
 				},
 				{
