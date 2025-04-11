@@ -1,9 +1,11 @@
 package destination
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"testing"
+	"time"
 
 	logging "github.com/sirupsen/logrus"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
+	"github.com/linkerd/linkerd2/testutil"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -156,6 +159,20 @@ func mockFederatedServiceWatcher(t *testing.T) (*federatedServiceWatcher, error)
 	k8sAPI.Sync(nil)
 	metadataAPI.Sync(nil)
 	clusterStore.Sync(nil)
+
+	// Wait for the cluster store to be populated with the remote clusters.
+	err = testutil.RetryFor(30*time.Second, func() error {
+		if _, _, found := clusterStore.Get("east"); !found {
+			return errors.New("east cluster not found in cluster store")
+		}
+		if _, _, found := clusterStore.Get("north"); !found {
+			return errors.New("north cluster not found in cluster store")
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("timed out waiting for cluster store to be populated: %w", err)
+	}
 
 	return fsw, nil
 }
