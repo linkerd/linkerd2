@@ -49,6 +49,7 @@ jobs:
   go-test:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
+    timeout-minutes: 30
     runs-on: ubuntu-24.04
     container: ghcr.io/linkerd/dev:v45-go
     steps:
