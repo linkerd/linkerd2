@@ -18,7 +18,7 @@ go-lint *flags:
     golangci-lint run {{ flags }}
 
 go-test:
-    LINKERD_TEST_PRETTY_DIFF=1 gotestsum -- -race -v -mod=readonly ./...
+    LINKERD_TEST_PRETTY_DIFF=1 gotestsum -- -race -v -mod=readonly --timeout 10m ./...
 
 ##
 ## Rust
