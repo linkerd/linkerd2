@@ -231,7 +231,7 @@ func checkGatewayAPICRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI) (Gatewa
 			}
 			result = External
 			if !crdIncludesV1(crd) {
-				return result, fmt.Errorf("the %s CRD is missing the v1 version, please upgrade to Gateway API v1.0.0 or later", name)
+				return result, fmt.Errorf("the %s CRD is missing the v1 version, please upgrade to Gateway API v1.1.1 or later", name)
 			}
 		} else if kerrors.IsNotFound(err) {
 			// No action if CRD is not found.
