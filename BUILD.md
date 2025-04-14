@@ -204,7 +204,7 @@ and their proxies by using the `--set controlPlaneTracing=true` installation
 flag.
 
 This will configure all the components to send the traces at
-`collector.{{.Values.controlPlaneTracingNamespace}}.svc.{{.Values.ClusterDomain}}:55678`
+`collector.{{.Values.controlPlaneTracingNamespace}}.svc.{{.Values.ClusterDomain}}:4317`
 
 ```bash
 
