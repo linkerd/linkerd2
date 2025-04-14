@@ -300,6 +300,19 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: httproutes.gateway.networking.k8s.io
+spec:
+  versions:
+    - name: v1
+`
+
+	unsupportedGatewayAPIVersionManifest := `---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: httproutes.gateway.networking.k8s.io
+spec:
+  versions:
+    - name: v1alpha1
 `
 
 	linkerdGatewayAPIManifest := `---
@@ -324,6 +337,13 @@ metadata:
 			values.Options{},
 			false,
 			"install_crds.golden",
+		},
+		{
+			"error with unsupported external GW API",
+			unsupportedGatewayAPIVersionManifest,
+			values.Options{},
+			true,
+			"",
 		},
 		{
 			"render with missing GW API",
