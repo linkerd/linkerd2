@@ -372,6 +372,9 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: httproutes.gateway.networking.k8s.io
+spec:
+  versions:
+    - name: v1
 `
 
 	installOpts := valuespkg.Options{
@@ -391,6 +394,35 @@ metadata:
 
 	if err := testDataDiffer.DiffTestYAML("upgrade_crds_without_gateway_api.golden", upgradeManifest); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestUpgradeCRDsWithUnsupportedGatewayAPIVersion(t *testing.T) {
+	gatewayAPIManifest := `---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: httproutes.gateway.networking.k8s.io
+spec:
+  versions:
+    - name: v1alpha1
+`
+
+	installOpts := valuespkg.Options{
+		Values: []string{"installGatewayAPI=false"},
+	}
+	var installBuf bytes.Buffer
+	if err := renderCRDs(context.Background(), nil, &installBuf, installOpts, "yaml"); err != nil {
+		t.Fatalf("could not render install manifests: %s", err)
+	}
+	installManifest := installBuf.String()
+	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(installManifest), strings.NewReader(gatewayAPIManifest)})
+	if err != nil {
+		t.Fatalf("failed to initialize fake API: %s\n\n%s", err, installManifest)
+	}
+	err = renderCRDs(context.Background(), k, nil, valuespkg.Options{}, "yaml")
+	if err == nil {
+		t.Error("upgrade from unsupported version of the Gateway API should fail")
 	}
 }
 
