@@ -292,7 +292,7 @@ webhook:
 
   # -- collector service address for the proxies to send trace data.
   # Points by default to the linkerd-jaeger collector
-  collectorSvcAddr: collector.linkerd-jaeger:55678
+  collectorSvcAddr: collector.linkerd-jaeger:4317
   # -- protocol proxies should use to send trace data.
   # Can be `opencensus` or `opentelemetry` (default)
   collectorTraceProtocol: opentelemetry

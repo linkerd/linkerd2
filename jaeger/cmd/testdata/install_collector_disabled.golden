@@ -46,7 +46,7 @@ spec:
       automountServiceAccountToken: false
       containers:
       - args:
-        - -collector-svc-addr=collector.linkerd-jaeger:55678
+        - -collector-svc-addr=collector.linkerd-jaeger:4317
         - -collector-trace-protocol=opentelemetry
         - -collector-trace-svc-name=linkerd-proxy
         - -collector-svc-account=collector
