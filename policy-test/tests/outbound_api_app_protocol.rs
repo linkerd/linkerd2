@@ -21,7 +21,6 @@ async fn opaque_parent() {
         with_temp_ns(|client, ns| async move {
             let port = 4191;
             // Create a parent with no routes.
-            // let parent = P::create_parent(&client.clone(), &ns).await;
             let parent = create(
                 &client,
                 P::make_parent_with_protocol(&ns, Some("linkerd.io/opaque".to_string())),
@@ -58,7 +57,6 @@ async fn unknown_app_protocol_parent() {
         with_temp_ns(|client, ns| async move {
             let port = 4191;
             // Create a parent with no routes.
-            // let parent = P::create_parent(&client.clone(), &ns).await;
             let parent = create(
                 &client,
                 P::make_parent_with_protocol(&ns, Some("XMPP".to_string())),
@@ -95,7 +93,6 @@ async fn opaque_parent_with_tcp_route() {
         with_temp_ns(|client, ns| async move {
             let port = 4191;
             // Create a parent with no routes.
-            // let parent = P::create_parent(&client.clone(), &ns).await;
             let parent = create(
                 &client,
                 P::make_parent_with_protocol(&ns, Some("linkerd.io/opaque".to_string())),
@@ -144,7 +141,6 @@ async fn http1_parent() {
         with_temp_ns(|client, ns| async move {
             let port = 4191;
             // Create a parent with no routes.
-            // let parent = P::create_parent(&client.clone(), &ns).await;
             let parent = create(
                 &client,
                 P::make_parent_with_protocol(&ns, Some("http".to_string())),
@@ -180,7 +176,6 @@ async fn http1_parent_with_http_route() {
         with_temp_ns(|client, ns| async move {
             let port = 4191;
             // Create a parent with no routes.
-            // let parent = P::create_parent(&client.clone(), &ns).await;
             let parent = create(
                 &client,
                 P::make_parent_with_protocol(&ns, Some("http".to_string())),
@@ -227,7 +222,6 @@ async fn http2_parent() {
         with_temp_ns(|client, ns| async move {
             let port = 4191;
             // Create a parent with no routes.
-            // let parent = P::create_parent(&client.clone(), &ns).await;
             let parent = create(
                 &client,
                 P::make_parent_with_protocol(&ns, Some("kubernetes.io/h2c".to_string())),
@@ -263,7 +257,6 @@ async fn http2_parent_with_http_route() {
         with_temp_ns(|client, ns| async move {
             let port = 4191;
             // Create a parent with no routes.
-            // let parent = P::create_parent(&client.clone(), &ns).await;
             let parent = create(
                 &client,
                 P::make_parent_with_protocol(&ns, Some("kubernetes.io/h2c".to_string())),
@@ -310,7 +303,6 @@ async fn http2_parent_with_grpc_route() {
         with_temp_ns(|client, ns| async move {
             let port = 4191;
             // Create a parent with no routes.
-            // let parent = P::create_parent(&client.clone(), &ns).await;
             let parent = create(
                 &client,
                 P::make_parent_with_protocol(&ns, Some("kubernetes.io/h2c".to_string())),
