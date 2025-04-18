@@ -92,7 +92,7 @@ async fn opaque_parent_with_tcp_route() {
         );
         with_temp_ns(|client, ns| async move {
             let port = 4191;
-            // Create a parent with no routes.
+            // Create a parent with TCPRoute.
             let parent = create(
                 &client,
                 P::make_parent_with_protocol(&ns, Some("linkerd.io/opaque".to_string())),
@@ -175,7 +175,7 @@ async fn http1_parent_with_http_route() {
         );
         with_temp_ns(|client, ns| async move {
             let port = 4191;
-            // Create a parent with no routes.
+            // Create a parent with HTTPRoute.
             let parent = create(
                 &client,
                 P::make_parent_with_protocol(&ns, Some("http".to_string())),
@@ -256,7 +256,7 @@ async fn http2_parent_with_http_route() {
         );
         with_temp_ns(|client, ns| async move {
             let port = 4191;
-            // Create a parent with no routes.
+            // Create a parent with HTTPRoute.
             let parent = create(
                 &client,
                 P::make_parent_with_protocol(&ns, Some("kubernetes.io/h2c".to_string())),
@@ -302,7 +302,7 @@ async fn http2_parent_with_grpc_route() {
         );
         with_temp_ns(|client, ns| async move {
             let port = 4191;
-            // Create a parent with no routes.
+            // Create a parent with GRPCRoute.
             let parent = create(
                 &client,
                 P::make_parent_with_protocol(&ns, Some("kubernetes.io/h2c".to_string())),
