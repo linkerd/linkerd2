@@ -393,11 +393,6 @@ fn to_proto(
     let mut http_routes = policy.http_routes.clone().into_iter().collect::<Vec<_>>();
 
     let kind = match &policy.app_protocol {
-        Some(AppProtocol::Opaque) => {
-            outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
-                routes: vec![default_outbound_opaq_route(backend, &policy.parent_info)],
-            })
-        }
         Some(AppProtocol::Http1) => {
             http_routes.sort_by(timestamp_then_name);
             http::http1_only_protocol(
@@ -412,23 +407,56 @@ fn to_proto(
             )
         }
         Some(AppProtocol::Http2) => {
-            http_routes.sort_by(timestamp_then_name);
-            http::http2_only_protocol(
-                backend,
-                http_routes.into_iter(),
-                accrual,
-                policy.http_retry.clone(),
-                policy.timeouts.clone(),
-                allow_l5d_request_headers,
-                &policy.parent_info,
-                original_dst,
-            )
+            let mut grpc_routes = policy.grpc_routes.clone().into_iter().collect::<Vec<_>>();
+
+            if !grpc_routes.is_empty() {
+                grpc_routes.sort_by(timestamp_then_name);
+                grpc::protocol(
+                    backend,
+                    grpc_routes.into_iter(),
+                    accrual,
+                    policy.grpc_retry.clone(),
+                    policy.timeouts.clone(),
+                    allow_l5d_request_headers,
+                    &policy.parent_info,
+                    original_dst,
+                )
+            } else {
+                http_routes.sort_by(timestamp_then_name);
+                http::http2_only_protocol(
+                    backend,
+                    http_routes.into_iter(),
+                    accrual,
+                    policy.http_retry.clone(),
+                    policy.timeouts.clone(),
+                    allow_l5d_request_headers,
+                    &policy.parent_info,
+                    original_dst,
+                )
+            }
         }
-        None | Some(AppProtocol::Unknown(_)) => {
+        Some(AppProtocol::Opaque) | Some(AppProtocol::Unknown(_)) => {
             if let Some(AppProtocol::Unknown(protocol)) = &policy.app_protocol {
                 tracing::debug!(resource = ?policy.parent_info, port = policy.port.get(), "Unknown appProtocol \"{protocol}\"");
             }
 
+            let mut tcp_routes = policy.tcp_routes.clone().into_iter().collect::<Vec<_>>();
+
+            if !tcp_routes.is_empty() {
+                tcp_routes.sort_by(timestamp_then_name);
+                tcp::protocol(
+                    backend,
+                    tcp_routes.into_iter(),
+                    &policy.parent_info,
+                    original_dst,
+                )
+            } else {
+                outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
+                    routes: vec![default_outbound_opaq_route(backend, &policy.parent_info)],
+                })
+            }
+        }
+        None => {
             let mut grpc_routes = policy.grpc_routes.clone().into_iter().collect::<Vec<_>>();
             let mut tls_routes = policy.tls_routes.clone().into_iter().collect::<Vec<_>>();
             let mut tcp_routes = policy.tcp_routes.clone().into_iter().collect::<Vec<_>>();
