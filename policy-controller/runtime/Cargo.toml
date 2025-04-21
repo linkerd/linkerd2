@@ -19,27 +19,27 @@ async-trait = "0.1"
 bytes = "1"
 drain = "0.2"
 futures = { version = "0.3", default-features = false }
-k8s-openapi = { workspace = true }
 http-body-util = "0.1"
 hyper = { workspace = true, features = ["http1", "http2", "server"] }
 hyper-util = { workspace = true }
 ipnet = { version = "2", default-features = false }
+k8s-openapi = { workspace = true }
 openssl = { version = "0.10.72", optional = true }
 parking_lot = "0.12"
 prometheus-client = { workspace = true }
+regex = "1"
 serde = "1"
 serde_json = "1"
 thiserror = "2"
 tokio-stream = { version = "0.1", features = ["sync"] }
 tower = { workspace = true }
 tracing = "0.1"
-regex = "1"
 
-linkerd-policy-controller-core = { path = "../core" }
-linkerd-policy-controller-grpc = { path = "../grpc" }
-linkerd-policy-controller-k8s-api = { path = "../k8s/api" }
-linkerd-policy-controller-k8s-index = { path = "../k8s/index" }
-linkerd-policy-controller-k8s-status = { path = "../k8s/status" }
+linkerd-policy-controller-core = { workspace = true }
+linkerd-policy-controller-grpc = { workspace = true }
+linkerd-policy-controller-k8s-api = { workspace = true }
+linkerd-policy-controller-k8s-index = { workspace = true }
+linkerd-policy-controller-k8s-status = { workspace = true }
 
 [dependencies.clap]
 version = "4"

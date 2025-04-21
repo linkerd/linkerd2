@@ -18,13 +18,33 @@ lto = "thin"
 gateway-api = "0.15"
 http = "1"
 hyper = "1"
-hyper-util = { version = "0.1", default-features = false, features = ["tracing"] }
 k8s-openapi = { version = "0.24", features = ["v1_32"] }
 kube = { version = "0.99", default-features = false }
 kubert = { version = "0.24", default-features = false }
 prometheus-client = { version = "0.23", default-features = false }
 tonic = { version = "0.12", default-features = false }
 tower = { version = "0.5", default-features = false }
+
+linkerd-policy-controller = { path = "./policy-controller" }
+linkerd-policy-controller-core = { path = "./policy-controller/core" }
+linkerd-policy-controller-grpc = { path = "./policy-controller/grpc" }
+linkerd-policy-controller-k8s-api = { path = "./policy-controller/k8s/api" }
+linkerd-policy-test = { path = "./policy-test" }
+
+[workspace.dependencies.hyper-util]
+version = "0.1"
+default-features = false
+features = ["tracing"]
+
+[workspace.dependencies.linkerd-policy-controller-k8s-index]
+path = "./policy-controller/k8s/index"
+
+[workspace.dependencies.linkerd-policy-controller-k8s-status]
+path = "./policy-controller/k8s/status"
+
+[workspace.dependencies.linkerd-policy-controller-runtime]
+path = "./policy-controller/runtime"
+default-features = false
 
 [workspace.dependencies.linkerd2-proxy-api]
 version = "0.16.0"
