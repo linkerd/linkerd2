@@ -1,7 +1,7 @@
 use super::validation;
 use crate::k8s::policy::{
     httproute, AuthorizationPolicy, AuthorizationPolicySpec, EgressNetwork, EgressNetworkSpec,
-    HttpLocalRateLimitPolicy, HttpRoute, HttpRouteSpec, LocalTargetRef, MeshTLSAuthentication,
+    HttpLocalRateLimitPolicy, HttpRoute, HttpRouteSpec, MeshTLSAuthentication,
     MeshTLSAuthenticationSpec, NamespacedTargetRef, Network, NetworkAuthentication,
     NetworkAuthenticationSpec, RateLimitPolicySpec, Server, ServerAuthorization,
     ServerAuthorizationSpec, ServerSpec,
@@ -228,41 +228,15 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(DynamicObje
     Ok((obj, spec))
 }
 
-/// Validates the target of an `AuthorizationPolicy`.
-fn validate_policy_target(ns: &str, tgt: &LocalTargetRef) -> Result<()> {
-    if tgt.targets_kind::<Server>() {
-        return Ok(());
-    }
-
-    if tgt.targets_kind::<HttpRoute>() {
-        return Ok(());
-    }
-
-    if tgt.targets_kind::<gateway::GRPCRoute>() {
-        return Ok(());
-    }
-
-    if tgt.targets_kind::<Namespace>() {
-        if tgt.name != ns {
-            bail!("cannot target another namespace: {}", tgt.name);
-        }
-        return Ok(());
-    }
-
-    bail!("invalid targetRef kind: {}", tgt.canonical_kind());
-}
-
 #[async_trait::async_trait]
 impl Validate<AuthorizationPolicySpec> for Admission {
     async fn validate(
         self,
-        ns: &str,
+        _ns: &str,
         _name: &str,
         _annotations: &BTreeMap<String, String>,
         spec: AuthorizationPolicySpec,
     ) -> Result<()> {
-        validate_policy_target(ns, &spec.target_ref)?;
-
         let mtls_authns_count = spec
             .required_authentication_refs
             .iter()
