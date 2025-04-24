@@ -232,11 +232,15 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(DynamicObje
 impl Validate<AuthorizationPolicySpec> for Admission {
     async fn validate(
         self,
-        _ns: &str,
+        ns: &str,
         _name: &str,
         _annotations: &BTreeMap<String, String>,
         spec: AuthorizationPolicySpec,
     ) -> Result<()> {
+        if spec.target_ref.targets_kind::<Namespace>() && spec.target_ref.name != ns {
+            bail!("cannot target another namespace: {}", &spec.target_ref.name);
+        }
+
         let mtls_authns_count = spec
             .required_authentication_refs
             .iter()
