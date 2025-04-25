@@ -100,7 +100,7 @@ jobs:
         with:
           go-version: "1.23"
       - name: Download image archives
-        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: image-archives-cli
           path: image-archives
@@ -189,7 +189,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       # - name: Download choco package
       #   if: startsWith(github.ref, 'refs/tags/stable')
-      #   uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e
+      #   uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
       #   with:
       #     name: choco
       #     path: choco
