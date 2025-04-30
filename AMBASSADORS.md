@@ -15,7 +15,7 @@ Interested in becoming a Linkerd Ambassador? Learn more at
 - 🇩🇪 Christian Hüning, @christianhuening
 - 🇭🇺 Dominik Táskai, @dtaskai
 - 🇮🇱 Eli Goldberg, @Eli-Goldberg
-- 🇬🇧 Mahendran Selvakumar, @skmahe1077/
+- 🇬🇧 Mahendran Selvakumar, @skmahe1077
 - 🇬🇹 Sergio Méndez, @sergioarmgpl
 - 🇳🇱 William Rizzo, @wrkode
 
