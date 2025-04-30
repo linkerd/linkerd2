@@ -9,7 +9,7 @@ maintainers.
 Interested in becoming a Linkerd Ambassador? Learn more at
 <https://linkerd.io/community/ambassadors/>.
 
-# Current Ambassadors
+## Current Ambassadors
 
 - 🇺🇸 Chris Campbell, @campbel
 - 🇩🇪 Christian Hüning, @christianhuening
@@ -19,7 +19,7 @@ Interested in becoming a Linkerd Ambassador? Learn more at
 - 🇬🇹 Sergio Méndez, @sergioarmgpl
 - 🇳🇱 William Rizzo, @wrkode
 
-# Ambassadors Emeriti
+## Ambassadors Emeriti
 
 - 🇺🇸 Charles Pretzer, @cpretzer
 - 🇳🇴 Fredrik Klingenberg, @fredrkl
