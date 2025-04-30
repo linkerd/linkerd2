@@ -21,8 +21,13 @@ use linkerd_policy_controller_k8s_api::{
 };
 use parking_lot::RwLock;
 use std::{
-    collections::hash_map::Entry, hash::Hash, net::IpAddr, num::NonZeroU16, str::FromStr,
-    sync::Arc, time,
+    collections::hash_map::Entry,
+    hash::Hash,
+    net::{IpAddr, SocketAddr},
+    num::NonZeroU16,
+    str::FromStr,
+    sync::Arc,
+    time,
 };
 use tokio::sync::watch;
 
@@ -30,7 +35,7 @@ use tokio::sync::watch;
 #[derive(Debug)]
 pub struct Index {
     namespaces: NamespaceIndex,
-    services_by_ip: HashMap<IpAddr, ResourceRef>,
+    services_by_ip: HashMap<SocketAddr, ResourceRef>,
     egress_networks_by_ref: HashMap<ResourceRef, EgressNetwork>,
     // holds information about resources. currently EgressNetworks and Services
     resource_info: HashMap<ResourceRef, ResourceInfo>,
@@ -263,6 +268,12 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             tracing::warn!(%error, service=name, namespace=ns, "Failed to parse grpc retry")
         }).unwrap_or_default();
 
+        let service_ref = ResourceRef {
+            kind: ResourceKind::Service,
+            name: name.clone(),
+            namespace: ns.clone(),
+        };
+        self.services_by_ip.retain(|_, v| *v != service_ref);
         if let Some(cluster_ips) = service
             .spec
             .as_ref()
@@ -274,12 +285,29 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                 }
                 match cluster_ip.parse() {
                     Ok(addr) => {
-                        let service_ref = ResourceRef {
-                            kind: ResourceKind::Service,
-                            name: name.clone(),
-                            namespace: ns.clone(),
-                        };
-                        self.services_by_ip.insert(addr, service_ref);
+                        service.spec.as_ref().and_then(|spec| {
+                            spec.ports.as_ref().map(|ports| {
+                                ports.iter().for_each(|port| {
+                                    let port = match port.port.try_into() {
+                                        Ok(port) => port,
+                                        Err(_) => {
+                                            tracing::warn!(%port.port, service=name, "Invalid service port");
+                                            return;
+                                        }
+                                    };
+                                    tracing::debug!(
+                                        %addr,
+                                        port,
+                                        service = name,
+                                        "inserting service into ip index"
+                                    );
+                                    self.services_by_ip.insert(
+                                        SocketAddr::new(addr, port),
+                                        service_ref.clone(),
+                                    );
+                                });
+                            })
+                        });
                     }
                     Err(error) => {
                         tracing::warn!(%error, service=name, cluster_ip, "Invalid cluster ip");
@@ -515,11 +543,15 @@ impl Index {
         Ok(watch.watch.subscribe())
     }
 
-    pub fn lookup_service(&self, addr: IpAddr) -> Option<(String, String)> {
-        self.services_by_ip
+    pub fn lookup_service(&self, addr: SocketAddr) -> Option<(String, String)> {
+        tracing::debug!(?addr, "looking up service");
+        let res = self
+            .services_by_ip
             .get(&addr)
             .cloned()
-            .map(|r| (r.namespace, r.name))
+            .map(|r| (r.namespace, r.name));
+        tracing::debug!(?res, "found service");
+        res
     }
 
     pub fn lookup_egress_network(

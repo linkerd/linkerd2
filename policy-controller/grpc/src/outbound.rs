@@ -76,6 +76,7 @@ where
                 })
             }
         };
+        tracing::debug!(target = ?target, "looking up target");
 
         let port = target
             .port
@@ -185,6 +186,7 @@ where
         &self,
         req: tonic::Request<outbound::TrafficSpec>,
     ) -> Result<tonic::Response<BoxWatchStream>, tonic::Status> {
+        tracing::debug!(?req, "watching outbound policy");
         let target = self.lookup(req.into_inner())?;
         let drain = self.drain.clone();
 

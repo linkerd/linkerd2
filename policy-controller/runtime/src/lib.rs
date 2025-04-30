@@ -12,7 +12,10 @@ mod validation;
 mod lease;
 pub use self::args::Args;
 
-use std::num::NonZeroU16;
+use std::{
+    net::{IpAddr, SocketAddr},
+    num::NonZeroU16,
+};
 
 #[derive(Clone, Debug)]
 struct InboundDiscover(index::inbound::SharedIndex);
@@ -123,12 +126,12 @@ impl
 
     fn lookup_ip(
         &self,
-        addr: std::net::IpAddr,
+        addr: IpAddr,
         port: NonZeroU16,
         source_namespace: String,
     ) -> Option<core::outbound::OutboundDiscoverTarget> {
         let index = self.0.read();
-        if let Some((namespace, name)) = index.lookup_service(addr) {
+        if let Some((namespace, name)) = index.lookup_service(SocketAddr::new(addr, port.into())) {
             return Some(core::outbound::OutboundDiscoverTarget::Resource(
                 core::outbound::ResourceTarget {
                     name,
