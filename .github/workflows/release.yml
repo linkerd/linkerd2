@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
         id: tag
+      - name: Validate edge version
+        run: bin/compute-edge-version
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
 
