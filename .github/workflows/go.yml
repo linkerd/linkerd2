@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: tj-actions/changed-files@4168bb487d5b82227665ab4ec90b67ce02691741
+      - uses: tj-actions/changed-files@e7b157b1c4ad44acfc8d9be14b8cd8f5058636e3
         id: changed
         with:
           files: |
