@@ -182,6 +182,15 @@ func TestNewValues(t *testing.T) {
 			Metrics: &ProxyMetrics{
 				HostnameLabels: false,
 			},
+			Tracing: &ProxyTracing{
+				Enable:           false,
+				Protocol:         "opentelemetry",
+				TraceServiceName: "linkerd-proxy",
+				Collector: &ProxyTracingCollector{
+					Endpoint:     "",
+					MeshIdentity: "",
+				},
+			},
 			Runtime: ProxyRuntime{
 				Workers: ProxyRuntimeWorkers{
 					Minimum: 1,

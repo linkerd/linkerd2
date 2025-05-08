@@ -119,6 +119,15 @@ func TestRender(t *testing.T) {
 			Metrics: &charts.ProxyMetrics{
 				HostnameLabels: false,
 			},
+			Tracing: &charts.ProxyTracing{
+				Enable:           false,
+				Protocol:         "opentelemetry",
+				TraceServiceName: "linkerd-proxy",
+				Collector: &charts.ProxyTracingCollector{
+					Endpoint:     "",
+					MeshIdentity: "",
+				},
+			},
 			LivenessProbe: &charts.Probe{
 				InitialDelaySeconds: 10,
 				TimeoutSeconds:      1,

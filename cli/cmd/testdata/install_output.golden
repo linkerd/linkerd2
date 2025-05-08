@@ -707,6 +707,13 @@ data:
       saMountPath: null
       shutdownGracePeriod: ""
       startupProbe: null
+      tracing:
+        collector:
+          endpoint: ""
+          meshIdentity: ""
+        enable: false
+        protocol: opentelemetry
+        traceServiceName: linkerd-proxy
       uid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: ProxyContainerName
@@ -1027,6 +1034,7 @@ spec:
           value: 30s
         - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
           value: "false"
+        
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
           value: "25,443,587,3306,5432,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
@@ -1184,6 +1192,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      
 ---
 ###
 ### Destination Controller Service
@@ -1401,6 +1410,7 @@ spec:
           value: 30s
         - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
           value: "false"
+        
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
           value: "25,443,587,3306,5432,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
@@ -1715,6 +1725,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      
 ---
 ###
 ### Heartbeat
@@ -1923,6 +1934,7 @@ spec:
           value: 30s
         - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
           value: "false"
+        
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
           value: "25,443,587,3306,5432,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
@@ -2136,6 +2148,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      
 ---
 kind: Service
 apiVersion: v1
