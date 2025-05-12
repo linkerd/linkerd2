@@ -284,6 +284,20 @@ proxy:
   metrics:
       # -- Whether or not to export hostname labels in outbound request metrics.
       hostnameLabels: false
+  # Configures tracing in the proxy and how they are exported
+  tracing:
+    # -- Enables trace collection and export in the proxy
+    enable: false
+    # -- Protocol to export traces with. Currently supported are
+    # "opentelemetry" (default) and "opencensus" (deprecated)
+    protocol: opentelemetry
+    traceServiceName: linkerd-proxy
+    collector:
+      # -- The collector endpoint to send traces to.
+      endpoint: ""
+      # -- The identity of the collector in the linkerd mesh. If the collector
+      # is unmeshed (recommended), this should remain unset.
+      meshIdentity: ""
   inbound:
     server:
       http2:
