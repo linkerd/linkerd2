@@ -28,7 +28,7 @@ const (
 // Inject returns the function that produces an AdmissionResponse containing
 // the patch, if any, to apply to the pod (proxy sidecar and eventually the
 // init container to set it up)
-func Inject(linkerdNamespace string) webhook.Handler {
+func Inject(linkerdNamespace string, overrider inject.ValueOverrider) webhook.Handler {
 	return func(
 		ctx context.Context,
 		api *k8s.MetadataAPI,
@@ -116,7 +116,7 @@ func Inject(linkerdNamespace string) webhook.Handler {
 				}
 			}
 
-			patchJSON, err := resourceConfig.GetPodPatch(true)
+			patchJSON, err := resourceConfig.GetPodPatch(true, overrider)
 			if err != nil {
 				return nil, err
 			}

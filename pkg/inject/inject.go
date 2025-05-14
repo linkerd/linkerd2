@@ -90,6 +90,8 @@ var (
 	}
 )
 
+type ValueOverrider func(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32) (*l5dcharts.Values, error)
+
 // Origin defines where the input YAML comes from. Refer the ResourceConfig's
 // 'origin' field
 type Origin int
@@ -661,13 +663,13 @@ func (conf *ResourceConfig) getAnnotationOverrides() map[string]string {
 
 // GetPodPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
-func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
+func (conf *ResourceConfig) GetPodPatch(injectProxy bool, overrider ValueOverrider) ([]byte, error) {
 	namedPorts := make(map[string]int32)
 	if conf.HasPodTemplate() {
 		namedPorts = util.GetNamedPorts(conf.pod.spec.Containers)
 	}
 
-	values, err := GetOverriddenValues(conf.values, conf.getAnnotationOverrides(), namedPorts)
+	values, err := overrider(conf.values, conf.getAnnotationOverrides(), namedPorts)
 	values.Proxy.PodInboundPorts = getPodInboundPorts(conf.pod.spec)
 	if err != nil {
 		return nil, fmt.Errorf("could not generate Overridden Values: %w", err)
