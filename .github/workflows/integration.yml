@@ -40,6 +40,7 @@ jobs:
             **/*.rs
             **/Dockerfile*
             charts/**
+            multicluster/charts/**
             justfile
             bin/fetch-proxy
             bin/_test-helper.sh

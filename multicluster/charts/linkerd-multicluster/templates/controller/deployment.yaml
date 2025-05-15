@@ -35,13 +35,12 @@ spec:
         mirror.linkerd.io/cluster-name: {{.link.ref.name}}
         {{- with $.Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
-    {{- if dig "enablePodAntiAffinity" $.Values.controllerDefaults.enablePodAntiAffinity . }}
-    {{- with $tree := deepCopy $ }}
+    {{- $tree := deepCopy $ }}
+    {{- $_ := set $tree.Values "enablePodAntiAffinity" (dig "enablePodAntiAffinity" $.Values.controllerDefaults.enablePodAntiAffinity .) -}}
+    {{- $_ := set $tree.Values "nodeAffinity" (dig "nodeAffinity" $.Values.controllerDefaults.nodeAffinity .) -}}
     {{- $_ := set $tree "component" .link.ref.name -}}
     {{- $_ := set $tree "label" "mirror.linkerd.io/cluster-name" -}}
     {{- include "linkerd.affinity" $tree | nindent 6 }}
-    {{- end }}
-    {{- end }}
       automountServiceAccountToken: false
       containers:
       - args:
