@@ -150,7 +150,7 @@ production installation, documented in [Getting
 Started](https://linkerd.io/2/getting-started/).
 
 Note that you need to have first installed docker buildx, as explained
-[here](https://github.com/docker/buildx).
+[buildx docs](https://github.com/docker/buildx).
 
 ```bash
 # create the k3d cluster
@@ -487,8 +487,8 @@ system.
 
 For general instructions on how to install the charts check out the
 [docs](https://linkerd.io/2/tasks/install-helm/). You also need to supply or
-generate your own certificates to use the chart, as explained
-[here](https://linkerd.io/2/tasks/generate-certificates/).
+generate your own certificates to use the chart, as explained in the
+[Generate Certificates task](https://linkerd.io/2/tasks/generate-certificates/).
 
 ### Extensions Helm charts
 
