@@ -120,7 +120,7 @@ That will kick off a CI Release workflow run that will:
   and verify it installs the current version being released
 - Deploy the updated helm charts
 
-You can locate the CI run [here](https://github.com/linkerd/linkerd2/actions).
+You can locate the CI run on the [actions page](https://github.com/linkerd/linkerd2/actions).
 
 ## 5. Do a walkthrough verification of the release
 
