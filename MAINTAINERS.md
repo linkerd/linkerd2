@@ -4,7 +4,7 @@ The Linkerd maintainers are:
 
 * Alex Leong <alex@buoyant.io> @adleong
 * Alejandro Pedraza <alejandro@buoyant.io> @alpeb
-* Katelyn Martin <kate@buoyant.io> @cratelyn
+* katelyn martin <kate@buoyant.io> @cratelyn
 * Oliver Gould <ver@buoyant.io> @olix0r
 * Scott Fleener <scott@buoyant.io> @sfleen
 * Zahari Dichev <zahari@buoyant.io> @zaharidichev
