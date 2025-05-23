@@ -40,13 +40,14 @@ type resourceTransformerInject struct {
 	overrideAnnotations map[string]string
 	enableDebugSidecar  bool
 	closeWaitTimeout    time.Duration
+	overrider           inject.ValueOverrider
 }
 
 func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transformer *resourceTransformerInject, output string) int {
 	return transformInput(inputs, errWriter, outWriter, transformer, output)
 }
 
-func newCmdInject() *cobra.Command {
+func NewCmdInject(overrider inject.ValueOverrider) *cobra.Command {
 	defaults, err := linkerd2.NewValues()
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
@@ -109,6 +110,7 @@ sub-folders, or coming from stdin.`,
 				overrideAnnotations: overrideAnnotations,
 				enableDebugSidecar:  enableDebugSidecar,
 				closeWaitTimeout:    closeWaitTimeout,
+				overrider:           overrider,
 			}
 			exitCode := uninjectAndInject(in, stderr, stdout, transformer, output)
 			os.Exit(exitCode)
@@ -205,7 +207,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
 	}
 
-	patchJSON, err := conf.GetPodPatch(rt.injectProxy)
+	patchJSON, err := conf.GetPodPatch(rt.injectProxy, rt.overrider)
 	if err != nil {
 		return nil, nil, err
 	}
