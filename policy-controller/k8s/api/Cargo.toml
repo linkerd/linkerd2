@@ -9,7 +9,7 @@ publish = false
 gateway-api = { workspace = true }
 ipnet = { version = "2.11", features = ["json"] }
 k8s-openapi = { workspace = true }
-schemars = "0.8"
+schemars = "0.9"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
