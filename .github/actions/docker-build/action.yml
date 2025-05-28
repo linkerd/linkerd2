@@ -31,7 +31,7 @@ runs:
   using: composite
   steps:
     # populate ACTIONS_CACHE_URL and ACTIONS_RUNTIME_TOKEN
-    - uses: crazy-max/ghaction-github-runtime@b3a9207c0e1ef41f4cf215303c976869d0c2c1c4
+    - uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124
     - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392
     - uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2
     - name: Run bin/docker-build-${{ inputs.component }}
