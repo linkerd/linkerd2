@@ -19,6 +19,10 @@ env:
   valueFrom:
     fieldRef:
       fieldPath: metadata.uid
+- name: _pod_ip
+  valueFrom:
+    fieldRef:
+      fieldPath: status.podIP
 - name: _pod_nodeName
   valueFrom:
     fieldRef:
