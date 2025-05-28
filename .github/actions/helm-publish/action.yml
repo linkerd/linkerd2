@@ -4,7 +4,7 @@ runs:
   using: composite
   steps:
   - name: Set up Cloud SDK
-    uses: 'google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b'
+    uses: 'google-github-actions/setup-gcloud@77e7a554d41e2ee56fc945c52dfd3f33d12def9a'
   - uses: linkerd/dev/actions/setup-tools@v45
   - shell: bash
     run: |
