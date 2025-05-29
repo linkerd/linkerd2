@@ -1,0 +1,45 @@
+FROM winamd64/golang:1.23.5-windowsservercore AS golang
+WORKDIR /linkerd-build
+COPY go.mod go.sum /linkerd-build/
+RUN go mod download
+COPY pkg/util pkg/util
+COPY pkg/flags pkg/flags
+COPY pkg/tls pkg/tls
+COPY pkg/version pkg/version
+ENV GOOS="windows"
+ENV GOARCH="amd64"
+ENV CGO_ENABLED=0
+RUN go build -mod=readonly ./pkg/...
+COPY proxy-identity proxy-identity
+RUN go build -o /out/proxy-identity.exe -mod=readonly ./proxy-identity
+
+FROM mcr.microsoft.com/windows/servercore:ltsc2022  AS fetch
+WORKDIR /build
+ARG LINKERD2_PROXY_VERSION="v2.299.0"
+SHELL ["powershell", "-NoProfile", "-Command"]
+ENV ProgressPreference="Continue"
+RUN Invoke-WebRequest https://github.com/linkerd/linkerd2-proxy/releases/download/release/$Env:LINKERD2_PROXY_VERSION/linkerd2-proxy-$Env:LINKERD2_PROXY_VERSION-windows-amd64.tar.gz -OutFile proxy.tar.gz
+RUN tar -xvf proxy.tar.gz
+RUN mv linkerd2-proxy-$Env:LINKERD2_PROXY_VERSION-windows-amd64/linkerd2-proxy.exe .
+RUN mv linkerd2-proxy-$Env:LINKERD2_PROXY_VERSION-windows-amd64/LICENSE .
+RUN echo $Env:LINKERD2_PROXY_VERSION > proxy-version
+RUN rm -Force -R linkerd2-proxy-$Env:LINKERD2_PROXY_VERSION-windows-amd64
+
+FROM mcr.microsoft.com/windows/nanoserver:ltsc2022 AS runtime
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
+COPY --from=fetch /build/LICENSE /usr/lib/linkerd/LICENSE
+COPY --from=fetch /build/proxy-version /usr/lib/linkerd/linkerd2-proxy-version.txt
+COPY --from=fetch /build/linkerd2-proxy.exe /usr/lib/linkerd/linkerd2-proxy.exe
+COPY --from=golang /out/proxy-identity.exe /usr/lib/linkerd/linkerd2-proxy-identity.exe
+COPY linkerd-network-validator.exe /usr/lib/linkerd/linkerd2-network-validator
+
+ARG LINKERD_VERSION
+ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
+ENV LINKERD2_PROXY_LOG=warn,linkerd=info
+ENV LINKERD2_PROXY_LOG_FORMAT=plain
+ENTRYPOINT ["/usr/lib/linkerd/linkerd2-proxy-identity.exe"]
+
+
+#RUN Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+#RUN [Environment]::SetEnvironmentVariable('Path', $env:Path + ';C:\ProgramData\chocolatey\bin', 'User')
+#RUN choco install llvm -y

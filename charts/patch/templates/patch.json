@@ -61,7 +61,7 @@ structs.
     "value": []
   },
   {{- end}}
-  {{- if and .Values.proxyInit (not .Values.cniEnabled) }}
+  {{- if and .Values.proxyInit (not .Values.windowsWorkload) }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes/-",
@@ -70,13 +70,15 @@ structs.
       "name": "linkerd-proxy-init-xtables-lock"
     }
   },
+  {{- if and .Values.proxyInit (not .Values.windowsWorkload) }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers/{{$initIndex}}{{$initIndex = add1 $initIndex}}",
     "value":
       {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
   },
-  {{- else if and .Values.proxy .Values.cniEnabled }}
+  {{- end }}
+  {{- else if .Values.windowsWorkload }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers/{{$initIndex}}{{$initIndex = add1 $initIndex}}",

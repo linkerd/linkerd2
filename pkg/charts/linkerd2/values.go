@@ -90,6 +90,7 @@ type (
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
 		Egress                      *Egress    `json:"egress"`
+		WindowsWorkload             bool       `json:"windowsWorkload"`
 	}
 
 	// Resources represents the computational resources setup for a given container

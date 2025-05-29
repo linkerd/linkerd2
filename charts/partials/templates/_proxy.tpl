@@ -253,6 +253,11 @@ startupProbe:
 {{- if .Values.proxy.resources }}
 {{ include "partials.resources" .Values.proxy.resources }}
 {{- end }}
+{{- if .Values.windowsWorkload }}
+securityContext:
+  windowsOptions:
+    runAsUserName: "NT AUTHORITY\\SYSTEM"
+{{ else }}
 securityContext:
   allowPrivilegeEscalation: false
   {{- if .Values.proxy.capabilities -}}
@@ -261,6 +266,7 @@ securityContext:
   readOnlyRootFilesystem: true
   runAsNonRoot: true
   runAsUser: {{.Values.proxy.uid}}
+{{ end -}}
 {{- if ge (int .Values.proxy.gid) 0 }}
   runAsGroup: {{.Values.proxy.gid}}
 {{- end }}

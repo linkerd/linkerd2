@@ -157,6 +157,8 @@ const (
 	// ignoreInboundPorts config.
 	ProxyIgnoreInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-inbound-ports"
 
+	ProxyWindowsWorkload = ProxyConfigAnnotationsPrefix + "/windows-workload"
+
 	// ProxyOpaquePortsAnnotation can be used to override the opaquePorts
 	// config.
 	ProxyOpaquePortsAnnotation = ProxyConfigAnnotationsPrefix + "/opaque-ports"
