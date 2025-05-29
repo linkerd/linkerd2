@@ -41,6 +41,7 @@ var (
 	// ProxyAnnotations is the list of possible annotations that can be applied on a pod or namespace.
 	// All these annotations should be prefixed with "config.linkerd.io"
 	ProxyAnnotations = []string{
+		k8s.ProxyWindowsWorkload,
 		k8s.ProxyAdminPortAnnotation,
 		k8s.ProxyControlPortAnnotation,
 		k8s.ProxyEnableDebugAnnotation,
@@ -241,6 +242,13 @@ func applyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		adminPort, err := strconv.ParseInt(override, 10, 32)
 		if err == nil {
 			values.Proxy.Ports.Admin = int32(adminPort)
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyWindowsWorkload]; ok {
+		value, err := strconv.ParseBool(override)
+		if err == nil {
+			values.WindowsWorkload = value
 		}
 	}
 

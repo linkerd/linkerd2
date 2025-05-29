@@ -9,13 +9,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
-
-	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 const (
@@ -142,13 +140,4 @@ func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
 	}
 
 	return csrb, nil
-}
-
-func runProxy() {
-	// The input arguments are static.
-	//nolint:gosec
-	err := syscall.Exec("/usr/lib/linkerd/linkerd2-proxy", []string{}, os.Environ())
-	if err != nil {
-		log.Fatalf("Failed to run proxy: %s", err)
-	}
 }

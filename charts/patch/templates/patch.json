@@ -70,12 +70,14 @@ structs.
       "name": "linkerd-proxy-init-xtables-lock"
     }
   },
+  {{- if and .Values.proxyInit (not .Values.windowsWorkload) }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers/{{$initIndex}}{{$initIndex = add1 $initIndex}}",
     "value":
       {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
   },
+  {{- end }}
   {{- else if and .Values.proxy .Values.cniEnabled }}
   {
     "op": "add",
