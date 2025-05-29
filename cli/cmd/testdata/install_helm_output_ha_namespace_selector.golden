@@ -747,6 +747,14 @@ data:
         failureThreshold: 120
         initialDelaySeconds: 0
         periodSeconds: 1
+      tracing:
+        collector:
+          endpoint: ""
+          meshIdentity:
+            serviceAccountName: ""
+        enable: false
+        protocol: ""
+        traceServiceName: linkerd-proxy
       uid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: linkerd-proxy
@@ -2351,6 +2359,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+
 ---
 kind: Service
 apiVersion: v1
