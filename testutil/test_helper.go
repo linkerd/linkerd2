@@ -723,6 +723,7 @@ func (h *TestHelper) GetReleaseChannelVersions() (map[string]string, error) {
 // the binary.
 func (h *TestHelper) DownloadCLIBinary(filepath, version string) error {
 	url := fmt.Sprintf("https://github.com/linkerd/linkerd2/releases/download/%[1]s/linkerd2-cli-%[1]s-%s-%s", version, runtime.GOOS, runtime.GOARCH)
+	fmt.Printf("Downloading Linkerd CLI from %s to %s\n", url, filepath)
 	resp, err := h.httpClient.Get(url)
 	if err != nil {
 		return err

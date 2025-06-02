@@ -400,6 +400,7 @@ setup_helm() {
   export helm_release_name='helm-test'
   export helm_multicluster_release_name='multicluster-test'
   "$bindir"/helm-build
+  "$helm_path" version
   "$helm_path" --kube-context="$context" repo add linkerd https://helm.linkerd.io/edge
   exit_on_err 'error setting up Helm'
 }

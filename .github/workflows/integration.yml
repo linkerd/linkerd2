@@ -287,6 +287,7 @@ jobs:
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
           go-version: "1.23"
+      - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           pattern: image-archives-*
