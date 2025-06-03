@@ -27,7 +27,7 @@ metadata:
     {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 roleRef:
   kind: Role
-  name: linkerd-config
+  name: ext-namespace-metadata-linkerd-config
   apiGroup: rbac.authorization.k8s.io
 subjects:
 {{- range . }}
