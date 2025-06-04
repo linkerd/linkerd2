@@ -14,12 +14,12 @@ rules:
   resources: ["configmaps"]
   verbs: ["get"]
   resourceNames: ["linkerd-config"]
-{{- with .Values.configAccess }}
+{{- with .Values.configReaders }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: linkerd-config
+  name: linkerd-config-reader
   namespace: {{ $.Release.Namespace }}
   labels:
     app.kubernetes.io/part-of: Linkerd
@@ -35,4 +35,5 @@ subjects:
   name: {{ .name }}
   namespace: {{ .namespace }}
 {{- end }}
+...
 {{- end }}

@@ -712,6 +712,6 @@ egress:
 
 # -- List of additional service accounts with read access to the linkerd-config
 # ConfigMap
-configAccess:
+configReaders:
 #- name:
 #  namespace:
