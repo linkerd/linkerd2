@@ -156,6 +156,7 @@ type (
 		LivenessProbe                        *Probe           `json:"livenessProbe"`
 		Control                              *ProxyControl    `json:"control"`
 		Metrics                              *ProxyMetrics    `json:"metrics"`
+		Tracing                              *ProxyTracing    `json:"tracing"`
 
 		AdditionalEnv   []corev1.EnvVar `json:"additionalEnv"`
 		ExperimentalEnv []corev1.EnvVar `json:"experimentalEnv"`
@@ -185,6 +186,22 @@ type (
 
 	ProxyMetrics struct {
 		HostnameLabels bool `json:"hostnameLabels"`
+	}
+
+	ProxyTracing struct {
+		Enable           bool                   `json:"enable"`
+		Protocol         string                 `json:"protocol"`
+		TraceServiceName string                 `json:"traceServiceName"`
+		Collector        *ProxyTracingCollector `json:"collector"`
+	}
+
+	ProxyTracingCollector struct {
+		Endpoint     string                         `json:"endpoint"`
+		MeshIdentity *ProxyTracingCollectorIdentity `json:"meshIdentity"`
+	}
+
+	ProxyTracingCollectorIdentity struct {
+		ServiceAccountName string `json:"serviceAccountName"`
 	}
 
 	ProxyRuntime struct {
