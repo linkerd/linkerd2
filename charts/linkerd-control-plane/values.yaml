@@ -709,3 +709,9 @@ podMonitor:
 egress:
   # -- The namespace that is used to store egress configuration that affects all client workloads in the cluster
   globalEgressNetworkNamespace: linkerd-egress
+
+# -- List of additional service accounts with read access to the linkerd-config
+# ConfigMap
+configReaders:
+#- name:
+#  namespace:
