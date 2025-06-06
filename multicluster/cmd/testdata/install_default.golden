@@ -1253,7 +1253,7 @@ spec:
       values:
       - linkerd-service-mirror
       - controller
-  port: service-mirror-admin-http
+  port: svcmi-admin-http
   proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1alpha1
@@ -1383,7 +1383,7 @@ spec:
           readOnly: true
         ports:
         - containerPort: 9999
-          name: local-service-mirror-admin-http
+          name: locsm-admin-http
       securityContext:
         seccompProfile:
           type: RuntimeDefault

@@ -243,9 +243,9 @@ spec:
         name: destination
         ports:
         - containerPort: 8086
-          name: destination-grpc
+          name: dest-grpc
         - containerPort: 9996
-          name: destination-admin-http
+          name: dest-admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -303,7 +303,7 @@ spec:
         - containerPort: 8443
           name: sp-validator
         - containerPort: 9997
-          name: sp-validator-admin-http
+          name: spval-admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -364,7 +364,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /live
-            port: policy-admin-http
+            port: pol-admin-http
           initialDelaySeconds: 10
           {{- with (.Values.policyController.livenessProbe).timeoutSeconds }}
           timeoutSeconds: {{ . }}
@@ -374,14 +374,14 @@ spec:
         - containerPort: 8090
           name: policy-grpc
         - containerPort: 9990
-          name: policy-admin-http
+          name: pol-admin-http
         - containerPort: 9443
           name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: policy-admin-http
+            port: pol-admin-http
           {{- with (.Values.policyController.readinessProbe).timeoutSeconds }}
           timeoutSeconds: {{ . }}
           {{- end }}

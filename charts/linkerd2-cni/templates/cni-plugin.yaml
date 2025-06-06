@@ -313,16 +313,16 @@ spec:
         livenessProbe:
           httpGet:
             path: /live
-            port: repair-controller-admin-http
+            port: rprc-admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: repair-controller-admin-http
+            port: rprc-admin-http
           initialDelaySeconds: 10
         ports:
         - containerPort: 9990
-          name: repair-controller-admin-http
+          name: rprc-admin-http
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

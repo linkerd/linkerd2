@@ -191,9 +191,9 @@ spec:
         name: identity
         ports:
         - containerPort: 8080
-          name: identity-grpc
+          name: ident-grpc
         - containerPort: 9990
-          name: identity-admin-http
+          name: ident-admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:

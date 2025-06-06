@@ -181,7 +181,7 @@ spec:
           readOnly: true
         ports:
         - containerPort: 9999
-          name: service-mirror-admin-http
+          name: svcmi-admin-http
         {{- with .Values.resources }}
         resources: {{ toYaml . | nindent 10 }}
         {{- end }}

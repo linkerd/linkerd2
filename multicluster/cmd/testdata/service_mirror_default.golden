@@ -140,7 +140,7 @@ spec:
           readOnly: true
         ports:
         - containerPort: 9999
-          name: service-mirror-admin-http
+          name: svcmi-admin-http
       securityContext:
         seccompProfile:
           type: RuntimeDefault
