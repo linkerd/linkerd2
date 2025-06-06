@@ -924,7 +924,7 @@ spec:
         - containerPort: 8080
           name: ident-grpc
         - containerPort: 9990
-          name: ident-admin-http
+          name: ident-admin
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1519,7 +1519,7 @@ spec:
         - containerPort: 8086
           name: dest-grpc
         - containerPort: 9996
-          name: dest-admin-http
+          name: dest-admin
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1557,7 +1557,7 @@ spec:
         - containerPort: 8443
           name: sp-validator
         - containerPort: 9997
-          name: spval-admin-http
+          name: spval-admin
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1602,21 +1602,21 @@ spec:
         livenessProbe:
           httpGet:
             path: /live
-            port: pol-admin-http
+            port: pol-admin
           initialDelaySeconds: 10
         name: policy
         ports:
         - containerPort: 8090
           name: policy-grpc
         - containerPort: 9990
-          name: pol-admin-http
+          name: pol-admin
         - containerPort: 9443
           name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: pol-admin-http
+            port: pol-admin
         resources:
           limits:
             cpu: "cpu-limit"
@@ -2036,7 +2036,7 @@ spec:
         - containerPort: 8443
           name: proxy-injector
         - containerPort: 9995
-          name: p-inj-admin-http
+          name: p-inj-admin
         readinessProbe:
           failureThreshold: 7
           httpGet:

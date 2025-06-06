@@ -181,7 +181,7 @@ spec:
           readOnly: true
         ports:
         - containerPort: 9999
-          name: svcmi-admin-http
+          name: svcmi-admin
         {{- with .Values.resources }}
         resources: {{ toYaml . | nindent 10 }}
         {{- end }}

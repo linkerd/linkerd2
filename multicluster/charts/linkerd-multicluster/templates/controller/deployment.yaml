@@ -86,7 +86,7 @@ spec:
           readOnly: true
         ports:
         - containerPort: 9999
-          name: ctrl-admin-http
+          name: ctrl-admin
         {{- with dig "resources" $.Values.controllerDefaults.resources . }}
         resources: {{ toYaml . | nindent 10 }}
         {{- end }}

@@ -10,9 +10,9 @@ import (
 )
 
 // AdminHTTPPortNameSuffix is the suffix for ports used by admin HTTP servers.
-// Ports may be named <container>-admin-http to avoid conflicts across multiple
+// Ports may be named <container>-admin to avoid conflicts across multiple
 // containers.
-const AdminHTTPPortNameSuffix string = "-admin-http"
+const AdminHTTPPortNameSuffix string = "-admin"
 
 // GetContainerMetrics returns the metrics exposed by a container on the passed in portName
 func GetContainerMetrics(

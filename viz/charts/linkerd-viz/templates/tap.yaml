@@ -113,7 +113,7 @@ spec:
         - containerPort: 8089
           name: apiserver
         - containerPort: 9998
-          name: admin-http
+          name: admin
         readinessProbe:
           failureThreshold: 7
           httpGet:

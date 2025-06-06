@@ -163,7 +163,7 @@ spec:
           readOnly: true
         ports:
         - containerPort: 9999
-          name: svcmi-admin-http
+          name: svcmi-admin
       securityContext:
         seccompProfile:
           type: RuntimeDefault

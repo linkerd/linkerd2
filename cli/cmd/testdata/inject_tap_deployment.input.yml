@@ -63,7 +63,7 @@ spec:
           name: apiserver
           protocol: TCP
         - containerPort: 9998
-          name: tap-admin-http
+          name: tap-admin
           protocol: TCP
         readinessProbe:
           failureThreshold: 7

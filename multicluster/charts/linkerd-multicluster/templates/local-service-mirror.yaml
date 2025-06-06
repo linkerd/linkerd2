@@ -132,7 +132,7 @@ spec:
           readOnly: true
         ports:
         - containerPort: 9999
-          name: locsm-admin-http
+          name: locsm-admin
         {{- with .Values.localServiceMirror.resources }}
         resources: {{ toYaml . | nindent 10 }}
         {{- end }}

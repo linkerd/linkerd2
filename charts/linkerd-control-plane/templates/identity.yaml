@@ -193,7 +193,7 @@ spec:
         - containerPort: 8080
           name: ident-grpc
         - containerPort: 9990
-          name: ident-admin-http
+          name: ident-admin
         readinessProbe:
           failureThreshold: 7
           httpGet:
