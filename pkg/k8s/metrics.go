@@ -9,10 +9,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// AdminHTTPPortName is the suffix for ports used by admin HTTP servers.
+// AdminHTTPPortNameSuffix is the suffix for ports used by admin HTTP servers.
 // Ports may be named <container>-admin-http to avoid conflicts across multiple
 // containers.
-const AdminHTTPPortName string = "admin-http"
+const AdminHTTPPortNameSuffix string = "-admin-http"
 
 // GetContainerMetrics returns the metrics exposed by a container on the passed in portName
 func GetContainerMetrics(

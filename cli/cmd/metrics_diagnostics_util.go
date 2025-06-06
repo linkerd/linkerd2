@@ -33,9 +33,9 @@ func (s byResult) Less(i, j int) bool {
 	return s[i].pod < s[j].pod || ((s[i].pod == s[j].pod) && s[i].container < s[j].container)
 }
 
-// getAllContainersWithPort returns all the containers within
-// a pod which exposes metrics at a port with name portName
-func getAllContainersWithPort(
+// getAllContainersWithPortSuffix returns all the containers within
+// a pod which exposes metrics at a port with the given suffix
+func getAllContainersWithPortSuffix(
 	pod corev1.Pod,
 	portName string,
 ) ([]corev1.Container, error) {
@@ -72,7 +72,7 @@ func getMetrics(
 		atomic.AddInt32(&activeRoutines, 1)
 		go func(p corev1.Pod) {
 			defer atomic.AddInt32(&activeRoutines, -1)
-			containers, err := getAllContainersWithPort(p, portName)
+			containers, err := getAllContainersWithPortSuffix(p, portName)
 			if err != nil {
 				resultChan <- metricsResult{
 					pod: p.GetName(),
