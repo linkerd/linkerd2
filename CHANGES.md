@@ -10,6 +10,8 @@ notes moving forward!
 
 * Migrated edge release change notes to use GitHub's automated release notes
   feature.
+* Renamed admin and gRPC ports in controller manifests to avoid duplicate port
+  names.
 
 ## edge-24.2.4
 
