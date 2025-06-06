@@ -163,7 +163,7 @@ spec:
           readOnly: true
         ports:
         - containerPort: 9999
-          name: admin-http
+          name: service-mirror-admin-http
       securityContext:
         seccompProfile:
           type: RuntimeDefault

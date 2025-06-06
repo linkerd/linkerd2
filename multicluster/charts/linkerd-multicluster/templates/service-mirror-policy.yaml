@@ -16,7 +16,7 @@ spec:
       values:
       - linkerd-service-mirror
       - controller
-  port: admin-http
+  port: service-mirror-admin-http
   proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1alpha1

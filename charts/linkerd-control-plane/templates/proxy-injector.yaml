@@ -107,7 +107,7 @@ spec:
         - containerPort: 8443
           name: proxy-injector
         - containerPort: 9995
-          name: admin-http
+          name: proxy-injector-admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:

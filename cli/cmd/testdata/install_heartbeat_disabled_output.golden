@@ -902,9 +902,9 @@ spec:
         name: identity
         ports:
         - containerPort: 8080
-          name: grpc
+          name: identity-grpc
         - containerPort: 9990
-          name: admin-http
+          name: identity-admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1512,9 +1512,9 @@ spec:
         name: destination
         ports:
         - containerPort: 8086
-          name: grpc
+          name: destination-grpc
         - containerPort: 9996
-          name: admin-http
+          name: destination-admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1552,7 +1552,7 @@ spec:
         - containerPort: 8443
           name: sp-validator
         - containerPort: 9997
-          name: admin-http
+          name: sp-validator-admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1597,21 +1597,21 @@ spec:
         livenessProbe:
           httpGet:
             path: /live
-            port: admin-http
+            port: policy-admin-http
           initialDelaySeconds: 10
         name: policy
         ports:
         - containerPort: 8090
-          name: grpc
+          name: policy-grpc
         - containerPort: 9990
-          name: admin-http
+          name: policy-admin-http
         - containerPort: 9443
           name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: admin-http
+            port: policy-admin-http
         resources:
         securityContext:
           capabilities:
@@ -1945,7 +1945,7 @@ spec:
         - containerPort: 8443
           name: proxy-injector
         - containerPort: 9995
-          name: admin-http
+          name: proxy-injector-admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:

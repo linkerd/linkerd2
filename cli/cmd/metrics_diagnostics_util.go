@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"sort"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -46,7 +47,7 @@ func getAllContainersWithPort(
 	allContainers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
 	for _, c := range allContainers {
 		for _, p := range c.Ports {
-			if p.Name == portName {
+			if p.Name == portName || strings.HasSuffix(p.Name, portName) {
 				containers = append(containers, c)
 			}
 		}
