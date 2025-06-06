@@ -52,7 +52,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)
 			}
-                        _, err = getAllContainersWithPortSuffix(*pod, "admin")
+			_, err = getAllContainersWithPortSuffix(*pod, "admin")
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
