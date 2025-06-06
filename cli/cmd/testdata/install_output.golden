@@ -1602,21 +1602,21 @@ spec:
         livenessProbe:
           httpGet:
             path: /live
-            port: pol-admin
+            port: policy-admin
           initialDelaySeconds: 10
         name: policy
         ports:
         - containerPort: 8090
           name: policy-grpc
         - containerPort: 9990
-          name: pol-admin
+          name: policy-admin
         - containerPort: 9443
           name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: pol-admin
+            port: policy-admin
         resources:
           limits:
             cpu: "cpu-limit"
@@ -2036,7 +2036,7 @@ spec:
         - containerPort: 8443
           name: proxy-injector
         - containerPort: 9995
-          name: p-inj-admin
+          name: injector-admin
         readinessProbe:
           failureThreshold: 7
           httpGet:
