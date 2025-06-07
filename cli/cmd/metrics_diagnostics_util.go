@@ -82,7 +82,14 @@ func getMetrics(
 			}
 
 			for _, c := range containers {
-				bytes, err := k8s.GetContainerMetrics(k8sAPI, p, c, emitLogs, portName)
+				cname := portName
+				for _, cp := range c.Ports {
+					if cp.Name == portName || strings.HasSuffix(cp.Name, portName) {
+						cname = cp.Name
+						break
+					}
+				}
+				bytes, err := k8s.GetContainerMetrics(k8sAPI, p, c, emitLogs, cname)
 
 				resultChan <- metricsResult{
 					pod:       p.GetName(),
