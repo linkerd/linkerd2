@@ -98,7 +98,7 @@ struct Pod {
     /// The pod's named container ports. Used by `Server` port selectors.
     ///
     /// A pod may have multiple ports with the same name. E.g., each container
-    /// may have its own `admin-http` port.
+    /// may have its own `admin` port.
     port_names: HashMap<String, PortSet>,
 
     /// All known TCP server ports. This may be updated by
@@ -147,7 +147,7 @@ struct ExternalWorkload {
     // The workload's named container ports. Used by `Server` port selectors.
     //
     // A workload will not have multiple ports with the same name, e.g. two
-    // `admin-http` ports pointing to different numerical values.
+    // `admin` ports pointing to different numerical values.
     port_names: HashMap<String, NonZeroU16>,
 
     /// All known TCP server ports.

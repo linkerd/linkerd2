@@ -26,7 +26,7 @@ spec:
   - name: http
     port: 8084
     targetPort: 8084
-  - name: admin-http
+  - name: admin
     port: 9994
     targetPort: 9994
 ---
@@ -123,7 +123,7 @@ spec:
         - containerPort: 8084
           name: http
         - containerPort: 9994
-          name: admin-http
+          name: admin
         readinessProbe:
           failureThreshold: 7
           httpGet:

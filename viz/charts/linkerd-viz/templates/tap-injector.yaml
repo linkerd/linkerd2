@@ -98,7 +98,7 @@ spec:
         - containerPort: 8443
           name: tap-injector
         - containerPort: 9995
-          name: admin-http
+          name: admin
         readinessProbe:
           failureThreshold: 7
           httpGet:

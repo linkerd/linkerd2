@@ -441,7 +441,7 @@ spec:
         - containerPort: 8085
           name: http
         - containerPort: 9995
-          name: admin-http
+          name: admin
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -623,7 +623,7 @@ data:
       - source_labels:
         - __meta_kubernetes_pod_container_port_name
         action: keep
-        regex: admin-http
+        regex: admin
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: component
@@ -636,7 +636,7 @@ data:
         - __meta_kubernetes_pod_label_component
         - __meta_kubernetes_pod_container_port_name
         action: keep
-        regex: (linkerd-service-mirror|controller);admin-http$
+        regex: (linkerd-service-mirror|controller);admin$
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: component
@@ -711,7 +711,7 @@ spec:
     linkerd.io/extension: viz
     component: prometheus
   ports:
-  - name: admin-http
+  - name: admin
     port: 9090
     targetPort: 9090
 ---
@@ -771,7 +771,7 @@ spec:
         name: prometheus
         ports:
         - containerPort: 9090
-          name: admin-http
+          name: admin
         readinessProbe:
           httpGet:
             path: /-/ready
@@ -845,7 +845,7 @@ spec:
       linkerd.io/extension: viz
       component: prometheus
       namespace: linkerd-viz
-  port: admin-http
+  port: admin
   proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1alpha1
@@ -958,7 +958,7 @@ spec:
         - containerPort: 8089
           name: apiserver
         - containerPort: 9998
-          name: admin-http
+          name: admin
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1195,7 +1195,7 @@ spec:
         - containerPort: 8443
           name: tap-injector
         - containerPort: 9995
-          name: admin-http
+          name: admin
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1326,7 +1326,7 @@ spec:
   - name: http
     port: 8084
     targetPort: 8084
-  - name: admin-http
+  - name: admin
     port: 9994
     targetPort: 9994
 ---
@@ -1392,7 +1392,7 @@ spec:
         - containerPort: 8084
           name: http
         - containerPort: 9994
-          name: admin-http
+          name: admin
         readinessProbe:
           failureThreshold: 7
           httpGet:

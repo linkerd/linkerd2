@@ -68,7 +68,7 @@ data:
       - source_labels:
         - __meta_kubernetes_pod_container_port_name
         action: keep
-        regex: admin-http
+        regex: admin
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: component
@@ -81,7 +81,7 @@ data:
         - __meta_kubernetes_pod_label_component
         - __meta_kubernetes_pod_container_port_name
         action: keep
-        regex: (linkerd-service-mirror|controller);admin-http$
+        regex: (linkerd-service-mirror|controller);admin$
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: component
@@ -182,7 +182,7 @@ spec:
     linkerd.io/extension: viz
     component: prometheus
   ports:
-  - name: admin-http
+  - name: admin
     port: 9090
     targetPort: 9090
 ---
@@ -262,7 +262,7 @@ spec:
         name: prometheus
         ports:
         - containerPort: 9090
-          name: admin-http
+          name: admin
         readinessProbe:
           httpGet:
             path: /-/ready

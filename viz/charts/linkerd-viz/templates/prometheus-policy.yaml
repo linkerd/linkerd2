@@ -15,7 +15,7 @@ spec:
       linkerd.io/extension: viz
       component: prometheus
       namespace: {{.Release.Namespace}}
-  port: admin-http
+  port: admin
   proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1alpha1
