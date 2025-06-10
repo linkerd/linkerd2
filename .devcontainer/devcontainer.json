@@ -1,8 +1,6 @@
 {
     "name": "linkerd2",
     "image": "ghcr.io/linkerd/dev:v45",
-    // "dockerFile": "./Dockerfile",
-    // "context": "..",
     "features": {
         "ghcr.io/devcontainers/features/github-cli:1": {}
     },
@@ -21,20 +19,15 @@
             ],
             "settings": {
                 "go.lintTool": "golangci-lint",
-                // TODO(ver) Find a way to enforce YAML formatting.
-                // See https://github.com/redhat-developer/vscode-yaml/discussions/839
                 "yaml.format.enable": false
             }
         }
     },
     "runArgs": [
         "--init",
-        // Limit container memory usage.
         "--memory=12g",
         "--memory-swap=12g",
-        // Use the host network so we can access k3d, etc.
         "--net=host",
-        // For lldb
         "--cap-add=SYS_PTRACE",
         "--security-opt=seccomp=unconfined"
     ],
