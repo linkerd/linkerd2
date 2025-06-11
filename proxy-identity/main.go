@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -20,6 +21,9 @@ const (
 	envDir          = "LINKERD2_PROXY_IDENTITY_DIR"
 	envLocalName    = "LINKERD2_PROXY_IDENTITY_LOCAL_NAME"
 	envTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
+	envProxyBinPath = "LINKERD2_PROXY_BIN_PATH"
+
+	defaultProxyBinPath = "/usr/lib/linkerd/linkerd2-proxy"
 )
 
 func main() {
@@ -43,7 +47,12 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	runProxy()
+	proxyBinPath, ok := os.LookupEnv(envProxyBinPath)
+	if !ok {
+		proxyBinPath = defaultProxyBinPath
+	}
+
+	runProxy(proxyBinPath)
 }
 
 func loadVerifier(pem string) (verify x509.VerifyOptions, err error) {
@@ -140,4 +149,18 @@ func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
 	}
 
 	return csrb, nil
+}
+
+func runProxy(proxyBinPath string) {
+	// The input arguments are static.
+	//nolint:gosec
+	cmd := exec.Command(proxyBinPath)
+	cmd.Env = os.Environ()
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		log.Fatalf("Failed to run proxy: %s", err)
+	}
 }

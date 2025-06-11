@@ -47,6 +47,10 @@ env:
 - name: LINKERD2_PROXY_CORES_MAX
   value: {{ .maximum | quote }}
 {{ end -}}
+{{ if .Values.windowsWorkload -}}
+- name: LINKERD2_PROXY_BIN_PATH
+  value: "C:\\usr\\lib\\linkerd\\linkerd2-proxy.exe"
+{{ end -}}
 {{ if .maximumCPURatio -}}
 - name: LINKERD2_PROXY_CORES_MAX_RATIO
   value: {{ .maximumCPURatio | quote }}
