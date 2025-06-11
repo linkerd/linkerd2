@@ -218,7 +218,7 @@ func getGatewayMetrics(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, leaders map
 			}
 			portName := k8s.AdminHTTPPortNameSuffix
 			for _, cp := range container.Ports {
-				if cp.Name == k8s.AdminHTTPPortNameSuffix || strings.HasSuffix(cp.Name, k8s.AdminHTTPPortNameSuffix) {
+				if strings.HasSuffix(cp.Name, k8s.AdminHTTPPortNameSuffix) {
 					portName = cp.Name
 					break
 				}

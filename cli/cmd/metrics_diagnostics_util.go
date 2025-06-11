@@ -47,7 +47,7 @@ func getAllContainersWithPortSuffix(
 	allContainers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
 	for _, c := range allContainers {
 		for _, p := range c.Ports {
-			if p.Name == portName || strings.HasSuffix(p.Name, portName) {
+			if strings.HasSuffix(p.Name, portName) {
 				containers = append(containers, c)
 			}
 		}
@@ -84,7 +84,7 @@ func getMetrics(
 			for _, c := range containers {
 				cname := portName
 				for _, cp := range c.Ports {
-					if cp.Name == portName || strings.HasSuffix(cp.Name, portName) {
+					if strings.HasSuffix(cp.Name, portName) {
 						cname = cp.Name
 						break
 					}
