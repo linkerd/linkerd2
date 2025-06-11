@@ -709,3 +709,6 @@ podMonitor:
 egress:
   # -- The namespace that is used to store egress configuration that affects all client workloads in the cluster
   globalEgressNetworkNamespace: linkerd-egress
+
+
+windowsWorkload: false

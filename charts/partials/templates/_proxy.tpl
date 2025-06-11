@@ -47,10 +47,6 @@ env:
 - name: LINKERD2_PROXY_CORES_MAX
   value: {{ .maximum | quote }}
 {{ end -}}
-{{ if .Values.windowsWorkload -}}
-- name: LINKERD2_PROXY_BIN_PATH
-  value: "C:\\usr\\lib\\linkerd\\linkerd2-proxy.exe"
-{{ end -}}
 {{ if .maximumCPURatio -}}
 - name: LINKERD2_PROXY_CORES_MAX_RATIO
   value: {{ .maximumCPURatio | quote }}
@@ -218,6 +214,10 @@ be used in other contexts.
 {{ if .Values.proxy.shutdownGracePeriod -}}
 - name: LINKERD2_PROXY_SHUTDOWN_GRACE_PERIOD
   value: {{.Values.proxy.shutdownGracePeriod | quote}}
+{{ end -}}
+{{- if .Values.windowsWorkload }}
+- name: LINKERD2_PROXY_BIN_PATH
+  value: "C:\\usr\\lib\\linkerd\\linkerd2-proxy.exe"
 {{ end -}}
 {{ if .Values.proxy.additionalEnv -}}
 {{ toYaml .Values.proxy.additionalEnv }}
