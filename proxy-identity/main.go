@@ -8,14 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"syscall"
-
-	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/apimachinery/pkg/util/validation/field"
+	"runtime"
 
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 const (
@@ -145,9 +145,17 @@ func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
 }
 
 func runProxy() {
-	// The input arguments are static.
-	//nolint:gosec
-	err := syscall.Exec("/usr/lib/linkerd/linkerd2-proxy", []string{}, os.Environ())
+	path := "/usr/lib/linkerd/linkerd2-proxy"
+	if runtime.GOOS == "windows" {
+		path = "C:\\linkerd\\linkerd2-proxy.exe"
+	}
+
+	cmd := exec.Command(path)
+	cmd.Env = os.Environ()
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
 	if err != nil {
 		log.Fatalf("Failed to run proxy: %s", err)
 	}
