@@ -29,15 +29,16 @@ FROM mcr.microsoft.com/windows/nanoserver:ltsc2022 AS runtime
 LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY --from=fetch /build/LICENSE /usr/lib/linkerd/LICENSE
 COPY --from=fetch /build/proxy-version /usr/lib/linkerd/linkerd2-proxy-version.txt
-COPY --from=fetch /build/linkerd2-proxy.exe /usr/lib/linkerd/linkerd2-proxy.exe
-COPY --from=golang /out/proxy-identity.exe /usr/lib/linkerd/linkerd2-proxy-identity.exe
+COPY --from=fetch /build/linkerd2-proxy.exe /linkerd/linkerd2-proxy.exe
+COPY --from=golang /out/proxy-identity.exe /linkerd/linkerd2-proxy-identity.exe
 COPY linkerd-network-validator.exe /usr/lib/linkerd/linkerd2-network-validator
+COPY linkerd-await.exe /usr/lib/linkerd/linkerd-await
 
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
 ENV LINKERD2_PROXY_LOG=warn,linkerd=info
 ENV LINKERD2_PROXY_LOG_FORMAT=plain
-ENTRYPOINT ["/usr/lib/linkerd/linkerd2-proxy-identity.exe"]
+ENTRYPOINT ["/linkerd/linkerd2-proxy-identity.exe"]
 
 
 #RUN Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
