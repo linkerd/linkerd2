@@ -215,10 +215,6 @@ be used in other contexts.
 - name: LINKERD2_PROXY_SHUTDOWN_GRACE_PERIOD
   value: {{.Values.proxy.shutdownGracePeriod | quote}}
 {{ end -}}
-{{- if .Values.windowsWorkload }}
-- name: LINKERD2_PROXY_BIN_PATH
-  value: "C:\\usr\\lib\\linkerd\\linkerd2-proxy.exe"
-{{ end -}}
 {{ if .Values.proxy.additionalEnv -}}
 {{ toYaml .Values.proxy.additionalEnv }}
 {{ end -}}

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
@@ -21,9 +22,10 @@ const (
 	envDir          = "LINKERD2_PROXY_IDENTITY_DIR"
 	envLocalName    = "LINKERD2_PROXY_IDENTITY_LOCAL_NAME"
 	envTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
-	envProxyBinPath = "LINKERD2_PROXY_BIN_PATH"
+	envProxyBinPath = "LINKERD2_PROXY_BINARY_PATH"
 
-	defaultProxyBinPath = "/usr/lib/linkerd/linkerd2-proxy"
+	defaultProxyBinPath     = "/usr/lib/linkerd/linkerd2-proxy"
+	defaultWindowsProxyPath = "C:\\linkerd\\linkerd2-proxy.exe"
 )
 
 func main() {
@@ -47,12 +49,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	proxyBinPath, ok := os.LookupEnv(envProxyBinPath)
-	if !ok {
-		proxyBinPath = defaultProxyBinPath
-	}
-
-	runProxy(proxyBinPath)
+	runProxy()
 }
 
 func loadVerifier(pem string) (verify x509.VerifyOptions, err error) {
@@ -151,10 +148,18 @@ func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
 	return csrb, nil
 }
 
-func runProxy(proxyBinPath string) {
-	// The input arguments are static.
-	//nolint:gosec
-	cmd := exec.Command(proxyBinPath)
+func runProxy() {
+	path, ok := os.LookupEnv(envProxyBinPath)
+	if !ok {
+		switch runtime.GOOS {
+		case "windows":
+			path = defaultWindowsProxyPath
+		default:
+			path = defaultProxyBinPath
+		}
+	}
+
+	cmd := exec.Command(path)
 	cmd.Env = os.Environ()
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
