@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"sort"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -32,9 +33,9 @@ func (s byResult) Less(i, j int) bool {
 	return s[i].pod < s[j].pod || ((s[i].pod == s[j].pod) && s[i].container < s[j].container)
 }
 
-// getAllContainersWithPort returns all the containers within
-// a pod which exposes metrics at a port with name portName
-func getAllContainersWithPort(
+// getAllContainersWithPortSuffix returns all the containers within
+// a pod which exposes metrics at a port with the given suffix
+func getAllContainersWithPortSuffix(
 	pod corev1.Pod,
 	portName string,
 ) ([]corev1.Container, error) {
@@ -46,7 +47,7 @@ func getAllContainersWithPort(
 	allContainers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
 	for _, c := range allContainers {
 		for _, p := range c.Ports {
-			if p.Name == portName {
+			if strings.HasSuffix(p.Name, portName) {
 				containers = append(containers, c)
 			}
 		}
@@ -71,7 +72,7 @@ func getMetrics(
 		atomic.AddInt32(&activeRoutines, 1)
 		go func(p corev1.Pod) {
 			defer atomic.AddInt32(&activeRoutines, -1)
-			containers, err := getAllContainersWithPort(p, portName)
+			containers, err := getAllContainersWithPortSuffix(p, portName)
 			if err != nil {
 				resultChan <- metricsResult{
 					pod: p.GetName(),
@@ -81,7 +82,14 @@ func getMetrics(
 			}
 
 			for _, c := range containers {
-				bytes, err := k8s.GetContainerMetrics(k8sAPI, p, c, emitLogs, portName)
+				cname := portName
+				for _, cp := range c.Ports {
+					if strings.HasSuffix(cp.Name, portName) {
+						cname = cp.Name
+						break
+					}
+				}
+				bytes, err := k8s.GetContainerMetrics(k8sAPI, p, c, emitLogs, cname)
 
 				resultChan <- metricsResult{
 					pod:       p.GetName(),

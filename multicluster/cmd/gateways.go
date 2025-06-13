@@ -216,7 +216,14 @@ func getGatewayMetrics(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, leaders map
 				}
 				return
 			}
-			metrics, err := k8s.GetContainerMetrics(k8sAPI, p, container, false, k8s.AdminHTTPPortName)
+			portName := k8s.AdminHTTPPortNameSuffix
+			for _, cp := range container.Ports {
+				if strings.HasSuffix(cp.Name, k8s.AdminHTTPPortNameSuffix) {
+					portName = cp.Name
+					break
+				}
+			}
+			metrics, err := k8s.GetContainerMetrics(k8sAPI, p, container, false, portName)
 			metricsChan <- gatewayMetrics{
 				clusterName: name,
 				metrics:     metrics,
