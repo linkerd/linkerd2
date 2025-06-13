@@ -154,15 +154,13 @@ impl GrpcServerRPCMetrics {
         self.msg_received.inc();
 
         let handled = {
-            // Pre-register common codes
-            for code in [tonic::Code::Ok] {
-                let _ = self.handled.get_or_create(&CodeLabels {
-                    grpc_service: self.labels.grpc_service,
-                    grpc_method: self.labels.grpc_method,
-                    grpc_type: self.labels.grpc_type,
-                    grpc_code: code_str(code),
-                });
-            }
+            // Pre-register OK
+            let _ = self.handled.get_or_create(&CodeLabels {
+                grpc_service: self.labels.grpc_service,
+                grpc_method: self.labels.grpc_method,
+                grpc_type: self.labels.grpc_type,
+                grpc_code: code_str(tonic::Code::Ok),
+            });
 
             Some(ResponseHandle {
                 start: time::Instant::now(),
