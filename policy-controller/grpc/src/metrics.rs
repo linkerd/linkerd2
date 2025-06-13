@@ -155,11 +155,7 @@ impl GrpcServerRPCMetrics {
 
         let handled = {
             // Pre-register common codes
-            for code in [
-                tonic::Code::Ok,
-                tonic::Code::Cancelled,
-                tonic::Code::NotFound,
-            ] {
+            for code in [tonic::Code::Ok] {
                 let _ = self.handled.get_or_create(&CodeLabels {
                     grpc_service: self.labels.grpc_service,
                     grpc_method: self.labels.grpc_method,
