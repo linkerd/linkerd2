@@ -220,7 +220,7 @@ where
                 let rx = match self.index.watch_outbound_policy(resource).await {
                     Ok(Some(rx)) => rx,
                     Ok(None) => {
-                        let status = tonic::Status::not_found("Unknown target");
+                        let status = tonic::Status::not_found("unknown target");
                         metrics.end(status.code());
                         return Err(status);
                     }

@@ -191,23 +191,33 @@ impl ResponseObserver {
     }
 
     pub(crate) fn end(mut self, code: tonic::Code) {
-        self.inc_end(code);
+        self.handled
+            .take()
+            .expect("handle must be set")
+            .inc_end(code);
     }
+}
 
+impl Drop for ResponseObserver {
+    fn drop(&mut self) {
+        if let Some(inner) = self.handled.take() {
+            inner.inc_end(tonic::Code::Cancelled);
+        }
+    }
+}
+
+// === ResponseHandle ===
+
+impl ResponseHandle {
     #[inline]
-    fn inc_end(&mut self, code: tonic::Code) {
-        let Some(ResponseHandle {
+    fn inc_end(self, code: tonic::Code) {
+        let Self {
             start,
             durations,
             codes,
             labels,
-        }) = self.handled.take()
-        else {
-            return;
-        };
-
+        } = self;
         durations.observe(start.elapsed().as_secs_f64());
-
         codes
             .get_or_create(&CodeLabels {
                 grpc_service: labels.grpc_service,
@@ -216,12 +226,6 @@ impl ResponseObserver {
                 grpc_code: code_str(code),
             })
             .inc();
-    }
-}
-
-impl Drop for ResponseObserver {
-    fn drop(&mut self) {
-        self.inc_end(tonic::Code::Cancelled);
     }
 }
 
