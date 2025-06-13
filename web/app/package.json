@@ -46,7 +46,7 @@
     "@babel/plugin-proposal-class-properties": "^7.17.12",
     "@babel/preset-env": "^7.27.2",
     "@babel/preset-react": "^7.27.1",
-    "@babel/runtime": "^7.27.4",
+    "@babel/runtime": "^7.27.6",
     "@lingui/cli": "3.17.2",
     "babel-core": "^7.0.0-bridge.0",
     "babel-jest": "^29.7.0",
