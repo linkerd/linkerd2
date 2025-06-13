@@ -201,7 +201,7 @@ impl ResponseObserver {
 impl Drop for ResponseObserver {
     fn drop(&mut self) {
         if let Some(inner) = self.handled.take() {
-            inner.inc_end(tonic::Code::Cancelled);
+            inner.inc_end(tonic::Code::Ok);
         }
     }
 }
