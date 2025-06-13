@@ -42,11 +42,11 @@
   },
   "devDependencies": {
     "@babel/core": "^7.27.4",
-    "@babel/eslint-parser": "^7.27.1",
+    "@babel/eslint-parser": "^7.27.5",
     "@babel/plugin-proposal-class-properties": "^7.17.12",
     "@babel/preset-env": "^7.27.2",
     "@babel/preset-react": "^7.27.1",
-    "@babel/runtime": "^7.27.4",
+    "@babel/runtime": "^7.27.6",
     "@lingui/cli": "3.17.2",
     "babel-core": "^7.0.0-bridge.0",
     "babel-jest": "^29.7.0",
@@ -81,7 +81,7 @@
     "webpack": "^5.99.9",
     "webpack-bundle-analyzer": "4.10.2",
     "webpack-cli": "6.0.1",
-    "webpack-dev-server": "5.2.1"
+    "webpack-dev-server": "5.2.2"
   },
   "resolutions": {
     "@lingui/**/**/minimist": ">=1.2.5",
