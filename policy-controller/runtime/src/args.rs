@@ -1,7 +1,7 @@
 use crate::{
     admission::Admission,
     core::IpNet,
-    grpc,
+    grpc::{self, metrics::GrpcServerMetricsFamily},
     index::{self, ports::parse_portset, ClusterInfo, DefaultPolicy},
     index_list::IndexList,
     k8s::{self, gateway, Client, Resource},
@@ -163,6 +163,9 @@ impl Args {
             inbound_index.clone(),
         );
         let rt_metrics = kubert::RuntimeMetrics::register(prom.sub_registry_with_prefix("kube"));
+        let grpc_metrics = grpc::metrics::GrpcServerMetricsFamily::register(
+            prom.sub_registry_with_prefix("grpc_server"),
+        );
 
         let mut runtime = kubert::Runtime::builder()
             .with_log(log_level, log_format)
@@ -369,6 +372,7 @@ impl Args {
             allow_l5d_request_headers,
             inbound_index,
             outbound_index,
+            grpc_metrics.clone(),
             runtime.shutdown_handle(),
         ));
 
@@ -413,6 +417,7 @@ impl std::str::FromStr for IpNets {
 }
 
 #[instrument(skip_all, fields(port = %addr.port()))]
+#[allow(clippy::too_many_arguments)]
 async fn grpc(
     addr: SocketAddr,
     cluster_domain: String,
@@ -420,12 +425,17 @@ async fn grpc(
     allow_l5d_request_headers: bool,
     inbound_index: index::inbound::SharedIndex,
     outbound_index: index::outbound::SharedIndex,
+    metrics: GrpcServerMetricsFamily,
     drain: drain::Watch,
 ) -> Result<()> {
     let inbound_discover = InboundDiscover::new(inbound_index);
-    let inbound_svc =
-        grpc::inbound::InboundPolicyServer::new(inbound_discover, cluster_networks, drain.clone())
-            .svc();
+    let inbound_svc = grpc::inbound::InboundPolicyServer::new(
+        inbound_discover,
+        cluster_networks,
+        drain.clone(),
+        metrics.clone(),
+    )
+    .svc();
 
     let outbound_discover = OutboundDiscover::new(outbound_index);
     let outbound_svc = grpc::outbound::OutboundPolicyServer::new(
@@ -433,6 +443,7 @@ async fn grpc(
         cluster_domain,
         allow_l5d_request_headers,
         drain.clone(),
+        metrics,
     )
     .svc();
 

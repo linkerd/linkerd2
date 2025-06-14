@@ -4,5 +4,6 @@
 mod routes;
 
 pub mod inbound;
+pub mod metrics;
 pub mod outbound;
 pub mod workload;

@@ -1,5 +1,6 @@
 extern crate http as http_crate;
 
+use crate::metrics::{self, GrpcServerMetricsFamily, GrpcServerRPCMetrics};
 use crate::workload;
 use futures::{prelude::*, StreamExt};
 use http_crate::uri::Authority;
@@ -33,6 +34,8 @@ pub struct OutboundPolicyServer<T> {
     cluster_domain: Arc<str>,
     allow_l5d_request_headers: bool,
     drain: drain::Watch,
+    get_metrics: GrpcServerRPCMetrics,
+    watch_metrics: GrpcServerRPCMetrics,
 }
 
 impl<T> OutboundPolicyServer<T>
@@ -44,12 +47,19 @@ where
         cluster_domain: impl Into<Arc<str>>,
         allow_l5d_request_headers: bool,
         drain: drain::Watch,
+        metrics: GrpcServerMetricsFamily,
     ) -> Self {
+        const SERVICE: &str = "io.linkerd.proxy.outbound.OutboundPolicies";
+        let get_metrics = metrics.unary_rpc(SERVICE, "Get");
+        let watch_metrics = metrics.server_stream_rpc(SERVICE, "Watch");
+
         Self {
             index: discover,
             cluster_domain: cluster_domain.into(),
             allow_l5d_request_headers,
             drain,
+            get_metrics,
+            watch_metrics,
         }
     }
 
@@ -149,27 +159,36 @@ where
         &self,
         req: tonic::Request<outbound::TrafficSpec>,
     ) -> Result<tonic::Response<outbound::OutboundPolicy>, tonic::Status> {
-        let target = self.lookup(req.into_inner())?;
+        let metrics = self.get_metrics.start();
+        let target = match self.lookup(req.into_inner()) {
+            Ok(target) => target,
+            Err(status) => {
+                metrics.end(status.code());
+                return Err(status);
+            }
+        };
 
-        match target.clone() {
+        match target {
             OutboundDiscoverTarget::Resource(resource) => {
                 let original_dst = resource.original_dst();
-                let policy = self
-                    .index
-                    .get_outbound_policy(resource)
-                    .await
-                    .map_err(|error| {
-                        tonic::Status::internal(format!("failed to get outbound policy: {error}"))
-                    })?;
-
-                if let Some(policy) = policy {
-                    Ok(tonic::Response::new(to_proto(
+                match self.index.get_outbound_policy(resource).await {
+                    Ok(Some(policy)) => Ok(tonic::Response::new(to_proto(
                         policy,
                         self.allow_l5d_request_headers,
                         original_dst,
-                    )))
-                } else {
-                    Err(tonic::Status::not_found("No such policy"))
+                    ))),
+                    Ok(None) => {
+                        let status = tonic::Status::not_found("unknown target");
+                        metrics.end(status.code());
+                        return Err(status);
+                    }
+                    Err(error) => {
+                        let status = tonic::Status::internal(format!(
+                            "failed to get outbound policy: {error}"
+                        ));
+                        metrics.end(status.code());
+                        return Err(status);
+                    }
                 }
             }
 
@@ -185,23 +204,41 @@ where
         &self,
         req: tonic::Request<outbound::TrafficSpec>,
     ) -> Result<tonic::Response<BoxWatchStream>, tonic::Status> {
-        let target = self.lookup(req.into_inner())?;
-        let drain = self.drain.clone();
+        let metrics = self.watch_metrics.start();
+        let target = match self.lookup(req.into_inner()) {
+            Ok(target) => target,
+            Err(status) => {
+                metrics.end(status.code());
+                return Err(status);
+            }
+        };
 
-        match target.clone() {
+        let drain = self.drain.clone();
+        match target {
             OutboundDiscoverTarget::Resource(resource) => {
                 let original_dst = resource.original_dst();
-                let rx = self
-                    .index
-                    .watch_outbound_policy(resource)
-                    .await
-                    .map_err(|e| tonic::Status::internal(format!("lookup failed: {e}")))?
-                    .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
+                let rx = match self.index.watch_outbound_policy(resource).await {
+                    Ok(Some(rx)) => rx,
+                    Ok(None) => {
+                        let status = tonic::Status::not_found("unknown target");
+                        metrics.end(status.code());
+                        return Err(status);
+                    }
+                    Err(error) => {
+                        let status = tonic::Status::internal(format!(
+                            "failed to get outbound policy: {error}"
+                        ));
+                        metrics.end(status.code());
+                        return Err(status);
+                    }
+                };
+
                 Ok(tonic::Response::new(response_stream(
                     drain,
                     rx,
                     self.allow_l5d_request_headers,
                     original_dst,
+                    metrics,
                 )))
             }
 
@@ -211,6 +248,7 @@ where
                     drain,
                     rx,
                     original_dst,
+                    metrics,
                 )))
             }
         }
@@ -226,6 +264,7 @@ fn response_stream(
     mut rx: OutboundPolicyStream,
     allow_l5d_request_headers: bool,
     original_dst: Option<SocketAddr>,
+    metrics: metrics::ResponseObserver,
 ) -> BoxWatchStream {
     Box::pin(async_stream::try_stream! {
         tokio::pin! {
@@ -237,18 +276,19 @@ fn response_stream(
                 // When the port is updated with a new server, update the server watch.
                 res = rx.next() => match res {
                     Some(policy) => {
+                        metrics.msg_sent();
                         yield to_proto(policy, allow_l5d_request_headers, original_dst);
                     }
-                    None => return,
+                    None => break,
                 },
 
                 // If the server starts shutting down, close the stream so that it doesn't hold the
                 // server open.
-                _ = &mut shutdown => {
-                    return;
-                }
+                _ = &mut shutdown => break,
             }
         }
+
+        metrics.end(tonic::Code::Ok);
     })
 }
 
@@ -256,6 +296,7 @@ fn external_stream(
     drain: drain::Watch,
     mut rx: ExternalPolicyStream,
     original_dst: SocketAddr,
+    metrics: metrics::ResponseObserver,
 ) -> BoxWatchStream {
     Box::pin(async_stream::try_stream! {
         tokio::pin! {
@@ -266,18 +307,19 @@ fn external_stream(
             tokio::select! {
                 res = rx.next() => match res {
                     Some(_) => {
+                        metrics.msg_sent();
                         yield fallback(original_dst);
                     }
-                    None => return,
+                    None => break,
                 },
 
                 // If the server starts shutting down, close the stream so that it doesn't hold the
                 // server open.
-                _ = &mut shutdown => {
-                    return;
-                }
+                _ = &mut shutdown => break,
             }
         }
+
+        metrics.end(tonic::Code::Ok);
     })
 }
 

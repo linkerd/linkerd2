@@ -1,4 +1,7 @@
-use crate::workload::Workload;
+use crate::{
+    metrics::{self, GrpcServerMetricsFamily, GrpcServerRPCMetrics},
+    workload::Workload,
+};
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api,
@@ -27,6 +30,8 @@ pub struct InboundPolicyServer<T> {
     discover: T,
     drain: drain::Watch,
     cluster_networks: Arc<[IpNet]>,
+    get_metrics: GrpcServerRPCMetrics,
+    watch_metrics: GrpcServerRPCMetrics,
 }
 
 // === impl InboundPolicyServer ===
@@ -35,11 +40,22 @@ impl<T> InboundPolicyServer<T>
 where
     T: DiscoverInboundServer<(Workload, NonZeroU16)> + Send + Sync + 'static,
 {
-    pub fn new(discover: T, cluster_networks: Vec<IpNet>, drain: drain::Watch) -> Self {
+    pub fn new(
+        discover: T,
+        cluster_networks: Vec<IpNet>,
+        drain: drain::Watch,
+        metrics: GrpcServerMetricsFamily,
+    ) -> Self {
+        const SERVICE: &str = "io.linkerd.proxy.inbound.InboundServerPolicies";
+        let get_metrics = metrics.unary_rpc(SERVICE, "GetPort");
+        let watch_metrics = metrics.server_stream_rpc(SERVICE, "WatchPort");
+
         Self {
             discover,
             drain,
             cluster_networks: cluster_networks.into(),
+            get_metrics,
+            watch_metrics,
         }
     }
 
@@ -70,18 +86,31 @@ where
         &self,
         req: tonic::Request<proto::PortSpec>,
     ) -> Result<tonic::Response<proto::Server>, tonic::Status> {
-        let target = self.check_target(req.into_inner())?;
+        let metrics = self.get_metrics.start();
+        let target = match self.check_target(req.into_inner()) {
+            Ok(target) => target,
+            Err(status) => {
+                metrics.end(status.code());
+                return Err(status);
+            }
+        };
 
-        // Lookup the configuration for an inbound port. If the pod hasn't (yet)
-        // been indexed, return a Not Found error.
-        let s = self
-            .discover
-            .get_inbound_server(target)
-            .await
-            .map_err(|e| tonic::Status::internal(format!("lookup failed: {}", e)))?
-            .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
-
-        Ok(tonic::Response::new(to_server(&s, &self.cluster_networks)))
+        match self.discover.get_inbound_server(target).await {
+            Ok(Some(server)) => Ok(tonic::Response::new(to_server(
+                &server,
+                &self.cluster_networks,
+            ))),
+            Ok(None) => {
+                let status = tonic::Status::not_found("unknown server");
+                metrics.end(status.code());
+                Err(status)
+            }
+            Err(error) => {
+                let status = tonic::Status::internal(format!("lookup failed: {error}"));
+                metrics.end(status.code());
+                Err(status)
+            }
+        }
     }
 
     type WatchPortStream = BoxWatchStream;
@@ -90,19 +119,32 @@ where
         &self,
         req: tonic::Request<proto::PortSpec>,
     ) -> Result<tonic::Response<BoxWatchStream>, tonic::Status> {
-        let target = self.check_target(req.into_inner())?;
+        let metrics = self.watch_metrics.start();
+        let target = match self.check_target(req.into_inner()) {
+            Ok(target) => target,
+            Err(status) => {
+                metrics.end(status.code());
+                return Err(status);
+            }
+        };
+
         let drain = self.drain.clone();
-        let rx = self
-            .discover
-            .watch_inbound_server(target)
-            .await
-            .map_err(|e| tonic::Status::internal(format!("lookup failed: {}", e)))?
-            .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
-        Ok(tonic::Response::new(response_stream(
-            drain,
-            rx,
-            self.cluster_networks.clone(),
-        )))
+        match self.discover.watch_inbound_server(target).await {
+            Ok(Some(rx)) => {
+                let stream = response_stream(drain, rx, self.cluster_networks.clone(), metrics);
+                Ok(tonic::Response::new(stream))
+            }
+            Ok(None) => {
+                let status = tonic::Status::not_found("unknown server");
+                metrics.end(status.code());
+                Err(status)
+            }
+            Err(error) => {
+                let status = tonic::Status::internal(format!("lookup failed: {error}"));
+                metrics.end(status.code());
+                Err(status)
+            }
+        }
     }
 }
 
@@ -113,6 +155,7 @@ fn response_stream(
     drain: drain::Watch,
     mut rx: InboundServerStream,
     cluster_networks: Arc<[IpNet]>,
+    metrics: metrics::ResponseObserver,
 ) -> BoxWatchStream {
     Box::pin(async_stream::try_stream! {
         tokio::pin! {
@@ -124,18 +167,19 @@ fn response_stream(
                 // When the port is updated with a new server, update the server watch.
                 res = rx.next() => match res {
                     Some(s) => {
+                        metrics.msg_sent();
                         yield to_server(&s, &cluster_networks);
                     }
-                    None => return,
+                    None => break,
                 },
 
                 // If the server starts shutting down, close the stream so that it doesn't hold the
                 // server open.
-                _ = (&mut shutdown) => {
-                    return;
-                }
+                _ = (&mut shutdown) => break,
             }
         }
+
+        metrics.end(tonic::Code::Ok);
     })
 }
 
