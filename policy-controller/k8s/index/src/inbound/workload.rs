@@ -29,6 +29,7 @@ pub(crate) fn pod_tcp_ports_by_name(spec: &k8s::PodSpec) -> HashMap<String, Port
     for (port, name) in spec
         .containers
         .iter()
+        .chain(spec.init_containers.iter().flatten())
         .flat_map(|c| c.ports.iter().flatten())
         .filter_map(named_tcp_port)
     {
@@ -260,6 +261,25 @@ mod tests {
                     ..Default::default()
                 },
             ],
+            init_containers: Some(vec![k8s::Container {
+                liveness_probe: Some(k8s::Probe {
+                    http_get: Some(k8s::HTTPGetAction {
+                        path: Some("/live".to_string()),
+                        port: k8s::IntOrString::Int(4191),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                readiness_probe: Some(k8s::Probe {
+                    http_get: Some(k8s::HTTPGetAction {
+                        path: Some("/ready".to_string()),
+                        port: k8s::IntOrString::Int(4191),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }]),
             ..Default::default()
         });
 
@@ -276,6 +296,13 @@ mod tests {
         expected_6543.insert("/ready-container-2".to_string());
         assert!(probes.contains_key(&port_6543));
         assert_eq!(*probes.get(&port_6543).unwrap(), expected_6543);
+
+        let port_4191 = u16::try_from(4191).and_then(NonZeroU16::try_from).unwrap();
+        let mut expected_4191 = BTreeSet::new();
+        expected_4191.insert("/live".to_string());
+        expected_4191.insert("/ready".to_string());
+        assert!(probes.contains_key(&port_4191));
+        assert_eq!(*probes.get(&port_4191).unwrap(), expected_4191);
     }
 
     #[test]
@@ -376,5 +403,52 @@ mod tests {
         let paths = probes.get(&5432.try_into().unwrap()).unwrap();
         assert_eq!(paths.len(), 1);
         assert_eq!(paths.iter().next().unwrap(), "/liveness-container-1");
+    }
+
+    #[test]
+    fn tcp_ports_by_name() {
+        let spec = k8s::PodSpec {
+            containers: vec![k8s::Container {
+                ports: Some(vec![
+                    k8s::ContainerPort {
+                        container_port: 8080,
+                        name: Some("http".to_string()),
+                        protocol: Some("TCP".to_string()),
+                        ..Default::default()
+                    },
+                    k8s::ContainerPort {
+                        container_port: 8801,
+                        name: Some("grpc".to_string()),
+                        protocol: Some("TCP".to_string()),
+                        ..Default::default()
+                    },
+                ]),
+                ..Default::default()
+            }],
+            init_containers: Some(vec![k8s::Container {
+                ports: Some(vec![k8s::ContainerPort {
+                    container_port: 4191,
+                    name: Some("linkerd-admin".to_string()),
+                    protocol: Some("TCP".to_string()),
+                    ..Default::default()
+                }]),
+                ..Default::default()
+            }]),
+            ..Default::default()
+        };
+
+        let ports = pod_tcp_ports_by_name(&spec);
+        assert_eq!(ports.len(), 3);
+        let mut expected = PortSet::default();
+        expected.insert(8080.try_into().unwrap());
+        assert_eq!(ports.get("http").unwrap(), &expected);
+
+        expected = PortSet::default();
+        expected.insert(8801.try_into().unwrap());
+        assert_eq!(ports.get("grpc").unwrap(), &expected);
+
+        expected = PortSet::default();
+        expected.insert(4191.try_into().unwrap());
+        assert_eq!(ports.get("linkerd-admin").unwrap(), &expected);
     }
 }
