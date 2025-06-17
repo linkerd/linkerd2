@@ -50,7 +50,7 @@ func newCmdControllerMetrics() *cobra.Command {
 				return err
 			}
 
-			results := getMetrics(k8sAPI, pods.Items, k8s.AdminHTTPPortName, options.wait, verbose)
+			results := getMetrics(k8sAPI, pods.Items, k8s.AdminHTTPPortNameSuffix, options.wait, verbose)
 
 			var buf bytes.Buffer
 			for i, result := range results {

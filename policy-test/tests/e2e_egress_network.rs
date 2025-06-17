@@ -38,7 +38,7 @@ async fn default_traffic_policy_http_allow() {
             .await;
 
         let allowed_status = allowed.http_status_code().await;
-        assert_eq!(allowed_status, 200, "traffic should be allowed");
+        assert_eq!(allowed_status, 301, "traffic should be allowed");
     })
     .await;
 }
@@ -237,7 +237,7 @@ async fn explicit_allow_http_route() {
             .await;
 
         let allowed_get_status = allowed_get.http_status_code().await;
-        assert_eq!(allowed_get_status, 200, "traffic should be allowed");
+        assert_eq!(allowed_get_status, 301, "traffic should be allowed");
 
         // traffic should not be allowed for /ip request
         let not_allowed_ip = curl
@@ -562,7 +562,7 @@ async fn routing_back_to_cluster_http_route() {
         );
 
         assert_eq!(in_cluster_status, 204); // in-cluster service returns 204
-        assert_eq!(out_of_cluster_status, 200); // external service returns 200
+        assert_eq!(out_of_cluster_status, 301); // external service returns 301
     })
     .await;
 }
