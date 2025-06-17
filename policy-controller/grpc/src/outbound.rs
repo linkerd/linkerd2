@@ -82,7 +82,6 @@ where
                 })
             }
         };
-        tracing::debug!(target = ?target, "looking up target");
 
         let port = target
             .port
@@ -392,6 +391,9 @@ fn undefined_port(target: ResourceTarget) -> outbound::OutboundPolicy {
         })),
     });
 
+    // Since we set a Forbidden filter, this backend will never be used.
+    // However, it is required to have a backend in the OpaqueRoute in order
+    // for the config to be valid. Therefore, we use an arbitrary dummy backend.
     let backend = outbound::Backend {
         metadata: metadata.clone(),
         queue: Some(default_queue_config()),
