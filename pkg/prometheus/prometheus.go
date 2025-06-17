@@ -119,7 +119,11 @@ func NewGrpcServer(opt ...grpc.ServerOption) *grpc.Server {
 		}, opt...)...,
 	)
 
-	grpc_prometheus.EnableHandlingTimeHistogram()
+	// Use custom buckets tuned for long-lived streaming RPCs. This configuration
+	// should be kept in sync with policy-controller/grpc's metrics.
+	grpc_prometheus.EnableHandlingTimeHistogram(
+		grpc_prometheus.WithHistogramBuckets([]float64{0.1, 1.0, 300.0, 3600.0}),
+	)
 	grpc_prometheus.Register(server)
 	return server
 }

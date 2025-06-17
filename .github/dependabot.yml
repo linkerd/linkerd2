@@ -90,7 +90,9 @@ updates:
           - tracing-*
 
   - package-ecosystem: "github-actions"
-    directory: "/"
+    directories:
+    - "/"
+    - ".github/actions/*"
     schedule:
       interval: "daily"
       time: "04:00"

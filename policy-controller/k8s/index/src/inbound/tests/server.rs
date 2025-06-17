@@ -10,7 +10,7 @@ fn links_named_server_port() {
         Some((
             "container-0",
             Some(ContainerPort {
-                name: Some("admin-http".to_string()),
+                name: Some("admin".to_string()),
                 container_port: 8080,
                 protocol: Some("TCP".to_string()),
                 ..ContainerPort::default()
@@ -30,8 +30,8 @@ fn links_named_server_port() {
 
     test.index.write().apply(mk_server(
         "ns-0",
-        "srv-admin-http",
-        Port::Name("admin-http".to_string()),
+        "srv-admin",
+        Port::Name("admin".to_string()),
         None,
         Some(("app", "app-0")),
         Some(k8s::policy::server::ProxyProtocol::Http1),
@@ -40,7 +40,7 @@ fn links_named_server_port() {
     assert_eq!(
         *rx.borrow_and_update(),
         InboundServer {
-            reference: ServerRef::Server("srv-admin-http".to_string()),
+            reference: ServerRef::Server("srv-admin".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
         },

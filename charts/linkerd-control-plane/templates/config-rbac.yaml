@@ -14,3 +14,26 @@ rules:
   resources: ["configmaps"]
   verbs: ["get"]
   resourceNames: ["linkerd-config"]
+{{- with .Values.configReaders }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-config-reader
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: Linkerd
+    linkerd.io/control-plane-ns: {{$.Release.Namespace}}
+    {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+roleRef:
+  kind: Role
+  name: ext-namespace-metadata-linkerd-config
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+{{- range . }}
+- kind: ServiceAccount
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+{{- end }}
+...
+{{- end }}

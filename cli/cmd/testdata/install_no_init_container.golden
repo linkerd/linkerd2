@@ -971,9 +971,9 @@ spec:
         name: identity
         ports:
         - containerPort: 8080
-          name: grpc
+          name: ident-grpc
         - containerPort: 9990
-          name: admin-http
+          name: ident-admin
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1010,6 +1010,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.uid
+        - name: _pod_ip
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         - name: _pod_nodeName
           valueFrom:
             fieldRef:
@@ -1386,6 +1390,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.uid
+        - name: _pod_ip
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         - name: _pod_nodeName
           valueFrom:
             fieldRef:
@@ -1566,9 +1574,9 @@ spec:
         name: destination
         ports:
         - containerPort: 8086
-          name: grpc
+          name: dest-grpc
         - containerPort: 9996
-          name: admin-http
+          name: dest-admin
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1606,7 +1614,7 @@ spec:
         - containerPort: 8443
           name: sp-validator
         - containerPort: 9997
-          name: admin-http
+          name: spval-admin
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1651,21 +1659,21 @@ spec:
         livenessProbe:
           httpGet:
             path: /live
-            port: admin-http
+            port: policy-admin
           initialDelaySeconds: 10
         name: policy
         ports:
         - containerPort: 8090
-          name: grpc
+          name: policy-grpc
         - containerPort: 9990
-          name: admin-http
+          name: policy-admin
         - containerPort: 9443
           name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: admin-http
+            port: policy-admin
         resources:
         securityContext:
           capabilities:
@@ -1899,6 +1907,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.uid
+        - name: _pod_ip
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         - name: _pod_nodeName
           valueFrom:
             fieldRef:
@@ -2072,7 +2084,7 @@ spec:
         - containerPort: 8443
           name: proxy-injector
         - containerPort: 9995
-          name: admin-http
+          name: injector-admin
         readinessProbe:
           failureThreshold: 7
           httpGet:

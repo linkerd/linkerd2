@@ -313,16 +313,16 @@ spec:
         livenessProbe:
           httpGet:
             path: /live
-            port: admin-http
+            port: repair-admin
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: admin-http
+            port: repair-admin
           initialDelaySeconds: 10
         ports:
         - containerPort: 9990
-          name: admin-http
+          name: repair-admin
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

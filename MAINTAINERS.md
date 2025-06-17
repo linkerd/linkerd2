@@ -19,9 +19,10 @@ The Linkerd directors are:
 
 The Linkerd Steering Committee members are:
 
-* Christian Hüning (BWI) @christianhuening
-* Dan Williams (LoveHolidays) @dwilliams782
 * Steve Gray (ZeroFlucs) @steve-gray
+* Priya Namasivayam (Earnin) @priyanamasivayam
+* Christian Hüning (BWI) @christianhuening
+* Dimple Thoomkuzhy (CompareTheMarket) @dimpledalby07
 
 ## Emeriti
 

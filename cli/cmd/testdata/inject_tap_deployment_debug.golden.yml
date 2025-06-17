@@ -51,6 +51,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.uid
+        - name: _pod_ip
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         - name: _pod_nodeName
           valueFrom:
             fieldRef:
@@ -236,7 +240,7 @@ spec:
           name: apiserver
           protocol: TCP
         - containerPort: 9998
-          name: admin-http
+          name: tap-admin
           protocol: TCP
         readinessProbe:
           failureThreshold: 7
