@@ -11,7 +11,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 . "$bindir"/_tag.sh
 tag=$(named_tag)
 
-edge_tag_regex='edge-([0-9][0-9])\.([0-9]|[0-9][0-9])\.([0-9]+)'
+edge_tag_regex='edge-([0-9][0-9]).([0-9]|[0-9][0-9]).([0-9]+)'
 
 # Get the current edge version.
 url=https://run.linkerd.io/install-edge
@@ -36,6 +36,8 @@ if [ "$tag" != "$expected_tag" ]; then
     echo "Tag ($tag) doesn't match computed edge version ($expected_tag)"
     exit 1
 fi
+
+[[ "${1:-}" == "update-charts" ]] || exit 0
 
 new_version="$yyyy.$new_mm.$new_xx"
 

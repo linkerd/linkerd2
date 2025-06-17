@@ -1,3 +1,4 @@
+<!-- markdownlint-disable-file MD059 -->
 # Changes
 
 Please visit Linkerd's [Release page][gh-releases] for for the latest release

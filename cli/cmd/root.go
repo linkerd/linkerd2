@@ -13,6 +13,7 @@ import (
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/inject"
 	viz "github.com/linkerd/linkerd2/viz/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -104,13 +105,12 @@ func init() {
 	RootCmd.PersistentFlags().StringArrayVar(&impersonateGroup, "as-group", []string{}, "Group to impersonate for Kubernetes operations")
 	RootCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
-	RootCmd.AddCommand(newCmdAlpha())
 	RootCmd.AddCommand(newCmdCheck())
 	RootCmd.AddCommand(newCmdCompletion())
 	RootCmd.AddCommand(newCmdDiagnostics())
 	RootCmd.AddCommand(newCmdDoc())
 	RootCmd.AddCommand(newCmdIdentity())
-	RootCmd.AddCommand(newCmdInject())
+	RootCmd.AddCommand(NewCmdInject(inject.GetOverriddenValues))
 	RootCmd.AddCommand(newCmdInstall())
 	RootCmd.AddCommand(newCmdInstallCNIPlugin())
 	RootCmd.AddCommand(newCmdProfile())

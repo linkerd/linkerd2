@@ -8,22 +8,27 @@ publish = false
 [dependencies]
 ahash = "0.8"
 anyhow = "1"
-chrono = { version = "0.4.40", default-features = false }
+chrono = { version = "0.4.41", default-features = false }
 futures = { version = "0.3", default-features = false }
 http = { workspace = true }
-kube = { workspace = true, default-features = false, features = [
-    "client",
-    "derive",
-    "runtime",
-] }
 kubert = { workspace = true, default-features = false, features = ["index"] }
-linkerd-policy-controller-core = { path = "../../core" }
-linkerd-policy-controller-k8s-api = { path = "../api" }
 parking_lot = "0.12"
 prometheus-client = { workspace = true, default-features = false }
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt", "sync"] }
 tracing = "0.1"
+
+linkerd-policy-controller-core = { workspace = true }
+linkerd-policy-controller-k8s-api = { workspace = true }
+
+[dependencies.kube]
+workspace = true
+default-features = false
+features = [
+    "client",
+    "derive",
+    "runtime",
+]
 
 [dev-dependencies]
 chrono = { version = "0.4", default-features = false }

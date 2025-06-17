@@ -10,7 +10,7 @@ runs:
     run: |
       mkdir -p target/helm
       gsutil cp gs://helm.linkerd.io/edge/index.yaml target/helm/index-pre.yaml
-      bin/helm-bump-edge
+      bin/compute-edge-version update-charts
       helm-docs
       bin/helm-build package
       cp charts/artifacthub-repo-edge.yml target/helm/artifacthub-repo.yml

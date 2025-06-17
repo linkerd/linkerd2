@@ -12,6 +12,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/cmd"
+	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -50,6 +51,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 		overrideAnnotations: getOverrideAnnotations(tc.testInjectConfig, defaultConfig()),
 		enableDebugSidecar:  tc.enableDebugSidecarFlag,
 		allowNsInject:       true,
+		overrider:           inject.GetOverriddenValues,
 	}
 
 	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, transformer, "yaml"); exitCode != 0 {
@@ -431,6 +433,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 	transformer := &resourceTransformerInject{
 		injectProxy: tc.injectProxy,
 		values:      testConfig,
+		overrider:   inject.GetOverriddenValues,
 	}
 	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, transformer, "yaml")
 	if exitCode != tc.exitCode {
@@ -537,6 +540,7 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 	transformer := &resourceTransformerInject{
 		injectProxy: true,
 		values:      values,
+		overrider:   inject.GetOverriddenValues,
 	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer, "yaml"); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
@@ -564,6 +568,7 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 	transformer := &resourceTransformerInject{
 		injectProxy: true,
 		values:      values,
+		overrider:   inject.GetOverriddenValues,
 	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer, "yaml"); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
