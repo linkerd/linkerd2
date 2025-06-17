@@ -8,6 +8,9 @@ use std::{net::SocketAddr, num::NonZeroU16};
 pub enum OutboundDiscoverTarget {
     Resource(ResourceTarget),
     External(SocketAddr),
+    // UndefinedPort indicates that the target is a Service on a port which is
+    // not defined in the Service's spec.
+    UndefinedPort(ResourceTarget),
 }
 
 #[derive(Clone, Debug)]
@@ -30,6 +33,21 @@ impl ResourceTarget {
         match self.kind {
             Kind::EgressNetwork(original_dst) => Some(original_dst),
             Kind::Service => None,
+        }
+    }
+}
+
+impl Kind {
+    pub fn group(&self) -> &'static str {
+        match self {
+            Kind::EgressNetwork(_) => "policy.linkerd.io",
+            Kind::Service => "core",
+        }
+    }
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Kind::EgressNetwork(_) => "EgressNetwork",
+            Kind::Service => "Service",
         }
     }
 }

@@ -69,6 +69,7 @@ pub(crate) fn pod_http_probes(pod: &k8s::PodSpec) -> PortMap<BTreeSet<String>> {
         .chain(pod.init_containers.iter().flatten())
         .flat_map(container_http_probe_paths)
     {
+        println!("inserting path {path} for port {port}");
         probes.entry(port).or_default().insert(path);
     }
     probes

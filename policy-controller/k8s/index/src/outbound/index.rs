@@ -1,5 +1,5 @@
 use crate::{
-    ports::{ports_annotation, PortMap},
+    ports::{ports_annotation, PortMap, PortSet},
     routes::{ExplicitGKN, HttpRouteResource, ImpliedGKN},
     ClusterInfo,
 };
@@ -9,8 +9,8 @@ use egress_network::EgressNetwork;
 use linkerd_policy_controller_core::{
     outbound::{
         AppProtocol, Backend, Backoff, FailureAccrual, GrpcRetryCondition, GrpcRoute,
-        HttpRetryCondition, HttpRoute, Kind, OutboundPolicy, ParentInfo, ResourceTarget,
-        RouteRetry, RouteSet, RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy,
+        HttpRetryCondition, HttpRoute, Kind, OutboundDiscoverTarget, OutboundPolicy, ParentInfo,
+        ResourceTarget, RouteRetry, RouteSet, RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy,
     },
     routes::GroupKindNamespaceName,
 };
@@ -21,13 +21,8 @@ use linkerd_policy_controller_k8s_api::{
 };
 use parking_lot::RwLock;
 use std::{
-    collections::hash_map::Entry,
-    hash::Hash,
-    net::{IpAddr, SocketAddr},
-    num::NonZeroU16,
-    str::FromStr,
-    sync::Arc,
-    time,
+    collections::hash_map::Entry, hash::Hash, net::IpAddr, num::NonZeroU16, str::FromStr,
+    sync::Arc, time,
 };
 use tokio::sync::watch;
 
@@ -35,7 +30,7 @@ use tokio::sync::watch;
 #[derive(Debug)]
 pub struct Index {
     namespaces: NamespaceIndex,
-    services_by_ip: HashMap<SocketAddr, ResourceRef>,
+    services_by_ip: HashMap<IpAddr, ServicePorts>,
     egress_networks_by_ref: HashMap<ResourceRef, EgressNetwork>,
     // holds information about resources. currently EgressNetworks and Services
     resource_info: HashMap<ResourceRef, ResourceInfo>,
@@ -70,6 +65,12 @@ pub struct ResourceRef {
     pub kind: ResourceKind,
     pub name: String,
     pub namespace: String,
+}
+
+#[derive(Debug)]
+struct ServicePorts {
+    service: ResourceRef,
+    ports: PortSet,
 }
 
 /// Holds all `Pod`, `Server`, and `ServerAuthorization` indices by-namespace.
@@ -273,7 +274,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             name: name.clone(),
             namespace: ns.clone(),
         };
-        self.services_by_ip.retain(|_, v| *v != service_ref);
+        self.services_by_ip.retain(|_, v| v.service != service_ref);
         if let Some(cluster_ips) = service
             .spec
             .as_ref()
@@ -288,9 +289,9 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                         service.spec.as_ref().and_then(|spec| {
                             spec.ports.as_ref().map(|ports| {
                                 ports.iter().for_each(|port| {
-                                    let port = match port.port.try_into() {
-                                        Ok(port) => port,
-                                        Err(_) => {
+                                    let port = match port.port.try_into().ok().and_then(NonZeroU16::new) {
+                                        Some(port) => port,
+                                        None => {
                                             tracing::warn!(%port.port, service=name, "Invalid service port");
                                             return;
                                         }
@@ -301,10 +302,11 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                                         service = name,
                                         "inserting service into ip index"
                                     );
-                                    self.services_by_ip.insert(
-                                        SocketAddr::new(addr, port),
-                                        service_ref.clone(),
-                                    );
+                                    self.services_by_ip
+                                        .entry(addr)
+                                        .or_insert(
+                                            ServicePorts { service: service_ref.clone(), ports: Default::default() }
+                                        ).ports.insert(port);
                                 });
                             })
                         });
@@ -362,7 +364,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             namespace,
         };
         self.resource_info.remove(&service_ref);
-        self.services_by_ip.retain(|_, v| *v != service_ref);
+        self.services_by_ip.retain(|_, v| v.service != service_ref);
 
         self.reindex_resources();
     }
@@ -543,15 +545,33 @@ impl Index {
         Ok(watch.watch.subscribe())
     }
 
-    pub fn lookup_service(&self, addr: SocketAddr) -> Option<(String, String)> {
+    pub fn lookup_service(
+        &self,
+        addr: IpAddr,
+        port: NonZeroU16,
+        source_namespace: String,
+    ) -> Option<OutboundDiscoverTarget> {
         tracing::debug!(?addr, "looking up service");
-        let res = self
-            .services_by_ip
-            .get(&addr)
-            .cloned()
-            .map(|r| (r.namespace, r.name));
-        tracing::debug!(?res, "found service");
-        res
+
+        let service = self.services_by_ip.get(&addr)?;
+        tracing::debug!(service=?service.service, "found service");
+        if service.ports.contains(&port) {
+            Some(OutboundDiscoverTarget::Resource(ResourceTarget {
+                name: service.service.name.clone(),
+                namespace: service.service.namespace.clone(),
+                port,
+                source_namespace,
+                kind: Kind::Service,
+            }))
+        } else {
+            Some(OutboundDiscoverTarget::UndefinedPort(ResourceTarget {
+                name: service.service.name.clone(),
+                namespace: service.service.namespace.clone(),
+                port,
+                source_namespace,
+                kind: Kind::Service,
+            }))
+        }
     }
 
     pub fn lookup_egress_network(
