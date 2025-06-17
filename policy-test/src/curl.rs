@@ -27,7 +27,9 @@ pub struct Execable {
 }
 
 impl Runner {
-    const CURL_IMAGE: &'static str = "docker.io/curlimages/curl:latest";
+    // @TODO(alpeb): point to `latest` once the fix for this bug is released:
+    // https://github.com/curl/curl/issues/17554
+    const CURL_IMAGE: &'static str = "docker.io/curlimages/curl:8.13.0";
 
     pub async fn init(client: &kube::Client, ns: &str) -> Runner {
         let runner = Runner {
