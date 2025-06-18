@@ -1300,7 +1300,7 @@ impl Index {
     }
 
     #[tracing::instrument(level = "debug", skip(self, net))]
-    pub(crate) fn index_egress_network(&mut self, id: ResourceId, net: EgressNetworkRef) {
+    fn index_egress_network(&mut self, id: ResourceId, net: EgressNetworkRef) {
         tracing::trace!(?net);
         // Insert into the index; if the network is already in the index, and it hasn't
         // changed, skip creating a patch.
