@@ -441,7 +441,7 @@ fn undefined_port(target: ResourceTarget) -> outbound::OutboundPolicy {
         queue: Some(default_queue_config()),
         kind: Some(outbound::backend::Kind::Forward(
             destination::WeightedAddr {
-                addr: Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1)), 1).into()),
+                addr: Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 0, 2, 1)), 1).into()),
                 weight: 1,
                 ..Default::default()
             },

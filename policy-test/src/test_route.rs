@@ -782,11 +782,18 @@ impl TestParent for k8s::Service {
                 ..Default::default()
             },
             spec: Some(k8s::ServiceSpec {
-                ports: Some(vec![k8s::ServicePort {
-                    port: 4191,
-                    app_protocol,
-                    ..Default::default()
-                }]),
+                ports: Some(vec![
+                    k8s::ServicePort {
+                        port: 4191,
+                        app_protocol: app_protocol.clone(),
+                        ..Default::default()
+                    },
+                    k8s::ServicePort {
+                        port: 9999,
+                        app_protocol,
+                        ..Default::default()
+                    },
+                ]),
                 ..Default::default()
             }),
             ..k8s::Service::default()
