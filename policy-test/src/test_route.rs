@@ -784,11 +784,13 @@ impl TestParent for k8s::Service {
             spec: Some(k8s::ServiceSpec {
                 ports: Some(vec![
                     k8s::ServicePort {
+                        name: Some("port-one".to_string()),
                         port: 4191,
                         app_protocol: app_protocol.clone(),
                         ..Default::default()
                     },
                     k8s::ServicePort {
+                        name: Some("port-two".to_string()),
                         port: 9999,
                         app_protocol,
                         ..Default::default()
