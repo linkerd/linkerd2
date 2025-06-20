@@ -89,7 +89,12 @@ var (
 	}
 )
 
-type ValueOverrider func(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32) (*l5dcharts.Values, error)
+type Values struct {
+	Linkerd *l5dcharts.Values
+	Custom  map[string]interface{}
+}
+
+type ValueOverrider func(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32) (*Values, error)
 
 // Origin defines where the input YAML comes from. Refer the ResourceConfig's
 // 'origin' field
@@ -187,7 +192,7 @@ func AppendNamespaceAnnotations(base map[string]string, nsAnn map[string]string,
 
 // GetOverriddenValues returns the final Values struct which is created
 // by overriding annotated configuration on top of default Values
-func GetOverriddenValues(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32) (*l5dcharts.Values, error) {
+func GetOverriddenValues(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32) (*Values, error) {
 	// Make a copy of Values and mutate that
 	copyValues, err := values.DeepCopy()
 	if err != nil {
@@ -195,7 +200,7 @@ func GetOverriddenValues(values *l5dcharts.Values, overrides map[string]string, 
 	}
 
 	applyAnnotationOverrides(copyValues, overrides, namedPorts)
-	return copyValues, nil
+	return &Values{Linkerd: copyValues}, nil
 }
 
 func applyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, namedPorts map[string]int32) {
@@ -662,9 +667,9 @@ func (conf *ResourceConfig) getAnnotationOverrides() map[string]string {
 
 // GetPodPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
-func GetPodPatch(conf *ResourceConfig, injectProxy bool, values *l5dcharts.Values, patchPathPrefix string) ([]byte, error) {
+func GetPodPatch(conf *ResourceConfig, injectProxy bool, values *Values, patchPathPrefix string) ([]byte, error) {
 	patch := &podPatch{
-		Values:      *values,
+		Values:      *values.Linkerd,
 		Annotations: map[string]string{},
 		Labels:      map[string]string{},
 		PathPrefix:  patchPathPrefix,

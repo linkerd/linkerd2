@@ -6,14 +6,13 @@ import (
 	"net"
 	"strings"
 
-	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
 )
 
 var PatchProducers = []PatchProducer{GetPodPatch}
 
-type PatchProducer func(conf *ResourceConfig, injectProxy bool, values *l5dcharts.Values, patchPathPrefix string) ([]byte, error)
+type PatchProducer func(conf *ResourceConfig, injectProxy bool, values *Values, patchPathPrefix string) ([]byte, error)
 
 // JSONPatch format is specified in RFC 6902
 type JSONPatch struct {
@@ -40,13 +39,13 @@ func ProduceMergedPatch(producers []PatchProducer, conf *ResourceConfig, injectP
 	}
 
 	values, err := overrider(conf.values, conf.getAnnotationOverrides(), namedPorts)
-	values.Proxy.PodInboundPorts = getPodInboundPorts(conf.pod.spec)
+	values.Linkerd.Proxy.PodInboundPorts = getPodInboundPorts(conf.pod.spec)
 	if err != nil {
 		return nil, fmt.Errorf("could not generate Overridden Values: %w", err)
 	}
 
-	if values.ClusterNetworks != "" {
-		for _, network := range strings.Split(strings.Trim(values.ClusterNetworks, ","), ",") {
+	if values.Linkerd.ClusterNetworks != "" {
+		for _, network := range strings.Split(strings.Trim(values.Linkerd.ClusterNetworks, ","), ",") {
 			if _, _, err := net.ParseCIDR(network); err != nil {
 				return nil, fmt.Errorf("cannot parse destination get networks: %w", err)
 			}
