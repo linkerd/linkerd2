@@ -48,11 +48,13 @@ func ResourceAuthz(
 func ResourceAuthzForUser(
 	ctx context.Context,
 	client kubernetes.Interface,
-	namespace, verb, group, version, resource, subresource, name, user string, userGroups []string) error {
+	namespace, verb, group, version, resource, subresource, name, user string, userGroups []string, extra map[string]authV1.ExtraValue) error {
 	sar := &authV1.SubjectAccessReview{
 		Spec: authV1.SubjectAccessReviewSpec{
 			User:   user,
 			Groups: userGroups,
+			Extra: extra,
+
 			ResourceAttributes: &authV1.ResourceAttributes{
 				Namespace:   namespace,
 				Verb:        verb,
