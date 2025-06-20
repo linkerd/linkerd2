@@ -748,6 +748,14 @@ data:
         failureThreshold: 120
         initialDelaySeconds: 0
         periodSeconds: 1
+      tracing:
+        collector:
+          endpoint: ""
+          meshIdentity:
+            serviceAccountName: ""
+        enable: false
+        protocol: ""
+        traceServiceName: linkerd-proxy
       uid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: linkerd-proxy
@@ -943,7 +951,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       automountServiceAccountToken: false
       containers:
       - args:
@@ -1381,7 +1389,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       automountServiceAccountToken: false
       containers:
       - env:
@@ -1905,7 +1913,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       automountServiceAccountToken: false
       containers:
       - env:
@@ -2203,6 +2211,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+
 ---
 kind: Service
 apiVersion: v1
