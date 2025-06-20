@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"net"
 	"reflect"
 	"regexp"
 	"sort"
@@ -663,37 +662,12 @@ func (conf *ResourceConfig) getAnnotationOverrides() map[string]string {
 
 // GetPodPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
-func (conf *ResourceConfig) GetPodPatch(injectProxy bool, overrider ValueOverrider) ([]byte, error) {
-	namedPorts := make(map[string]int32)
-	if conf.HasPodTemplate() {
-		namedPorts = util.GetNamedPorts(conf.pod.spec.Containers)
-	}
-
-	values, err := overrider(conf.values, conf.getAnnotationOverrides(), namedPorts)
-	values.Proxy.PodInboundPorts = getPodInboundPorts(conf.pod.spec)
-	if err != nil {
-		return nil, fmt.Errorf("could not generate Overridden Values: %w", err)
-	}
-
-	if values.ClusterNetworks != "" {
-		for _, network := range strings.Split(strings.Trim(values.ClusterNetworks, ","), ",") {
-			if _, _, err := net.ParseCIDR(network); err != nil {
-				return nil, fmt.Errorf("cannot parse destination get networks: %w", err)
-			}
-		}
-	}
-
+func GetPodPatch(conf *ResourceConfig, injectProxy bool, values *l5dcharts.Values, patchPathPrefix string) ([]byte, error) {
 	patch := &podPatch{
 		Values:      *values,
 		Annotations: map[string]string{},
 		Labels:      map[string]string{},
-	}
-	switch strings.ToLower(conf.workload.metaType.Kind) {
-	case k8s.Pod:
-	case k8s.CronJob:
-		patch.PathPrefix = "/spec/jobTemplate/spec/template"
-	default:
-		patch.PathPrefix = "/spec/template"
+		PathPrefix:  patchPathPrefix,
 	}
 
 	if conf.pod.spec != nil {

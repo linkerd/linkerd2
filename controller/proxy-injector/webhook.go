@@ -28,7 +28,7 @@ const (
 // Inject returns the function that produces an AdmissionResponse containing
 // the patch, if any, to apply to the pod (proxy sidecar and eventually the
 // init container to set it up)
-func Inject(linkerdNamespace string, overrider inject.ValueOverrider) webhook.Handler {
+func Inject(linkerdNamespace string, overrider inject.ValueOverrider, patchProducers []inject.PatchProducer) webhook.Handler {
 	return func(
 		ctx context.Context,
 		api *k8s.MetadataAPI,
@@ -116,10 +116,11 @@ func Inject(linkerdNamespace string, overrider inject.ValueOverrider) webhook.Ha
 				}
 			}
 
-			patchJSON, err := resourceConfig.GetPodPatch(true, overrider)
+			patchJSON, err := inject.ProduceMergedPatch(patchProducers, resourceConfig, true, overrider)
 			if err != nil {
 				return nil, err
 			}
+
 			if parent != nil {
 				recorder.Event(parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
 			}
