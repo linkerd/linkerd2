@@ -694,15 +694,29 @@ func initializeIssuerCredentials(ctx context.Context, k *k8s.KubernetesAPI, valu
 		}
 	} else {
 		// No credentials have been supplied so we will generate them.
-		root, err := tls.GenerateRootCAWithDefaults(issuerName(values.IdentityTrustDomain))
+		root, err := tls.GenerateRootCAWithDefaults(rootName(values.IdentityTrustDomain))
 		if err != nil {
-			return fmt.Errorf("failed to generate root certificate for identity: %w", err)
+			return fmt.Errorf("failed to generate trust anchor certificate: %w", err)
 		}
-		values.Identity.Issuer.TLS.KeyPEM = root.Cred.EncodePrivateKeyPEM()
-		values.Identity.Issuer.TLS.CrtPEM = root.Cred.Crt.EncodeCertificatePEM()
+
 		values.IdentityTrustAnchorsPEM = root.Cred.Crt.EncodeCertificatePEM()
+
+		// Next up, generate an intermediate CA cert for the issuer.
+		issuer, err := root.GenerateCA(issuerName(values.IdentityTrustDomain), 1)
+
+		if err != nil {
+			return fmt.Errorf("failed to generate identity issuer certificate: %w", err)
+		}
+
+		values.Identity.Issuer.TLS.KeyPEM = issuer.Cred.EncodePrivateKeyPEM()
+		values.Identity.Issuer.TLS.CrtPEM = issuer.Cred.Crt.EncodeCertificatePEM()
+
 	}
 	return nil
+}
+
+func rootName(trustDomain string) string {
+	return fmt.Sprintf("root.%s.%s", controlPlaneNamespace, trustDomain)
 }
 
 func issuerName(trustDomain string) string {
