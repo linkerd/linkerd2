@@ -20,7 +20,13 @@ use linkerd_policy_controller_core::{
     },
     routes::GroupKindNamespaceName,
 };
-use std::{net::SocketAddr, num::NonZeroU16, str::FromStr, sync::Arc, time};
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    num::NonZeroU16,
+    str::FromStr,
+    sync::Arc,
+    time,
+};
 
 mod grpc;
 mod http;
@@ -195,6 +201,10 @@ where
             OutboundDiscoverTarget::External(original_dst) => {
                 Ok(tonic::Response::new(fallback(original_dst)))
             }
+
+            OutboundDiscoverTarget::UndefinedPort(resource) => {
+                Ok(tonic::Response::new(undefined_port(resource)))
+            }
         }
     }
 
@@ -205,6 +215,7 @@ where
         req: tonic::Request<outbound::TrafficSpec>,
     ) -> Result<tonic::Response<BoxWatchStream>, tonic::Status> {
         let metrics = self.watch_metrics.start();
+        tracing::debug!(?req, "watching outbound policy");
         let target = match self.lookup(req.into_inner()) {
             Ok(target) => target,
             Err(status) => {
@@ -250,6 +261,9 @@ where
                     original_dst,
                     metrics,
                 )))
+            }
+            OutboundDiscoverTarget::UndefinedPort(resource) => {
+                Ok(tonic::Response::new(undefined_port_stream(drain, resource)))
             }
         }
     }
@@ -405,6 +419,78 @@ fn fallback(original_dst: SocketAddr) -> outbound::OutboundPolicy {
             )),
         }),
     }
+}
+
+fn undefined_port(target: ResourceTarget) -> outbound::OutboundPolicy {
+    let metadata = Some(Metadata {
+        kind: Some(metadata::Kind::Resource(Resource {
+            group: target.kind.group().to_string(),
+            kind: target.kind.kind().to_string(),
+            name: target.name,
+            namespace: target.namespace,
+            section: String::default(),
+            port: target.port.get() as u32,
+        })),
+    });
+
+    // Since we set a Forbidden filter, this backend will never be used.
+    // However, it is required to have a backend in the OpaqueRoute in order
+    // for the config to be valid. Therefore, we use an arbitrary dummy backend.
+    let backend = outbound::Backend {
+        metadata: metadata.clone(),
+        queue: Some(default_queue_config()),
+        kind: Some(outbound::backend::Kind::Forward(
+            destination::WeightedAddr {
+                addr: Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 0, 2, 1)), 1).into()),
+                weight: 1,
+                ..Default::default()
+            },
+        )),
+    };
+
+    let opaque = outbound::proxy_protocol::Opaque {
+        routes: vec![outbound::OpaqueRoute {
+            metadata: Some(Metadata {
+                kind: Some(metadata::Kind::Default("undefined-port".to_string())),
+            }),
+            rules: vec![outbound::opaque_route::Rule {
+                backends: Some(outbound::opaque_route::Distribution {
+                    kind: Some(outbound::opaque_route::distribution::Kind::FirstAvailable(
+                        outbound::opaque_route::distribution::FirstAvailable {
+                            backends: vec![outbound::opaque_route::RouteBackend {
+                                backend: Some(backend),
+                                ..Default::default()
+                            }],
+                        },
+                    )),
+                }),
+                filters: vec![outbound::opaque_route::Filter {
+                    kind: Some(outbound::opaque_route::filter::Kind::Forbidden(
+                        linkerd2_proxy_api::opaque_route::Forbidden {},
+                    )),
+                }],
+            }],
+        }],
+    };
+
+    outbound::OutboundPolicy {
+        metadata,
+        protocol: Some(outbound::ProxyProtocol {
+            kind: Some(outbound::proxy_protocol::Kind::Opaque(opaque)),
+        }),
+    }
+}
+
+fn undefined_port_stream(drain: drain::Watch, target: ResourceTarget) -> BoxWatchStream {
+    Box::pin(async_stream::try_stream! {
+        tokio::pin! {
+            let shutdown = drain.signaled();
+        }
+
+        yield undefined_port(target.clone());
+
+        let _ = shutdown.await;
+    })
 }
 
 fn to_proto(
