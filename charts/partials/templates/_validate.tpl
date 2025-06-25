@@ -12,8 +12,8 @@
 {{- fail "if externalSecret is set, then caBundle, injectCaFrom, or injectCaFromSecret must be set" -}}
 {{- end }}
 
-{{- if and (or .injectCaFrom .injectCaFromSecret .caBundle) (not .externalSecret) -}}
-{{- fail "if caBundle, injectCaFrom, or injectCaFromSecret is set, then externalSecret must be set" -}}
+{{- if and (or .injectCaFrom .injectCaFromSecret) (not .externalSecret) -}}
+{{- fail "if injectCaFrom or injectCaFromSecret is set, then externalSecret must be set" -}}
 {{- end -}}
 
 {{- end -}}

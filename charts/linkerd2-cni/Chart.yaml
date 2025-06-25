@@ -4,7 +4,7 @@ description: |
   Linkerd is a *service mesh*, designed to give platform-wide observability,
   reliability, and security without requiring configuration or code changes. The
   Linkerd [CNI plugin](https://linkerd.io/2/features/cni/) takes care of setting
-  up your pod's network so  incoming and outgoing traffic is proxied through the
+  up your pod's network so incoming and outgoing traffic is proxied through the
   data plane.
 kubeVersion: ">=1.23.0-0"
 icon: https://linkerd.io/images/logo-only-200h.png
