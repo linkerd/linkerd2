@@ -284,6 +284,18 @@ proxy:
   metrics:
       # -- Whether or not to export hostname labels in outbound request metrics.
       hostnameLabels: false
+  # Configures tracing in the proxy and how they are exported
+  tracing:
+    # -- Enables trace collection and export in the proxy
+    enable: false
+    traceServiceName: linkerd-proxy
+    collector:
+      # -- The collector endpoint to send traces to.
+      endpoint: ""
+      # -- The identity of the collector in the linkerd mesh. If the collector
+      # is unmeshed, this should remain unset.
+      meshIdentity:
+        serviceAccountName: ""
   inbound:
     server:
       http2:

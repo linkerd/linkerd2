@@ -148,6 +148,28 @@ env:
   value: 30s
 - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
   value: {{ .Values.proxy.metrics.hostnameLabels | quote }}
+{{ if .Values.proxy.tracing.enable -}}
+- name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+  value: /var/run/linkerd/podinfo/labels
+- name: LINKERD2_PROXY_TRACE_PROTOCOL
+  value: {{ default "opentelemetry" .Values.proxy.tracing.protocol }}
+- name: LINKERD2_PROXY_TRACE_SERVICE_NAME
+  value: {{ .Values.proxy.tracing.traceServiceName }}
+{{- if empty .Values.proxy.tracing.collector.endpoint }}
+{{- fail "proxy.tracing.collector.endpoint must be set if proxy tracing is enabled" }}
+{{- end }}
+- name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
+  value: {{ .Values.proxy.tracing.collector.endpoint }}
+{{ if .Values.proxy.tracing.collector.meshIdentity.serviceAccountName -}}
+- name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
+  value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
+{{ end -}}
+- name: LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES
+  value: |
+    k8s.pod.ip=$(_pod_ip)
+    k8s.pod.uid=$(_pod_uid)
+    k8s.container.name=$(_pod_containerName)
+{{ end -}}
 {{- /* Configure inbound and outbound parameters, e.g. for HTTP/2 servers. */}}
 {{ range $proxyK, $proxyV := (dict "inbound" .Values.proxy.inbound "outbound" .Values.proxy.outbound) -}}
 {{   range $scopeK, $scopeV := $proxyV -}}
@@ -288,6 +310,10 @@ lifecycle:
 volumeMounts:
 - mountPath: /var/run/linkerd/identity/end-entity
   name: linkerd-identity-end-entity
+{{- if .Values.proxy.tracing.enable }}
+- mountPath: /var/run/linkerd/podinfo
+  name: linkerd-podinfo
+{{- end }}
 {{- if .Values.identity.serviceAccountTokenProjection }}
 - mountPath: /var/run/secrets/tokens
   name: linkerd-identity-token
