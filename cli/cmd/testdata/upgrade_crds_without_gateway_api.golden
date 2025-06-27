@@ -6755,7 +6755,6 @@ spec:
                           isFailure:
                             type: boolean
   scope: Namespaced
-  preserveUnknownFields: false
   names:
     plural: serviceprofiles
     singular: serviceprofile
