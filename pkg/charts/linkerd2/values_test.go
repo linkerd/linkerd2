@@ -182,6 +182,16 @@ func TestNewValues(t *testing.T) {
 			Metrics: &ProxyMetrics{
 				HostnameLabels: false,
 			},
+			Tracing: &ProxyTracing{
+				Enable:           false,
+				TraceServiceName: "linkerd-proxy",
+				Collector: &ProxyTracingCollector{
+					Endpoint: "",
+					MeshIdentity: &ProxyTracingCollectorIdentity{
+						ServiceAccountName: "",
+					},
+				},
+			},
 			Runtime: ProxyRuntime{
 				Workers: ProxyRuntimeWorkers{
 					Minimum: 1,

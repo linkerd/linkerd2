@@ -103,6 +103,25 @@ structs.
       }
     }
   },
+  {{- if .Values.proxy.tracing.enable }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/volumes/-",
+    "value": {
+       "downwardAPI": {
+         "items": [
+            {
+              "fieldRef": {
+                "fieldPath": "metadata.labels"
+              },
+              "path": "labels"
+            }
+          ]
+       },
+       "name": "linkerd-podinfo"
+     }
+  },
+  {{- end }}
   {{- if .Values.identity.serviceAccountTokenProjection}}
   {
     "op": "add",
