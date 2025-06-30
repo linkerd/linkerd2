@@ -20,13 +20,7 @@ use linkerd_policy_controller_core::{
     },
     routes::GroupKindNamespaceName,
 };
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    num::NonZeroU16,
-    str::FromStr,
-    sync::Arc,
-    time,
-};
+use std::{net::SocketAddr, num::NonZeroU16, str::FromStr, sync::Arc, time};
 
 mod grpc;
 mod http;
@@ -433,21 +427,6 @@ fn undefined_port(target: ResourceTarget) -> outbound::OutboundPolicy {
         })),
     });
 
-    // Since we set a Forbidden filter, this backend will never be used.
-    // However, it is required to have a backend in the OpaqueRoute in order
-    // for the config to be valid. Therefore, we use an arbitrary dummy backend.
-    let backend = outbound::Backend {
-        metadata: metadata.clone(),
-        queue: Some(default_queue_config()),
-        kind: Some(outbound::backend::Kind::Forward(
-            destination::WeightedAddr {
-                addr: Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 0, 2, 1)), 1).into()),
-                weight: 1,
-                ..Default::default()
-            },
-        )),
-    };
-
     let opaque = outbound::proxy_protocol::Opaque {
         routes: vec![outbound::OpaqueRoute {
             metadata: Some(Metadata {
@@ -455,13 +434,8 @@ fn undefined_port(target: ResourceTarget) -> outbound::OutboundPolicy {
             }),
             rules: vec![outbound::opaque_route::Rule {
                 backends: Some(outbound::opaque_route::Distribution {
-                    kind: Some(outbound::opaque_route::distribution::Kind::FirstAvailable(
-                        outbound::opaque_route::distribution::FirstAvailable {
-                            backends: vec![outbound::opaque_route::RouteBackend {
-                                backend: Some(backend),
-                                ..Default::default()
-                            }],
-                        },
+                    kind: Some(outbound::opaque_route::distribution::Kind::Empty(
+                        outbound::opaque_route::distribution::Empty {},
                     )),
                 }),
                 filters: vec![outbound::opaque_route::Filter {
