@@ -43,9 +43,18 @@ Open a pull request that includes the changes.
 
 ## 3. Tag the release
 
-- Checkout the `main` branch
-- Tag, e.g. `edge-24.3.1`
-- Push the tag
+- Checkout the `main` branch, and be sure to pull the latest changes.
+- Tag the current state of `main`, with a tag of the form `edge-YY.M.N`, where
+  `YY` is the year, `M` is the month, and `N` is the nth release of the month.
+- Push the tag to the repository.
+
+```sh
+TAG="edge-YY.M.N"
+git switch main
+git pull --tags --prune
+git tag $TAG HEAD
+git push --tags
+```
 
 That will kick off a CI Release workflow run that will:
 
