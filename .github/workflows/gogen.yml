@@ -27,4 +27,4 @@ jobs:
           go generate -mod=readonly ./jaeger/static
           go generate -mod=readonly ./multicluster/static
           go generate -mod=readonly ./viz/static
-      - run: git diff --exit-code
+      - run: git diff -I"modTime:" --exit-code
