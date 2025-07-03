@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const (
+var (
 	// HelmChartDirCrds is the directory name for the linkerd-crds chart
 	HelmChartDirCrds = "linkerd-crds"
 

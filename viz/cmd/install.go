@@ -112,7 +112,7 @@ func install(w io.Writer, options values.Options, ha, cniEnabled bool, format st
 	}
 
 	if ha {
-		valuesOverrides, err = charts.OverrideFromFile(valuesOverrides, static.Templates, vizChartName, "values-ha.yaml")
+		valuesOverrides, err = charts.OverrideFromFile(valuesOverrides, static.Templates, VizChartName, "values-ha.yaml")
 		if err != nil {
 			return err
 		}
@@ -148,7 +148,7 @@ func render(w io.Writer, valuesOverrides map[string]interface{}, format string) 
 	}
 
 	// Load all Viz chart files into buffer
-	if err := charts.FilesReader(static.Templates, vizChartName+"/", files); err != nil {
+	if err := charts.FilesReader(static.Templates, VizChartName+"/", files); err != nil {
 		return err
 	}
 
