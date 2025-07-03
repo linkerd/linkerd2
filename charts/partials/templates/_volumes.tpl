@@ -4,6 +4,15 @@ emptyDir:
 name: linkerd-identity-end-entity
 {{- end -}}
 
+{{- define "partials.proxy.volumes.podinfo" -}}
+name: linkerd-podinfo
+downwardAPI:
+  items:
+    - path: labels
+      fieldRef:
+        fieldPath: metadata.labels
+{{- end -}}
+
 {{ define "partials.proxyInit.volumes.xtables" -}}
 emptyDir: {}
 name: {{ .Values.proxyInit.xtMountPath.name }}

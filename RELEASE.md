@@ -4,25 +4,17 @@ This document contains instructions for releasing Linkerd2.
 
 ## 1. Bump the proxy version
 
-Determine the commit SHA of the `linkerd2-proxy` repo to be included in the
-release. If
-[proxy-version](https://github.com/linkerd/linkerd2/blob/main/.proxy-version)
-is already at the desired SHA, skip to step 2.
+Determine the commit SHA or tag of the `linkerd2-proxy` repo to be included in
+the release.
+
+The [proxy-version](https://github.com/linkerd/linkerd2/blob/main/.proxy-version)
+file is kept in sync automatically by the
+[`sync-proxy`](https://github.com/linkerd/linkerd2/actions/workflows/sync-proxy.yml)
+workflow. If the file is already at the desired SHA or tag, skip to step 2.
 
 If updating to `linkerd-proxy` HEAD, note the commit SHA at
 [latest.txt](https://build.l5d.io/linkerd2-proxy/latest.txt) (Look for
 `linkerd2-proxy-<linkerd2-proxy-sha>.tar.gz`).
-
-Create a new branch in the `linkerd2` repo, `username/proxy-version-bump`.
-
-Then run:
-
-```bash
-bin/git-commit-proxy-version <linkerd2-proxy-sha>
-```
-
-The script will update the `.proxy-version` file. Submit a PR to obtain reviews
-and approval.
 
 ## 2. Bump the proxy-init or CNI plugin version
 
@@ -51,9 +43,18 @@ Open a pull request that includes the changes.
 
 ## 3. Tag the release
 
-- Checkout the `main` branch
-- Tag, e.g. `edge-24.3.1`
-- Push the tag
+- Checkout the `main` branch, and be sure to pull the latest changes.
+- Tag the current state of `main`, with a tag of the form `edge-YY.M.N`, where
+  `YY` is the year, `M` is the month, and `N` is the nth release of the month.
+- Push the tag to the repository.
+
+```sh
+TAG="edge-YY.M.N"
+git switch main
+git pull --tags --prune
+git tag $TAG HEAD
+git push --tags
+```
 
 That will kick off a CI Release workflow run that will:
 
