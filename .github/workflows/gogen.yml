@@ -1,4 +1,4 @@
-name: Proto
+name: Gogen
 
 on:
   pull_request:
@@ -19,7 +19,6 @@ jobs:
     runs-on: ubuntu-24.04
     container: ghcr.io/linkerd/dev:v45-go
     steps:
-      - run: apt update && apt install -y unzip
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       # Ensure that the generated files are up to date.
