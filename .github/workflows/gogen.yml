@@ -1,0 +1,31 @@
+name: Proto
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/gogen.yml
+      - "charts/**"
+      - "jaeger/charts/**"
+      - "multicluster/charts/**"
+      - "viz/charts/**"
+      - "**/*.gogen.go"
+
+permissions:
+  contents: read
+
+jobs:
+  proto-diff:
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    container: ghcr.io/linkerd/dev:v45-go
+    steps:
+      - run: apt update && apt install -y unzip
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
+      # Ensure that the generated files are up to date.
+      - run: |
+          go generate -mod=readonly ./pkg/charts/static
+          go generate -mod=readonly ./jaeger/static
+          go generate -mod=readonly ./multicluster/static
+          go generate -mod=readonly ./viz/static
+      - run: git diff --exit-code
