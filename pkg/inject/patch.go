@@ -15,7 +15,7 @@ var PatchProducers = []PatchProducer{GetPodPatch}
 
 // PatchProducer is a function that generates a patch for a given resource configuration
 // and OverriddenValues.
-type PatchProducer func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string) ([]byte, error)
+type PatchProducer func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string) ([]JSONPatch, error)
 
 // JSONPatch format is specified in RFC 6902
 type JSONPatch struct {
@@ -62,17 +62,10 @@ func ProduceMergedPatch(producers []PatchProducer, conf *ResourceConfig, injectP
 	}
 
 	merged := []JSONPatch{}
-	onlyOnePatch := len(producers) == 1
 	for _, producer := range producers {
 		patch, err := producer(conf, injectProxy, values, getPatchPathPrefix(conf))
 		if err != nil {
 			return nil, err
-		}
-
-		if onlyOnePatch {
-			// If there's only one patch producer, we can return the patch directly
-			// in order to avoid unnecessary merging and the cost of unmarshalling.
-			return patch, nil
 		}
 
 		// If the patch is empty, skip it
@@ -80,13 +73,7 @@ func ProduceMergedPatch(producers []PatchProducer, conf *ResourceConfig, injectP
 			continue
 		}
 
-		var currentPatch []JSONPatch
-		err = json.Unmarshal(patch, &currentPatch)
-		if err != nil {
-			return nil, err
-		}
-
-		merged = append(merged, currentPatch...)
+		merged = append(merged, patch...)
 	}
 
 	return json.Marshal(merged)

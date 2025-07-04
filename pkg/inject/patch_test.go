@@ -77,11 +77,11 @@ func TestProduceMergedPatch(t *testing.T) {
 	}
 
 	createMockPatchProducer := func(patch []JSONPatch, returnError bool) PatchProducer {
-		return func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string) ([]byte, error) {
+		return func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string) ([]JSONPatch, error) {
 			if returnError {
 				return nil, fmt.Errorf("mock patch producer error")
 			}
-			return json.Marshal(patch)
+			return patch, nil
 		}
 	}
 
@@ -94,7 +94,7 @@ func TestProduceMergedPatch(t *testing.T) {
 		validatePatch   func(t *testing.T, patch []byte)
 		clusterNetworks string
 	}{
-		{name: "single patch producer - optimization path",
+		{name: "single patch producer",
 			producers: []PatchProducer{
 				createMockPatchProducer([]JSONPatch{
 					{Operation: "add", Path: "/metadata/annotations/test", Value: "value1"},
@@ -116,7 +116,7 @@ func TestProduceMergedPatch(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple patch producers - merge path",
+			name: "multiple patch producers",
 			producers: []PatchProducer{
 				createMockPatchProducer([]JSONPatch{
 					{Operation: "add", Path: "/metadata/annotations/test1", Value: "value1"},

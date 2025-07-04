@@ -674,7 +674,7 @@ func (conf *ResourceConfig) getAnnotationOverrides() map[string]string {
 
 // GetPodPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
-func GetPodPatch(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string) ([]byte, error) {
+func GetPodPatch(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string) ([]JSONPatch, error) {
 	patch := &podPatch{
 		Values:      *values.Values,
 		Annotations: map[string]string{},
@@ -720,7 +720,12 @@ func GetPodPatch(conf *ResourceConfig, injectProxy bool, values *OverriddenValue
 	// Get rid of invalid trailing commas
 	res := rTrail.ReplaceAll(buf.Bytes(), []byte("}\n]"))
 
-	return res, nil
+	patchResult := []JSONPatch{}
+	if err := json.Unmarshal(res, &patchResult); err != nil {
+		return nil, err
+	}
+
+	return patchResult, nil
 }
 
 // GetConfigAnnotation returns two values. The first value is the annotation
