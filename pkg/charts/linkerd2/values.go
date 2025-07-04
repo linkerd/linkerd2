@@ -34,7 +34,7 @@ type (
 		EnablePodAntiAffinity        bool                   `json:"enablePodAntiAffinity"`
 		NodeAffinity                 map[string]interface{} `json:"nodeAffinity"`
 		EnablePodDisruptionBudget    bool                   `json:"enablePodDisruptionBudget"`
-		Controller                   *Controller            `json:"controller"`
+		Controller                   map[string]interface{} `json:"controller"`
 		WebhookFailurePolicy         string                 `json:"webhookFailurePolicy"`
 		DeploymentStrategy           map[string]interface{} `json:"deploymentStrategy,omitempty"`
 		DisableHeartBeat             bool                   `json:"disableHeartBeat"`
@@ -95,11 +95,6 @@ type (
 	// Resources represents the computational resources setup for a given container
 	Egress struct {
 		GlobalEgressNetworkNamespace string `json:"globalEgressNetworkNamespace"`
-	}
-
-	// Controller contains the fields to set the controller container
-	Controller struct {
-		PodDisruptionBudget *PodDisruptionBudget `json:"podDisruptionBudget"`
 	}
 
 	DestinationController struct {
