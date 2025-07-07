@@ -71,7 +71,7 @@
     "history": "5.3.0",
     "html-webpack-plugin": "^5.6.3",
     "jest": "^30.0.3",
-    "jest-environment-jsdom": "^30.0.2",
+    "jest-environment-jsdom": "^30.0.4",
     "lodash-webpack-plugin": "^0.11.6",
     "react-test-renderer": "16.14.0",
     "sinon": "21.0.0",
