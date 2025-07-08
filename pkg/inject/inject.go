@@ -17,9 +17,9 @@ import (
 	"time"
 
 	jsonfilter "github.com/clarketm/json"
-	"github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/charts"
+	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
@@ -718,13 +718,13 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool, overrider ValueOverrid
 		{Name: "templates/patch.json"},
 	}
 
-	chart := &charts.Chart{
+	chart := &chartspkg.Chart{
 		Name:      "patch",
 		Dir:       "patch",
 		Namespace: conf.namespace,
 		RawValues: rawValues,
 		Files:     files,
-		Fs:        static.Templates,
+		Fs:        charts.Templates,
 	}
 	buf, err := chart.Render()
 	if err != nil {

@@ -3,8 +3,8 @@ package values
 import (
 	"fmt"
 
-	"github.com/linkerd/linkerd2/multicluster/static"
-	"github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/multicluster/charts"
+	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -141,11 +141,11 @@ func readDefaults(chartDir string) (*Values, error) {
 	file := &loader.BufferedFile{
 		Name: chartutil.ValuesfileName,
 	}
-	if err := charts.ReadFile(static.Templates, chartDir, file); err != nil {
+	if err := chartspkg.ReadFile(charts.Templates, chartDir, file); err != nil {
 		return nil, err
 	}
 	values := Values{}
-	if err := yaml.Unmarshal(charts.InsertVersion(file.Data), &values); err != nil {
+	if err := yaml.Unmarshal(chartspkg.InsertVersion(file.Data), &values); err != nil {
 		return nil, err
 	}
 	return &values, nil
