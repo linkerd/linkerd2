@@ -19,9 +19,6 @@ COPY charts/patch charts/patch
 COPY charts/partials charts/partials
 COPY multicluster multicluster
 
-# Generate static templates
-# TODO: `go generate` does not honor -mod=readonly
-RUN go generate -mod=readonly ./pkg/charts/static
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/controller -tags prod -mod=readonly -ldflags "-s -w" ./controller/cmd
 
