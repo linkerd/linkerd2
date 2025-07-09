@@ -154,13 +154,6 @@ func render(w io.Writer, valuesOverrides map[string]interface{}, format string) 
 	if err != nil {
 		return err
 	}
-	println("Built chart with files:")
-	for _, f := range files {
-		println("  -", f.Name)
-	}
-	for _, f := range partialFiles {
-		println("  -", f.Name)
-	}
 
 	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
 	if err != nil {

@@ -14,6 +14,7 @@ FROM go-deps AS golang
 WORKDIR /linkerd-build
 COPY controller/gen controller/gen
 COPY pkg pkg
+COPY charts charts
 COPY controller controller
 COPY charts/patch charts/patch
 COPY charts/partials charts/partials
