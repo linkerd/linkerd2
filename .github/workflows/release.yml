@@ -11,7 +11,7 @@ permissions:
 env:
   GH_ANNOTATION: true
   DOCKER_REGISTRY: ghcr.io/linkerd
-  K3D_VERSION: v5.7.5
+  K3D_VERSION: v5.8.3
   LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO }}
 
 jobs:
