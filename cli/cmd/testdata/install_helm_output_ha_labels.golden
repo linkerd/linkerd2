@@ -1153,6 +1153,7 @@ spec:
           value: 30s
         - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
           value: "false"
+        
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
           value: "10s"
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
@@ -1315,6 +1316,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      
 ---
 # Source: linkerd-control-plane/templates/destination.yaml
 ---
@@ -1589,6 +1591,7 @@ spec:
           value: 30s
         - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
           value: "false"
+        
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
           value: "10s"
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
@@ -1907,6 +1910,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      
 ---
 # Source: linkerd-control-plane/templates/heartbeat.yaml
 ---
@@ -2166,6 +2170,7 @@ spec:
           value: 30s
         - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
           value: "false"
+        
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
           value: "10s"
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
@@ -2389,7 +2394,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-
+      
 ---
 kind: Service
 apiVersion: v1
