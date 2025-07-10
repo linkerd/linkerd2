@@ -38,7 +38,7 @@ impl fmt::Display for IdentityMatch {
             Self::Suffix(suffix) => {
                 f.write_char('*')?;
                 for part in suffix {
-                    write!(f, ".{}", part)?;
+                    write!(f, ".{part}")?;
                 }
                 Ok(())
             }

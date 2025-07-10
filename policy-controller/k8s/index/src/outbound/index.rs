@@ -517,7 +517,7 @@ impl Index {
 
         let kind = match kind {
             Kind::EgressNetwork { .. } => ResourceKind::EgressNetwork,
-            Kind::Service { .. } => ResourceKind::Service,
+            Kind::Service => ResourceKind::Service,
         };
 
         let ns = self

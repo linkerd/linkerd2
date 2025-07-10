@@ -89,7 +89,7 @@ issues:
   # rule above; therefore we'll ignore redundant warnings through gosec.
   - linters:
     - gosec
-    text: "G104: Errors unhandled."
+    text: "G104: Errors unhandled"
 
   # This gives false negatives if a variable name is too close to the pattern
   # used to determine if a variable is a credential.

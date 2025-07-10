@@ -15,7 +15,7 @@ jobs:
   proto-diff:
     timeout-minutes: 10
     runs-on: ubuntu-24.04
-    container: ghcr.io/linkerd/dev:v45-go
+    container: ghcr.io/linkerd/dev:v46-go
     steps:
       - run: apt update && apt install -y unzip
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
