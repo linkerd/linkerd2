@@ -83,7 +83,7 @@ spec:
   selector:
     matchLabels:
       k8s-app: linkerd-cni
-  updateStrategy: 
+  updateStrategy:
     rollingUpdate:
       maxUnavailable: 1
     type: RollingUpdate
@@ -110,7 +110,7 @@ spec:
       # script copies the files into place and then sleeps so
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
-        image: cr.l5d.io/linkerd/cni-plugin:v1.6.2
+        image: cr.l5d.io/linkerd/cni-plugin:v1.6.3
         imagePullPolicy: IfNotPresent
         env:
         - name: DEST_CNI_NET_DIR
