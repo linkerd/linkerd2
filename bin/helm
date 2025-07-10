@@ -6,7 +6,7 @@ if command -v helm >/dev/null ; then
     exec helm "$@"
 fi
 
-helmversion=v3.9.1
+helmversion=v3.18.4
 bindir=$( cd "${0%/*}" && pwd )
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
 helmbin=$targetbin/helm-$helmversion
