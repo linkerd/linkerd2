@@ -20,7 +20,7 @@ const versionPlaceholder = "linkerdVersionValue"
 var (
 	// L5dPartials is the list of templates in partials chart
 	// Keep this slice synced with the contents of charts/partials
-	l5dPartials = []string{
+	L5dPartials = []string{
 		"partials/" + chartutil.ChartfileName,
 		"partials/templates/_affinity.tpl",
 		"partials/templates/_capabilities.tpl",
@@ -174,7 +174,7 @@ func FilesReader(fs embed.FS, dir string, files []*loader.BufferedFile) error {
 
 func LoadPartials() ([]*loader.BufferedFile, error) {
 	var partialFiles []*loader.BufferedFile
-	for _, template := range l5dPartials {
+	for _, template := range L5dPartials {
 		partialFiles = append(partialFiles,
 			&loader.BufferedFile{Name: template},
 		)
