@@ -148,7 +148,7 @@ fn target(t: LocalTargetRef) -> Result<Target> {
 fn client_ref(t: NamespacedTargetRef) -> Result<ClientRef> {
     if t.targets_kind::<ServiceAccount>() {
         Ok(ClientRef::ServiceAccount {
-            namespace: t.namespace.map(Into::into),
+            namespace: t.namespace,
             name: t.name,
         })
     } else {
