@@ -158,3 +158,11 @@ issues:
   # This ignores the errors returned from AddToScheme operations.
   - path: pkg/k8s/fake.go
     text: Error return value is not checked
+
+  # Ignore Endpoints and EndpointSubset deprecation warnings for now.
+  - linters:
+    - staticcheck
+    text: "corev1.Endpoints is deprecated: This API is deprecated in v1.33+"
+  - linters:
+    - staticcheck
+    text: "corev1.EndpointSubset is deprecated: This API is deprecated in v1.33+"
