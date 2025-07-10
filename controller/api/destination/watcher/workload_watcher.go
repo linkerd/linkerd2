@@ -367,7 +367,7 @@ func (ww *WorkloadWatcher) updateServers(servers ...*v1beta3.Server) {
 		} else if wp.addr.ExternalWorkload != nil {
 			name = wp.addr.ExternalWorkload.GetName()
 		}
-		if err := SetToServerProtocol(wp.k8sAPI, &wp.addr); err != nil {
+		if err := SetToServerProtocol(wp.k8sAPI, &wp.addr, wp.log); err != nil {
 			wp.log.Errorf("Error computing opaque protocol for %s: %q", name, err)
 		}
 		if wp.addr.OpaqueProtocol == opaque {
@@ -701,7 +701,7 @@ func (wp *workloadPublisher) updatePod(pod *corev1.Pod) {
 		}
 
 		// Compute opaque protocol.
-		if err := SetToServerProtocol(wp.k8sAPI, &wp.addr); err != nil {
+		if err := SetToServerProtocol(wp.k8sAPI, &wp.addr, wp.log); err != nil {
 			wp.log.Errorf("Error computing opaque protocol for pod %s: %q", wp.addr.Pod.GetName(), err)
 		}
 
