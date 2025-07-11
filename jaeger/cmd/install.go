@@ -8,9 +8,8 @@ import (
 	"path"
 	"time"
 
-	"github.com/linkerd/linkerd2/jaeger/static"
-	"github.com/linkerd/linkerd2/pkg/charts"
-	partials "github.com/linkerd/linkerd2/pkg/charts/static"
+	"github.com/linkerd/linkerd2/jaeger/charts"
+	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -126,20 +125,13 @@ func render(w io.Writer, valuesOverrides map[string]interface{}, registry string
 		)
 	}
 
-	var partialFiles []*loader.BufferedFile
-	for _, template := range charts.L5dPartials {
-		partialFiles = append(partialFiles,
-			&loader.BufferedFile{Name: template},
-		)
-	}
-
 	// Load all jaeger chart files into buffer
-	if err := charts.FilesReader(static.Templates, "linkerd-jaeger/", files); err != nil {
+	if err := chartspkg.FilesReader(charts.Templates, "linkerd-jaeger/", files); err != nil {
 		return err
 	}
 
-	// Load all partial chart files into buffer
-	if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
+	partialFiles, err := chartspkg.LoadPartials()
+	if err != nil {
 		return err
 	}
 
@@ -154,7 +146,7 @@ func render(w io.Writer, valuesOverrides map[string]interface{}, registry string
 		return err
 	}
 
-	vals, err = charts.InsertVersionValues(vals)
+	vals, err = chartspkg.InsertVersionValues(vals)
 	if err != nil {
 		return err
 	}

@@ -7,12 +7,11 @@ import (
 	"path"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/charts"
-	partials "github.com/linkerd/linkerd2/pkg/charts/static"
+	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/viz/static"
+	"github.com/linkerd/linkerd2/viz/charts"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -112,7 +111,7 @@ func install(w io.Writer, options values.Options, ha, cniEnabled bool, format st
 	}
 
 	if ha {
-		valuesOverrides, err = charts.OverrideFromFile(valuesOverrides, static.Templates, vizChartName, "values-ha.yaml")
+		valuesOverrides, err = chartspkg.OverrideFromFile(valuesOverrides, charts.Templates, VizChartName, "values-ha.yaml")
 		if err != nil {
 			return err
 		}
@@ -140,20 +139,13 @@ func render(w io.Writer, valuesOverrides map[string]interface{}, format string) 
 		)
 	}
 
-	var partialFiles []*loader.BufferedFile
-	for _, template := range charts.L5dPartials {
-		partialFiles = append(partialFiles,
-			&loader.BufferedFile{Name: template},
-		)
-	}
-
 	// Load all Viz chart files into buffer
-	if err := charts.FilesReader(static.Templates, vizChartName+"/", files); err != nil {
+	if err := chartspkg.FilesReader(charts.Templates, VizChartName+"/", files); err != nil {
 		return err
 	}
 
-	// Load all partial chart files into buffer
-	if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
+	partialFiles, err := chartspkg.LoadPartials()
+	if err != nil {
 		return err
 	}
 
@@ -168,7 +160,7 @@ func render(w io.Writer, valuesOverrides map[string]interface{}, format string) 
 		return err
 	}
 
-	vals, err = charts.InsertVersionValues(vals)
+	vals, err = chartspkg.InsertVersionValues(vals)
 	if err != nil {
 		return err
 	}
