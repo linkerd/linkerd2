@@ -74,7 +74,9 @@ spec:
       {{- include "linkerd.node-selector" (dict "Values" .Values.metricsAPI) | nindent 6 }}
       {{- $_ := set $tree "component" "metrics-api" -}}
       {{- $_ := set $tree "label" "component" -}}
-      {{- include "linkerd.affinity" $tree | nindent 6 }}
+      {{- with include "linkerd.affinity" $tree }}
+      {{- . | nindent 6 }}
+      {{- end }}
       automountServiceAccountToken: false
       containers:
       - args:

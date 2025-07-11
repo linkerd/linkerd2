@@ -153,7 +153,9 @@ spec:
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- $_ := set $tree "component" "identity" -}}
-      {{- include "linkerd.affinity" $tree | nindent 6 }}
+      {{- with include "linkerd.affinity" $tree }}
+      {{- . | nindent 6 }}
+      {{- end }}
       automountServiceAccountToken: false
       containers:
       - args:
@@ -274,7 +276,7 @@ spec:
       - {{- include "partials.proxy.volumes.service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ if .Values.proxy.tracing.enable -}}
+      {{- if .Values.proxy.tracing.enable }}
       - {{- include "partials.proxy.volumes.podinfo" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ end }}
+      {{- end }}
 {{end -}}
