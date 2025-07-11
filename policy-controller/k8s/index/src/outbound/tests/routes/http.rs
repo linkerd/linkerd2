@@ -98,7 +98,7 @@ fn backend_service() {
 
         let exists = match backend {
             Backend::Service(WeightedService { exists, .. }) => exists,
-            backend => panic!("backend should be a service, but got {:?}", backend),
+            backend => panic!("backend should be a service, but got {backend:?}"),
         };
 
         // Backend should exist.

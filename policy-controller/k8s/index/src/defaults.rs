@@ -164,8 +164,7 @@ mod test {
             assert_eq!(
                 default.to_string().parse::<DefaultPolicy>().unwrap(),
                 default,
-                "failed to parse displayed {:?}",
-                default
+                "failed to parse displayed {default:?}"
             );
         }
     }

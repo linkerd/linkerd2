@@ -173,7 +173,7 @@ impl InboundPolicyClient {
         let rsp = self
             .client
             .get_port(tonic::Request::new(inbound::PortSpec {
-                workload: format!("{}:{}", ns, pod),
+                workload: format!("{ns}:{pod}"),
                 port: port as u32,
             }))
             .await?;
@@ -190,7 +190,7 @@ impl InboundPolicyClient {
         let rsp = self
             .client
             .watch_port(tonic::Request::new(inbound::PortSpec {
-                workload: format!("{}:{}", ns, pod),
+                workload: format!("{ns}:{pod}"),
                 port: port as u32,
             }))
             .await?;
@@ -280,7 +280,7 @@ impl OutboundPolicyClient {
         let rsp = self
             .client
             .get(tonic::Request::new(outbound::TrafficSpec {
-                source_workload: format!("{}:client", ns),
+                source_workload: format!("{ns}:client"),
                 target: Some(outbound::traffic_spec::Target::Addr(net::TcpAddress {
                     ip: Some(net::IpAddress {
                         ip: Some(net::ip_address::Ip::Ipv4(ip.into())),
@@ -303,7 +303,7 @@ impl OutboundPolicyClient {
         let rsp = self
             .client
             .watch(tonic::Request::new(outbound::TrafficSpec {
-                source_workload: format!("{}:client", ns),
+                source_workload: format!("{ns}:client"),
                 target: Some(outbound::traffic_spec::Target::Addr(net::TcpAddress {
                     ip: Some(net::IpAddress {
                         ip: Some(net::ip_address::Ip::Ipv4(ip.into())),

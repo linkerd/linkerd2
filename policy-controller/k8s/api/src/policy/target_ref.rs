@@ -191,7 +191,7 @@ impl NamespacedTargetRef {
 
 fn canonical_kind(group: Option<&str>, kind: &str) -> String {
     if let Some(group) = group {
-        format!("{}.{}", kind, group)
+        format!("{kind}.{group}")
     } else {
         kind.to_string()
     }
@@ -284,8 +284,7 @@ mod tests {
             };
             assert!(
                 tgt.targets(&sa, "appns"),
-                "ServiceAccounts are targeted by name: {:#?}",
-                tgt
+                "ServiceAccounts are targeted by name: {tgt:#?}"
             );
 
             let sa = ServiceAccount {
@@ -298,8 +297,7 @@ mod tests {
             };
             assert!(
                 !tgt.targets(&sa, "appns"),
-                "ServiceAccounts in other namespaces should not be targeted: {:#?}",
-                tgt
+                "ServiceAccounts in other namespaces should not be targeted: {tgt:#?}"
             );
         }
 

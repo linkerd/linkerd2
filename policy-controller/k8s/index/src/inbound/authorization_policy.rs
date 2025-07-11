@@ -89,17 +89,17 @@ fn target(t: LocalTargetRef) -> Result<Target> {
 fn authentication_ref(t: NamespacedTargetRef) -> Result<AuthenticationTarget> {
     if t.targets_kind::<k8s::policy::MeshTLSAuthentication>() {
         Ok(AuthenticationTarget::MeshTLS {
-            namespace: t.namespace.map(Into::into),
+            namespace: t.namespace,
             name: t.name,
         })
     } else if t.targets_kind::<k8s::policy::NetworkAuthentication>() {
         Ok(AuthenticationTarget::Network {
-            namespace: t.namespace.map(Into::into),
+            namespace: t.namespace,
             name: t.name,
         })
     } else if t.targets_kind::<ServiceAccount>() {
         Ok(AuthenticationTarget::ServiceAccount {
-            namespace: t.namespace.map(Into::into),
+            namespace: t.namespace,
             name: t.name,
         })
     } else {

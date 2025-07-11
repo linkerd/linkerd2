@@ -325,7 +325,7 @@ async fn service_with_routes_with_cross_namespace_backend() {
                 assert_route_is_default::<gateway::HTTPRoute>(route, &parent.obj_ref(), port);
             });
 
-            let backend_ns_name = format!("{}-backend", ns);
+            let backend_ns_name = format!("{ns}-backend");
             let backend_ns = create_cluster_scoped(
                 &client,
                 k8s::Namespace {
@@ -930,7 +930,7 @@ async fn consumer_route() {
                 None => parent.clone(),
             };
 
-            let consumer_ns_name = format!("{}-consumer", ns);
+            let consumer_ns_name = format!("{ns}-consumer");
             let consumer_ns = create_cluster_scoped(
                 &client,
                 k8s::Namespace {

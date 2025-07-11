@@ -8,10 +8,10 @@ permissions:
 env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
-  CARGO_NEXTEST_VERSION: 0.9.92
+  CARGO_NEXTEST_VERSION: 0.9.100
   DOCKER_REGISTRY: ghcr.io/linkerd
   GH_ANNOTATION: true
-  K3D_VERSION: v5.8.1
+  K3D_VERSION: v5.8.3
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
   YQ_VERSION: v4.44.5
@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@666c9d29007687c52e3c7aa2aac6c0ffcadeadc3
+      - uses: tj-actions/changed-files@5f66af5912c4f9c360c03a612f98606fb0f83790
         id: core
         with:
           files: |
@@ -140,7 +140,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           pattern: image-archives-*
@@ -286,7 +286,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
       - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112
         if: matrix.integration_test == 'helm-upgrade'
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
@@ -313,7 +313,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           pattern: image-archives-*
@@ -349,7 +349,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           pattern: image-archives-*

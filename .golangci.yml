@@ -89,7 +89,7 @@ issues:
   # rule above; therefore we'll ignore redundant warnings through gosec.
   - linters:
     - gosec
-    text: "G104: Errors unhandled."
+    text: "G104: Errors unhandled"
 
   # This gives false negatives if a variable name is too close to the pattern
   # used to determine if a variable is a credential.
@@ -158,3 +158,11 @@ issues:
   # This ignores the errors returned from AddToScheme operations.
   - path: pkg/k8s/fake.go
     text: Error return value is not checked
+
+  # Ignore Endpoints and EndpointSubset deprecation warnings for now.
+  - linters:
+    - staticcheck
+    text: "corev1.Endpoints is deprecated: This API is deprecated in v1.33+"
+  - linters:
+    - staticcheck
+    text: "corev1.EndpointSubset is deprecated: This API is deprecated in v1.33+"

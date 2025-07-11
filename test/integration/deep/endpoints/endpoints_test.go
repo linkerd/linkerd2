@@ -65,7 +65,7 @@ func TestGoodEndpoints(t *testing.T) {
 					}
 
 					matches := re.FindStringSubmatch(out)
-					if matches == nil || len(matches) < 2 {
+					if len(matches) < 2 {
 						return fmt.Errorf("invalid endpoint data\nexpected: \n%s\nactual: \n%s", endpointCase.expectedRE, out)
 					}
 
