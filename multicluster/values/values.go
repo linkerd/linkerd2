@@ -13,9 +13,9 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const (
-	helmDefaultChartDir     = "linkerd-multicluster"
-	helmDefaultLinkChartDir = "linkerd-multicluster-link"
+var (
+	HelmDefaultChartDir     = "linkerd-multicluster"
+	HelmDefaultLinkChartDir = "linkerd-multicluster-link"
 )
 
 // Values contains the top-level elements in the Helm charts
@@ -113,7 +113,7 @@ type ControllerDefaultsProbe struct {
 
 // NewInstallValues returns a new instance of the Values type.
 func NewInstallValues() (*Values, error) {
-	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
+	chartDir := fmt.Sprintf("%s/", HelmDefaultChartDir)
 	v, err := readDefaults(chartDir)
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func NewInstallValues() (*Values, error) {
 
 // NewLinkValues returns a new instance of the Values type.
 func NewLinkValues() (*Values, error) {
-	chartDir := fmt.Sprintf("%s/", helmDefaultLinkChartDir)
+	chartDir := fmt.Sprintf("%s/", HelmDefaultLinkChartDir)
 	v, err := readDefaults(chartDir)
 	if err != nil {
 		return nil, err
