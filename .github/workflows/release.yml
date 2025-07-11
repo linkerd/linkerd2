@@ -148,41 +148,11 @@ jobs:
           [[ "$TAG" == "$($CMD version --short --client)" ]]
           bin/tests --images preload --name ${{ matrix.integration_test }} "$CMD"
 
-  choco_pack:
-    # only runs for stable tags. The conditionals are at each step level instead of the job level
-    # otherwise the jobs below that depend on this one won't run
-    name: Pack Chocolatey release
-    timeout-minutes: 30
-    needs: [integration_tests]
-    runs-on: windows-2019
-    steps:
-      - name: Checkout code
-        if: startsWith(github.ref, 'refs/tags/stable')
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: Chocolatey - update nuspec
-        if: startsWith(github.ref, 'refs/tags/stable')
-        run: |
-          $LINKERD_VERSION=$env:GITHUB_REF.Substring(17)
-          (Get-Content bin\win\linkerd.nuspec).replace('LINKERD_VERSION', "$LINKERD_VERSION") | Set-Content bin\win\linkerd.nuspec
-      - name: Chocolatey - pack
-        if: startsWith(github.ref, 'refs/tags/stable')
-        uses: crazy-max/ghaction-chocolatey@2526f467ccbd337d307fe179959cabbeca0bc8c0
-        with:
-          args: pack bin/win/linkerd.nuspec
-      - name: Chocolatey - upload package
-        if: startsWith(github.ref, 'refs/tags/stable')
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: choco
-          path: ./linkerd.*.nupkg
-
   gh_release:
     name: Create GH release
     needs:
       - tag
       - integration_tests
-    # TODO(ver) choco packages are not produced for edge releases...
-    # - choco_pack
     timeout-minutes: 30
     runs-on: ubuntu-24.04
     permissions:
