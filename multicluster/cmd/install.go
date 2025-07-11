@@ -136,7 +136,7 @@ func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptio
 	}
 
 	if ha {
-		valuesOverrides, err = chartspkg.OverrideFromFile(valuesOverrides, charts.Templates, HelmMulticlusterDefaultChartName, "values-ha.yaml")
+		valuesOverrides, err = chartspkg.OverrideFromFile(valuesOverrides, charts.Templates, multicluster.HelmDefaultChartDir, "values-ha.yaml")
 		if err != nil {
 			return err
 		}
@@ -156,7 +156,7 @@ func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string
 	}
 
 	// Load all multicluster install chart files into buffer
-	if err := chartspkg.FilesReader(charts.Templates, HelmMulticlusterDefaultChartName+"/", files); err != nil {
+	if err := chartspkg.FilesReader(charts.Templates, multicluster.HelmDefaultChartDir+"/", files); err != nil {
 		return err
 	}
 

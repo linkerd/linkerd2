@@ -60,8 +60,8 @@ func newAllowCommand() *cobra.Command {
 			}
 
 			chart := &chartspkg.Chart{
-				Name:      HelmMulticlusterDefaultChartName,
-				Dir:       HelmMulticlusterDefaultChartName,
+				Name:      mccharts.HelmDefaultChartDir,
+				Dir:       mccharts.HelmDefaultChartDir,
 				Namespace: opts.namespace,
 				RawValues: rawValues,
 				Files:     files,

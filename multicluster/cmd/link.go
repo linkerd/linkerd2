@@ -348,7 +348,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				if valuesOverrides, err = chartspkg.OverrideFromFile(
 					valuesOverrides,
 					charts.Templates,
-					helmMulticlusterLinkDefaultChartName,
+					multicluster.HelmDefaultLinkChartDir,
 					"values-ha.yaml",
 				); err != nil {
 					return err
@@ -415,7 +415,7 @@ func renderServiceMirror(values *multicluster.Values, valuesOverrides map[string
 	}
 
 	// Load all multicluster link chart files into buffer
-	if err := chartspkg.FilesReader(charts.Templates, helmMulticlusterLinkDefaultChartName+"/", files); err != nil {
+	if err := chartspkg.FilesReader(charts.Templates, multicluster.HelmDefaultLinkChartDir+"/", files); err != nil {
 		return nil, err
 	}
 
