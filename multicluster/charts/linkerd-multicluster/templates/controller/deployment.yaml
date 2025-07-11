@@ -40,7 +40,9 @@ spec:
     {{- $_ := set $tree.Values "nodeAffinity" (dig "nodeAffinity" $.Values.controllerDefaults.nodeAffinity .) -}}
     {{- $_ := set $tree "component" .link.ref.name -}}
     {{- $_ := set $tree "label" "mirror.linkerd.io/cluster-name" -}}
-    {{- include "linkerd.affinity" $tree | nindent 6 }}
+    {{- with include "linkerd.affinity" $tree }}
+    {{- . | nindent 6 }}
+    {{- end }}
       automountServiceAccountToken: false
       containers:
       - args:

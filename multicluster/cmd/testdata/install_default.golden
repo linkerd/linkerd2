@@ -39,7 +39,6 @@ spec:
         app: linkerd-gateway
         linkerd.io/extension: multicluster
     spec:
-      
       automountServiceAccountToken: false
       containers:
       - name: pause

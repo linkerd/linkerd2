@@ -379,7 +379,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       automountServiceAccountToken: false
       containers:
       - args:
@@ -620,7 +619,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       automountServiceAccountToken: false
       containers:
       - args:
@@ -860,7 +858,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       automountServiceAccountToken: false
       containers:
       - args:
@@ -1054,7 +1051,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       automountServiceAccountToken: false
       containers:
       - args:

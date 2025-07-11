@@ -1907,6 +1907,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      
 ---
 # Source: linkerd-control-plane/templates/heartbeat.yaml
 ---
@@ -2389,7 +2390,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-
+      
 ---
 kind: Service
 apiVersion: v1
