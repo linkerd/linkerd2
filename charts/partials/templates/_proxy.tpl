@@ -148,7 +148,7 @@ env:
   value: 30s
 - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
   value: {{ .Values.proxy.metrics.hostnameLabels | quote }}
-{{ if .Values.proxy.tracing.enable -}}
+{{ if .Values.proxy.tracing | default (dict) | dig "enable" false -}}
 - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
   value: /var/run/linkerd/podinfo/labels
 - name: LINKERD2_PROXY_TRACE_PROTOCOL
@@ -310,7 +310,7 @@ lifecycle:
 volumeMounts:
 - mountPath: /var/run/linkerd/identity/end-entity
   name: linkerd-identity-end-entity
-{{- if .Values.proxy.tracing.enable }}
+{{- if .Values.proxy.tracing | default (dict) | dig "enable" false }}
 - mountPath: /var/run/linkerd/podinfo
   name: linkerd-podinfo
 {{- end }}
