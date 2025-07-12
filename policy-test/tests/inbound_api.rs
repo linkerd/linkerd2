@@ -411,8 +411,8 @@ async fn http_local_rate_limit_policy() {
             &ns,
             &rate_limit.name_unchecked(),
             |obj: Option<&k8s::policy::ratelimit_policy::HttpLocalRateLimitPolicy>| {
-                obj.as_ref().map_or(false, |obj| {
-                    obj.status.as_ref().map_or(false, |status| {
+                obj.as_ref().is_some_and(|obj| {
+                    obj.status.as_ref().is_some_and(|status| {
                         status
                             .conditions
                             .iter()
@@ -424,7 +424,7 @@ async fn http_local_rate_limit_policy() {
         .await
         .expect("rate limit must get a status");
 
-        let client_id = format!("sa-0.{}.serviceaccount.identity.linkerd.cluster.local", ns);
+        let client_id = format!("sa-0.{ns}.serviceaccount.identity.linkerd.cluster.local");
         let ratelimit_overrides = vec![(200, vec![client_id])];
         let ratelimit =
             grpc::defaults::http_local_ratelimit("rl-0", Some(1000), None, ratelimit_overrides);

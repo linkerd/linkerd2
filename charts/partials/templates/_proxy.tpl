@@ -170,7 +170,7 @@ env:
     k8s.pod.uid=$(_pod_uid)
     k8s.container.name=$(_pod_containerName)
 {{ end -}}
-{{- /* Configure inbound and outbound parameters, e.g. for HTTP/2 servers. */}}
+{{/* Configure inbound and outbound parameters, e.g. for HTTP/2 servers. */ -}}
 {{ range $proxyK, $proxyV := (dict "inbound" .Values.proxy.inbound "outbound" .Values.proxy.outbound) -}}
 {{   range $scopeK, $scopeV := $proxyV -}}
 {{     range $protoK, $protoV := $scopeV -}}

@@ -180,7 +180,9 @@ spec:
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- $_ := set $tree "component" "destination" -}}
-      {{- include "linkerd.affinity" $tree | nindent 6 }}
+      {{- with include "linkerd.affinity" $tree }}
+      {{- . | nindent 6 }}
+      {{- end }}
       automountServiceAccountToken: false
       containers:
       {{- $_ := set $tree.Values.proxy "await" $tree.Values.proxy.await }}

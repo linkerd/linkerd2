@@ -952,10 +952,9 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				err = SetToServerProtocol(pp.k8sAPI, &address)
+				err = SetToServerProtocol(pp.k8sAPI, &address, pp.log)
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
-					continue
 				}
 
 				address.Zone = endpoint.Zone
@@ -1095,10 +1094,9 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				err = SetToServerProtocol(pp.k8sAPI, &address)
+				err = SetToServerProtocol(pp.k8sAPI, &address, pp.log)
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
-					continue
 				}
 				addresses[id] = address
 			}
@@ -1522,7 +1520,7 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 
 // SetToServerProtocol sets the address's OpaqueProtocol field based off any
 // Servers that select it and override the expected protocol.
-func SetToServerProtocol(k8sAPI *k8s.API, address *Address) error {
+func SetToServerProtocol(k8sAPI *k8s.API, address *Address, log *logging.Entry) error {
 	if address.Pod == nil {
 		return fmt.Errorf("endpoint not backed by Pod: %s:%d", address.IP, address.Port)
 	}
@@ -1533,7 +1531,8 @@ func SetToServerProtocol(k8sAPI *k8s.API, address *Address) error {
 	for _, server := range servers {
 		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
 		if err != nil {
-			return fmt.Errorf("failed to create Selector: %w", err)
+			log.Errorf("failed to create Selector: %q", err)
+			continue
 		}
 		if server.Spec.ProxyProtocol == opaqueProtocol && selector.Matches(labels.Set(address.Pod.Labels)) {
 			var portMatch bool

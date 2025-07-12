@@ -1,4 +1,5 @@
 #![deny(warnings, rust_2018_idioms)]
+#![allow(clippy::large_enum_variant)]
 #![forbid(unsafe_code)]
 
 pub mod admission;
@@ -211,7 +212,7 @@ pub async fn await_route_accepted<R: TestRoute>(client: &kube::Client, route: &R
         &route.namespace().unwrap(),
         &route.name_unchecked(),
         |obj: Option<&R>| -> bool {
-            obj.map_or(false, |route| {
+            obj.is_some_and(|route| {
                 let conditions = route
                     .conditions()
                     .unwrap_or_default()
@@ -362,7 +363,7 @@ pub fn egress_network_traffic_policy_is(
             return egress_net
                 .status
                 .as_ref()
-                .map_or(false, |s| is_status_accepted(&s.conditions))
+                .is_some_and(|s| is_status_accepted(&s.conditions))
                 && egress_net.spec.traffic_policy == traffic_policy;
         }
         false
@@ -379,8 +380,7 @@ fn is_status_accepted(conditions: &[k8s::Condition]) -> bool {
 pub fn assert_status_accepted(conditions: Vec<k8s::Condition>) {
     assert!(
         is_status_accepted(&conditions),
-        "status must be accepted: {:?}",
-        conditions
+        "status must be accepted: {conditions:?}"
     );
 }
 
@@ -604,7 +604,7 @@ pub fn assert_resource_meta(
     parent_ref: gateway::HTTPRouteParentRefs,
     port: u16,
 ) {
-    println!("meta: {:?}", meta);
+    println!("meta: {meta:?}");
     tracing::debug!(?meta, ?parent_ref, port, "Asserting parent metadata");
     let mut group = parent_ref.group.unwrap();
     if group.is_empty() {

@@ -698,7 +698,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v2.4.2
+        version: v2.4.3
       iptablesMode: legacy
       kubeAPIServerPorts: 443,6443
       logFormat: ""
@@ -882,7 +882,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
       automountServiceAccountToken: false
       containers:
       - args:
@@ -1116,7 +1115,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.4.2
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.3
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1320,7 +1319,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
       automountServiceAccountToken: false
       containers:
       - env:
@@ -1651,7 +1649,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.4.2
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.3
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1713,6 +1711,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      
 
 ---
 ###
@@ -1760,7 +1759,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
       automountServiceAccountToken: false
       containers:
       - env:
@@ -1993,7 +1991,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.4.2
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.3
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2058,7 +2056,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-
+      
 ---
 kind: Service
 apiVersion: v1

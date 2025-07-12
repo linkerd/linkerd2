@@ -767,7 +767,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v2.4.2
+        version: v2.4.3
       iptablesMode: legacy
       kubeAPIServerPorts: 443,6443
       logFormat: ""
@@ -951,7 +951,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
       automountServiceAccountToken: false
       containers:
       - args:
@@ -1382,7 +1381,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
       automountServiceAccountToken: false
       containers:
       - env:
@@ -1768,6 +1766,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      
 ---
 ###
 ### Heartbeat
@@ -1899,7 +1898,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
       automountServiceAccountToken: false
       containers:
       - env:
@@ -2190,7 +2188,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-
+      
 ---
 kind: Service
 apiVersion: v1

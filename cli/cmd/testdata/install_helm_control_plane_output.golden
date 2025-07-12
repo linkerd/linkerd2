@@ -924,7 +924,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
       automountServiceAccountToken: false
       containers:
       - args:
@@ -1364,7 +1363,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
       automountServiceAccountToken: false
       containers:
       - env:
@@ -1757,6 +1755,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      
 ---
 # Source: linkerd-control-plane/templates/heartbeat.yaml
 ---
@@ -1892,7 +1891,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
       automountServiceAccountToken: false
       containers:
       - env:
@@ -2190,7 +2188,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-
+      
 ---
 kind: Service
 apiVersion: v1

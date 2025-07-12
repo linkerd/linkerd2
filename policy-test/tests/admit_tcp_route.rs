@@ -82,7 +82,7 @@ fn rules(n: u16) -> Vec<gateway::TCPRouteRules> {
             name: None,
             backend_refs: Some(vec![gateway::TCPRouteRulesBackendRefs {
                 weight: None,
-                name: format!("default-{}", n),
+                name: format!("default-{n}"),
                 group: Some("policy.linkerd.ip".to_string()),
                 namespace: Some("root".to_string()),
                 port: None,

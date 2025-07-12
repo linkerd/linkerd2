@@ -44,7 +44,9 @@ spec:
     spec:
       {{- $_ := set $tree "component" .Values.gateway.name -}}
       {{- $_ := set $tree "label" "app" -}}
-      {{- include "linkerd.affinity" $tree | nindent 6 }}
+      {{- with include "linkerd.affinity" $tree }}
+      {{- . | nindent 6 }}
+      {{- end }}
       {{- if .Values.gateway.terminationGracePeriodSeconds }}
       terminationGracePeriodSeconds: {{.Values.gateway.terminationGracePeriodSeconds}}
       {{- end }}

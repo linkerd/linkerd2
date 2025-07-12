@@ -267,7 +267,7 @@ mod tests {
                 "matches both labels and expressions",
             ),
         ] {
-            assert_eq!(selector.matches(labels), *matches, "{}", msg);
+            assert_eq!(selector.matches(labels), *matches, "{msg}");
         }
     }
 }

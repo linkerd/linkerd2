@@ -24,17 +24,16 @@ impl FromStr for Workload {
         if s.starts_with('{') {
             return serde_json::from_str(s).map_err(|error| {
                 tracing::warn!(%error, "Invalid {s} workload string");
-                tonic::Status::invalid_argument(format!("Invalid workload: {}", s))
+                tonic::Status::invalid_argument(format!("Invalid workload: {s}"))
             });
         }
 
         match s.split_once(':') {
             None => Err(tonic::Status::invalid_argument(format!(
-                "Invalid workload: {}",
-                s
+                "Invalid workload: {s}"
             ))),
             Some((ns, pod)) if ns.is_empty() || pod.is_empty() => Err(
-                tonic::Status::invalid_argument(format!("Invalid workload: {}", s)),
+                tonic::Status::invalid_argument(format!("Invalid workload: {s}")),
             ),
             Some((ns, pod)) => Ok(Workload {
                 namespace: ns.to_string(),
