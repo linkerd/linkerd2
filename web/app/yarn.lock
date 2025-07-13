@@ -1716,15 +1716,29 @@
     "@messageformat/parser" "^5.0.0"
     make-plural "^6.2.2"
 
-"@lingui/macro@3.17.2":
-  version "3.17.2"
-  resolved "https://registry.yarnpkg.com/@lingui/macro/-/macro-3.17.2.tgz#b0c358335fa190df8364a66fa17fca2266561b0a"
-  integrity sha512-kk1ZtwYSx5Knu/5LsRGisTqfNoLIeVkJJPn6xjZXcItoxUgRsykyKb3BqCJwxqYUClz4i4A8Ld/aA4xBi4apRQ==
+"@lingui/core@5.3.3":
+  version "5.3.3"
+  resolved "https://registry.yarnpkg.com/@lingui/core/-/core-5.3.3.tgz#4ffdb3a4777930a3681abdb75eba4336d73e199e"
+  integrity sha512-H2PAJrbcPBjJg2q3JqMS9OndPkx0kUV+zDLSguONNFGYbe/G7vcNpgEfyYfcCoJBrWaZzJ0iy3Se6LdFbvn6nA==
   dependencies:
     "@babel/runtime" "^7.20.13"
-    "@babel/types" "^7.20.7"
-    "@lingui/conf" "3.17.2"
-    ramda "^0.27.1"
+    "@lingui/message-utils" "5.3.3"
+
+"@lingui/macro@5.3.3":
+  version "5.3.3"
+  resolved "https://registry.yarnpkg.com/@lingui/macro/-/macro-5.3.3.tgz#6894a647b5f2d2d32b30852a03045be431bc1418"
+  integrity sha512-682DGZWQmK0u9sDgESpSoZjx1uHRroecOq844SOr+24cnunGFG6Z7f4LXjbDphPwKAsjoKPW6tEHnd+eysTP7Q==
+  dependencies:
+    "@lingui/core" "5.3.3"
+    "@lingui/react" "5.3.3"
+
+"@lingui/message-utils@5.3.3":
+  version "5.3.3"
+  resolved "https://registry.yarnpkg.com/@lingui/message-utils/-/message-utils-5.3.3.tgz#6b4b41aae53b353424c62e5876063e23d1e87483"
+  integrity sha512-Xn1jFX9pworCEKvPwyEo/YJEp8qjELoRkFMUQ+D9AMi8jpaBUbcJpKdJ/TcIt7SKfk8koR/TMxoayMVsh++KCw==
+  dependencies:
+    "@messageformat/parser" "^5.0.0"
+    js-sha256 "^0.10.1"
 
 "@lingui/react@3.17.2":
   version "3.17.2"
@@ -1733,6 +1747,14 @@
   dependencies:
     "@babel/runtime" "^7.20.13"
     "@lingui/core" "3.17.2"
+
+"@lingui/react@5.3.3":
+  version "5.3.3"
+  resolved "https://registry.yarnpkg.com/@lingui/react/-/react-5.3.3.tgz#13d2ea747f7efd16a4d322fc12db9b7fe0d1714e"
+  integrity sha512-DEFmI24pDdy/wsIDYtmYg5qwAPmgZIjoy9q10GVGmjq952D0sQJoGBGz+ucGQFSNmT7SnktauJHH+xEUdO/Cgg==
+  dependencies:
+    "@babel/runtime" "^7.20.13"
+    "@lingui/core" "5.3.3"
 
 "@material-ui/core@4.12.4":
   version "4.12.4"
@@ -6893,6 +6915,11 @@ jest@^30.0.4:
     "@jest/types" "30.0.1"
     import-local "^3.2.0"
     jest-cli "30.0.4"
+
+js-sha256@^0.10.1:
+  version "0.10.1"
+  resolved "https://registry.yarnpkg.com/js-sha256/-/js-sha256-0.10.1.tgz#b40104ba1368e823fdd5f41b66b104b15a0da60d"
+  integrity sha512-5obBtsz9301ULlsgggLg542s/jqtddfOpV5KJc4hajc9JV8GeY2gZHSVpYBn4nWqAUTJ9v+xwtbJ1mIBgIH5Vw==
 
 "js-tokens@^3.0.0 || ^4.0.0", js-tokens@^4.0.0:
   version "4.0.0"
