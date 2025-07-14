@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/imdario/mergo"
-	"github.com/linkerd/linkerd2/pkg/charts"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
+	"github.com/linkerd/linkerd2/charts"
+	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const (
+var (
 	// HelmChartDirCrds is the directory name for the linkerd-crds chart
 	HelmChartDirCrds = "linkerd-crds"
 
@@ -443,12 +443,12 @@ func MergeHAValues(values *Values) error {
 // readDefaults read all the default variables from filename.
 func readDefaults(filename string) (*Values, error) {
 	valuesFile := &loader.BufferedFile{Name: filename}
-	if err := charts.ReadFile(static.Templates, "/", valuesFile); err != nil {
+	if err := chartspkg.ReadFile(charts.Templates, "", valuesFile); err != nil {
 		return nil, err
 	}
 
 	var values Values
-	err := yaml.Unmarshal(charts.InsertVersion(valuesFile.Data), &values)
+	err := yaml.Unmarshal(chartspkg.InsertVersion(valuesFile.Data), &values)
 
 	return &values, err
 }
