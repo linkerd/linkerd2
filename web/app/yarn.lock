@@ -1469,27 +1469,6 @@
     jest-haste-map "30.0.2"
     slash "^3.0.0"
 
-"@jest/transform@30.0.2":
-  version "30.0.2"
-  resolved "https://registry.yarnpkg.com/@jest/transform/-/transform-30.0.2.tgz#62ba84fcc2389ab751e7ec923958c9b1163d90c3"
-  integrity sha512-kJIuhLMTxRF7sc0gPzPtCDib/V9KwW3I2U25b+lYCYMVqHHSrcZopS8J8H+znx9yixuFv+Iozl8raLt/4MoxrA==
-  dependencies:
-    "@babel/core" "^7.27.4"
-    "@jest/types" "30.0.1"
-    "@jridgewell/trace-mapping" "^0.3.25"
-    babel-plugin-istanbul "^7.0.0"
-    chalk "^4.1.2"
-    convert-source-map "^2.0.0"
-    fast-json-stable-stringify "^2.1.0"
-    graceful-fs "^4.2.11"
-    jest-haste-map "30.0.2"
-    jest-regex-util "30.0.1"
-    jest-util "30.0.2"
-    micromatch "^4.0.8"
-    pirates "^4.0.7"
-    slash "^3.0.0"
-    write-file-atomic "^5.0.1"
-
 "@jest/transform@30.0.4":
   version "30.0.4"
   resolved "https://registry.yarnpkg.com/@jest/transform/-/transform-30.0.4.tgz#a06f8c6fc2a04985241b483096f821bafb99cc93"
@@ -2881,25 +2860,12 @@ babel-core@^7.0.0-bridge.0:
   resolved "https://registry.yarnpkg.com/babel-core/-/babel-core-7.0.0-bridge.0.tgz#95a492ddd90f9b4e9a4a1da14eb335b87b634ece"
   integrity sha512-poPX9mZH/5CSanm50Q+1toVci6pv5KSRv/5TWCwtzQS5XEwn40BcCrgIeMFWP9CKKIniKXNxoIOnOq4VVlGXhg==
 
-babel-jest@30.0.4:
+babel-jest@30.0.4, babel-jest@^30.0.4:
   version "30.0.4"
   resolved "https://registry.yarnpkg.com/babel-jest/-/babel-jest-30.0.4.tgz#63945c1b27227312fc687689073124dba5b28282"
   integrity sha512-UjG2j7sAOqsp2Xua1mS/e+ekddkSu3wpf4nZUSvXNHuVWdaOUXQ77+uyjJLDE9i0atm5x4kds8K9yb5lRsRtcA==
   dependencies:
     "@jest/transform" "30.0.4"
-    "@types/babel__core" "^7.20.5"
-    babel-plugin-istanbul "^7.0.0"
-    babel-preset-jest "30.0.1"
-    chalk "^4.1.2"
-    graceful-fs "^4.2.11"
-    slash "^3.0.0"
-
-babel-jest@^30.0.2:
-  version "30.0.2"
-  resolved "https://registry.yarnpkg.com/babel-jest/-/babel-jest-30.0.2.tgz#f627dc5afc3bd5795fc84735b4f1d74f9d4b8e91"
-  integrity sha512-A5kqR1/EUTidM2YC2YMEUDP2+19ppgOwK0IAd9Swc3q2KqFb5f9PtRUXVeZcngu0z5mDMyZ9zH2huJZSOMLiTQ==
-  dependencies:
-    "@jest/transform" "30.0.2"
     "@types/babel__core" "^7.20.5"
     babel-plugin-istanbul "^7.0.0"
     babel-preset-jest "30.0.1"
