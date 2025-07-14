@@ -16,7 +16,7 @@
     "@material-ui/icons": "4.11.3",
     "@material-ui/lab": "^4.0.0-alpha.61",
     "classnames": "2.5.1",
-    "core-js": "^3.43.0",
+    "core-js": "^3.44.0",
     "css-mediaquery": "^0.1.2",
     "d3-drag": "3.0.0",
     "d3-force": "3.0.0",
