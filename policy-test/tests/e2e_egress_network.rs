@@ -40,8 +40,7 @@ async fn default_traffic_policy_http_allow() {
         let allowed_status = allowed.http_status_code().await;
         assert!(
             allowed_status.is_success() || allowed_status.is_redirection(),
-            "traffic should be allowed but got HTTP status code {}",
-            allowed_status
+            "traffic should be allowed but got HTTP status code {allowed_status}"
         );
     })
     .await;
@@ -118,8 +117,7 @@ async fn default_traffic_policy_opaque_allow() {
         let allowed_status = allowed.http_status_code().await;
         assert!(
             allowed_status.is_success() || allowed_status.is_redirection(),
-            "traffic should be allowed but got HTTP status code {}",
-            allowed_status
+            "traffic should be allowed but got HTTP status code {allowed_status}"
         );
     })
     .await;
@@ -247,8 +245,7 @@ async fn explicit_allow_http_route() {
         let allowed_get_status = allowed_get.http_status_code().await;
         assert!(
             allowed_get_status.is_success() || allowed_get_status.is_redirection(),
-            "traffic should be allowed but got HTTP status code {}",
-            allowed_get_status
+            "traffic should be allowed but got HTTP status code {allowed_get_status}"
         );
 
         // traffic should not be allowed for /ip request
@@ -353,8 +350,7 @@ async fn explicit_allow_tls_route() {
         let allowed_external_status = allowed_external.http_status_code().await;
         assert!(
             allowed_external_status.is_success() || allowed_external_status.is_redirection(),
-            "traffic should be allowed but got HTTP status code {}",
-            allowed_external_status
+            "traffic should be allowed but got HTTP status code {allowed_external_status}"
         );
 
         // traffic should not be allowed for google.com
@@ -461,8 +457,7 @@ async fn explicit_allow_tcp_route() {
         let allowed_external_status = allowed_external.http_status_code().await;
         assert!(
             allowed_external_status.is_success() || allowed_external_status.is_redirection(),
-            "traffic should be allowed but got HTTP status code {}",
-            allowed_external_status
+            "traffic should be allowed but got HTTP status code {allowed_external_status}"
         );
 
         // External traffic should not be allowed on 80.
@@ -584,8 +579,7 @@ async fn routing_back_to_cluster_http_route() {
         assert_eq!(in_cluster_status, 204); // in-cluster service returns 204
         assert!(
             out_of_cluster_status.is_success() || out_of_cluster_status.is_redirection(),
-            "external service should be allowed but got HTTP status code {}",
-            out_of_cluster_status
+            "external service should be allowed but got HTTP status code {out_of_cluster_status}"
         );
     })
     .await;
