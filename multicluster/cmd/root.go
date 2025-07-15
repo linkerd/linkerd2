@@ -17,6 +17,7 @@ const (
 	defaultLinkerdNamespace              = "linkerd"
 	defaultMulticlusterNamespace         = "linkerd-multicluster"
 	defaultGatewayName                   = "linkerd-gateway"
+	helmMulticlusterDefaultChartName     = "linkerd-multicluster"
 	helmMulticlusterLinkDefaultChartName = "linkerd-multicluster-link"
 	tokenKey                             = "token"
 
@@ -29,8 +30,6 @@ const (
 )
 
 var (
-	HelmMulticlusterDefaultChartName = "linkerd-multicluster"
-
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	controlPlaneNamespace string
 	kubeconfigPath        string

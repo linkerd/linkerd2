@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/linkerd/linkerd2/multicluster/charts"
+	"github.com/linkerd/linkerd2/multicluster/static"
 	mccharts "github.com/linkerd/linkerd2/multicluster/values"
-	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/pkg/charts"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -59,13 +59,13 @@ func newAllowCommand() *cobra.Command {
 				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
 			}
 
-			chart := &chartspkg.Chart{
-				Name:      mccharts.HelmDefaultChartDir,
-				Dir:       mccharts.HelmDefaultChartDir,
+			chart := &charts.Chart{
+				Name:      helmMulticlusterDefaultChartName,
+				Dir:       helmMulticlusterDefaultChartName,
 				Namespace: opts.namespace,
 				RawValues: rawValues,
 				Files:     files,
-				Fs:        charts.Templates,
+				Fs:        static.Templates,
 			}
 			buf, err := chart.Render()
 			if err != nil {

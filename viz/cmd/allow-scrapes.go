@@ -121,7 +121,7 @@ func newCmdAllowScrapes() *cobra.Command {
 	output := "yaml"
 	options := templateOptions{
 		ExtensionName: ExtensionName,
-		ChartName:     VizChartName,
+		ChartName:     vizChartName,
 		Version:       version.Version,
 		VizNs:         defaultNamespace,
 	}
