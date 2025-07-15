@@ -13,10 +13,10 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/linkerd/linkerd2/charts"
 	"github.com/linkerd/linkerd2/cli/flag"
-	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	flagspkg "github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -331,11 +331,14 @@ func isRunAsRoot(values map[string]interface{}) bool {
 // them into a buffer. The coalesced values are also returned so that they may be rendered via
 // `renderOverrides` if appropriate.
 func renderChartToBuffer(files []*loader.BufferedFile, values map[string]interface{}, valuesOverrides map[string]interface{}) (*bytes.Buffer, chartutil.Values, error) {
-	partials, err := chartspkg.LoadPartials()
-	if err != nil {
+	// Load the partials in addition to the main chart.
+	var partials []*loader.BufferedFile
+	for _, template := range charts.L5dPartials {
+		partials = append(partials, &loader.BufferedFile{Name: template})
+	}
+	if err := charts.FilesReader(static.Templates, "", partials); err != nil {
 		return nil, nil, err
 	}
-
 	chart, err := loader.LoadFiles(append(files, partials...))
 	if err != nil {
 		return nil, nil, err
@@ -432,13 +435,13 @@ func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options 
 	for _, template := range TemplatesCrdFiles {
 		files = append(files, &loader.BufferedFile{Name: template})
 	}
-	if err := chartspkg.FilesReader(charts.Templates, l5dcharts.HelmChartDirCrds+"/", files); err != nil {
+	if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCrds+"/", files); err != nil {
 		return err
 	}
 
 	// Load defaults from values.yaml
 	valuesFile := &loader.BufferedFile{Name: l5dcharts.HelmChartDirCrds + "/values.yaml"}
-	if err := chartspkg.ReadFile(charts.Templates, "", valuesFile); err != nil {
+	if err := charts.ReadFile(static.Templates, "/", valuesFile); err != nil {
 		return err
 	}
 	// Ensure the map is not nil, even if the default `values.yaml` is empty ---
@@ -467,7 +470,7 @@ func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options 
 		}
 
 		defaultValues = updateDefaultValues(installed, defaultValues)
-		finalValues := chartspkg.MergeMaps(defaultValues, valuesOverrides)
+		finalValues := charts.MergeMaps(defaultValues, valuesOverrides)
 
 		if err := validateFinalValues(installed, finalValues); err != nil {
 			return err
@@ -489,7 +492,7 @@ func renderControlPlane(w io.Writer, values *l5dcharts.Values, valuesOverrides m
 	for _, template := range TemplatesControlPlane {
 		files = append(files, &loader.BufferedFile{Name: template})
 	}
-	if err := chartspkg.FilesReader(charts.Templates, l5dcharts.HelmChartDirCP+"/", files); err != nil {
+	if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCP+"/", files); err != nil {
 		return err
 	}
 

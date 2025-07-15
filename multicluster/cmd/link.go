@@ -10,9 +10,10 @@ import (
 	"strings"
 
 	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
-	"github.com/linkerd/linkerd2/multicluster/charts"
+	"github.com/linkerd/linkerd2/multicluster/static"
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
-	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/pkg/charts"
+	partials "github.com/linkerd/linkerd2/pkg/charts/static"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -345,10 +346,10 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			}
 
 			if opts.ha {
-				if valuesOverrides, err = chartspkg.OverrideFromFile(
+				if valuesOverrides, err = charts.OverrideFromFile(
 					valuesOverrides,
-					charts.Templates,
-					multicluster.HelmDefaultLinkChartDir,
+					static.Templates,
+					helmMulticlusterLinkDefaultChartName,
 					"values-ha.yaml",
 				); err != nil {
 					return err
@@ -414,13 +415,20 @@ func renderServiceMirror(values *multicluster.Values, valuesOverrides map[string
 		{Name: "templates/gateway-mirror.yaml"},
 	}
 
+	var partialFiles []*chartloader.BufferedFile
+	for _, template := range charts.L5dPartials {
+		partialFiles = append(partialFiles,
+			&chartloader.BufferedFile{Name: template},
+		)
+	}
+
 	// Load all multicluster link chart files into buffer
-	if err := chartspkg.FilesReader(charts.Templates, multicluster.HelmDefaultLinkChartDir+"/", files); err != nil {
+	if err := charts.FilesReader(static.Templates, helmMulticlusterLinkDefaultChartName+"/", files); err != nil {
 		return nil, err
 	}
 
-	partialFiles, err := chartspkg.LoadPartials()
-	if err != nil {
+	// Load all partial chart files into buffer
+	if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
 		return nil, err
 	}
 

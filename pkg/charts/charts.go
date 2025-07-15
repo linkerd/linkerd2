@@ -2,12 +2,12 @@ package charts
 
 import (
 	"bytes"
-	"embed"
 	"errors"
+	"net/http"
 	"path"
 	"strings"
 
-	"github.com/linkerd/linkerd2/charts"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -19,25 +19,25 @@ const versionPlaceholder = "linkerdVersionValue"
 
 var (
 	// L5dPartials is the list of templates in partials chart
-	// Keep this slice synced with the contents of charts/partials
+	// Keep this slice synced with the contents of /charts/partials
 	L5dPartials = []string{
-		"partials/" + chartutil.ChartfileName,
-		"partials/templates/_affinity.tpl",
-		"partials/templates/_capabilities.tpl",
-		"partials/templates/_debug.tpl",
-		"partials/templates/_helpers.tpl",
-		"partials/templates/_metadata.tpl",
-		"partials/templates/_nodeselector.tpl",
-		"partials/templates/_network-validator.tpl",
-		"partials/templates/_proxy-config-ann.tpl",
-		"partials/templates/_proxy-init.tpl",
-		"partials/templates/_proxy.tpl",
-		"partials/templates/_pull-secrets.tpl",
-		"partials/templates/_resources.tpl",
-		"partials/templates/_tolerations.tpl",
-		"partials/templates/_trace.tpl",
-		"partials/templates/_validate.tpl",
-		"partials/templates/_volumes.tpl",
+		"charts/partials/" + chartutil.ChartfileName,
+		"charts/partials/templates/_affinity.tpl",
+		"charts/partials/templates/_capabilities.tpl",
+		"charts/partials/templates/_debug.tpl",
+		"charts/partials/templates/_helpers.tpl",
+		"charts/partials/templates/_metadata.tpl",
+		"charts/partials/templates/_nodeselector.tpl",
+		"charts/partials/templates/_network-validator.tpl",
+		"charts/partials/templates/_proxy-config-ann.tpl",
+		"charts/partials/templates/_proxy-init.tpl",
+		"charts/partials/templates/_proxy.tpl",
+		"charts/partials/templates/_pull-secrets.tpl",
+		"charts/partials/templates/_resources.tpl",
+		"charts/partials/templates/_tolerations.tpl",
+		"charts/partials/templates/_trace.tpl",
+		"charts/partials/templates/_validate.tpl",
+		"charts/partials/templates/_volumes.tpl",
 	}
 )
 
@@ -56,11 +56,16 @@ type Chart struct {
 	Values map[string]any
 
 	Files []*loader.BufferedFile
-	Fs    embed.FS
+	Fs    http.FileSystem
 }
 
 func (c *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, error) {
 	if err := FilesReader(c.Fs, c.Dir+"/", c.Files); err != nil {
+		return bytes.Buffer{}, err
+	}
+
+	// static.Templates is used as partials are always available there
+	if err := FilesReader(static.Templates, "", partialsFiles); err != nil {
 		return bytes.Buffer{}, err
 	}
 
@@ -114,40 +119,36 @@ func (c *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, erro
 // Render returns a bytes buffer with the result of rendering a Helm chart
 func (c *Chart) Render() (bytes.Buffer, error) {
 
-	partials, err := LoadPartials()
-	if err != nil {
-		return bytes.Buffer{}, err
+	l5dPartials := []*loader.BufferedFile{}
+	for _, template := range L5dPartials {
+		l5dPartials = append(l5dPartials, &loader.BufferedFile{
+			Name: template,
+		})
 	}
 
-	return c.render(partials)
+	return c.render(l5dPartials)
 }
 
 // RenderCNI returns a bytes buffer with the result of rendering a Helm chart
 func (c *Chart) RenderCNI() (bytes.Buffer, error) {
 	cniPartials := []*loader.BufferedFile{
-		{Name: "partials/" + chartutil.ChartfileName},
-		{Name: "partials/templates/_helpers.tpl"},
-		{Name: "partials/templates/_metadata.tpl"},
-		{Name: "partials/templates/_pull-secrets.tpl"},
-		{Name: "partials/templates/_tolerations.tpl"},
-		{Name: "partials/templates/_resources.tpl"},
-	}
-
-	// Load all partial chart files into buffer
-	if err := FilesReader(charts.Templates, "", cniPartials); err != nil {
-		return bytes.Buffer{}, err
-	}
-
-	// The partials files must have the "charts/" prefix to be loaded correctly.
-	for i, f := range cniPartials {
-		cniPartials[i].Name = path.Join("charts", f.Name)
+		{Name: "charts/partials/" + chartutil.ChartfileName},
+		{Name: "charts/partials/templates/_helpers.tpl"},
+		{Name: "charts/partials/templates/_metadata.tpl"},
+		{Name: "charts/partials/templates/_pull-secrets.tpl"},
+		{Name: "charts/partials/templates/_tolerations.tpl"},
+		{Name: "charts/partials/templates/_resources.tpl"},
 	}
 	return c.render(cniPartials)
 }
 
 // ReadFile updates the buffered file with the data read from disk
-func ReadFile(fs embed.FS, dir string, f *loader.BufferedFile) error {
-	file, err := fs.Open(dir + f.Name)
+func ReadFile(fs http.FileSystem, dir string, f *loader.BufferedFile) error {
+	filename := dir + f.Name
+	if dir == "" {
+		filename = filename[7:]
+	}
+	file, err := fs.Open(filename)
 	if err != nil {
 		return err
 	}
@@ -163,33 +164,13 @@ func ReadFile(fs embed.FS, dir string, f *loader.BufferedFile) error {
 }
 
 // FilesReader reads all the files from a directory
-func FilesReader(fs embed.FS, dir string, files []*loader.BufferedFile) error {
+func FilesReader(fs http.FileSystem, dir string, files []*loader.BufferedFile) error {
 	for _, f := range files {
 		if err := ReadFile(fs, dir, f); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func LoadPartials() ([]*loader.BufferedFile, error) {
-	var partialFiles []*loader.BufferedFile
-	for _, template := range L5dPartials {
-		partialFiles = append(partialFiles,
-			&loader.BufferedFile{Name: template},
-		)
-	}
-
-	// Load all partial chart files into buffer
-	if err := FilesReader(charts.Templates, "", partialFiles); err != nil {
-		return nil, err
-	}
-
-	// The partials files must have the "charts/" prefix to be loaded correctly.
-	for i, f := range partialFiles {
-		partialFiles[i].Name = path.Join("charts", f.Name)
-	}
-	return partialFiles, nil
 }
 
 // InsertVersion returns the chart values file contents passed in
@@ -210,7 +191,7 @@ func InsertVersionValues(values chartutil.Values) (chartutil.Values, error) {
 }
 
 // OverrideFromFile overrides the given map with the given file from FS
-func OverrideFromFile(values map[string]interface{}, fs embed.FS, chartName, name string) (map[string]interface{}, error) {
+func OverrideFromFile(values map[string]interface{}, fs http.FileSystem, chartName, name string) (map[string]interface{}, error) {
 	// Load Values file
 	valuesOverride := loader.BufferedFile{
 		Name: name,
