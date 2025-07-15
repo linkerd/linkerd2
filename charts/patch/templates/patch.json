@@ -103,7 +103,7 @@ structs.
       }
     }
   },
-  {{- if .Values.proxy.tracing.enable }}
+  {{- if .Values.proxy.tracing | default (dict) | dig "enable" false }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes/-",
