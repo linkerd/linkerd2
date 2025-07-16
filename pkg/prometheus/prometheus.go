@@ -6,6 +6,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
 	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/plugin/ochttp"
 	"google.golang.org/grpc"
@@ -138,11 +139,26 @@ func WithTelemetry(handler http.Handler) http.Handler {
 }
 
 // ClientWithTelemetry instruments the HTTP client with prometheus
-func ClientWithTelemetry(name string, wt func(http.RoundTripper) http.RoundTripper) func(http.RoundTripper) http.RoundTripper {
-	latency := clientLatency.MustCurryWith(prometheus.Labels{"client": name})
-	counter := clientCounter.MustCurryWith(prometheus.Labels{"client": name})
-	inFlight := clientInFlight.With(prometheus.Labels{"client": name})
-	errors := clientErrorCounter.MustCurryWith(prometheus.Labels{"client": name})
+func ClientWithTelemetry(name string, wt func(http.RoundTripper) http.RoundTripper) (func(http.RoundTripper) http.RoundTripper, error) {
+	latency, err := clientLatency.CurryWith(prometheus.Labels{"client": name})
+	if err != nil {
+		return nil, err
+	}
+
+	counter, err := clientCounter.CurryWith(prometheus.Labels{"client": name})
+	if err != nil {
+		return nil, err
+	}
+
+	inFlight, err := clientInFlight.GetMetricWith(prometheus.Labels{"client": name})
+	if err != nil {
+		return nil, err
+	}
+
+	errors, err := clientErrorCounter.CurryWith(prometheus.Labels{"client": name})
+	if err != nil {
+		return nil, err
+	}
 
 	return func(rt http.RoundTripper) http.RoundTripper {
 		if wt != nil {
@@ -156,23 +172,38 @@ func ClientWithTelemetry(name string, wt func(http.RoundTripper) http.RoundTripp
 				),
 			),
 		)
-	}
+	}, nil
 }
 
 func InstrumentErrorCounter(counter *prometheus.CounterVec, next http.RoundTripper) promhttp.RoundTripperFunc {
 	return func(r *http.Request) (*http.Response, error) {
 		resp, err := next.RoundTrip(r)
 		if err != nil {
-			counter.With(prometheus.Labels{"method": r.Method}).Inc()
+			counter, err := counter.GetMetricWith(prometheus.Labels{"method": r.Method})
+			if err != nil {
+				log.Errorf("failed to get client error counter: %q", err)
+			} else {
+				counter.Inc()
+			}
 		}
 		return resp, err
 	}
 }
 
 func SetClientQPS(name string, qps float32) {
-	clientQPS.With(prometheus.Labels{"client": name}).Set(float64(qps))
+	gauge, err := clientQPS.GetMetricWith(prometheus.Labels{"client": name})
+	if err != nil {
+		log.Errorf("failed to get client QPS metric: %q", err)
+	} else {
+		gauge.Set(float64(qps))
+	}
 }
 
 func SetClientBurst(name string, burst int) {
-	clientBurst.With(prometheus.Labels{"client": name}).Set(float64(burst))
+	gauge, err := clientBurst.GetMetricWith(prometheus.Labels{"client": name})
+	if err != nil {
+		log.Errorf("failed to get client burst metric: %q", err)
+	} else {
+		gauge.Set(float64(burst))
+	}
 }
