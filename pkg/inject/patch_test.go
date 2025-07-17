@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-test/deep"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,7 +61,7 @@ func TestProduceMergedPatch(t *testing.T) {
 	}
 
 	createMockOverrider := func(returnError bool) ValueOverrider {
-		return func(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32) (*OverriddenValues, error) {
+		return func(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32, _ map[string]string, _ string) (*OverriddenValues, error) {
 			if returnError {
 				return nil, fmt.Errorf("mock overrider error")
 			}
@@ -77,7 +78,7 @@ func TestProduceMergedPatch(t *testing.T) {
 	}
 
 	createMockPatchProducer := func(patch []JSONPatch, returnError bool) PatchProducer {
-		return func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string) ([]JSONPatch, error) {
+		return func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string, _ string) ([]JSONPatch, error) {
 			if returnError {
 				return nil, fmt.Errorf("mock patch producer error")
 			}
@@ -263,7 +264,7 @@ func TestProduceMergedPatch(t *testing.T) {
 				tc.resourceConfig.values.ClusterNetworks = tc.clusterNetworks
 			}
 
-			patch, err := ProduceMergedPatch(tc.producers, tc.resourceConfig, true, tc.overrider)
+			patch, err := ProduceMergedPatch(tc.producers, tc.resourceConfig, true, tc.overrider, k8s.ProxyInjectEnabled)
 
 			if tc.expectedError != "" {
 				if err == nil {

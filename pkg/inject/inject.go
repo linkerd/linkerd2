@@ -101,7 +101,7 @@ type OverriddenValues struct {
 
 // ValueOverrider is used to override the default values that are used in chart rendering based
 // on the annotations provided in overrides.
-type ValueOverrider func(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32) (*OverriddenValues, error)
+type ValueOverrider func(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32, nodeSelector map[string]string, injectAnnotationValue string) (*OverriddenValues, error)
 
 // Origin defines where the input YAML comes from. Refer the ResourceConfig's
 // 'origin' field
@@ -199,7 +199,7 @@ func AppendNamespaceAnnotations(base map[string]string, nsAnn map[string]string,
 
 // GetOverriddenValues returns the final Values struct which is created
 // by overriding annotated configuration on top of default Values
-func GetOverriddenValues(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32) (*OverriddenValues, error) {
+func GetOverriddenValues(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32, nodeSelector map[string]string, injectAnnotationValue string) (*OverriddenValues, error) {
 	// Make a copy of Values and mutate that
 	copyValues, err := values.DeepCopy()
 	if err != nil {
@@ -658,6 +658,14 @@ func (conf *ResourceConfig) GetValues() *l5dcharts.Values {
 	return conf.values
 }
 
+func (conf *ResourceConfig) GetNodeSelector() map[string]string {
+	if conf.HasPodTemplate() {
+		return conf.pod.spec.NodeSelector
+	}
+
+	return nil
+}
+
 func (conf *ResourceConfig) getAnnotationOverrides() map[string]string {
 	overrides := map[string]string{}
 	for k, v := range conf.pod.meta.Annotations {
@@ -674,7 +682,7 @@ func (conf *ResourceConfig) getAnnotationOverrides() map[string]string {
 
 // GetPodPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
-func GetPodPatch(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string) ([]JSONPatch, error) {
+func GetPodPatch(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string, _ string) ([]JSONPatch, error) {
 	patch := &podPatch{
 		Values:      *values.Values,
 		Annotations: map[string]string{},
