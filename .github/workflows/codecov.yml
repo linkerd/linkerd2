@@ -12,7 +12,7 @@ jobs:
   go:
     name: Go
     timeout-minutes: 30
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     container:
       image: golang:1.24
     steps:
@@ -27,7 +27,7 @@ jobs:
   js:
     name: JS
     timeout-minutes: 30
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     container:
       image: node:20-stretch
     steps:
@@ -48,7 +48,7 @@ jobs:
 
   rust:
     name: Rust
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     container:
       image: docker://rust:1.88.0

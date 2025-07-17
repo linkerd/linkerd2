@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   actionlint:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 10
     steps:
       - uses: linkerd/dev/actions/setup-tools@v46
@@ -19,7 +19,7 @@ jobs:
       - run: just-dev lint-actions
 
   devcontainer-versions:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
       - uses: linkerd/dev/actions/setup-tools@v46
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683

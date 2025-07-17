@@ -6,7 +6,7 @@ permissions:
 
 jobs:
   meta:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: tj-actions/changed-files@055970845dd036d7345da7399b7e89f2e10f2b04
@@ -28,7 +28,7 @@ jobs:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 10
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     container: ghcr.io/linkerd/dev:v46-go
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -39,7 +39,7 @@ jobs:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 10
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     container: ghcr.io/linkerd/dev:v46-go
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -50,7 +50,7 @@ jobs:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 30
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     container: ghcr.io/linkerd/dev:v46-go
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -63,7 +63,7 @@ jobs:
   go-test-retry:
     needs: go-test
     if: failure() && fromJSON(github.run_attempt) < 3
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     permissions:
       actions: write
     env:
@@ -77,7 +77,7 @@ jobs:
   go-ok:
     needs: [go-lint, go-format, go-test]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
       - name: Results
         run: |
