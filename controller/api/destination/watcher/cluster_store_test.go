@@ -1,10 +1,12 @@
 package watcher
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/testutil"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -90,14 +92,19 @@ func TestClusterStoreHandlers(t *testing.T) {
 			cs.Sync(nil)
 
 			// Wait for the update to be processed because there is no blocking call currently in k8s that we can wait on
-			time.Sleep(50 * time.Millisecond)
+			err = testutil.RetryFor(time.Second*30, func() error {
 
-			cs.RLock()
-			actualLen := len(cs.store)
-			cs.RUnlock()
+				cs.RLock()
+				actualLen := len(cs.store)
+				cs.RUnlock()
 
-			if actualLen != len(tt.expectedClusters) {
-				t.Fatalf("Unexpected error: expected to see %d cache entries, got: %d", len(tt.expectedClusters), actualLen)
+				if actualLen != len(tt.expectedClusters) {
+					return fmt.Errorf("expected to see %d cache entries, got: %d", len(tt.expectedClusters), actualLen)
+				}
+				return nil
+			})
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
 			}
 
 			for k, expected := range tt.expectedClusters {
@@ -125,19 +132,24 @@ func TestClusterStoreHandlers(t *testing.T) {
 				// deletes, so we have to call remove directly.
 				cs.removeCluster(k)
 				// Leave it to do its thing and gracefully shutdown
-				time.Sleep(50 * time.Millisecond)
-				var hasStopped bool
-				if tt.enableEndpointSlices {
-					hasStopped = watcher.k8sAPI.ES().Informer().IsStopped()
-				} else {
-					hasStopped = watcher.k8sAPI.Endpoint().Informer().IsStopped()
-				}
-				if !hasStopped {
-					t.Fatalf("Unexpected error: informers for watcher %s should be stopped", k)
-				}
+				err = testutil.RetryFor(time.Second*30, func() error {
+					var hasStopped bool
+					if tt.enableEndpointSlices {
+						hasStopped = watcher.k8sAPI.ES().Informer().IsStopped()
+					} else {
+						hasStopped = watcher.k8sAPI.Endpoint().Informer().IsStopped()
+					}
+					if !hasStopped {
+						return fmt.Errorf("informers for watcher %s should be stopped", k)
+					}
 
-				if _, _, found := cs.Get(k); found {
-					t.Fatalf("Unexpected error: watcher %s should have been removed from the cache", k)
+					if _, _, found := cs.Get(k); found {
+						return fmt.Errorf("watcher %s should have been removed from the cache", k)
+					}
+					return nil
+				})
+				if err != nil {
+					t.Fatalf("Unexpected error: %s", err)
 				}
 
 			}
