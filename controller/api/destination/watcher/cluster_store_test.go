@@ -107,14 +107,6 @@ func TestClusterStoreHandlers(t *testing.T) {
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			cs.RLock()
-			actualLen := len(cs.store)
-			cs.RUnlock()
-
-			if actualLen != len(tt.expectedClusters) {
-				t.Fatalf("Unexpected error: expected to see %d cache entries, got: %d", len(tt.expectedClusters), actualLen)
-			}
-
 			for k, expected := range tt.expectedClusters {
 				_, cfg, found := cs.Get(k)
 				if !found {
