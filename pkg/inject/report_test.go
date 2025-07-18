@@ -374,7 +374,7 @@ func TestDisableByAnnotation(t *testing.T) {
 				resourceConfig.pod.spec = &corev1.PodSpec{} // initialize empty spec to prevent test from failing
 
 				report := newReport(resourceConfig)
-				if actual, _, _ := report.disabledByAnnotation(resourceConfig); testCase.expected != actual {
+				if actual, _, _, _ := report.disabledByAnnotation(resourceConfig); testCase.expected != actual {
 					t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
 				}
 			})
@@ -416,7 +416,7 @@ func TestDisableByAnnotation(t *testing.T) {
 				resourceConfig.pod.spec = &corev1.PodSpec{} // initialize empty spec to prevent test from failing
 
 				report := newReport(resourceConfig)
-				if actual, _, _ := report.disabledByAnnotation(resourceConfig); testCase.expected != actual {
+				if actual, _, _, _ := report.disabledByAnnotation(resourceConfig); testCase.expected != actual {
 					t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
 				}
 			})
