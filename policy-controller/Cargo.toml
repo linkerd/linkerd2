@@ -6,14 +6,16 @@ license = "Apache-2.0"
 publish = false
 
 [features]
-default = ["linkerd-policy-controller-runtime/rustls-tls"]
+default = ["rustls-tls"]
 openssl-tls = ["linkerd-policy-controller-runtime/openssl-tls"]
 # Vendor openssl to statically link lib
 openssl-vendored = ["linkerd-policy-controller-runtime/openssl-vendored"]
+rustls-tls = ["linkerd-policy-controller-runtime/rustls-tls", "dep:rustls", "rustls/aws-lc-rs"]
 
 [dependencies]
 anyhow = "1"
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
+rustls = { version = "0.23.29", default-features = false, optional = true }
 
 [dependencies.linkerd-policy-controller-runtime]
 workspace = true
