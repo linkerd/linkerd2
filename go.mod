@@ -37,7 +37,7 @@ require (
 	go.opencensus.io v0.24.0
 	golang.org/x/net v0.42.0
 	golang.org/x/tools v0.35.0
-	google.golang.org/grpc v1.74.0
+	google.golang.org/grpc v1.74.2
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v2 v2.4.0
