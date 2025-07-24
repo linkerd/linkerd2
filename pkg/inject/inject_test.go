@@ -330,6 +330,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				resourceConfig.values,
 				resourceConfig.getAnnotationOverrides(),
 				util.GetNamedPorts(resourceConfig.pod.spec.Containers),
+				resourceConfig.pod.spec.NodeSelector,
+				k8s.ProxyInjectEnabled,
 			)
 			if err != nil {
 				t.Fatal(err)
