@@ -19,7 +19,6 @@ const (
 	// until 15d1809bd043192bb21cacbc96112cce35bf384f
 	LegacyExtensionName = "linkerd-viz"
 
-	vizChartName            = "linkerd-viz"
 	defaultNamespace        = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
 	maxRps                  = 100.0
@@ -31,6 +30,8 @@ const (
 )
 
 var (
+	VizChartName = "linkerd-viz"
+
 	// special handling for Windows, on all other platforms these resolve to
 	// os.Stdout and os.Stderr, thanks to https://github.com/mattn/go-colorable
 	stdout = color.Output

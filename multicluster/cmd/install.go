@@ -11,10 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/multicluster/static"
+	"github.com/linkerd/linkerd2/multicluster/charts"
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
-	"github.com/linkerd/linkerd2/pkg/charts"
-	partials "github.com/linkerd/linkerd2/pkg/charts/static"
+	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -137,7 +136,7 @@ func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptio
 	}
 
 	if ha {
-		valuesOverrides, err = charts.OverrideFromFile(valuesOverrides, static.Templates, helmMulticlusterDefaultChartName, "values-ha.yaml")
+		valuesOverrides, err = chartspkg.OverrideFromFile(valuesOverrides, charts.Templates, multicluster.HelmDefaultChartDir, "values-ha.yaml")
 		if err != nil {
 			return err
 		}
@@ -156,20 +155,13 @@ func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string
 		files = append(files, &loader.BufferedFile{Name: template})
 	}
 
-	var partialFiles []*loader.BufferedFile
-	for _, template := range charts.L5dPartials {
-		partialFiles = append(partialFiles,
-			&loader.BufferedFile{Name: template},
-		)
-	}
-
 	// Load all multicluster install chart files into buffer
-	if err := charts.FilesReader(static.Templates, helmMulticlusterDefaultChartName+"/", files); err != nil {
+	if err := chartspkg.FilesReader(charts.Templates, multicluster.HelmDefaultChartDir+"/", files); err != nil {
 		return err
 	}
 
-	// Load all partial chart files into buffer
-	if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
+	partialFiles, err := chartspkg.LoadPartials()
+	if err != nil {
 		return err
 	}
 

@@ -3,8 +3,8 @@ package values
 import (
 	"fmt"
 
-	"github.com/linkerd/linkerd2/multicluster/static"
-	"github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/multicluster/charts"
+	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -13,9 +13,9 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const (
-	helmDefaultChartDir     = "linkerd-multicluster"
-	helmDefaultLinkChartDir = "linkerd-multicluster-link"
+var (
+	HelmDefaultChartDir     = "linkerd-multicluster"
+	HelmDefaultLinkChartDir = "linkerd-multicluster-link"
 )
 
 // Values contains the top-level elements in the Helm charts
@@ -113,7 +113,7 @@ type ControllerDefaultsProbe struct {
 
 // NewInstallValues returns a new instance of the Values type.
 func NewInstallValues() (*Values, error) {
-	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
+	chartDir := fmt.Sprintf("%s/", HelmDefaultChartDir)
 	v, err := readDefaults(chartDir)
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func NewInstallValues() (*Values, error) {
 
 // NewLinkValues returns a new instance of the Values type.
 func NewLinkValues() (*Values, error) {
-	chartDir := fmt.Sprintf("%s/", helmDefaultLinkChartDir)
+	chartDir := fmt.Sprintf("%s/", HelmDefaultLinkChartDir)
 	v, err := readDefaults(chartDir)
 	if err != nil {
 		return nil, err
@@ -141,11 +141,11 @@ func readDefaults(chartDir string) (*Values, error) {
 	file := &loader.BufferedFile{
 		Name: chartutil.ValuesfileName,
 	}
-	if err := charts.ReadFile(static.Templates, chartDir, file); err != nil {
+	if err := chartspkg.ReadFile(charts.Templates, chartDir, file); err != nil {
 		return nil, err
 	}
 	values := Values{}
-	if err := yaml.Unmarshal(charts.InsertVersion(file.Data), &values); err != nil {
+	if err := yaml.Unmarshal(chartspkg.InsertVersion(file.Data), &values); err != nil {
 		return nil, err
 	}
 	return &values, nil

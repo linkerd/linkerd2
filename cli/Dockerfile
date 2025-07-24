@@ -22,13 +22,6 @@ COPY controller/api controller/api
 COPY controller/gen controller/gen
 COPY pkg pkg
 
-# Generate static templates
-# TODO: `go generate` does not honor -mod=readonly
-RUN go generate -mod=readonly ./pkg/charts/static
-RUN go generate -mod=readonly ./jaeger/static
-RUN go generate -mod=readonly ./multicluster/static
-RUN go generate -mod=readonly ./viz/static
-
 RUN mkdir -p /out
 
 FROM go-gen AS linux-amd64-full
