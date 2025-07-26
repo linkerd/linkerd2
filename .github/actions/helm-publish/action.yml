@@ -5,7 +5,7 @@ runs:
   steps:
   - name: Set up Cloud SDK
     uses: 'google-github-actions/setup-gcloud@6a7c903a70c8625ed6700fa299f5ddb4ca6022e9'
-  - uses: linkerd/dev/actions/setup-tools@v46
+  - uses: linkerd/dev/actions/setup-tools@v47
   - shell: bash
     run: |
       mkdir -p target/helm
