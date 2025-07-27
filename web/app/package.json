@@ -49,7 +49,7 @@
     "@babel/runtime": "^7.27.6",
     "@lingui/cli": "3.17.2",
     "babel-core": "^7.0.0-bridge.0",
-    "babel-jest": "^30.0.4",
+    "babel-jest": "^30.0.5",
     "babel-loader": "^10.0.0",
     "babel-plugin-import": "^1.13.8",
     "babel-plugin-macros": "^3.1.0",
