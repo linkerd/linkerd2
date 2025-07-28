@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/util"
 )
 
 // PatchProducers is the default set of patch producers used to generate Linkerd injection patches.
@@ -38,20 +37,12 @@ func getPatchPathPrefix(conf *ResourceConfig) string {
 // ProduceMergedPatch executes the provided PatchProducers to generate a merged JSON patch that combines
 // all generated patches.
 func ProduceMergedPatch(producers []PatchProducer, conf *ResourceConfig, injectProxy bool, overrider ValueOverrider) ([]byte, error) {
-	namedPorts := make(map[string]int32)
-	if conf.HasPodTemplate() {
-		namedPorts = util.GetNamedPorts(conf.pod.spec.Containers)
-	}
-
-	values, err := overrider(conf.values, conf.getAnnotationOverrides(), namedPorts)
+	values, err := overrider(conf)
 	if err != nil {
 		return nil, fmt.Errorf("could not generate Overridden Values: %w", err)
 	}
 
 	values.Proxy.PodInboundPorts = getPodInboundPorts(conf.pod.spec)
-	if err != nil {
-		return nil, fmt.Errorf("could not generate Overridden Values: %w", err)
-	}
 
 	if values.ClusterNetworks != "" {
 		for _, network := range strings.Split(strings.Trim(values.ClusterNetworks, ","), ",") {

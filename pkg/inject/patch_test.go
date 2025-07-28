@@ -60,11 +60,11 @@ func TestProduceMergedPatch(t *testing.T) {
 	}
 
 	createMockOverrider := func(returnError bool) ValueOverrider {
-		return func(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32) (*OverriddenValues, error) {
+		return func(rc *ResourceConfig) (*OverriddenValues, error) {
 			if returnError {
 				return nil, fmt.Errorf("mock overrider error")
 			}
-			copy, err := values.DeepCopy()
+			copy, err := rc.values.DeepCopy()
 			if err != nil {
 				return nil, err
 			}
@@ -77,7 +77,7 @@ func TestProduceMergedPatch(t *testing.T) {
 	}
 
 	createMockPatchProducer := func(patch []JSONPatch, returnError bool) PatchProducer {
-		return func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string) ([]JSONPatch, error) {
+		return func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, _ string) ([]JSONPatch, error) {
 			if returnError {
 				return nil, fmt.Errorf("mock patch producer error")
 			}

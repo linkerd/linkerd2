@@ -6,7 +6,6 @@ import (
 	"github.com/go-test/deep"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/util"
 	"github.com/linkerd/linkerd2/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -326,11 +325,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			}
 
 			AppendNamespaceAnnotations(resourceConfig.GetOverrideAnnotations(), resourceConfig.GetNsAnnotations(), resourceConfig.GetWorkloadAnnotations())
-			actual, err := GetOverriddenValues(
-				resourceConfig.values,
-				resourceConfig.getAnnotationOverrides(),
-				util.GetNamedPorts(resourceConfig.pod.spec.Containers),
-			)
+			actual, err := GetOverriddenValues(resourceConfig)
 			if err != nil {
 				t.Fatal(err)
 			}

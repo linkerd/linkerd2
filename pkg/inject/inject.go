@@ -101,7 +101,7 @@ type OverriddenValues struct {
 
 // ValueOverrider is used to override the default values that are used in chart rendering based
 // on the annotations provided in overrides.
-type ValueOverrider func(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32) (*OverriddenValues, error)
+type ValueOverrider func(rc *ResourceConfig) (*OverriddenValues, error)
 
 // Origin defines where the input YAML comes from. Refer the ResourceConfig's
 // 'origin' field
@@ -199,19 +199,23 @@ func AppendNamespaceAnnotations(base map[string]string, nsAnn map[string]string,
 
 // GetOverriddenValues returns the final Values struct which is created
 // by overriding annotated configuration on top of default Values
-func GetOverriddenValues(values *l5dcharts.Values, overrides map[string]string, namedPorts map[string]int32) (*OverriddenValues, error) {
+func GetOverriddenValues(rc *ResourceConfig) (*OverriddenValues, error) {
 	// Make a copy of Values and mutate that
-	copyValues, err := values.DeepCopy()
+	copyValues, err := rc.GetValues().DeepCopy()
 	if err != nil {
 		return nil, err
 	}
 
-	applyAnnotationOverrides(copyValues, overrides, namedPorts)
+	namedPorts := make(map[string]int32)
+	if rc.HasPodTemplate() {
+		namedPorts = util.GetNamedPorts(rc.pod.spec.Containers)
+	}
+
+	ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), namedPorts)
 	return &OverriddenValues{Values: copyValues}, nil
 }
 
-func applyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, namedPorts map[string]int32) {
-
+func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, namedPorts map[string]int32) {
 	if override, ok := annotations[k8s.ProxyInjectAnnotation]; ok {
 		if override == k8s.ProxyInjectIngress {
 			values.Proxy.IsIngress = true
@@ -658,7 +662,15 @@ func (conf *ResourceConfig) GetValues() *l5dcharts.Values {
 	return conf.values
 }
 
-func (conf *ResourceConfig) getAnnotationOverrides() map[string]string {
+func (conf *ResourceConfig) GetNodeSelector() map[string]string {
+	if conf.HasPodTemplate() {
+		return conf.pod.spec.NodeSelector
+	}
+
+	return nil
+}
+
+func (conf *ResourceConfig) GetAnnotationOverrides() map[string]string {
 	overrides := map[string]string{}
 	for k, v := range conf.pod.meta.Annotations {
 		overrides[k] = v
