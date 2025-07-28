@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: tj-actions/changed-files@a0370f61698fcac830a08949da9fdf96ea0f3ab7
+      - uses: tj-actions/changed-files@db8d0bfea5a44e51abd5dc1454386c668ae901f9
         id: changed
         with:
           files: |
@@ -29,7 +29,7 @@ jobs:
     if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 10
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v46-go
+    container: ghcr.io/linkerd/dev:v47-go
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -40,7 +40,7 @@ jobs:
     if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 10
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v46-go
+    container: ghcr.io/linkerd/dev:v47-go
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -51,7 +51,7 @@ jobs:
     if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 30
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v46-go
+    container: ghcr.io/linkerd/dev:v47-go
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
