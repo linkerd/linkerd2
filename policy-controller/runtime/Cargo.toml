@@ -6,13 +6,6 @@ edition = "2021"
 license = "Apache-2.0"
 publish = false
 
-[features]
-default = ["rustls-tls"]
-openssl-tls = ["kube/openssl-tls", "kubert/openssl-tls"]
-# Vendor openssl to statically link lib
-openssl-vendored = ["openssl-tls", "openssl/vendored"]
-rustls-tls = ["kube/rustls-tls", "kubert/rustls-tls"]
-
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
@@ -49,7 +42,7 @@ features = ["derive", "env", "std"]
 [dependencies.kube]
 workspace = true
 default-features = false
-features = ["admission", "derive"]
+features = ["admission", "derive", "rustls-tls"]
 
 [dependencies.kubert]
 workspace = true
@@ -61,6 +54,7 @@ features = [
     "prometheus-client",
     "runtime",
     "server",
+    "rustls-tls"
 ]
 
 [dependencies.tokio]
