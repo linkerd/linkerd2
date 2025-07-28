@@ -2,8 +2,6 @@ package inject
 
 import (
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/util"
 
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
 )
@@ -28,17 +26,12 @@ func FuzzInject(data []byte) int {
 		return 0
 	}
 
-	namedPorts := make(map[string]int32)
-	if conf.HasPodTemplate() {
-		namedPorts = util.GetNamedPorts(conf.pod.spec.Containers)
-	}
-
-	values, err := GetOverriddenValues(conf.values, conf.getAnnotationOverrides(), namedPorts, conf.GetNodeSelector(), k8s.ProxyInjectEnabled)
+	values, err := GetOverriddenValues(conf)
 	if err != nil {
 		return 0
 	}
 
-	_, _ = GetPodPatch(conf, injectProxy, values, getPatchPathPrefix(conf), k8s.ProxyInjectEnabled)
+	_, _ = GetPodPatch(conf, injectProxy, values)
 	_, _ = conf.CreateOpaquePortsPatch()
 
 	report := &Report{}

@@ -119,7 +119,7 @@ func TestGetPodPatch(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, fullConf, true, inject.GetOverriddenValues, pkgK8s.ProxyInjectEnabled)
+				patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, fullConf, true, inject.GetOverriddenValues)
 				if err != nil {
 					t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 				}
@@ -142,7 +142,7 @@ func TestGetPodPatch(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, true, inject.GetOverriddenValues, pkgK8s.ProxyInjectEnabled)
+		patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, true, inject.GetOverriddenValues)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
@@ -163,7 +163,7 @@ func TestGetPodPatch(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, true, inject.GetOverriddenValues, pkgK8s.ProxyInjectEnabled)
+		patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, true, inject.GetOverriddenValues)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
@@ -186,7 +186,7 @@ func TestGetPodPatch(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, true, inject.GetOverriddenValues, pkgK8s.ProxyInjectEnabled)
+		patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, true, inject.GetOverriddenValues)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
@@ -210,7 +210,7 @@ func TestGetPodPatch(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, true, inject.GetOverriddenValues, pkgK8s.ProxyInjectEnabled)
+		patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, true, inject.GetOverriddenValues)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
@@ -240,7 +240,7 @@ func TestGetPodPatch(t *testing.T) {
 		// The namespace has two config annotations: one valid and one invalid
 		// the pod patch should only contain the valid annotation.
 		inject.AppendNamespaceAnnotations(conf.GetOverrideAnnotations(), conf.GetNsAnnotations(), conf.GetWorkloadAnnotations())
-		patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, true, inject.GetOverriddenValues, pkgK8s.ProxyInjectEnabled)
+		patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, true, inject.GetOverriddenValues)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
@@ -254,7 +254,7 @@ func TestGetPodPatch(t *testing.T) {
 		deployment := fileContents(factory, t, "deployment-with-injected-proxy.yaml")
 		fakeReq := getFakePodReq(deployment)
 		conf := confNsDisabled().WithKind(fakeReq.Kind.Kind)
-		patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, true, inject.GetOverriddenValues, pkgK8s.ProxyInjectEnabled)
+		patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, true, inject.GetOverriddenValues)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}

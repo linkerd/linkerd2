@@ -116,7 +116,7 @@ func Inject(linkerdNamespace string, overrider inject.ValueOverrider, patchProdu
 				}
 			}
 
-			patchJSON, err := inject.ProduceMergedPatch(patchProducers, resourceConfig, true, overrider, report.InjectAnnotationValue)
+			patchJSON, err := inject.ProduceMergedPatch(patchProducers, resourceConfig, true, overrider)
 			if err != nil {
 				return nil, err
 			}

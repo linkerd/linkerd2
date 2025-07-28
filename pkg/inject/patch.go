@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/util"
 )
 
 // PatchProducers is the default set of patch producers used to generate Linkerd injection patches.
@@ -15,7 +14,7 @@ var PatchProducers = []PatchProducer{GetPodPatch}
 
 // PatchProducer is a function that generates a patch for a given resource configuration
 // and OverriddenValues.
-type PatchProducer func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string, injectAnnotationValue string) ([]JSONPatch, error)
+type PatchProducer func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues) ([]JSONPatch, error)
 
 // JSONPatch format is specified in RFC 6902
 type JSONPatch struct {
@@ -37,13 +36,8 @@ func getPatchPathPrefix(conf *ResourceConfig) string {
 
 // ProduceMergedPatch executes the provided PatchProducers to generate a merged JSON patch that combines
 // all generated patches.
-func ProduceMergedPatch(producers []PatchProducer, conf *ResourceConfig, injectProxy bool, overrider ValueOverrider, injectAnnotationValue string) ([]byte, error) {
-	namedPorts := make(map[string]int32)
-	if conf.HasPodTemplate() {
-		namedPorts = util.GetNamedPorts(conf.pod.spec.Containers)
-	}
-
-	values, err := overrider(conf.values, conf.getAnnotationOverrides(), namedPorts, conf.GetNodeSelector(), injectAnnotationValue)
+func ProduceMergedPatch(producers []PatchProducer, conf *ResourceConfig, injectProxy bool, overrider ValueOverrider) ([]byte, error) {
+	values, err := overrider(conf)
 	if err != nil {
 		return nil, fmt.Errorf("could not generate Overridden Values: %w", err)
 	}
@@ -63,7 +57,7 @@ func ProduceMergedPatch(producers []PatchProducer, conf *ResourceConfig, injectP
 
 	merged := []JSONPatch{}
 	for _, producer := range producers {
-		patch, err := producer(conf, injectProxy, values, getPatchPathPrefix(conf), injectAnnotationValue)
+		patch, err := producer(conf, injectProxy, values)
 		if err != nil {
 			return nil, err
 		}

@@ -207,7 +207,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
 	}
 
-	patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, rt.injectProxy, rt.overrider, report.InjectAnnotationValue)
+	patchJSON, err := inject.ProduceMergedPatch(inject.PatchProducers, conf, rt.injectProxy, rt.overrider)
 	if err != nil {
 		return nil, nil, err
 	}
