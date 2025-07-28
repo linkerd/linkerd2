@@ -1,12 +1,13 @@
-FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v46-rust-musl AS controller
+FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v47-rust-musl AS controller
 ARG BUILD_TYPE="release"
 WORKDIR /build
 RUN mkdir -p target/bin
 COPY Cargo.toml Cargo.lock .
 COPY policy-controller policy-controller
 RUN cargo new policy-test --lib
+ENV CARGO="cargo auditable"
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    cargo fetch
+    just-cargo fetch
 ARG TARGETARCH
 # Enable tokio runtime metrics
 ENV RUSTFLAGS="--cfg tokio_unstable"
