@@ -5,8 +5,9 @@ RUN mkdir -p target/bin
 COPY Cargo.toml Cargo.lock .
 COPY policy-controller policy-controller
 RUN cargo new policy-test --lib
+ENV CARGO="cargo auditable"
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    cargo fetch
+    just-cargo fetch
 ARG TARGETARCH
 # Enable tokio runtime metrics
 ENV RUSTFLAGS="--cfg tokio_unstable"
