@@ -31,7 +31,7 @@ func FuzzInject(data []byte) int {
 		return 0
 	}
 
-	_, _ = GetPodPatch(conf, injectProxy, values)
+	_, _ = GetPodPatch(conf, injectProxy, values, getPatchPathPrefix(conf))
 	_, _ = conf.CreateOpaquePortsPatch()
 
 	report := &Report{}

@@ -26,7 +26,7 @@ env:
 jobs:
   audit:
     timeout-minutes: 10
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     container: ghcr.io/linkerd/dev:v46-rust
     strategy:
       matrix:
@@ -42,7 +42,7 @@ jobs:
 
   fmt:
     timeout-minutes: 5
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     container: ghcr.io/linkerd/dev:v46-rust
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -51,7 +51,7 @@ jobs:
 
   clippy:
     timeout-minutes: 20
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     container: ghcr.io/linkerd/dev:v46-rust
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -62,7 +62,7 @@ jobs:
 
   check:
     timeout-minutes: 20
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     container: ghcr.io/linkerd/dev:v46-rust
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -72,7 +72,7 @@ jobs:
 
   test:
     name: test
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     container: ghcr.io/linkerd/dev:v46-rust
     steps:
@@ -84,7 +84,7 @@ jobs:
 
   rust-toolchain:
     name: rust toolchain
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683

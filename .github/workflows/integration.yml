@@ -24,12 +24,12 @@ concurrency:
 
 jobs:
   meta:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@055970845dd036d7345da7399b7e89f2e10f2b04
+      - uses: tj-actions/changed-files@a0370f61698fcac830a08949da9fdf96ea0f3ab7
         id: core
         with:
           files: |
@@ -54,7 +54,7 @@ jobs:
 
   info:
     needs: meta
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 2
     steps:
       - name: Info
@@ -65,7 +65,7 @@ jobs:
   build-cli:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -97,7 +97,7 @@ jobs:
   build-core:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     strategy:
       matrix:
         component:
@@ -134,7 +134,7 @@ jobs:
           - cni-calico-deep
           - deep
           - deep-native-sidecar
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -160,7 +160,7 @@ jobs:
   test-policy:
     needs: [meta, build-cli, build-core]
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 20
     strategy:
       matrix:
@@ -239,7 +239,7 @@ jobs:
   build-ext:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     strategy:
       matrix:
         component:
@@ -280,7 +280,7 @@ jobs:
           - helm-upgrade
           - uninstall
           - upgrade-edge
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -307,7 +307,7 @@ jobs:
   test-viz:
     needs: [meta, build-cli, build-core, build-ext]
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -333,7 +333,7 @@ jobs:
   test-multicluster:
     needs: [meta, build-cli, build-core, build-ext]
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 30
     strategy:
       matrix:
@@ -383,7 +383,7 @@ jobs:
   build-ok:
     needs: [build-cli, build-core, build-ext]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
       - name: Results
         run: |
@@ -400,7 +400,7 @@ jobs:
     needs:
       [build-ok, test-core, test-policy, test-ext, test-viz, test-multicluster]
     if: failure() && fromJSON(github.run_attempt) < 3 && needs.build-ok.result == 'success'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     permissions:
       actions: write
     env:
@@ -415,7 +415,7 @@ jobs:
     needs:
       [build-ok, test-core, test-policy, test-ext, test-viz, test-multicluster]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
       - name: Results
         run: |

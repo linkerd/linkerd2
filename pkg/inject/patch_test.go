@@ -77,7 +77,7 @@ func TestProduceMergedPatch(t *testing.T) {
 	}
 
 	createMockPatchProducer := func(patch []JSONPatch, returnError bool) PatchProducer {
-		return func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues) ([]JSONPatch, error) {
+		return func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, _ string) ([]JSONPatch, error) {
 			if returnError {
 				return nil, fmt.Errorf("mock patch producer error")
 			}

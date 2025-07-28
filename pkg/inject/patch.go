@@ -14,7 +14,7 @@ var PatchProducers = []PatchProducer{GetPodPatch}
 
 // PatchProducer is a function that generates a patch for a given resource configuration
 // and OverriddenValues.
-type PatchProducer func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues) ([]JSONPatch, error)
+type PatchProducer func(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string) ([]JSONPatch, error)
 
 // JSONPatch format is specified in RFC 6902
 type JSONPatch struct {
@@ -43,9 +43,6 @@ func ProduceMergedPatch(producers []PatchProducer, conf *ResourceConfig, injectP
 	}
 
 	values.Proxy.PodInboundPorts = getPodInboundPorts(conf.pod.spec)
-	if err != nil {
-		return nil, fmt.Errorf("could not generate Overridden Values: %w", err)
-	}
 
 	if values.ClusterNetworks != "" {
 		for _, network := range strings.Split(strings.Trim(values.ClusterNetworks, ","), ",") {
@@ -57,7 +54,7 @@ func ProduceMergedPatch(producers []PatchProducer, conf *ResourceConfig, injectP
 
 	merged := []JSONPatch{}
 	for _, producer := range producers {
-		patch, err := producer(conf, injectProxy, values)
+		patch, err := producer(conf, injectProxy, values, getPatchPathPrefix(conf))
 		if err != nil {
 			return nil, err
 		}

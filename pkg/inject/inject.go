@@ -201,7 +201,7 @@ func AppendNamespaceAnnotations(base map[string]string, nsAnn map[string]string,
 // by overriding annotated configuration on top of default Values
 func GetOverriddenValues(rc *ResourceConfig) (*OverriddenValues, error) {
 	// Make a copy of Values and mutate that
-	copyValues, err := rc.values.DeepCopy()
+	copyValues, err := rc.GetValues().DeepCopy()
 	if err != nil {
 		return nil, err
 	}
@@ -211,11 +211,11 @@ func GetOverriddenValues(rc *ResourceConfig) (*OverriddenValues, error) {
 		namedPorts = util.GetNamedPorts(rc.pod.spec.Containers)
 	}
 
-	applyAnnotationOverrides(copyValues, rc.getAnnotationOverrides(), namedPorts)
+	ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), namedPorts)
 	return &OverriddenValues{Values: copyValues}, nil
 }
 
-func applyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, namedPorts map[string]int32) {
+func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, namedPorts map[string]int32) {
 	if override, ok := annotations[k8s.ProxyInjectAnnotation]; ok {
 		if override == k8s.ProxyInjectIngress {
 			values.Proxy.IsIngress = true
@@ -670,7 +670,7 @@ func (conf *ResourceConfig) GetNodeSelector() map[string]string {
 	return nil
 }
 
-func (conf *ResourceConfig) getAnnotationOverrides() map[string]string {
+func (conf *ResourceConfig) GetAnnotationOverrides() map[string]string {
 	overrides := map[string]string{}
 	for k, v := range conf.pod.meta.Annotations {
 		overrides[k] = v
@@ -686,9 +686,7 @@ func (conf *ResourceConfig) getAnnotationOverrides() map[string]string {
 
 // GetPodPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
-func GetPodPatch(conf *ResourceConfig, injectProxy bool, values *OverriddenValues) ([]JSONPatch, error) {
-	patchPathPrefix := getPatchPathPrefix(conf)
-
+func GetPodPatch(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string) ([]JSONPatch, error) {
 	patch := &podPatch{
 		Values:      *values.Values,
 		Annotations: map[string]string{},
