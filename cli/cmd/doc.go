@@ -40,14 +40,14 @@ type annotationDoc struct {
 	Description string
 }
 
-func newCmdDoc() *cobra.Command {
+func newCmdDoc(rootCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "doc",
 		Hidden: true,
 		Short:  "Generate YAML documentation for the Linkerd CLI & Proxy annotations",
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cmdList, err := generateCLIDocs(RootCmd)
+			cmdList, err := generateCLIDocs(rootCmd)
 			if err != nil {
 				return err
 			}
