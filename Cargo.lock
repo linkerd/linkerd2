@@ -2108,9 +2108,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.30"
+version = "0.23.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "069a8df149a16b1a12dcc31497c3396a173844be3cac4bd40c9e7671fef96671"
+checksum = "c0ebcbd2f03de0fc1122ad9bb24b127a5a6cd51d72604a3f3c50ac459762b6cc"
 dependencies = [
  "log",
  "once_cell",
