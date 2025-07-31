@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/charts"
+	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
 	"helm.sh/helm/v3/pkg/chart"
@@ -227,7 +227,7 @@ func chartCrds(t *testing.T) *chart.Chart {
 
 	// Load defaults from values.yaml
 	valuesFile := &loader.BufferedFile{Name: l5dcharts.HelmChartDirCrds + "/values.yaml"}
-	if err := charts.ReadFile(static.Templates, "/", valuesFile); err != nil {
+	if err := chartspkg.ReadFile(charts.Templates, "", valuesFile); err != nil {
 		t.Fatal(err)
 	}
 	defaultValues := make(map[string]interface{})

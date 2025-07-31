@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/charts"
+	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
 	cnicharts "github.com/linkerd/linkerd2/pkg/charts/cni"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -249,13 +249,13 @@ func renderCNIPlugin(w io.Writer, valOpts values.Options, config *cniPluginOptio
 		{Name: "templates/cni-plugin.yaml"},
 	}
 
-	ch := &charts.Chart{
+	ch := &chartspkg.Chart{
 		Name:      helmCNIDefaultChartName,
 		Dir:       helmCNIDefaultChartDir,
 		Namespace: defaultCNINamespace,
 		Values:    mergedValues,
 		Files:     files,
-		Fs:        static.Templates,
+		Fs:        charts.Templates,
 	}
 
 	buf, err := ch.RenderCNI()

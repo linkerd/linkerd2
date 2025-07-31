@@ -69,77 +69,79 @@ var (
 )
 
 // RootCmd represents the root Cobra command
-var RootCmd = &cobra.Command{
-	Use:   "linkerd",
-	Short: "linkerd manages the Linkerd service mesh",
-	Long:  `linkerd manages the Linkerd service mesh.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// enable / disable logging
-		if verbose {
-			log.SetLevel(log.DebugLevel)
-		} else {
-			log.SetLevel(log.PanicLevel)
-		}
+func NewRootCmd() *cobra.Command {
+	rootCmd := &cobra.Command{
+		Use:   "linkerd",
+		Short: "linkerd manages the Linkerd service mesh",
+		Long:  `linkerd manages the Linkerd service mesh.`,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// enable / disable logging
+			if verbose {
+				log.SetLevel(log.DebugLevel)
+			} else {
+				log.SetLevel(log.PanicLevel)
+			}
 
-		controlPlaneNamespaceFromEnv := os.Getenv(flags.EnvOverrideNamespace)
-		if controlPlaneNamespace == defaultLinkerdNamespace && controlPlaneNamespaceFromEnv != "" {
-			controlPlaneNamespace = controlPlaneNamespaceFromEnv
-		}
+			controlPlaneNamespaceFromEnv := os.Getenv(flags.EnvOverrideNamespace)
+			if controlPlaneNamespace == defaultLinkerdNamespace && controlPlaneNamespaceFromEnv != "" {
+				controlPlaneNamespace = controlPlaneNamespaceFromEnv
+			}
 
-		if !alphaNumDash.MatchString(controlPlaneNamespace) {
-			return fmt.Errorf("%s is not a valid namespace", controlPlaneNamespace)
-		}
+			if !alphaNumDash.MatchString(controlPlaneNamespace) {
+				return fmt.Errorf("%s is not a valid namespace", controlPlaneNamespace)
+			}
 
-		return nil
-	},
-}
+			return nil
+		},
+	}
 
-func init() {
-	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L",
+	rootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L",
 		defaultLinkerdNamespace,
 		fmt.Sprintf("Namespace in which Linkerd is installed ($%s)", flags.EnvOverrideNamespace))
-	RootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
-	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
-	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
-	RootCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")
-	RootCmd.PersistentFlags().StringArrayVar(&impersonateGroup, "as-group", []string{}, "Group to impersonate for Kubernetes operations")
-	RootCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
-	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
-	RootCmd.AddCommand(newCmdCheck())
-	RootCmd.AddCommand(newCmdCompletion())
-	RootCmd.AddCommand(newCmdDiagnostics())
-	RootCmd.AddCommand(newCmdDoc())
-	RootCmd.AddCommand(newCmdIdentity())
-	RootCmd.AddCommand(NewCmdInject(inject.GetOverriddenValues))
-	RootCmd.AddCommand(newCmdInstall())
-	RootCmd.AddCommand(newCmdInstallCNIPlugin())
-	RootCmd.AddCommand(newCmdProfile())
-	RootCmd.AddCommand(newCmdAuthz())
-	RootCmd.AddCommand(newCmdUninject())
-	RootCmd.AddCommand(newCmdUpgrade())
-	RootCmd.AddCommand(newCmdVersion())
-	RootCmd.AddCommand(newCmdUninstall())
-	RootCmd.AddCommand(newCmdPrune())
+	rootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
+	rootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
+	rootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
+	rootCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")
+	rootCmd.PersistentFlags().StringArrayVar(&impersonateGroup, "as-group", []string{}, "Group to impersonate for Kubernetes operations")
+	rootCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
+	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
+	rootCmd.AddCommand(newCmdCheck())
+	rootCmd.AddCommand(newCmdCompletion())
+	rootCmd.AddCommand(newCmdDiagnostics())
+	rootCmd.AddCommand(newCmdDoc(rootCmd))
+	rootCmd.AddCommand(newCmdIdentity())
+	rootCmd.AddCommand(NewCmdInject(inject.GetOverriddenValues))
+	rootCmd.AddCommand(newCmdInstall())
+	rootCmd.AddCommand(newCmdInstallCNIPlugin())
+	rootCmd.AddCommand(newCmdProfile())
+	rootCmd.AddCommand(newCmdAuthz())
+	rootCmd.AddCommand(newCmdUninject())
+	rootCmd.AddCommand(newCmdUpgrade())
+	rootCmd.AddCommand(newCmdVersion())
+	rootCmd.AddCommand(newCmdUninstall())
+	rootCmd.AddCommand(newCmdPrune())
 
 	// Extension Sub Commands
-	RootCmd.AddCommand(jaeger.NewCmdJaeger())
-	RootCmd.AddCommand(multicluster.NewCmdMulticluster())
-	RootCmd.AddCommand(viz.NewCmdViz())
+	rootCmd.AddCommand(jaeger.NewCmdJaeger())
+	rootCmd.AddCommand(multicluster.NewCmdMulticluster())
+	rootCmd.AddCommand(viz.NewCmdViz())
 
 	// Viz Extension sub commands
-	RootCmd.AddCommand(deprecateCmd(viz.NewCmdDashboard()))
-	RootCmd.AddCommand(deprecateCmd(viz.NewCmdEdges()))
-	RootCmd.AddCommand(deprecateCmd(viz.NewCmdRoutes()))
-	RootCmd.AddCommand(deprecateCmd(viz.NewCmdStat()))
-	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTap()))
-	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTop()))
+	rootCmd.AddCommand(deprecateCmd(viz.NewCmdDashboard()))
+	rootCmd.AddCommand(deprecateCmd(viz.NewCmdEdges()))
+	rootCmd.AddCommand(deprecateCmd(viz.NewCmdRoutes()))
+	rootCmd.AddCommand(deprecateCmd(viz.NewCmdStat()))
+	rootCmd.AddCommand(deprecateCmd(viz.NewCmdTap()))
+	rootCmd.AddCommand(deprecateCmd(viz.NewCmdTop()))
 
 	// resource-aware completion flag configurations
 	pkgcmd.ConfigureNamespaceFlagCompletion(
-		RootCmd, []string{"linkerd-namespace", "cni-namespace"},
+		rootCmd, []string{"linkerd-namespace", "cni-namespace"},
 		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
 
-	pkgcmd.ConfigureKubeContextFlagCompletion(RootCmd, kubeconfigPath)
+	pkgcmd.ConfigureKubeContextFlagCompletion(rootCmd, kubeconfigPath)
+
+	return rootCmd
 }
 
 func deprecateCmd(cmd *cobra.Command) *cobra.Command {

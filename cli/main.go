@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	root := cmd.RootCmd
+	root := cmd.NewRootCmd()
 	args := os.Args[1:]
 	if _, _, err := root.Find(args); err != nil {
 		if strings.HasPrefix(args[0], "-") {
