@@ -371,7 +371,7 @@ metadata:
     linkerd.io/extension: viz
     component: metrics-api
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
     linkerd.io/inject: enabled
 spec:
   type: ClusterIP
@@ -387,7 +387,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
     linkerd.io/inject: enabled
     config.linkerd.io/proxy-await: "enabled"
   labels:
@@ -408,8 +408,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: b73fb1bf343c4203fbab8ee108c5eba2e07d184177e204677dc83d4cad2cd12b
-        linkerd.io/created-by: linkerd/helm dev-undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/inject: enabled
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -495,7 +494,7 @@ metadata:
     linkerd.io/extension: viz
     component: metrics-api
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   podSelector:
     matchLabels:
@@ -513,7 +512,7 @@ metadata:
     linkerd.io/extension: viz
     component: metrics-api
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   targetRef:
     group: policy.linkerd.io
@@ -533,7 +532,7 @@ metadata:
     linkerd.io/extension: viz
     component: metrics-api
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   identityRefs:
   - kind: ServiceAccount
@@ -547,7 +546,7 @@ metadata:
   labels:
     linkerd.io/extension: viz
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   # Ideally, this should be restricted to the actual set of IPs kubelet uses in
   # a cluster. This can't easily be discovered.
@@ -568,7 +567,7 @@ metadata:
     component: prometheus
     namespace: linkerd-viz
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   prometheus.yml: |-
     global:
@@ -702,7 +701,7 @@ metadata:
     component: prometheus
     namespace: linkerd-viz
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
     linkerd.io/inject: enabled
 spec:
   type: ClusterIP
@@ -718,7 +717,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
     linkerd.io/inject: enabled
     config.linkerd.io/proxy-await: "enabled"
   labels:
@@ -741,7 +740,7 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/created-by: linkerd/helm dev-undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/inject: enabled
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
       labels:
@@ -837,7 +836,7 @@ metadata:
   labels:
     linkerd.io/extension: viz
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   podSelector:
     matchLabels:
@@ -855,7 +854,7 @@ metadata:
   labels:
     linkerd.io/extension: viz
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   targetRef:
     group: policy.linkerd.io
@@ -879,7 +878,7 @@ metadata:
     component: tap
     namespace: linkerd-viz
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
     linkerd.io/inject: enabled
 spec:
   type: ClusterIP
@@ -898,7 +897,7 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
     linkerd.io/inject: enabled
     config.linkerd.io/proxy-await: "enabled"
   labels:
@@ -921,8 +920,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: d6f2ea38c4004667c96eb4fb0135fe0d9d9a87f5c19aaee30e6ccb6ef7219324
-        linkerd.io/created-by: linkerd/helm dev-undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/inject: enabled
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1017,7 +1015,7 @@ metadata:
     linkerd.io/extension: viz
     component: tap
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   podSelector:
     matchLabels:
@@ -1035,7 +1033,7 @@ metadata:
     linkerd.io/extension: viz
     component: tap
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   targetRef:
     group: policy.linkerd.io
@@ -1126,7 +1124,7 @@ metadata:
     linkerd.io/extension: viz
     component: tap-injector
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
     linkerd.io/inject: enabled
 spec:
   type: ClusterIP
@@ -1142,7 +1140,7 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
     linkerd.io/inject: enabled
     config.linkerd.io/proxy-await: "enabled"
   labels:
@@ -1161,8 +1159,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: f46683697f33ac5449b952d1d037718887c4f98421d0f4133bb19e1c873a925d
-        linkerd.io/created-by: linkerd/helm dev-undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/inject: enabled
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1253,7 +1250,7 @@ metadata:
     linkerd.io/extension: viz
     component: tap-injector
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   podSelector:
     matchLabels:
@@ -1271,7 +1268,7 @@ metadata:
     linkerd.io/extension: viz
     component: tap-injector
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   targetRef:
     group: policy.linkerd.io
@@ -1290,7 +1287,7 @@ metadata:
   labels:
     linkerd.io/extension: viz
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   # Ideally, this should be restricted to the actual set of IPs the kubelet API
   # server uses for webhooks in a cluster. This can't easily be discovered.
@@ -1311,7 +1308,7 @@ metadata:
     component: web
     namespace: linkerd-viz
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
     
     linkerd.io/inject: enabled
 spec:
@@ -1331,7 +1328,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
     linkerd.io/inject: enabled
     config.linkerd.io/proxy-await: "enabled"
   labels:
@@ -1354,7 +1351,7 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/created-by: linkerd/helm dev-undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/inject: enabled
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"

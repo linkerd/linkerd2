@@ -12,7 +12,7 @@ metadata:
     linkerd.io/extension: jaeger
     app.kubernetes.io/name: namespace-metadata
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
+    app.kubernetes.io/version: {{.Values.linkerdVersion}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: namespace-metadata
   namespace: {{.Release.Namespace}}
@@ -26,7 +26,7 @@ spec:
         linkerd.io/extension: jaeger
         app.kubernetes.io/name: namespace-metadata
         app.kubernetes.io/part-of: Linkerd
-        app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
+        app.kubernetes.io/version: {{.Values.linkerdVersion}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.namespaceMetadata.tolerations -}}
