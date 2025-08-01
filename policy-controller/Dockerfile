@@ -16,7 +16,6 @@ RUN --mount=type=cache,target=target \
     target=$(case "$TARGETARCH" in \
         amd64) echo x86_64-unknown-linux-musl ;; \
         arm64) echo aarch64-unknown-linux-musl ;; \
-        arm) echo armv7-unknown-linux-musleabihf ;; \
         *) echo "unsupported architecture: $TARGETARCH" >&2; exit 1 ;; \
     esac) && \
     just-cargo profile=$BUILD_TYPE target=$target build --package=linkerd-policy-controller && \

@@ -2,7 +2,6 @@
 targets = [
     { triple = "x86_64-unknown-linux-gnu" },
     { triple = "aarch64-unknown-linux-gnu" },
-    { triple = "armv7-unknown-linux-gnu" },
 ]
 
 [advisories]

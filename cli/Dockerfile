@@ -37,13 +37,6 @@ ARG LINKERD_VERSION
 ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o /out/linkerd -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
 
-FROM go-gen AS linux-arm-full
-RUN ./bin/install-deps arm
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o /out/linkerd -tags prod -mod=readonly -ldflags "-s -w" ./cli
-ARG LINKERD_VERSION
-ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o /out/linkerd -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
-
 FROM go-gen AS darwin-full
 RUN CGO_ENABLED=0 GOOS=darwin go build -o /out/linkerd -tags prod -mod=readonly -ldflags "-s -w" ./cli
 ARG LINKERD_VERSION
@@ -82,12 +75,6 @@ COPY LICENSE /linkerd/LICENSE
 COPY --from=linux-arm64-full /out/linkerd /out/linkerd-linux-arm64
 ENTRYPOINT ["/out/linkerd-linux-arm64"]
 
-FROM scratch AS linux-arm
-LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
-COPY LICENSE /linkerd/LICENSE
-COPY --from=linux-arm64-full /out/linkerd /out/linkerd-linux-arm
-ENTRYPOINT ["/out/linkerd-linux-arm"]
-
 FROM scratch AS darwin
 LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY LICENSE /linkerd/LICENSE
@@ -111,7 +98,6 @@ LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY LICENSE /linkerd/LICENSE
 COPY --from=linux-amd64-full /out/linkerd /out/linkerd-linux-amd64
 COPY --from=linux-arm64-full /out/linkerd /out/linkerd-linux-arm64
-COPY --from=linux-arm-full /out/linkerd /out/linkerd-linux-arm
 COPY --from=darwin-full /out/linkerd /out/linkerd-darwin
 COPY --from=darwin-arm64-full /out/linkerd /out/linkerd-darwin-arm64
 COPY --from=windows-full /out/linkerd /out/linkerd-windows

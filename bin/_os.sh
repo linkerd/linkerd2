@@ -2,7 +2,7 @@
 
 set -eu
 
-export OS_ARCH_ALL='linux-amd64 linux-arm64 linux-arm darwin darwin-arm64 windows'
+export OS_ARCH_ALL='linux-amd64 linux-arm64 darwin darwin-arm64 windows'
 
 architecture() {
   arch=$(uname -m)
@@ -15,9 +15,6 @@ architecture() {
       ;;
     aarch64*)
       arch=arm64
-      ;;
-    armv*)
-      arch=arm
       ;;
     amd64|arm64)
       # keep arch as is
