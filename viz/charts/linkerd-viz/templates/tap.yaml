@@ -41,7 +41,7 @@ metadata:
     linkerd.io/extension: viz
     app.kubernetes.io/name: tap
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
+    app.kubernetes.io/version: {{.Values.linkerdVersion}}
     component: tap
     namespace: {{.Release.Namespace}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}

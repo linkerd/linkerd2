@@ -11,6 +11,7 @@ import (
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/viz/charts"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -154,6 +155,8 @@ func render(w io.Writer, valuesOverrides map[string]interface{}, format string) 
 	if err != nil {
 		return err
 	}
+
+	valuesOverrides["cliVersion"] = k8s.CreatedByAnnotationValue()
 
 	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
 	if err != nil {

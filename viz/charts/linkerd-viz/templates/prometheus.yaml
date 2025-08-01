@@ -197,7 +197,7 @@ metadata:
     linkerd.io/extension: viz
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
+    app.kubernetes.io/version: {{.Values.linkerdVersion}}
     component: prometheus
     namespace: {{.Release.Namespace}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -330,7 +330,7 @@ metadata:
     linkerd.io/extension: viz
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion}}
+    app.kubernetes.io/version: {{.Values.linkerdVersion}}
     component: prometheus
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: prometheus
