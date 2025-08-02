@@ -36,7 +36,7 @@ linkerd-policy-controller-grpc = { path = "../policy-controller/grpc" }
 [dependencies.kube]
 workspace = true
 default-features = false
-features = ["client", "openssl-tls", "runtime", "ws"]
+features = ["client", "rustls-tls", "aws-lc-rs", "runtime", "ws"]
 
 [dependencies.linkerd2-proxy-api]
 workspace = true
