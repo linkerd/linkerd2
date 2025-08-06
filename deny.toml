@@ -32,6 +32,11 @@ exceptions = [
         "MIT",
         "OpenSSL",
     ], name = "aws-lc-sys", version = "*" },
+    { allow = [
+        "ISC",
+        "MIT",
+        "OpenSSL",
+    ], name = "aws-lc-fips-sys", version = "*" },
 ]
 
 [[licenses.clarify]]
