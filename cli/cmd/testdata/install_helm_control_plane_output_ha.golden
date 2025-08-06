@@ -772,7 +772,7 @@ data:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
         version: test-proxy-init-version
-      iptablesMode: legacy
+      iptablesMode: nft
       kubeAPIServerPorts: 443,6443
       logFormat: ""
       logLevel: ""
@@ -1229,6 +1229,10 @@ spec:
           name: linkerd-identity-token
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --ipv6=false
         - --incoming-proxy-port
         - "4143"
@@ -1817,6 +1821,10 @@ spec:
           readOnly: true
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --ipv6=false
         - --incoming-proxy-port
         - "4143"
@@ -2289,6 +2297,10 @@ spec:
           readOnly: true
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --ipv6=false
         - --incoming-proxy-port
         - "4143"

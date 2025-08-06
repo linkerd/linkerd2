@@ -216,7 +216,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 		ProxyInit: &ProxyInit{
-			IptablesMode:        "legacy",
+			IptablesMode:        "nft",
 			IgnoreInboundPorts:  "4567,4568",
 			IgnoreOutboundPorts: "4567,4568",
 			KubeAPIServerPorts:  "443,6443",
