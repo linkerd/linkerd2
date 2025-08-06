@@ -71,7 +71,7 @@ data:
         "outbound-ports-to-ignore": ["443","1000"],
         "simulate": false,
         "use-wait-flag": false,
-        "iptables-mode": "legacy",
+        "iptables-mode": "nft",
         "ipv6": false
       }
     }
@@ -119,7 +119,7 @@ spec:
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
         image: cr.l5d.io/linkerd/cni-plugin:v1.6.4
-        imagePullPolicy:
+        imagePullPolicy: 
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:

@@ -227,6 +227,10 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
       - args:
+        - --firewall-bin-path
+        - iptables-nft
+        - --firewall-save-bin-path
+        - iptables-nft-save
         - --ipv6=false
         - --incoming-proxy-port
         - "4143"
