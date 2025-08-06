@@ -397,6 +397,8 @@ func TestInjectAutoPod(t *testing.T) {
 		Name:  k8s.InitContainerName,
 		Image: reg + "/proxy-init:" + version.ProxyInitVersion,
 		Args: []string{
+			"--firewall-bin-path", "iptables-nft",
+			"--firewall-save-bin-path", "iptables-nft-save",
 			"--ipv6=false",
 			"--incoming-proxy-port", "4143",
 			"--outgoing-proxy-port", "4140",
