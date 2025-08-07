@@ -12,11 +12,10 @@ ARG TARGETARCH
 # Install cross compiler toolchains
 RUN case "$TARGETARCH" in \
         amd64) true ;; \
-        arm64) apt-get -y update && apt-get install --no-install-recommends -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu ;; \
+        arm64) apt-get -y update && apt-get install --no-install-recommends -y binutils-aarch64-linux-gnu ;; \
     esac && rm -rf /var/lib/apt/lists/*
 # Enable tokio runtime metrics
 ENV RUSTFLAGS="--cfg tokio_unstable"
-ENV AWS_LC_SYS_CFLAGS_aarch64_unknown_linux_gnu='-fuse-ld=/usr/aarch64-linux-gnu/bin/ld'
 RUN --mount=type=cache,target=target \
     --mount=type=cache,target=/usr/local/cargo/registry \
     target=$(case "$TARGETARCH" in \
@@ -24,7 +23,7 @@ RUN --mount=type=cache,target=target \
         arm64) echo aarch64-unknown-linux-musl ;; \
         *) echo "unsupported architecture: $TARGETARCH" >&2; exit 1 ;; \
     esac) && \
-    just-cargo profile=$BUILD_TYPE target=$target build --package=linkerd-policy-controller && \
+    just-cargo CFLAGS_aarch64_unknown_linux_musl="" profile=$BUILD_TYPE target=$target build --package=linkerd-policy-controller && \
     mv "target/$target/$BUILD_TYPE/linkerd-policy-controller" /tmp/
 
 FROM scratch AS runtime
