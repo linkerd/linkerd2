@@ -5,16 +5,7 @@ imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPol
 {{ include "partials.resources" .Values.proxy.resources }}
 {{- if or .Values.networkValidator.enableSecurityContext }}
 securityContext:
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-    - ALL
-  readOnlyRootFilesystem: true
-  runAsGroup: 65534
-  runAsNonRoot: true
-  runAsUser: 65534
-  seccompProfile:
-    type: RuntimeDefault
+  {{- toYaml .Values.networkValidator.securityContext | trim | nindent 2 }}
 {{- end }}
 command:
   - /usr/lib/linkerd/linkerd2-network-validator
