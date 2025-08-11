@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"net"
 	"reflect"
 	"regexp"
 	"sort"
@@ -89,19 +90,9 @@ var (
 	}
 )
 
-// OverriddenValues contains the result of executing an instance of ValueOverrider
-type OverriddenValues struct {
-	*l5dcharts.Values
-
-	// may contain additional values that are not part of the l5dcharts.Values
-	// in order to allow custom ValueOverrider implementations to add their own
-	// values to the rendering logic.
-	Additional map[string]interface{}
-}
-
 // ValueOverrider is used to override the default values that are used in chart rendering based
 // on the annotations provided in overrides.
-type ValueOverrider func(rc *ResourceConfig) (*OverriddenValues, error)
+type ValueOverrider func(rc *ResourceConfig) (*l5dcharts.Values, error)
 
 // Origin defines where the input YAML comes from. Refer the ResourceConfig's
 // 'origin' field
@@ -199,7 +190,7 @@ func AppendNamespaceAnnotations(base map[string]string, nsAnn map[string]string,
 
 // GetOverriddenValues returns the final Values struct which is created
 // by overriding annotated configuration on top of default Values
-func GetOverriddenValues(rc *ResourceConfig) (*OverriddenValues, error) {
+func GetOverriddenValues(rc *ResourceConfig) (*l5dcharts.Values, error) {
 	// Make a copy of Values and mutate that
 	copyValues, err := rc.GetValues().DeepCopy()
 	if err != nil {
@@ -212,7 +203,7 @@ func GetOverriddenValues(rc *ResourceConfig) (*OverriddenValues, error) {
 	}
 
 	ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), namedPorts)
-	return &OverriddenValues{Values: copyValues}, nil
+	return copyValues, nil
 }
 
 func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, namedPorts map[string]int32) {
@@ -686,12 +677,32 @@ func (conf *ResourceConfig) GetAnnotationOverrides() map[string]string {
 
 // GetPodPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
-func GetPodPatch(conf *ResourceConfig, injectProxy bool, values *OverriddenValues, patchPathPrefix string) ([]JSONPatch, error) {
+func (conf *ResourceConfig) GetPodPatch(injectProxy bool, overrider ValueOverrider) ([]byte, error) {
+	values, err := overrider(conf)
+	values.Proxy.PodInboundPorts = getPodInboundPorts(conf.pod.spec)
+	if err != nil {
+		return nil, fmt.Errorf("could not generate Overridden Values: %w", err)
+	}
+
+	if values.ClusterNetworks != "" {
+		for _, network := range strings.Split(strings.Trim(values.ClusterNetworks, ","), ",") {
+			if _, _, err := net.ParseCIDR(network); err != nil {
+				return nil, fmt.Errorf("cannot parse destination get networks: %w", err)
+			}
+		}
+	}
+
 	patch := &podPatch{
-		Values:      *values.Values,
+		Values:      *values,
 		Annotations: map[string]string{},
 		Labels:      map[string]string{},
-		PathPrefix:  patchPathPrefix,
+	}
+	switch strings.ToLower(conf.workload.metaType.Kind) {
+	case k8s.Pod:
+	case k8s.CronJob:
+		patch.PathPrefix = "/spec/jobTemplate/spec/template"
+	default:
+		patch.PathPrefix = "/spec/template"
 	}
 
 	if conf.pod.spec != nil {
@@ -732,12 +743,7 @@ func GetPodPatch(conf *ResourceConfig, injectProxy bool, values *OverriddenValue
 	// Get rid of invalid trailing commas
 	res := rTrail.ReplaceAll(buf.Bytes(), []byte("}\n]"))
 
-	patchResult := []JSONPatch{}
-	if err := json.Unmarshal(res, &patchResult); err != nil {
-		return nil, err
-	}
-
-	return patchResult, nil
+	return res, nil
 }
 
 // GetConfigAnnotation returns two values. The first value is the annotation
