@@ -330,7 +330,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				t.Fatal(err)
 			}
 			expected := testCase.expected()
-			if diff := deep.Equal(actual.Values, expected); diff != nil {
+			if diff := deep.Equal(actual, expected); diff != nil {
 				t.Errorf("%+v", diff)
 			}
 		})
