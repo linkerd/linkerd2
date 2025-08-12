@@ -65,28 +65,10 @@ jobs:
   build-cli:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      - uses: ./.github/actions/docker-build
-        id: build
-        with:
-          docker-registry: ${{ env.DOCKER_REGISTRY }}
-          docker-target: linux-amd64
-          component: cli-bin
-          tag: ${{ needs.meta.outputs.tag }}
-      - name: Extract CLI binary
-        run: |
-          mkdir -p /home/runner/archives
-          id=$(docker create '${{ steps.build.outputs.image }}')
-          docker cp "$id:/out/linkerd-linux-amd64" /home/runner/archives/linkerd
-          v=$(/home/runner/archives/linkerd version --short --client)
-          [[ "$v" == '${{ needs.meta.outputs.tag }}' ]] || exit 1
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: image-archives-cli
-          path: /home/runner/archives
+    uses: ./.github/workflows/cli-build.yml
+    with:
+      version: ${{ needs.meta.outputs.tag }}
+      target: linux-amd64
 
   ##
   ## Core: Test the core control plane
@@ -147,8 +129,10 @@ jobs:
           pattern: image-archives-*
           path: image-archives
           merge-multiple: true
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: find image-archives -ls
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
       - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} "$HOME/linkerd"
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
@@ -197,7 +181,9 @@ jobs:
           path: image-archives
           merge-multiple: true
       - run: find image-archives -ls
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
       - name: Setup deps
         shell: bash
         run: |
@@ -297,8 +283,10 @@ jobs:
           pattern: image-archives-*
           path: image-archives
           merge-multiple: true
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
-      - run: ls -l image-archives/linkerd
+      - run: find image-archives -ls
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
       - run: bin/tests --images archive --cleanup-docker --name '${{ matrix.integration_test }}' "$HOME/linkerd"
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
@@ -317,13 +305,10 @@ jobs:
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
           go-version: "1.24"
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      - run: find image-archives -ls
+      - uses: ./.github/actions/cli-setup
         with:
-          pattern: image-archives-*
-          path: image-archives
-          merge-multiple: true
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
-      - run: ls -l image-archives/linkerd
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
       - run: bin/tests --images archive --cleanup-docker --name viz "$HOME/linkerd"
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
