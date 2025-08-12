@@ -458,7 +458,7 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
 		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
 		"--atomic",
-		"--timeout", "60m",
+		"--timeout", "5m",
 		"--wait",
 	}
 	extraArgs, vizArgs := helmUpgradeFlags(helmTLSCerts)
