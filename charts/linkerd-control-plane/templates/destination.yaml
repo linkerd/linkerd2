@@ -337,7 +337,8 @@ spec:
         - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
           name: kube-api-access
           readOnly: true
-      - args:
+      - command: ["/usr/bin/linkerd-policy-controller"]
+        args:
         - --admin-addr={{ if .Values.disableIPv6 }}0.0.0.0{{ else }}[::]{{ end }}:9990
         - --control-plane-namespace={{.Release.Namespace}}
         - --grpc-addr={{ if .Values.disableIPv6 }}0.0.0.0{{ else }}[::]{{ end }}:8090
@@ -361,8 +362,10 @@ spec:
         {{- range .Values.policyController.experimentalArgs }}
         - {{ . }}
         {{- end }}
-        image: {{.Values.policyController.image.name}}:{{.Values.policyController.image.version | default .Values.linkerdVersion}}
-        imagePullPolicy: {{.Values.policyController.image.pullPolicy | default .Values.imagePullPolicy}}
+        {{- $img := ((.Values.policyController).image).name | default .Values.controllerImage }}
+        {{- $tag := ((.Values.policyController).image).version | default .Values.controllerImageVersion | default .Values.linkerdVersion }}
+        image: {{ $img }}:{{ $tag }}
+        imagePullPolicy: {{((.Values.policyController).image).pullPolicy | default .Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /live

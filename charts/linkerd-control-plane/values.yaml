@@ -80,15 +80,8 @@ runtimeClassName: ""
 
 # policy controller configuration
 policyController:
-  image:
-    # -- Docker image for the policy controller
-    name: cr.l5d.io/linkerd/policy-controller
-    # -- Pull policy for the policy controller container image
-    # @default -- imagePullPolicy
-    pullPolicy: ""
-    # -- Tag for the policy controller container image
-    # @default -- linkerdVersion
-    version: ""
+  # deprecated: use controllerImage settings
+  image: {}
 
   # -- Log level for the policy controller
   logLevel: info

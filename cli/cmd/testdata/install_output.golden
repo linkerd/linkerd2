@@ -1587,7 +1587,8 @@ spec:
         - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
           name: kube-api-access
           readOnly: true
-      - args:
+      - command: ["/usr/bin/linkerd-policy-controller"]
+        args:
         - --admin-addr=[::]:9990
         - --control-plane-namespace=linkerd
         - --grpc-addr=[::]:8090

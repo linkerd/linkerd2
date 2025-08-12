@@ -106,9 +106,7 @@ func TestNewValues(t *testing.T) {
 			"readinessProbe": map[string]interface{}{"timeoutSeconds": 1.0},
 		},
 		PolicyController: &PolicyController{
-			Image: &Image{
-				Name: "cr.l5d.io/linkerd/policy-controller",
-			},
+			Image:    &Image{},
 			LogLevel: "info",
 			Resources: &Resources{
 				CPU: Constraints{

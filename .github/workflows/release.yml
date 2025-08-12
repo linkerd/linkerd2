@@ -40,14 +40,12 @@ jobs:
         component:
           - cli-bin
           - controller
-          - policy-controller
           - debug
           - jaeger-webhook
           - metrics-api
           - proxy
           - tap
           - web
-    # policy-controller docker builds have occasionally hit a 30-minute timeout.
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683

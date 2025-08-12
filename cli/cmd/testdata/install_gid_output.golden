@@ -628,7 +628,7 @@ data:
         enabled: true
     policyController:
       image:
-        name: cr.l5d.io/linkerd/policy-controller
+        name: ""
         pullPolicy: ""
         version: ""
       logLevel: info
@@ -1662,7 +1662,8 @@ spec:
         - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
           name: kube-api-access
           readOnly: true
-      - args:
+      - command: ["/usr/bin/linkerd-policy-controller"]
+        args:
         - --admin-addr=0.0.0.0:9990
         - --control-plane-namespace=linkerd
         - --grpc-addr=0.0.0.0:8090
@@ -1678,7 +1679,7 @@ spec:
         - --default-opaque-ports=25,587,3306,4444,5432,6379,9300,11211
         - --global-egress-network-namespace=linkerd-egress
         - --probe-networks=0.0.0.0/0,::/0
-        image: cr.l5d.io/linkerd/policy-controller:install-control-plane-version
+        image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

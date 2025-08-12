@@ -494,10 +494,10 @@ func testUpgradeOptions() (flagOptions, error) {
 	flagSet.AddFlagSet(proxyFlagSet)
 	flagSet.AddFlagSet(upgradeFlagSet)
 
-	// Explicitly set policy controller override to upgrade control plane version
+	// Explicitly set controller override to upgrade control plane version
 	templateOpts := &valuespkg.Options{}
 	flagspkg.AddValueOptionsFlags(flagSet, templateOpts)
-	flagSet.Set("set", fmt.Sprintf("policyController.image.version=%[1]s,linkerdVersion=%[1]s", upgradeControlPlaneVersion))
+	flagSet.Set("set", fmt.Sprintf("controllerImageVersion=%[1]s,linkerdVersion=%[1]s", upgradeControlPlaneVersion))
 
 	flagSet.Set("set", fmt.Sprintf("proxy.image.version=%s", upgradeProxyVersion))
 
