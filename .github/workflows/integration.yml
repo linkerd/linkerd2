@@ -128,6 +128,7 @@ jobs:
     needs: [meta, build-cli, build-core]
     if: needs.meta.outputs.changed == 'true'
     strategy:
+      fail-fast: false
       matrix:
         test:
           - cni-calico-deep
@@ -162,6 +163,7 @@ jobs:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
         # Test the latest Kubernetes version with the latest Gateway API
         # version, as well as the vendored Gateway API CRDs.
@@ -269,6 +271,7 @@ jobs:
     needs: [meta, build-cli, build-core, build-ext]
     if: needs.meta.outputs.changed == 'true'
     strategy:
+      fail-fast: false
       matrix:
         integration_test:
           - cluster-domain
@@ -334,6 +337,7 @@ jobs:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         cases:
         - {k8s: "v1.23", manage-controllers: false}
