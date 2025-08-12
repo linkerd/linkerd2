@@ -1755,7 +1755,7 @@ spec:
         - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
           name: kube-api-access
           readOnly: true
-      - command: ["/usr/bin/linkerd-policy-controller"]
+      - command: ["/linkerd-policy-controller"]
         args:
         - --admin-addr=0.0.0.0:9990
         - --control-plane-namespace=linkerd-dev
