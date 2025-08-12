@@ -328,7 +328,8 @@ linkerd-install *args='': linkerd-load linkerd-crds-install && _linkerd-ready
             --set='imagePullPolicy=Never' \
             --set='controllerImage={{ controller-image }}' \
             --set='linkerdVersion={{ linkerd-tag }}' \
-            --set='policyController.loglevel=info\,linkerd=trace\,kubert=trace' \
+            --set='policyController.image.name={{ controller-image }}' \
+            --set='policyController.image.version={{ linkerd-tag }}' \
             --set='proxy.image.name={{ proxy-image }}' \
             --set='proxy.image.version={{ linkerd-tag }}' \
             --set='proxyInit.image.name=ghcr.io/linkerd/proxy-init' \
