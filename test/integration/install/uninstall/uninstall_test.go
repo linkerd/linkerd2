@@ -65,7 +65,7 @@ func TestInstall(t *testing.T) {
 	var (
 		vizCmd  = []string{"viz", "install"}
 		vizArgs = []string{
-			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()), "--wait", "60m"}
+			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()), "--wait", "5m"}
 	)
 
 	// Install Linkerd Viz Extension
