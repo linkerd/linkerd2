@@ -359,6 +359,7 @@ func helmUpgradeFlags(root *tls.CA) ([]string, []string) {
 
 	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
 		coreArgs = append(coreArgs,
+			"--set", "policyController.image.name="+cmd.RegistryOverride("cr.l5d.io/linkerd/controller", override),
 			"--set", "proxy.image.name="+cmd.RegistryOverride("cr.l5d.io/linkerd/proxy", override),
 			"--set", "proxyInit.image.name="+cmd.RegistryOverride("cr.l5d.io/linkerd/proxy-init", override),
 			"--set", "controllerImage="+cmd.RegistryOverride("cr.l5d.io/linkerd/controller", override),
