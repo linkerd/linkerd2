@@ -215,7 +215,7 @@ proxy:
   uid: 2102
   # -- (int) Optional customisation of the group id under which the proxy runs (the group ID will be omitted if lower than 0)
   gid: -1
-  # -- Optional custom security context for the proxy container.  
+  # -- Optional custom security context for the proxy container.
   securityContext: {}
 
   # -- If set the injected proxy sidecars in the data plane will stay alive for
