@@ -76,7 +76,6 @@ jobs:
 
   cli:
     needs: tag
-    if: needs.meta.outputs.changed == 'true'
     uses: ./.github/workflows/cli-build.yml
     with:
       version: ${{ needs.tag.outputs.tag }}
@@ -140,6 +139,7 @@ jobs:
     name: Create GH release
     needs:
       - tag
+      - cli
       - integration_tests
     timeout-minutes: 30
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}

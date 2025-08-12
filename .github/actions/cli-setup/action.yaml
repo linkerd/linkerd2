@@ -16,6 +16,6 @@ runs:
     - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
       with:
         artifact-ids: ${{ inputs.artifact-id }}
-        path: ${{ runner.temp }/cli
-    - run: mv ${{ runner.temp }/cli/linkerd2-cli-*-linux-amd64 ${{ inputs.target }}
+        path: ${{ runner.temp }}/cli
+    - run: mv ${{ runner.temp }}/cli/linkerd2-cli-*-linux-amd64 ${{ inputs.target }}
       shell: bash

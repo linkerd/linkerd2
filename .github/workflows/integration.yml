@@ -133,7 +133,8 @@ jobs:
       - uses: ./.github/actions/cli-setup
         with:
           artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
-      - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} "$HOME/linkerd"
+          target: ${{ runner.temp }}/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} ${{ runner.temp }}/linkerd
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           TAG: ${{ needs.meta.outputs.tag }}
@@ -184,6 +185,7 @@ jobs:
       - uses: ./.github/actions/cli-setup
         with:
           artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
       - name: Setup deps
         shell: bash
         run: |
@@ -205,7 +207,7 @@ jobs:
       - run: docker load <image-archives/policy-controller.tar
       - run: docker load <image-archives/proxy.tar
       - run: docker image ls
-      - run: just linkerd-tag='${{ needs.meta.outputs.tag }}' linkerd-exec="$HOME/linkerd" linkerd-install
+      - run: just linkerd-tag='${{ needs.meta.outputs.tag }}' linkerd-exec="${{ runner.temp }}/linkerd" linkerd-install
       - name: Load images
         run: |
           # Image loading is flakey in CI, so retry!
@@ -287,7 +289,8 @@ jobs:
       - uses: ./.github/actions/cli-setup
         with:
           artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
-      - run: bin/tests --images archive --cleanup-docker --name '${{ matrix.integration_test }}' "$HOME/linkerd"
+          target: ${{ runner.temp }}/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name '${{ matrix.integration_test }}' ${{ runner.temp }}/linkerd
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
 
@@ -309,7 +312,8 @@ jobs:
       - uses: ./.github/actions/cli-setup
         with:
           artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
-      - run: bin/tests --images archive --cleanup-docker --name viz "$HOME/linkerd"
+          target: ${{ runner.temp }}/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name viz ${{ runner.temp }}/linkerd
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
 
