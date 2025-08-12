@@ -559,7 +559,7 @@ data:
         enabled: true
     policyController:
       image:
-        name: ""
+        name: cr.l5d.io/linkerd/controller
         pullPolicy: ""
         version: ""
       logLevel: info

@@ -628,7 +628,7 @@ data:
         enabled: true
     policyController:
       image:
-        name: ""
+        name: cr.l5d.io/linkerd/controller
         pullPolicy: ""
         version: ""
       logLevel: info
@@ -1672,7 +1672,7 @@ spec:
         - --default-opaque-ports=25,587,3306,4444,5432,6379,9300,11211
         - --global-egress-network-namespace=linkerd-egress
         - --probe-networks=0.0.0.0/0,::/0
-        image: my.custom.registry/linkerd-io/controller:install-control-plane-version
+        image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

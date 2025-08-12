@@ -80,8 +80,12 @@ runtimeClassName: ""
 
 # policy controller configuration
 policyController:
-  # deprecated: use controllerImage settings
-  image: {}
+  # deprecated: use controllerImage, etc
+  # TODO(ver): Remove this after v2.19
+  image:
+    name: cr.l5d.io/linkerd/controller
+    pullPolicy: ""
+    version: ""
 
   # -- Log level for the policy controller
   logLevel: info
