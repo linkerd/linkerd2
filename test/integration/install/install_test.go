@@ -604,6 +604,11 @@ func TestOverridesSecret(t *testing.T) {
 					"name": reg + "/debug",
 				},
 			}
+			knownKeys["policyController"] = tree.Tree{
+				"image": tree.Tree{
+					"name": reg + "/controller",
+				},
+			}
 			knownKeys["proxy"] = tree.Tree{
 				"image": tree.Tree{
 					"name":    reg + "/proxy",
