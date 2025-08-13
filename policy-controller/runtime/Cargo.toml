@@ -64,4 +64,4 @@ features = ["macros", "parking_lot", "rt", "rt-multi-thread", "signal"]
 [dependencies.tonic]
 workspace = true
 default-features = false
-features = ["transport"]
+features = ["transport", "router"]
