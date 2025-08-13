@@ -373,8 +373,14 @@ run_test(){
   shift
 
   printf 'Test script: [%s] Params: [%s]\n' "${filename##*/}" "$*"
+  timeout="${TEST_TIMEOUT:-15m}"
   # Exit on failure here
-  GO111MODULE=on go test -v -test.timeout=60m --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --default-inbound-policy="$default_inbound_policy" --k8s-context="$context" --integration-tests "$@" || exit 1
+  GO111MODULE=on go test -v -test.timeout="$timeout" --failfast --mod=readonly "$filename" \
+    --linkerd="$linkerd_path" \
+    --helm-path="$helm_path" \
+    --default-inbound-policy="$default_inbound_policy" \
+    --k8s-context="$context" \
+    --integration-tests "$@"
 }
 
 # Returns the latest version for the release channel

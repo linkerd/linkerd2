@@ -69,7 +69,7 @@ func TestSmoke(t *testing.T) {
 		}
 
 		// Test 'linkerd check --proxy' with the current image version
-		cmd = []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", ns, "--wait=60m"}
+		cmd = []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", ns, "--wait=5m"}
 		expected := getCheckOutput(t, "check.proxy.golden", TestHelper.GetLinkerdNamespace())
 
 		// Use a short time window for check tests to get rid of transient
