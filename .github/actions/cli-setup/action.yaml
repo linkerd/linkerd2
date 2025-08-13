@@ -17,5 +17,5 @@ runs:
       with:
         artifact-ids: ${{ inputs.artifact-id }}
         path: ${{ runner.temp }}/cli
-    - run: mv ${{ runner.temp }}/cli/linkerd2-cli-*-linux-amd64 ${{ inputs.target }}
+    - run: mv ${{ runner.temp }}/cli/linkerd2-cli-*-linux-amd64 ${{ inputs.target }} && chmod 755 ${{ inputs.target }}
       shell: bash
