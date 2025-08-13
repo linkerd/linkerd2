@@ -160,10 +160,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ./cli/linkerd2-cli-*-darwin*
-            ./cli/linkerd2-cli-*-linux-*
-            ./cli/linkerd2-cli-*-windows.*
-            ./cli/linkerd2-cli-*.nupkg
+            ./cli/linkerd2-cli-*
 
   website_publish:
     name: Linkerd website publish

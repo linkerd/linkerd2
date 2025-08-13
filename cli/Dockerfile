@@ -22,7 +22,7 @@ COPY pkg pkg
 
 RUN mkdir -p /out
 
-ARG LINKERD_VERSION
+ARG LINKERD_VERSION="dev-0.0.0"
 ENV CGO_ENABLED=0
 ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
 
