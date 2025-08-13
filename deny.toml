@@ -61,10 +61,11 @@ skip-tree = [
     { name = "indexmap" },
     # thiserror v2 is still making its way through the ecosystem
     { name = "thiserror", version = "1" },
-    # rand v0.9 is still making its way through the ecosystem
-    { name = "rand", version = "0.8" },
-    # https://github.com/hyperium/tonic/issues/2135
-    { name = "tonic", version = "0.12" },
+    # getrandom v0.3 is still making its way through the ecosystem
+    { name = "getrandom", version = "0.2" },
+    # zerocopy v0.8 is still making its way through the ecosystem
+    { name = "zerocopy", version = "0.7" },
+    { name = "tonic", version = "0.13" },
 ]
 
 [sources]
