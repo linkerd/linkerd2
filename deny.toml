@@ -65,7 +65,8 @@ skip-tree = [
     { name = "getrandom", version = "0.2" },
     # zerocopy v0.8 is still making its way through the ecosystem
     { name = "zerocopy", version = "0.7" },
-    { name = "tonic", version = "0.13" },
+    # tonic 0.13 still uses socket2 0.5
+    { name = "socket2", version = "0.5" },
 ]
 
 [sources]
