@@ -635,7 +635,6 @@ data:
       serviceMirror:
         enabled: true
     policyController:
-      image: null
       logLevel: info
       probeNetworks:
       - 0.0.0.0/0

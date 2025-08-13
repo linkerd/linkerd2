@@ -654,10 +654,6 @@ data:
       serviceMirror:
         enabled: true
     policyController:
-      image:
-        name: cr.l5d.io/linkerd/controller
-        pullPolicy: ""
-        version: ""
       logLevel: info
       probeNetworks:
       - 0.0.0.0/0

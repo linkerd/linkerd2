@@ -68,11 +68,6 @@ func TestRender(t *testing.T) {
 		PodLabels:               map[string]string{},
 		PriorityClassName:       "PriorityClassName",
 		PolicyController: &charts.PolicyController{
-			Image: &charts.Image{
-				Name:       "PolicyControllerImageName",
-				PullPolicy: "ImagePullPolicy",
-				Version:    "PolicyControllerVersion",
-			},
 			LogLevel: "log-level",
 			Resources: &charts.Resources{
 				CPU: charts.Constraints{
