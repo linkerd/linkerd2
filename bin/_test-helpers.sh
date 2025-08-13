@@ -17,7 +17,7 @@ export external_resource_test_names=(external-resources)
 # TODO(alpeb): add test cni-calico-deep-dual-stack
 export dual_stack_test_names=(deep-dual-stack)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}" "${dual_stack_test_names[*]}")
-images_load_default=(proxy controller policy-controller web metrics-api tap)
+images_load_default=(proxy controller web metrics-api tap)
 
 tests_usage() {
   progname=${0##*/}

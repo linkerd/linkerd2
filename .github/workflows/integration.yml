@@ -102,7 +102,6 @@ jobs:
       matrix:
         component:
           - controller
-          - policy-controller
           - proxy
     timeout-minutes: 20
     steps:
@@ -216,7 +215,6 @@ jobs:
       - run: just policy-test-build
       - run: just k3d-k8s='${{ matrix.k8s }}' k3d-create
       - run: docker load <image-archives/controller.tar
-      - run: docker load <image-archives/policy-controller.tar
       - run: docker load <image-archives/proxy.tar
       - run: docker image ls
       - run: just linkerd-tag='${{ needs.meta.outputs.tag }}' linkerd-exec="$HOME/linkerd" linkerd-install
@@ -368,7 +366,7 @@ jobs:
           bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
       - name: Load docker images
         run: |
-          for img in controller policy-controller proxy; do
+          for img in controller proxy; do
             docker load <"image-archives/${img}.tar"
           done
       - run: docker image ls
