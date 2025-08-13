@@ -362,9 +362,7 @@ spec:
         {{- range .Values.policyController.experimentalArgs }}
         - {{ . }}
         {{- end }}
-        {{- $img := .Values.controllerImage }}
-        {{- $tag := .Values.controllerImageVersion | default .Values.linkerdVersion }}
-        image: {{ $img }}:{{ $tag }}
+        image: {{ .Values.controllerImage }}:{{ .Values.controllerImageVersion | default .Values.linkerdVersion }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         livenessProbe:
           httpGet:
