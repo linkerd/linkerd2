@@ -34,7 +34,9 @@ jobs:
     needs: [tag]
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     permissions:
-      id-token: write # needed for signing the images with GitHub OIDC Token
+      contents: read
+      packages: write # for docker/login-action
+      id-token: write # for cosign
     strategy:
       matrix:
         component:
@@ -53,14 +55,17 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - name: Set tag
         run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
+      - uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/docker-build
         id: build
         with:
           docker-registry: ${{ env.DOCKER_REGISTRY }}
           docker-target: multi-arch
           docker-push: 1
-          docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
-          docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
           component: ${{ matrix.component }}
           tag: ${{ needs.tag.outputs.tag }}
         env:
