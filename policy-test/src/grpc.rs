@@ -106,7 +106,7 @@ pub struct OutboundPolicyClient {
 
 #[derive(Debug)]
 struct GrpcHttp {
-    tx: hyper::client::conn::http2::SendRequest<tonic::body::BoxBody>,
+    tx: hyper::client::conn::http2::SendRequest<tonic::body::Body>,
 }
 
 async fn get_policy_controller_pod(client: &kube::Client) -> Result<String> {
@@ -332,7 +332,7 @@ impl GrpcHttp {
     }
 }
 
-impl tower::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp {
+impl tower::Service<hyper::Request<tonic::body::Body>> for GrpcHttp {
     type Response = hyper::Response<hyper::body::Incoming>;
     type Error = hyper::Error;
     type Future = future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
@@ -344,7 +344,7 @@ impl tower::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp {
         self.tx.poll_ready(cx)
     }
 
-    fn call(&mut self, req: hyper::Request<tonic::body::BoxBody>) -> Self::Future {
+    fn call(&mut self, req: hyper::Request<tonic::body::Body>) -> Self::Future {
         let (mut parts, body) = req.into_parts();
 
         let mut uri = parts.uri.into_parts();
