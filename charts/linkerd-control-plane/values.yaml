@@ -377,7 +377,7 @@ networkValidator:
   listenAddr: ""
   # -- Timeout before network-validator fails to validate the pod's network connectivity
   timeout: "10s"
-  # -- Include a securityContext in the network-validator pod spec
+  # -- Deprecated: use securityContext and set to empty object instead
   enableSecurityContext: true
   # -- The securityContext in the network-validator pod spec
   securityContext:

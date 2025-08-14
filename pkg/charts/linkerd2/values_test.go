@@ -233,12 +233,11 @@ func TestNewValues(t *testing.T) {
 			RunAsGroup: 65534,
 		},
 		NetworkValidator: &NetworkValidator{
-			LogLevel:              "debug",
-			LogFormat:             "plain",
-			ConnectAddr:           "",
-			ListenAddr:            "",
-			Timeout:               "10s",
-			EnableSecurityContext: true,
+			LogLevel:    "debug",
+			LogFormat:   "plain",
+			ConnectAddr: "",
+			ListenAddr:  "",
+			Timeout:     "10s",
 			SecurityContext: map[string]interface{}{
 				"allowPrivilegeEscalation": false,
 				"capabilities": map[string]interface{}{

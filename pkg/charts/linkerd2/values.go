@@ -234,13 +234,12 @@ type (
 	}
 
 	NetworkValidator struct {
-		LogLevel              string                 `json:"logLevel"`
-		LogFormat             string                 `json:"logFormat"`
-		ConnectAddr           string                 `json:"connectAddr"`
-		ListenAddr            string                 `json:"listenAddr"`
-		Timeout               string                 `json:"timeout"`
-		EnableSecurityContext bool                   `json:"enableSecurityContext"`
-		SecurityContext       map[string]interface{} `json:"securityContext"`
+		LogLevel        string                 `json:"logLevel"`
+		LogFormat       string                 `json:"logFormat"`
+		ConnectAddr     string                 `json:"connectAddr"`
+		ListenAddr      string                 `json:"listenAddr"`
+		Timeout         string                 `json:"timeout"`
+		SecurityContext map[string]interface{} `json:"securityContext"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar
