@@ -41,24 +41,22 @@ jobs:
       matrix:
         component:
           - controller
-          - policy-controller
           - debug
           - jaeger-webhook
           - metrics-api
           - proxy
           - tap
           - web
-    # policy-controller docker builds have occasionally hit a 30-minute timeout.
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - name: Set tag
         run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
-      - uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+      - uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_GHCR_USERNAME }}
+          password: ${{ secrets.DOCKER_GHCR_PAT }}
       - uses: ./.github/actions/docker-build
         id: build
         with:

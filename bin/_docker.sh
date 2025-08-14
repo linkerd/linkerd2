@@ -33,7 +33,6 @@ export SUPPORTED_ARCHS=${SUPPORTED_ARCHS:-linux/amd64,linux/arm64}
 export DOCKER_IMAGES=(${DOCKER_IMAGES:-
     cli-bin
     controller
-    policy-controller
     metrics-api
     debug
     proxy
