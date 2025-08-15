@@ -1,0 +1,41 @@
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+      target:
+        type: string
+        required: false
+        default: 'multi-arch'
+    outputs:
+      artifact-id:
+        value: ${{ jobs.build.outputs.artifact-id }}
+
+jobs:
+  build:
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
+      - uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        id: build
+        with:
+          build-args: |
+            LINKERD_VERSION=${{ inputs.version }}
+          target: ${{ inputs.target }}
+          context: .
+          file: cli/Dockerfile
+          cache-from: type=gha,scope=${{ github.ref_name }}-cli
+          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-cli
+          push: false
+          load: false
+          outputs: type=local,dest=.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        id: upload
+        with:
+          name: cli-bin-${{ inputs.version }}-${{ inputs.target }}
+          path: linkerd2-cli-${{ inputs.version }}-*
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}

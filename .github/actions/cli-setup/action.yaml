@@ -1,0 +1,21 @@
+
+name: CLI Setup
+description: Fetches the Linkerd CLI from an artifact and installs it into the target.
+
+inputs:
+  artifact-id:
+    description: The ID of the artifact to download.
+    required: true
+  target:
+    description: The path to install the CLI into.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      with:
+        artifact-ids: ${{ inputs.artifact-id }}
+        path: ${{ runner.temp }}/cli
+    - run: mv ${{ runner.temp }}/cli/linkerd2-cli-*-linux-amd64 ${{ inputs.target }} && chmod 755 ${{ inputs.target }}
+      shell: bash
