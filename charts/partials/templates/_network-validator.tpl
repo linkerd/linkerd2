@@ -3,7 +3,7 @@ name: linkerd-network-validator
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion }}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
 {{ include "partials.resources" .Values.proxy.resources }}
-{{- if or .Values.networkValidator.enableSecurityContext }}
+{{- if ne .Values.networkValidator.enableSecurityContext false }}
 securityContext:
   {{- if .Values.networkValidator.securityContext }}
   {{- toYaml .Values.networkValidator.securityContext | trim | nindent 2 }}
