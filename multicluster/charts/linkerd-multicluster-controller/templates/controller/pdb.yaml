@@ -1,0 +1,20 @@
+{{- range .Values.controllers }}
+{{- if dig "enablePodAntiAffinity" $.Values.enablePodAntiAffinity . }}
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1
+metadata:
+  name: controller-{{.link.ref.name}}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    component: controller
+  annotations:
+    {{ include "partials.annotations.created-by" $ }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      component: controller
+      mirror.linkerd.io/cluster-name: {{.link.ref.name}}
+{{- end}}
+{{- end}}

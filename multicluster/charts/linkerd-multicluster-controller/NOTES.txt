@@ -1,0 +1,9 @@
+The Linkerd Multicluster Controller was successfully installed 🎉
+
+This chart installs controller component of the Linkerd Multicluster extension.
+
+To verify the controller is healthy, run the following:
+
+  linkerd multicluster check
+
+Looking for more? Visit https://linkerd.io/2/features/multicluster/

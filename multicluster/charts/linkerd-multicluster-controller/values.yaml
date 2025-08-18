@@ -1,0 +1,82 @@
+# -- Additional annotations to add to all pods
+podAnnotations: {}
+# -- Additional labels to add to all pods
+podLabels: {}
+# -- Labels to apply to all resources
+commonLabels: {}
+# -- For Private docker registries, authentication is needed.
+#  Registry secrets are applied to the respective service accounts
+imagePullSecrets: []
+
+# -- Toggle support for creating namespaces for mirror services when necessary
+enableNamespaceCreation: false
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
+enablePodAntiAffinity: false
+
+# -- Specifies the number of old ReplicaSets to retain to allow rollback.
+revisionHistoryLimit: 10
+
+# -- List of service mirror controllers.
+# References to the Links deployed in the cluster, each of which will have a
+# corresponding service mirror controller deployed.
+# Only `link.ref.name` is required for each entry.
+# Example (all the missing values take their values from controllerDefaults):
+# controllers:
+# - link:
+#     ref:
+#       name: target1
+#   logLevel: debug
+# - link:
+#     ref:
+#       name: target2
+#   gateway:
+#     enabled: false
+#   replicas: 2
+controllers: []
+
+# -- Additional environment variables to inject into the controller container
+# Example:
+# serviceMirrorAdditionalEnv:
+# - name: HTTP_PROXY
+#   value: http://proxy.example.com:8080
+serviceMirrorAdditionalEnv: []
+
+# -- Experimental environment variables to inject into the controller container
+serviceMirrorExperimentalEnv: []
+
+controllerDefaults:
+  # -- Number of service mirror replicas for a given Link
+  replicas: 1
+  image:
+    name: cr.l5d.io/linkerd/controller
+    # @default -- imagePullPolicy
+    pullPolicy: ""
+    # @default -- linkerdVersion
+    version: linkerdVersionValue
+  gateway:
+    # -- Enables a probe service for the gateway
+    enabled: true
+    probe:
+      # -- Port used for liveliness probing
+      port: 4191
+  # -- Log level (`error`, `warn`, `info`, `debug` or `trace`)
+  logLevel: info
+  # -- Log format (`plain` or `json`)
+  logFormat: plain
+  # -- Toggle support for mirroring headless services
+  enableHeadlessServices: false
+  # -- Enables the use of pprof endpoints for the controller
+  enablePprof: false
+  UID: 2103
+  GID: 2103
+  # -- Number of times service mirror updates are allowed to be requeued (retried)
+  retryLimit: 3
+  # -- Resources to assign to the controller.
+  # See `policyController.resources` in the linkerd-control-plane chart for the expected format
+  resources: {}
+  nodeSelector: {}
+  tolerations: {}
+  enablePodAntiAffinity: false
+  nodeAffinity: {}
