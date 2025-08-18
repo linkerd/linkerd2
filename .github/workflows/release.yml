@@ -82,7 +82,7 @@ jobs:
     name: Static CLI tests (windows)
     timeout-minutes: 30
     runs-on: windows-latest
-    needs: [docker_build]
+    needs: [cli, docker_build]
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
