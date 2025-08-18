@@ -5,6 +5,7 @@ FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS go-deps
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 RUN go mod download
+RUN apk update && apk add openssl
 
 ## compile binaries
 FROM go-deps AS go-gen
