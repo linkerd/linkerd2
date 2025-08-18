@@ -578,7 +578,6 @@ data:
     linkerdVersion: linkerd-version
     networkValidator:
       connectAddr: ""
-      enableSecurityContext: true
       listenAddr: ""
       logFormat: plain
       logLevel: debug
