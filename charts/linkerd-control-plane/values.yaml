@@ -719,3 +719,57 @@ egress:
 configReaders:
 #- name:
 #  namespace:
+
+# multicluster-controller:
+#   # -- List of service mirror controllers.
+#   # References to the Links deployed in the cluster, each of which will have a
+#   # corresponding service mirror controller deployed.
+#   # Only `link.ref.name` is required for each entry.
+#   # Example (all the missing values take their values from controllerDefaults):
+#   # controllers:
+#   # - link:
+#   #     ref:
+#   #       name: target1
+#   #   logLevel: debug
+#   # - link:
+#   #     ref:
+#   #       name: target2
+#   #   gateway:
+#   #     enabled: false
+#   #   replicas: 2
+#   controllers: []
+
+#   controllerDefaults:
+#     # -- Number of service mirror replicas for a given Link
+#     replicas: 1
+#     image:
+#       name: cr.l5d.io/linkerd/controller
+#       # @default -- imagePullPolicy
+#       pullPolicy: ""
+#       # @default -- linkerdVersion
+#       version: linkerdVersionValue
+#     gateway:
+#       # -- Enables a probe service for the gateway
+#       enabled: true
+#       probe:
+#         # -- Port used for liveliness probing
+#         port: 4191
+#     # -- Log level (`error`, `warn`, `info`, `debug` or `trace`)
+#     logLevel: info
+#     # -- Log format (`plain` or `json`)
+#     logFormat: plain
+#     # -- Toggle support for mirroring headless services
+#     enableHeadlessServices: false
+#     # -- Enables the use of pprof endpoints for the controller
+#     enablePprof: false
+#     UID: 2103
+#     GID: 2103
+#     # -- Number of times service mirror updates are allowed to be requeued (retried)
+#     retryLimit: 3
+#     # -- Resources to assign to the controller.
+#     # See `policyController.resources` in the linkerd-control-plane chart for the expected format
+#     resources: {}
+#     nodeSelector: {}
+#     tolerations: {}
+#     enablePodAntiAffinity: false
+#     nodeAffinity: {}

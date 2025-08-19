@@ -16,6 +16,10 @@ dependencies:
   - name: partials
     version: 0.1.0
     repository: file://../partials
+  - name: linkerd-multicluster-controller
+    alias: multicluster-controller
+    version: 0.0.0-undefined
+    repository: file://../../multicluster/charts/linkerd-multicluster-controller
 # this version will be updated by the CI before publishing the Helm tarball
 version: 0.0.0-undefined
 icon: https://linkerd.io/images/logo-only-200h.png
