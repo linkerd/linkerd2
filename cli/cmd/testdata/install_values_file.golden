@@ -601,10 +601,20 @@ data:
     linkerdVersion: install-control-plane-version
     networkValidator:
       connectAddr: ""
-      enableSecurityContext: true
       listenAddr: ""
       logFormat: plain
       logLevel: debug
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
       timeout: 10s
     nodeAffinity: null
     nodeSelector:
@@ -739,6 +749,7 @@ data:
         workers:
           minimum: 1
       saMountPath: null
+      securityContext: {}
       shutdownGracePeriod: ""
       startupProbe:
         failureThreshold: 120

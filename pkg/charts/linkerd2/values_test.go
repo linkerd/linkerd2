@@ -146,6 +146,7 @@ func TestNewValues(t *testing.T) {
 			},
 			UID:                                  2102,
 			GID:                                  -1,
+			SecurityContext:                      map[string]interface{}{},
 			WaitBeforeExitSeconds:                0,
 			OutboundConnectTimeout:               "1000ms",
 			InboundConnectTimeout:                "100ms",
@@ -232,12 +233,23 @@ func TestNewValues(t *testing.T) {
 			RunAsGroup: 65534,
 		},
 		NetworkValidator: &NetworkValidator{
-			LogLevel:              "debug",
-			LogFormat:             "plain",
-			ConnectAddr:           "",
-			ListenAddr:            "",
-			Timeout:               "10s",
-			EnableSecurityContext: true,
+			LogLevel:    "debug",
+			LogFormat:   "plain",
+			ConnectAddr: "",
+			ListenAddr:  "",
+			Timeout:     "10s",
+			SecurityContext: map[string]interface{}{
+				"allowPrivilegeEscalation": false,
+				"capabilities": map[string]interface{}{
+					"drop": []interface{}{"ALL"},
+				},
+				"readOnlyRootFilesystem": true,
+				"runAsGroup":             float64(65534),
+				"runAsNonRoot":           true,
+				"runAsUser":              float64(65534),
+				"seccompProfile": map[string]interface{}{
+					"type": "RuntimeDefault"},
+			},
 		},
 		Identity: &Identity{
 			ServiceAccountTokenProjection: true,

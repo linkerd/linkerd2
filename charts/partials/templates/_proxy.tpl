@@ -276,6 +276,9 @@ startupProbe:
 {{ include "partials.resources" .Values.proxy.resources }}
 {{- end }}
 securityContext:
+{{- if .Values.proxy.securityContext }}
+  {{- toYaml .Values.proxy.securityContext | trim | nindent 2 }}
+{{- else }}
   allowPrivilegeEscalation: false
   {{- if .Values.proxy.capabilities -}}
   {{- include "partials.proxy.capabilities" . | nindent 2 -}}
@@ -288,6 +291,7 @@ securityContext:
 {{- end }}
   seccompProfile:
     type: RuntimeDefault
+{{- end }}
 terminationMessagePolicy: FallbackToLogsOnError
 {{- if and (not .Values.proxy.nativeSidecar) (or .Values.proxy.await .Values.proxy.waitBeforeExitSeconds) }}
 lifecycle:

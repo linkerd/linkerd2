@@ -162,7 +162,8 @@ type (
 		// Deprecated: Use Runtime.Workers.Minimum.
 		Cores int64 `json:"cores,omitempty"`
 
-		Runtime ProxyRuntime `json:"runtime,omitempty"`
+		Runtime         ProxyRuntime           `json:"runtime,omitempty"`
+		SecurityContext map[string]interface{} `json:"securityContext"`
 	}
 
 	ProxyParams      = map[string]ProxyScopeParams
@@ -233,12 +234,12 @@ type (
 	}
 
 	NetworkValidator struct {
-		LogLevel              string `json:"logLevel"`
-		LogFormat             string `json:"logFormat"`
-		ConnectAddr           string `json:"connectAddr"`
-		ListenAddr            string `json:"listenAddr"`
-		Timeout               string `json:"timeout"`
-		EnableSecurityContext bool   `json:"enableSecurityContext"`
+		LogLevel        string                 `json:"logLevel"`
+		LogFormat       string                 `json:"logFormat"`
+		ConnectAddr     string                 `json:"connectAddr"`
+		ListenAddr      string                 `json:"listenAddr"`
+		Timeout         string                 `json:"timeout"`
+		SecurityContext map[string]interface{} `json:"securityContext"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar

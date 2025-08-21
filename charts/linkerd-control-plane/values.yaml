@@ -215,6 +215,8 @@ proxy:
   uid: 2102
   # -- (int) Optional customisation of the group id under which the proxy runs (the group ID will be omitted if lower than 0)
   gid: -1
+  # -- Optional custom security context for the proxy container.
+  securityContext: {}
 
   # -- If set the injected proxy sidecars in the data plane will stay alive for
   # at least the given period before receiving the SIGTERM signal from
@@ -375,8 +377,18 @@ networkValidator:
   listenAddr: ""
   # -- Timeout before network-validator fails to validate the pod's network connectivity
   timeout: "10s"
-  # -- Include a securityContext in the network-validator pod spec
-  enableSecurityContext: true
+  # -- The securityContext in the network-validator pod spec
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: true
+    runAsGroup: 65534
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
 
 # -- For Private docker registries, authentication is needed.
 #  Registry secrets are applied to the respective service accounts
