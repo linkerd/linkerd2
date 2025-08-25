@@ -69,7 +69,7 @@
     "eslint-webpack-plugin": "^4.2.0",
     "file-loader": "^6.2.0",
     "history": "5.3.0",
-    "html-webpack-plugin": "^5.6.3",
+    "html-webpack-plugin": "^5.6.4",
     "jest": "^30.0.4",
     "jest-environment-jsdom": "^30.0.4",
     "lodash-webpack-plugin": "^0.11.6",
