@@ -730,13 +730,25 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context,
 
 		// Get and parse the gateway metrics so that we can extract liveness
 		// information.
-		gatewayMetrics := getGatewayMetrics(hc.KubeAPIClient(), pods.Items, leaders, wait)
+		gatewayMetrics, err := getGatewayMetrics(hc.KubeAPIClient(), pods.Items, leaders, wait)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("failed to get gateway metrics for target cluster %s: %w", link.Spec.TargetClusterName, err))
+			continue
+		}
+
 		if len(gatewayMetrics) != 1 {
 			errors = append(errors, fmt.Errorf("expected exactly one gateway metric for target cluster %s; got %d", link.Spec.TargetClusterName, len(gatewayMetrics)))
 			continue
 		}
+
+		gatewayMetric := gatewayMetrics[0]
+		if gatewayMetric.err != nil {
+			errors = append(errors, fmt.Errorf("Failed to get gateway status for %s: %w\n", gatewayMetric.clusterName, gatewayMetric.err))
+			continue
+		}
+
 		var metricsParser expfmt.TextParser
-		parsedMetrics, err := metricsParser.TextToMetricFamilies(bytes.NewReader(gatewayMetrics[0].metrics))
+		parsedMetrics, err := metricsParser.TextToMetricFamilies(bytes.NewReader(gatewayMetric.metrics))
 		if err != nil {
 			errors = append(errors, fmt.Errorf("failed to parse gateway metrics for target cluster %s: %w", link.Spec.TargetClusterName, err))
 			continue

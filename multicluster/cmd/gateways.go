@@ -98,7 +98,12 @@ func newGatewaysCommand() *cobra.Command {
 			}
 
 			var statuses []gatewayStatus
-			gatewayMetrics := getGatewayMetrics(k8sAPI, pods.Items, leaders, opts.wait)
+			gatewayMetrics, err := getGatewayMetrics(k8sAPI, pods.Items, leaders, opts.wait)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to get gateway metrics for cluster %s: %s\n", opts.clusterName, err)
+				os.Exit(1)
+			}
+
 			for _, gateway := range gatewayMetrics {
 				if gateway.err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to get gateway status for %s: %s\n", gateway.clusterName, gateway.err)
@@ -195,7 +200,7 @@ func newGatewaysCommand() *cobra.Command {
 	return cmd
 }
 
-func getGatewayMetrics(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, leaders map[string]struct{}, wait time.Duration) []gatewayMetrics {
+func getGatewayMetrics(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, leaders map[string]struct{}, wait time.Duration) ([]gatewayMetrics, error) {
 	var metrics []gatewayMetrics
 	metricsChan := make(chan gatewayMetrics)
 	var wg sync.WaitGroup
@@ -250,11 +255,11 @@ wait:
 			}
 			metrics = append(metrics, metric)
 		case <-timeout.C:
-			break wait
+			return nil, fmt.Errorf("timed out waiting for metrics")
 		}
 	}
 
-	return metrics
+	return metrics, nil
 }
 
 func getServiceMirrorContainer(pod corev1.Pod) (corev1.Container, error) {
