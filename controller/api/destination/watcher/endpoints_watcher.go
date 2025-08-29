@@ -261,8 +261,7 @@ func (ew *EndpointsWatcher) Subscribe(id ServiceID, port Port, hostname string, 
 
 	sp := ew.getOrNewServicePublisher(id)
 
-	sp.subscribe(port, hostname, listener)
-	return nil
+	return sp.subscribe(port, hostname, listener)
 }
 
 // Unsubscribe removes a listener from the subscribers list for this authority.
@@ -659,7 +658,7 @@ func (sp *servicePublisher) updateService(newService *corev1.Service) {
 
 }
 
-func (sp *servicePublisher) subscribe(srcPort Port, hostname string, listener EndpointUpdateListener) {
+func (sp *servicePublisher) subscribe(srcPort Port, hostname string, listener EndpointUpdateListener) error {
 	sp.Lock()
 	defer sp.Unlock()
 
@@ -669,10 +668,15 @@ func (sp *servicePublisher) subscribe(srcPort Port, hostname string, listener En
 	}
 	port, ok := sp.ports[key]
 	if !ok {
-		port = sp.newPortPublisher(srcPort, hostname)
+		var err error
+		port, err = sp.newPortPublisher(srcPort, hostname)
+		if err != nil {
+			return err
+		}
 		sp.ports[key] = port
 	}
 	port.subscribe(listener)
+	return nil
 }
 
 func (sp *servicePublisher) unsubscribe(srcPort Port, hostname string, listener EndpointUpdateListener) {
@@ -693,7 +697,7 @@ func (sp *servicePublisher) unsubscribe(srcPort Port, hostname string, listener 
 	}
 }
 
-func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *portPublisher {
+func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) (*portPublisher, error) {
 	targetPort := intstr.FromInt(int(srcPort))
 	svc, err := sp.k8sAPI.Svc().Lister().Services(sp.id.Namespace).Get(sp.id.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -707,6 +711,10 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 
 	log := sp.log.WithField("port", srcPort)
 
+	metrics, err := endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort, hostname))
+	if err != nil {
+		return nil, err
+	}
 	port := &portPublisher{
 		listeners:            []EndpointUpdateListener{},
 		targetPort:           targetPort,
@@ -716,7 +724,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 		k8sAPI:               sp.k8sAPI,
 		metadataAPI:          sp.metadataAPI,
 		log:                  log,
-		metrics:              endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort, hostname)),
+		metrics:              metrics,
 		enableEndpointSlices: sp.enableEndpointSlices,
 		localTrafficPolicy:   sp.localTrafficPolicy,
 	}
@@ -744,7 +752,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 		}
 	}
 
-	return port
+	return port, nil
 }
 
 func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus.Labels {

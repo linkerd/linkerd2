@@ -1,6 +1,8 @@
 package k8s
 
 import (
+	"fmt"
+
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"k8s.io/client-go/rest"
@@ -9,14 +11,22 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-func wrapTransport(config *rest.Config, telemetryName string) *rest.Config {
+func wrapTransport(config *rest.Config, telemetryName string) (*rest.Config, error) {
 	wt := config.WrapTransport
-	config.WrapTransport = prometheus.ClientWithTelemetry(telemetryName, wt)
-	return config
+	wrapped, err := prometheus.ClientWithTelemetry(telemetryName, wt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to wrap transport: %w", err)
+	}
+	config.WrapTransport = wrapped
+	return config, nil
 }
 
 // NewL5DCRDClient returns a Linkerd controller client for the given
 // configuration.
 func NewL5DCRDClient(kubeConfig *rest.Config) (*l5dcrdclient.Clientset, error) {
-	return l5dcrdclient.NewForConfig(wrapTransport(kubeConfig, "l5dCrd"))
+	config, err := wrapTransport(kubeConfig, "l5dCrd")
+	if err != nil {
+		return nil, err
+	}
+	return l5dcrdclient.NewForConfig(config)
 }

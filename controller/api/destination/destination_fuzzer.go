@@ -94,7 +94,10 @@ func FuzzProfileTranslatorUpdate(data []byte) int {
 
 	id := watcher.ServiceID{Namespace: "bar", Name: "foo"}
 	server := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
-	translator := newProfileTranslator(id, server, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+	translator, err := newProfileTranslator(id, server, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+	if err != nil {
+		return 0
+	}
 	translator.Start()
 	defer translator.Stop()
 	translator.Update(profile)

@@ -1119,7 +1119,7 @@ metadata:
 	metadataAPI.Sync(nil)
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	translator := newEndpointTranslator(
+	translator, err := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
 		forceOpaqueTransport,
@@ -1136,5 +1136,8 @@ metadata:
 		nil,
 		logging.WithField("test", t.Name()),
 	)
+	if err != nil {
+		t.Fatalf("failed to create endpoint translator: %s", err)
+	}
 	return mockGetServer, translator
 }
