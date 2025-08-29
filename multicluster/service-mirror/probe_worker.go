@@ -102,7 +102,13 @@ probeLoop:
 
 				pw.log.Warnf("Failure threshold (%s) reached - Marking as unhealthy", pw.probeSpec.FailureThreshold)
 				pw.metrics.alive.Set(0)
-				pw.metrics.probes.With(notSuccessLabel).Inc()
+
+				counter, err := pw.metrics.probes.GetMetricWith(notSuccessLabel)
+				if err != nil {
+					pw.log.Errorf("failed to get probe metric: %q", err)
+				} else {
+					counter.Inc()
+				}
 				if pw.alive {
 					pw.alive = false
 					pw.Liveness <- false
@@ -115,7 +121,12 @@ probeLoop:
 				pw.metrics.alive.Set(1)
 				pw.metrics.latency.Set(float64(end.Milliseconds()))
 				pw.metrics.latencies.Observe(float64(end.Milliseconds()))
-				pw.metrics.probes.With(successLabel).Inc()
+				counter, err := pw.metrics.probes.GetMetricWith(successLabel)
+				if err != nil {
+					pw.log.Errorf("failed to get probe metric: %q", err)
+				} else {
+					counter.Inc()
+				}
 				if !pw.alive {
 					pw.alive = true
 					pw.Liveness <- true

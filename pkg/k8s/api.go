@@ -77,8 +77,11 @@ func NewAPIForConfig(
 		prometheus.SetClientQPS("k8s", rest.DefaultQPS)
 		prometheus.SetClientBurst("k8s", rest.DefaultBurst)
 	}
-	wt := config.WrapTransport
-	config.WrapTransport = prometheus.ClientWithTelemetry("k8s", wt)
+	wt, err := prometheus.ClientWithTelemetry("k8s", config.WrapTransport)
+	if err != nil {
+		return nil, fmt.Errorf("error adding telemetry to client: %w", err)
+	}
+	config.WrapTransport = wt
 
 	if impersonate != "" {
 		config.Impersonate = rest.ImpersonationConfig{

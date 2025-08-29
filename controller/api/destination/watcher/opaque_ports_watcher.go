@@ -99,7 +99,12 @@ func (opw *OpaquePortsWatcher) Subscribe(id ServiceID, listener OpaquePortsUpdat
 		numListeners = float64(len(ss.listeners))
 	}
 
-	opw.subscribersGauge.With(id.Labels()).Set(numListeners)
+	gauge, err := opw.subscribersGauge.GetMetricWith(id.Labels())
+	if err != nil {
+		opw.log.Errorf("failed to get service_subscribers metric: %q", err)
+	} else {
+		gauge.Set(numListeners)
+	}
 
 	return nil
 }
@@ -125,7 +130,12 @@ func (opw *OpaquePortsWatcher) Unsubscribe(id ServiceID, listener OpaquePortsUpd
 
 	labels := id.Labels()
 	if len(ss.listeners) > 0 {
-		opw.subscribersGauge.With(labels).Set(float64(len(ss.listeners)))
+		gauge, err := opw.subscribersGauge.GetMetricWith(labels)
+		if err != nil {
+			opw.log.Errorf("failed to get service_subscribers metric: %q", err)
+		} else {
+			gauge.Set(float64(len(ss.listeners)))
+		}
 	} else {
 		if !opw.subscribersGauge.Delete(labels) {
 			opw.log.Warnf("unable to delete service_subscribers metric with labels %s", labels)

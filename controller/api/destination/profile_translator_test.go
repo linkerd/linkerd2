@@ -481,7 +481,10 @@ func newMockTranslator(t *testing.T) (*profileTranslator, chan *pb.DestinationPr
 	t.Helper()
 	id := watcher.ServiceID{Namespace: "bar", Name: "foo"}
 	server := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
-	translator := newProfileTranslator(id, server, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+	translator, err := newProfileTranslator(id, server, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+	if err != nil {
+		t.Fatalf("failed to create profile translator: %s", err)
+	}
 	return translator, server.profilesReceived
 }
 
@@ -593,7 +596,10 @@ func TestProfileTranslator(t *testing.T) {
 
 	t.Run("Sends empty update", func(t *testing.T) {
 		server := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
-		translator := newProfileTranslator(watcher.ID{}, server, logging.WithField("test", t.Name()), "", 80, nil)
+		translator, err := newProfileTranslator(watcher.ID{}, server, logging.WithField("test", t.Name()), "", 80, nil)
+		if err != nil {
+			t.Fatalf("failed to create profile translator: %s", err)
+		}
 
 		translator.Start()
 		defer translator.Stop()

@@ -203,7 +203,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			log.Errorf("Failed to get remote cluster %s", cluster)
 			return status.Errorf(codes.NotFound, "Remote cluster not found: %s", cluster)
 		}
-		translator := newEndpointTranslator(
+		translator, err := newEndpointTranslator(
 			s.config.ControllerNS,
 			remoteConfig.TrustDomain,
 			s.config.ForceOpaqueTransport,
@@ -220,6 +220,9 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			streamEnd,
 			log,
 		)
+		if err != nil {
+			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
+		}
 		translator.Start()
 		defer translator.Stop()
 
@@ -238,7 +241,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	} else {
 		log.Debug("Local discovery service detected")
 		// Local discovery
-		translator := newEndpointTranslator(
+		translator, err := newEndpointTranslator(
 			s.config.ControllerNS,
 			s.config.IdentityTrustDomain,
 			s.config.ForceOpaqueTransport,
@@ -255,6 +258,9 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			streamEnd,
 			log,
 		)
+		if err != nil {
+			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
+		}
 		translator.Start()
 		defer translator.Stop()
 
@@ -397,7 +403,10 @@ func (s *server) subscribeToServiceProfile(
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(service, stream, log, fqn, port, streamEnd)
+	translator, err := newProfileTranslator(service, stream, log, fqn, port, streamEnd)
+	if err != nil {
+		return status.Errorf(codes.Internal, "Failed to create profile translator: %s", err)
+	}
 	translator.Start()
 	defer translator.Stop()
 
@@ -408,7 +417,7 @@ func (s *server) subscribeToServiceProfile(
 
 	// Create an adaptor that merges service-level opaque port configurations
 	// onto profile updates.
-	err := s.opaquePorts.Subscribe(service, opaquePortsAdaptor)
+	err = s.opaquePorts.Subscribe(service, opaquePortsAdaptor)
 	if err != nil {
 		log.Warnf("Failed to subscribe to service updates for %s: %s", service, err)
 		return err
