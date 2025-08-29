@@ -343,7 +343,7 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 
 			// Wait until "target" statefulset is up and running.
 			nginxSpec := testutil.DeploySpec{Namespace: ns, Replicas: 1}
-			o, err := TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace="+nginxSpec.Namespace, "rollout", "status", "--timeout=60m", "statefulset/nginx-statefulset")
+			o, err := TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace="+nginxSpec.Namespace, "rollout", "status", "--timeout=5m", "statefulset/nginx-statefulset")
 			if err != nil {
 				oEvt, _ := TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace="+nginxSpec.Namespace, "get", "event", "--field-selector", "involvedObject.name=nginx-statefulset")
 				testutil.AnnotatedFatalf(t,

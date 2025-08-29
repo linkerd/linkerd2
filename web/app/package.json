@@ -41,10 +41,10 @@
     "whatwg-fetch": "3.6.20"
   },
   "devDependencies": {
-    "@babel/core": "^7.28.0",
+    "@babel/core": "^7.28.3",
     "@babel/eslint-parser": "^7.28.0",
     "@babel/plugin-proposal-class-properties": "^7.17.12",
-    "@babel/preset-env": "^7.28.0",
+    "@babel/preset-env": "^7.28.3",
     "@babel/preset-react": "^7.27.1",
     "@babel/runtime": "^7.27.6",
     "@lingui/cli": "3.17.2",
@@ -69,7 +69,7 @@
     "eslint-webpack-plugin": "^4.2.0",
     "file-loader": "^6.2.0",
     "history": "5.3.0",
-    "html-webpack-plugin": "^5.6.3",
+    "html-webpack-plugin": "^5.6.4",
     "jest": "^30.0.4",
     "jest-environment-jsdom": "^30.0.4",
     "lodash-webpack-plugin": "^0.11.6",
@@ -78,7 +78,7 @@
     "sinon-stub-promise": "4.0.0",
     "style-loader": "^4.0.0",
     "url-loader": "^4.1.1",
-    "webpack": "^5.99.9",
+    "webpack": "^5.101.3",
     "webpack-bundle-analyzer": "4.10.2",
     "webpack-cli": "6.0.1",
     "webpack-dev-server": "5.2.2"

@@ -19,9 +19,9 @@ jobs:
   # especially the TAG variable. And it would be great to stop relying
   # on the root-tag script altogether.
   tag:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
         id: tag
       - name: Validate edge version
@@ -32,35 +32,37 @@ jobs:
   docker_build:
     name: Docker build
     needs: [tag]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     permissions:
-      id-token: write # needed for signing the images with GitHub OIDC Token
+      contents: read
+      packages: write # for docker/login-action
+      id-token: write # for cosign
     strategy:
       matrix:
         component:
-          - cli-bin
           - controller
-          - policy-controller
           - debug
           - jaeger-webhook
           - metrics-api
           - proxy
           - tap
           - web
-    # policy-controller docker builds have occasionally hit a 30-minute timeout.
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - name: Set tag
         run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
+      - uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.DOCKER_GHCR_USERNAME }}
+          password: ${{ secrets.DOCKER_GHCR_PAT }}
       - uses: ./.github/actions/docker-build
         id: build
         with:
           docker-registry: ${{ env.DOCKER_REGISTRY }}
           docker-target: multi-arch
           docker-push: 1
-          docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
-          docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
           component: ${{ matrix.component }}
           tag: ${{ needs.tag.outputs.tag }}
         env:
@@ -69,49 +71,16 @@ jobs:
       - run: cosign sign '${{ steps.build.outputs.digest }}'
         env:
           COSIGN_YES: true
-      - name: Create artifact with CLI
-        # windows_static_cli_tests below needs this because it can't create linux containers
-        # inside windows
-        if: matrix.component == 'cli-bin'
-        env:
-          ARCHIVES: /home/runner/archives
-          DOCKER_TARGET: windows
-        run: |
-          bin/docker-pull-binaries "$TAG"
-          mkdir -p "$ARCHIVES"
-          cp -r "$PWD/target/release/linkerd2-cli-$TAG-windows.exe" "$ARCHIVES/linkerd-windows.exe"
-      # `with.path` values do not support environment variables yet, so an
-      # absolute path is used here.
-      # https://github.com/actions/upload-artifact/issues/8
-      - name: Upload artifact
-        if: matrix.component == 'cli-bin'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: image-archives-cli
-          path: /home/runner/archives
 
-  windows_static_cli_tests:
-    name: Static CLI tests (windows)
-    timeout-minutes: 30
-    runs-on: windows-latest
-    needs: [docker_build]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
-        with:
-          go-version: "1.24"
-      - name: Download image archives
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: image-archives-cli
-          path: image-archives
-      - name: Run CLI Integration tests
-        run: go test --failfast --mod=readonly ".\test\cli" --linkerd="$PWD\image-archives\linkerd-windows.exe" --cli-tests -v
+  cli:
+    needs: tag
+    uses: ./.github/workflows/cli-build.yml
+    with:
+      version: ${{ needs.tag.outputs.tag }}
 
   integration_tests:
     name: Integration tests
-    needs: [tag, docker_build]
+    needs: [tag, cli, docker_build]
     strategy:
       matrix:
         integration_test:
@@ -126,49 +95,41 @@ jobs:
           - uninstall
           - upgrade-edge
     timeout-minutes: 60
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
           go-version: "1.24"
-      - name: Set environment variables from scripts
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
+      - run: echo TAG="${{ needs.tag.outputs.tag }}" >> "$GITHUB_ENV"
+      - name: Validate the CLI version matches the current build tag.
         run: |
-          TAG='${{ needs.tag.outputs.tag }}'
-          CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
-          echo "CMD=$CMD" >> "$GITHUB_ENV"
-          echo "TAG=$TAG" >> "$GITHUB_ENV"
-      - name: Run integration tests
+          [[ "$TAG" == "$(${{ runner.temp }}/linkerd version --short --client)" ]]
+      - run: bin/tests --images preload --name ${{ matrix.integration_test }} "${{ runner.temp }}/linkerd"
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-        run: |
-          bin/docker-pull-binaries "$TAG"
-          # Validate the CLI version matches the current build tag.
-          [[ "$TAG" == "$($CMD version --short --client)" ]]
-          bin/tests --images preload --name ${{ matrix.integration_test }} "$CMD"
 
   gh_release:
     name: Create GH release
     needs:
       - tag
+      - cli
       - integration_tests
     timeout-minutes: 30
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      # - name: Download choco package
-      #   if: startsWith(github.ref, 'refs/tags/stable')
-      #   uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-      #   with:
-      #     name: choco
-      #     path: choco
-      - name: Pull CLI binaries
-        run: DOCKER_TARGET=multi-arch bin/docker-pull-binaries '${{ needs.tag.outputs.tag }}'
-        #  v=${TAG#"stable-"}
-        #  mv choco/linkerd.*.nupkg "target/release/linkerd2-cli-stable-$v.nupkg" || true
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          artifact-ids: ${{ needs.cli.outputs.artifact-id }}
+          path: cli
       - name: Create release
         id: create_release
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8
@@ -178,17 +139,14 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ./target/release/linkerd2-cli-*-darwin*
-            ./target/release/linkerd2-cli-*-linux-*
-            ./target/release/linkerd2-cli-*-windows.*
-            ./target/release/linkerd2-cli-*.nupkg
+            ./cli/linkerd2-cli-*
 
   website_publish:
     name: Linkerd website publish
     needs: [chart_deploy]
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     timeout-minutes: 30
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     permissions:
       contents: write
     steps:
@@ -204,9 +162,9 @@ jobs:
     needs: [tag, website_publish]
     timeout-minutes: 30
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - name: Set install target for stable
         if: startsWith(github.ref, 'refs/tags/stable')
         run: echo "INSTALL=install" >> "$GITHUB_ENV"
@@ -231,12 +189,12 @@ jobs:
     name: Helm chart deploy
     needs: [gh_release]
     timeout-minutes: 30
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - name: Log into GCP
-        uses: "google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193"
+        uses: "google-github-actions/auth@b7593ed2efd1c1617e1b0254da33b86225adb2a5"
         with:
           credentials_json: ${{ secrets.LINKERD_SITE_TOKEN }}
       - name: Edge Helm chart creation and upload

@@ -14,10 +14,10 @@ permissions:
 
 jobs:
   rust-version:
-    runs-on: ubuntu-24.04
-    container: ghcr.io/linkerd/dev:v46-rust
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    container: ghcr.io/linkerd/dev:v47-rust
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - shell: bash
         run: |
           # Extract current Rust version from the toolchain file.
@@ -37,8 +37,8 @@ jobs:
           fi
 
   devcontainer-image:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
-      - uses: linkerd/dev/actions/setup-tools@v46
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: linkerd/dev/actions/setup-tools@v47
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - run: just-dev pull-dev-image

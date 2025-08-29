@@ -8,9 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
@@ -142,21 +140,4 @@ func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
 	}
 
 	return csrb, nil
-}
-
-func runProxy() {
-	path := "/usr/lib/linkerd/linkerd2-proxy"
-	if runtime.GOOS == "windows" {
-		path = "C:\\linkerd\\linkerd2-proxy.exe"
-	}
-
-	cmd := exec.Command(path)
-	cmd.Env = os.Environ()
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("Failed to run proxy: %s", err)
-	}
 }

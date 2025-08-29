@@ -24,12 +24,12 @@ concurrency:
 
 jobs:
   meta:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@055970845dd036d7345da7399b7e89f2e10f2b04
+      - uses: tj-actions/changed-files@3b04099b21072562f07469c10deb182b24236ca9
         id: core
         with:
           files: |
@@ -54,7 +54,7 @@ jobs:
 
   info:
     needs: meta
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 2
     steps:
       - name: Info
@@ -65,28 +65,10 @@ jobs:
   build-cli:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: ./.github/actions/docker-build
-        id: build
-        with:
-          docker-registry: ${{ env.DOCKER_REGISTRY }}
-          docker-target: linux-amd64
-          component: cli-bin
-          tag: ${{ needs.meta.outputs.tag }}
-      - name: Extract CLI binary
-        run: |
-          mkdir -p /home/runner/archives
-          id=$(docker create '${{ steps.build.outputs.image }}')
-          docker cp "$id:/out/linkerd-linux-amd64" /home/runner/archives/linkerd
-          v=$(/home/runner/archives/linkerd version --short --client)
-          [[ "$v" == '${{ needs.meta.outputs.tag }}' ]] || exit 1
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: image-archives-cli
-          path: /home/runner/archives
+    uses: ./.github/workflows/cli-build.yml
+    with:
+      version: ${{ needs.meta.outputs.tag }}
+      target: linux-amd64
 
   ##
   ## Core: Test the core control plane
@@ -97,16 +79,15 @@ jobs:
   build-core:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     strategy:
       matrix:
         component:
           - controller
-          - policy-controller
           - proxy
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - uses: ./.github/actions/docker-build
         id: build
         env:
@@ -129,26 +110,30 @@ jobs:
     needs: [meta, build-cli, build-core]
     if: needs.meta.outputs.changed == 'true'
     strategy:
+      fail-fast: false
       matrix:
         test:
           - cni-calico-deep
           - deep
           - deep-native-sidecar
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
           go-version: "1.24"
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
         with:
           pattern: image-archives-*
           path: image-archives
           merge-multiple: true
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: find image-archives -ls
-      - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} "$HOME/linkerd"
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} ${{ runner.temp }}/linkerd
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           TAG: ${{ needs.meta.outputs.tag }}
@@ -160,9 +145,10 @@ jobs:
   test-policy:
     needs: [meta, build-cli, build-core]
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
         # Test the latest Kubernetes version with the latest Gateway API
         # version, as well as the vendored Gateway API CRDs.
@@ -188,14 +174,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
         with:
           pattern: image-archives-*
           path: image-archives
           merge-multiple: true
       - run: find image-archives -ls
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
       - name: Setup deps
         shell: bash
         run: |
@@ -214,10 +203,9 @@ jobs:
       - run: just policy-test-build
       - run: just k3d-k8s='${{ matrix.k8s }}' k3d-create
       - run: docker load <image-archives/controller.tar
-      - run: docker load <image-archives/policy-controller.tar
       - run: docker load <image-archives/proxy.tar
       - run: docker image ls
-      - run: just linkerd-tag='${{ needs.meta.outputs.tag }}' linkerd-exec="$HOME/linkerd" linkerd-install
+      - run: just linkerd-tag='${{ needs.meta.outputs.tag }}' linkerd-exec="${{ runner.temp }}/linkerd" linkerd-install
       - name: Load images
         run: |
           # Image loading is flakey in CI, so retry!
@@ -239,7 +227,7 @@ jobs:
   build-ext:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     strategy:
       matrix:
         component:
@@ -249,7 +237,7 @@ jobs:
           - web
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -271,6 +259,7 @@ jobs:
     needs: [meta, build-cli, build-core, build-ext]
     if: needs.meta.outputs.changed == 'true'
     strategy:
+      fail-fast: false
       matrix:
         integration_test:
           - cluster-domain
@@ -280,23 +269,26 @@ jobs:
           - helm-upgrade
           - uninstall
           - upgrade-edge
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
           go-version: "1.24"
-      - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
         if: matrix.integration_test == 'helm-upgrade'
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
         with:
           pattern: image-archives-*
           path: image-archives
           merge-multiple: true
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
-      - run: ls -l image-archives/linkerd
-      - run: bin/tests --images archive --cleanup-docker --name '${{ matrix.integration_test }}' "$HOME/linkerd"
+      - run: find image-archives -ls
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name '${{ matrix.integration_test }}' ${{ runner.temp }}/linkerd
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
 
@@ -307,21 +299,23 @@ jobs:
   test-viz:
     needs: [meta, build-cli, build-core, build-ext]
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
           go-version: "1.24"
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
         with:
           pattern: image-archives-*
           path: image-archives
           merge-multiple: true
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
-      - run: ls -l image-archives/linkerd
-      - run: bin/tests --images archive --cleanup-docker --name viz "$HOME/linkerd"
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name viz ${{ runner.temp }}/linkerd
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
 
@@ -333,9 +327,10 @@ jobs:
   test-multicluster:
     needs: [meta, build-cli, build-core, build-ext]
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         cases:
         - {k8s: "v1.23", manage-controllers: false}
@@ -346,17 +341,20 @@ jobs:
       - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
           go-version: "1.24"
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
         with:
           pattern: image-archives-*
           path: image-archives
           merge-multiple: true
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
-      - run: ls -l image-archives/linkerd
+      - run: find image-archives -ls
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
       - name: Setup deps
         shell: bash
         run: |
@@ -364,7 +362,7 @@ jobs:
           bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
       - name: Load docker images
         run: |
-          for img in controller policy-controller proxy; do
+          for img in controller proxy; do
             docker load <"image-archives/${img}.tar"
           done
       - run: docker image ls
@@ -383,7 +381,7 @@ jobs:
   build-ok:
     needs: [build-cli, build-core, build-ext]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
       - name: Results
         run: |
@@ -400,7 +398,7 @@ jobs:
     needs:
       [build-ok, test-core, test-policy, test-ext, test-viz, test-multicluster]
     if: failure() && fromJSON(github.run_attempt) < 3 && needs.build-ok.result == 'success'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     permissions:
       actions: write
     env:
@@ -415,7 +413,7 @@ jobs:
     needs:
       [build-ok, test-core, test-policy, test-ext, test-viz, test-multicluster]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
       - name: Results
         run: |

@@ -144,7 +144,7 @@ metadata:
     linkerd.io/extension: jaeger
     component: jaeger-injector
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   podSelector:
     matchLabels:
@@ -162,7 +162,7 @@ metadata:
     linkerd.io/extension: jaeger
     component: jaeger-injector
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   targetRef:
     group: policy.linkerd.io
@@ -181,7 +181,7 @@ metadata:
   labels:
     linkerd.io/extension: viz
   annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   # Ideally, this should be restricted to the actual set of IPs the kube-api
   # server uses for webhooks in a cluster. This can't easily be discovered.

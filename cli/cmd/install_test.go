@@ -68,11 +68,6 @@ func TestRender(t *testing.T) {
 		PodLabels:               map[string]string{},
 		PriorityClassName:       "PriorityClassName",
 		PolicyController: &charts.PolicyController{
-			Image: &charts.Image{
-				Name:       "PolicyControllerImageName",
-				PullPolicy: "ImagePullPolicy",
-				Version:    "PolicyControllerVersion",
-			},
 			LogLevel: "log-level",
 			Resources: &charts.Resources{
 				CPU: charts.Constraints{
@@ -546,7 +541,6 @@ func testInstallValues() (*charts.Values, error) {
 	values.Proxy.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
 	values.LinkerdVersion = installControlPlaneVersion
-	values.PolicyController.Image.Version = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
 	identityCert, err := os.ReadFile(filepath.Join("testdata", "valid-crt.pem"))

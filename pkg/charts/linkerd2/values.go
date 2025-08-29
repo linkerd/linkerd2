@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/imdario/mergo"
-	"github.com/linkerd/linkerd2/pkg/charts"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
+	"github.com/linkerd/linkerd2/charts"
+	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const (
+var (
 	// HelmChartDirCrds is the directory name for the linkerd-crds chart
 	HelmChartDirCrds = "linkerd-crds"
 
@@ -34,7 +34,7 @@ type (
 		EnablePodAntiAffinity        bool                   `json:"enablePodAntiAffinity"`
 		NodeAffinity                 map[string]interface{} `json:"nodeAffinity"`
 		EnablePodDisruptionBudget    bool                   `json:"enablePodDisruptionBudget"`
-		Controller                   *Controller            `json:"controller"`
+		Controller                   map[string]interface{} `json:"controller"`
 		WebhookFailurePolicy         string                 `json:"webhookFailurePolicy"`
 		DeploymentStrategy           map[string]interface{} `json:"deploymentStrategy,omitempty"`
 		DisableHeartBeat             bool                   `json:"disableHeartBeat"`
@@ -95,11 +95,6 @@ type (
 	// Resources represents the computational resources setup for a given container
 	Egress struct {
 		GlobalEgressNetworkNamespace string `json:"globalEgressNetworkNamespace"`
-	}
-
-	// Controller contains the fields to set the controller container
-	Controller struct {
-		PodDisruptionBudget *PodDisruptionBudget `json:"podDisruptionBudget"`
 	}
 
 	DestinationController struct {
@@ -167,7 +162,8 @@ type (
 		// Deprecated: Use Runtime.Workers.Minimum.
 		Cores int64 `json:"cores,omitempty"`
 
-		Runtime ProxyRuntime `json:"runtime,omitempty"`
+		Runtime         ProxyRuntime           `json:"runtime,omitempty"`
+		SecurityContext map[string]interface{} `json:"securityContext"`
 	}
 
 	ProxyParams      = map[string]ProxyScopeParams
@@ -238,12 +234,12 @@ type (
 	}
 
 	NetworkValidator struct {
-		LogLevel              string `json:"logLevel"`
-		LogFormat             string `json:"logFormat"`
-		ConnectAddr           string `json:"connectAddr"`
-		ListenAddr            string `json:"listenAddr"`
-		Timeout               string `json:"timeout"`
-		EnableSecurityContext bool   `json:"enableSecurityContext"`
+		LogLevel        string                 `json:"logLevel"`
+		LogFormat       string                 `json:"logFormat"`
+		ConnectAddr     string                 `json:"connectAddr"`
+		ListenAddr      string                 `json:"listenAddr"`
+		Timeout         string                 `json:"timeout"`
+		SecurityContext map[string]interface{} `json:"securityContext"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar
@@ -274,7 +270,6 @@ type (
 
 	// PolicyController contains the fields to configure the policy controller container
 	PolicyController struct {
-		Image         *Image     `json:"image"`
 		Resources     *Resources `json:"resources"`
 		LogLevel      string     `json:"logLevel"`
 		ProbeNetworks []string   `json:"probeNetworks"`
@@ -443,12 +438,12 @@ func MergeHAValues(values *Values) error {
 // readDefaults read all the default variables from filename.
 func readDefaults(filename string) (*Values, error) {
 	valuesFile := &loader.BufferedFile{Name: filename}
-	if err := charts.ReadFile(static.Templates, "/", valuesFile); err != nil {
+	if err := chartspkg.ReadFile(charts.Templates, "", valuesFile); err != nil {
 		return nil, err
 	}
 
 	var values Values
-	err := yaml.Unmarshal(charts.InsertVersion(valuesFile.Data), &values)
+	err := yaml.Unmarshal(chartspkg.InsertVersion(valuesFile.Data), &values)
 
 	return &values, err
 }

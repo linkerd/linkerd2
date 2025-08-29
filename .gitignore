@@ -12,7 +12,6 @@ web/app/js/locales/_build
 web/app/js/locales/**/*.js
 web/app/yarn-error.log
 vendor
-**/*.gogen*
 **/*.swp
 **/charts/**/charts
 package-lock.json

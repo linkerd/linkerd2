@@ -600,10 +600,20 @@ data:
     linkerdVersion: linkerd-version
     networkValidator:
       connectAddr: ""
-      enableSecurityContext: true
       listenAddr: ""
       logFormat: plain
       logLevel: debug
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
       timeout: 10s
     nodeAffinity: null
     nodeSelector:
@@ -626,10 +636,6 @@ data:
       serviceMirror:
         enabled: true
     policyController:
-      image:
-        name: cr.l5d.io/linkerd/policy-controller
-        pullPolicy: ""
-        version: ""
       logLevel: info
       probeNetworks:
       - 0.0.0.0/0
@@ -742,6 +748,7 @@ data:
         workers:
           minimum: 1
       saMountPath: null
+      securityContext: {}
       shutdownGracePeriod: ""
       startupProbe:
         failureThreshold: 120
@@ -767,7 +774,7 @@ data:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
         version: test-proxy-init-version
-      iptablesMode: legacy
+      iptablesMode: nft
       kubeAPIServerPorts: 443,6443
       logFormat: ""
       logLevel: ""
@@ -1219,6 +1226,10 @@ spec:
           name: linkerd-identity-token
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --ipv6=false
         - --incoming-proxy-port
         - "4143"
@@ -1751,7 +1762,8 @@ spec:
         - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
           name: kube-api-access
           readOnly: true
-      - args:
+      - command: ["/linkerd-policy-controller"]
+        args:
         - --admin-addr=0.0.0.0:9990
         - --control-plane-namespace=linkerd-dev
         - --grpc-addr=0.0.0.0:8090
@@ -1767,7 +1779,7 @@ spec:
         - --default-opaque-ports=25,587,3306,4444,5432,6379,9300,11211
         - --global-egress-network-namespace=linkerd-egress
         - --probe-networks=0.0.0.0/0,::/0
-        image: cr.l5d.io/linkerd/policy-controller:linkerd-version
+        image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1807,6 +1819,10 @@ spec:
           readOnly: true
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --ipv6=false
         - --incoming-proxy-port
         - "4143"
@@ -2279,6 +2295,10 @@ spec:
           readOnly: true
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --ipv6=false
         - --incoming-proxy-port
         - "4143"

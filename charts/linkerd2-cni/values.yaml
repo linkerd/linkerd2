@@ -32,7 +32,7 @@ useWaitFlag:      false
 # are 'nft', 'legacy' and 'plain'. They invoke the 'iptables-nft',
 # 'iptables-legacy' and 'iptables' commands respectively. The 'plain' mode is
 # targeted at RHEL, which ships with an nftables-based 'iptables' command.
-iptablesMode: "legacy"
+iptablesMode: "nft"
 # -- Disables adding IPv6 rules on top of IPv4 rules
 disableIPv6: true
 # -- Kubernetes priorityClassName for the CNI plugin's Pods
@@ -69,7 +69,7 @@ image:
   # -- Docker image for the CNI plugin
   name: "cr.l5d.io/linkerd/cni-plugin"
   # -- Tag for the CNI container Docker image
-  version: "v1.6.3"
+  version: "v1.6.4"
   # -- Pull policy for the linkerd-cni container
   pullPolicy: IfNotPresent
 

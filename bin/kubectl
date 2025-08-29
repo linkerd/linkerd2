@@ -21,7 +21,7 @@ if [ ! -f "$kubectlbin" ]; then
     os=linux
     case $(uname -m) in
       x86_64) arch=amd64 ;;
-      arm) dpkg --print-architecture | grep -q arm64 && arch=arm64 || arch=arm ;;
+      arm) dpkg --print-architecture | grep -q arm64 && arch=arm64 ;;
     esac
   fi
 

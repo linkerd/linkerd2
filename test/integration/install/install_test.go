@@ -359,7 +359,6 @@ func helmUpgradeFlags(root *tls.CA) ([]string, []string) {
 
 	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
 		coreArgs = append(coreArgs,
-			"--set", "policyController.image.name="+cmd.RegistryOverride("cr.l5d.io/linkerd/policy-controller", override),
 			"--set", "proxy.image.name="+cmd.RegistryOverride("cr.l5d.io/linkerd/proxy", override),
 			"--set", "proxyInit.image.name="+cmd.RegistryOverride("cr.l5d.io/linkerd/proxy-init", override),
 			"--set", "controllerImage="+cmd.RegistryOverride("cr.l5d.io/linkerd/controller", override),
@@ -458,7 +457,7 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
 		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
 		"--atomic",
-		"--timeout", "60m",
+		"--timeout", "5m",
 		"--wait",
 	}
 	extraArgs, vizArgs := helmUpgradeFlags(helmTLSCerts)
@@ -603,11 +602,6 @@ func TestOverridesSecret(t *testing.T) {
 			knownKeys["debugContainer"] = tree.Tree{
 				"image": tree.Tree{
 					"name": reg + "/debug",
-				},
-			}
-			knownKeys["policyController"] = tree.Tree{
-				"image": tree.Tree{
-					"name": reg + "/policy-controller",
 				},
 			}
 			knownKeys["proxy"] = tree.Tree{

@@ -41,6 +41,11 @@ func TestNewValues(t *testing.T) {
 			"maxSurge":       "25%",
 		},
 	}
+	defaultController := map[string]interface{}{
+		"podDisruptionBudget": map[string]interface{}{
+			"maxUnavailable": 1.0,
+		},
+	}
 	expected := &Values{
 		ControllerImage:              "cr.l5d.io/linkerd/controller",
 		ControllerReplicas:           1,
@@ -70,11 +75,7 @@ func TestNewValues(t *testing.T) {
 		EnableEndpointSlices:         true,
 		DisableIPv6:                  true,
 		EnablePodDisruptionBudget:    false,
-		Controller: &Controller{
-			PodDisruptionBudget: &PodDisruptionBudget{
-				MaxUnavailable: 1,
-			},
-		},
+		Controller:                   defaultController,
 		PodMonitor: &PodMonitor{
 			Enabled:        false,
 			ScrapeInterval: "10s",
@@ -105,9 +106,6 @@ func TestNewValues(t *testing.T) {
 			"readinessProbe": map[string]interface{}{"timeoutSeconds": 1.0},
 		},
 		PolicyController: &PolicyController{
-			Image: &Image{
-				Name: "cr.l5d.io/linkerd/policy-controller",
-			},
 			LogLevel: "info",
 			Resources: &Resources{
 				CPU: Constraints{
@@ -148,6 +146,7 @@ func TestNewValues(t *testing.T) {
 			},
 			UID:                                  2102,
 			GID:                                  -1,
+			SecurityContext:                      map[string]interface{}{},
 			WaitBeforeExitSeconds:                0,
 			OutboundConnectTimeout:               "1000ms",
 			InboundConnectTimeout:                "100ms",
@@ -215,7 +214,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 		ProxyInit: &ProxyInit{
-			IptablesMode:        "legacy",
+			IptablesMode:        "nft",
 			IgnoreInboundPorts:  "4567,4568",
 			IgnoreOutboundPorts: "4567,4568",
 			KubeAPIServerPorts:  "443,6443",
@@ -234,12 +233,23 @@ func TestNewValues(t *testing.T) {
 			RunAsGroup: 65534,
 		},
 		NetworkValidator: &NetworkValidator{
-			LogLevel:              "debug",
-			LogFormat:             "plain",
-			ConnectAddr:           "",
-			ListenAddr:            "",
-			Timeout:               "10s",
-			EnableSecurityContext: true,
+			LogLevel:    "debug",
+			LogFormat:   "plain",
+			ConnectAddr: "",
+			ListenAddr:  "",
+			Timeout:     "10s",
+			SecurityContext: map[string]interface{}{
+				"allowPrivilegeEscalation": false,
+				"capabilities": map[string]interface{}{
+					"drop": []interface{}{"ALL"},
+				},
+				"readOnlyRootFilesystem": true,
+				"runAsGroup":             float64(65534),
+				"runAsNonRoot":           true,
+				"runAsUser":              float64(65534),
+				"seccompProfile": map[string]interface{}{
+					"type": "RuntimeDefault"},
+			},
 		},
 		Identity: &Identity{
 			ServiceAccountTokenProjection: true,
@@ -301,13 +311,17 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 
+		haController := map[string]interface{}{
+			"podDisruptionBudget": map[string]interface{}{
+				"maxUnavailable": 1.0,
+			},
+		}
+
 		expected.HighAvailability = true
 		expected.ControllerReplicas = 3
 		expected.EnablePodAntiAffinity = true
 		expected.EnablePodDisruptionBudget = true
-		expected.Controller.PodDisruptionBudget = &PodDisruptionBudget{
-			MaxUnavailable: 1,
-		}
+		expected.Controller = haController
 		expected.DeploymentStrategy = haDeploymentStrategy
 		expected.WebhookFailurePolicy = "Fail"
 
@@ -388,5 +402,19 @@ proxy:
 	err := yaml.Unmarshal([]byte(yml), &Values{})
 	if err != nil {
 		t.Errorf("Failed to unamarshal HA values from yaml: %v\nValues: %v", err, yml)
+	}
+}
+
+// TestHAValuesParsing tests whether a percentage value for PDB
+// can be parsed
+func TestControlerValueParsing(t *testing.T) {
+	yml := `
+controller:
+  podDisruptionBudget:
+    maxUnavailable: 25%`
+
+	err := yaml.Unmarshal([]byte(yml), &Values{})
+	if err != nil {
+		t.Errorf("Failed to unamarshal maxUnavailable as percentage from yaml: %v\nValues: %v", err, yml)
 	}
 }

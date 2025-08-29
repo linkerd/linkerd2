@@ -287,7 +287,6 @@ _linkerd := linkerd-exec + " " + _context
 
 controller-image := DOCKER_REGISTRY + "/controller"
 proxy-image := DOCKER_REGISTRY + "/proxy"
-policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
 
 # When GATEWAY_API_VERSION is 'linkerd' we use the CLI's vendored gateway API
 # CRDs. Otherwise, we install the CRDs from the upstream release.
@@ -329,9 +328,6 @@ linkerd-install *args='': linkerd-load linkerd-crds-install && _linkerd-ready
             --set='imagePullPolicy=Never' \
             --set='controllerImage={{ controller-image }}' \
             --set='linkerdVersion={{ linkerd-tag }}' \
-            --set='policyController.image.name={{ policy-controller-image }}' \
-            --set='policyController.image.version={{ linkerd-tag }}' \
-            --set='policyController.loglevel=info\,linkerd=trace\,kubert=trace' \
             --set='proxy.image.name={{ proxy-image }}' \
             --set='proxy.image.version={{ linkerd-tag }}' \
             --set='proxyInit.image.name=ghcr.io/linkerd/proxy-init' \
@@ -346,7 +342,6 @@ linkerd-uninstall:
 linkerd-load: _linkerd-images _k3d-init
     for i in {1..3} ; do {{ _k3d-load }} \
         '{{ controller-image }}:{{ linkerd-tag }}' \
-        '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}' \
         $({{ _proxy-init-image-cmd }}) && exit || sleep 1 ; done
 
@@ -354,8 +349,7 @@ linkerd-load-cni:
     docker pull -q $({{ _cni-plugin-image-cmd }})
     {{ _k3d-load }} $({{ _cni-plugin-image-cmd }})
 
-linkerd-build: _policy-controller-build
-    TAG={{ linkerd-tag }} bin/docker-build-controller
+linkerd-build: _controller-build
     TAG={{ linkerd-tag }} bin/docker-build-proxy
 
 _linkerd-images:
@@ -364,26 +358,24 @@ _linkerd-images:
     docker pull -q $({{ _proxy-init-image-cmd }})
     for img in \
         '{{ controller-image }}:{{ linkerd-tag }}' \
-        '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}'
     do
         if [ -z $(docker image ls -q "$img") ]; then
             # Build images if any one of the images is missing.
             exec {{ just_executable() }} \
                 controller-image='{{ controller-image }}' \
-                policy-controller-image='{{ policy-controller-image }}' \
                 linkerd-tag='{{ linkerd-tag }}' \
                 linkerd-build
         fi
     done
 
 # Build the policy controller docker image for testing (on amd64).
-_policy-controller-build:
+_controller-build:
     docker buildx build . \
-        --file='policy-controller/Dockerfile' \
+        --file='Dockerfile.controller' \
         --platform={{ if docker-arch == '' { "amd64" } else { docker-arch} }} \
         --build-arg='build_type={{ rs-build-type }}' \
-        --tag='{{ policy-controller-image }}:{{ linkerd-tag }}' \
+        --tag='{{ controller-image }}:{{ linkerd-tag }}' \
         --progress=plain \
         --load
 

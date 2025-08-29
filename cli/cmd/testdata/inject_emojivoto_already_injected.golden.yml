@@ -214,6 +214,10 @@ spec:
           name: http
       initContainers:
       - args:
+        - --firewall-bin-path
+        - iptables-nft
+        - --firewall-save-bin-path
+        - iptables-nft-save
         - --ipv6=false
         - --incoming-proxy-port
         - "4143"
@@ -475,6 +479,10 @@ spec:
           name: http
       initContainers:
       - args:
+        - --firewall-bin-path
+        - iptables-nft
+        - --firewall-save-bin-path
+        - iptables-nft-save
         - --ipv6=false
         - --incoming-proxy-port
         - "4143"
@@ -736,6 +744,10 @@ spec:
           name: http
       initContainers:
       - args:
+        - --firewall-bin-path
+        - iptables-nft
+        - --firewall-save-bin-path
+        - iptables-nft-save
         - --ipv6=false
         - --incoming-proxy-port
         - "4143"
@@ -997,6 +1009,10 @@ spec:
           name: http
       initContainers:
       - args:
+        - --firewall-bin-path
+        - iptables-nft
+        - --firewall-save-bin-path
+        - iptables-nft-save
         - --ipv6=false
         - --incoming-proxy-port
         - "4143"
