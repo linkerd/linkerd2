@@ -11,6 +11,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -133,7 +134,7 @@ var obfuscationMap = map[string]struct{}{
 func obfuscateMetrics(metrics []byte) ([]byte, error) {
 	reader := bytes.NewReader(metrics)
 
-	var metricsParser expfmt.TextParser
+	metricsParser := expfmt.NewTextParser(model.LegacyValidation)
 
 	parsedMetrics, err := metricsParser.TextToMetricFamilies(reader)
 	if err != nil {

@@ -175,7 +175,7 @@ func hasName(metricName string) Expression {
 func extractSamplesVectorFromString(s string) (model.Vector, error) {
 	bb := bytes.NewBufferString(s)
 
-	p := &expfmt.TextParser{}
+	p := expfmt.NewTextParser(model.LegacyValidation)
 	metricFamilies, err := p.TextToMetricFamilies(bb)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse input as metrics: %w", err)
