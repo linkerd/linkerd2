@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -115,7 +116,7 @@ func newGatewaysCommand() *cobra.Command {
 
 				// Parse the gateway metrics so that we can extract liveness
 				// and latency information.
-				var metricsParser expfmt.TextParser
+				metricsParser := expfmt.NewTextParser(model.LegacyValidation)
 				parsedMetrics, err := metricsParser.TextToMetricFamilies(bytes.NewReader(gateway.metrics))
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to parse metrics for %s: %s\n", gateway.clusterName, err)

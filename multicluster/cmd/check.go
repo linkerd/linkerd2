@@ -19,6 +19,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -747,7 +748,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context,
 			continue
 		}
 
-		var metricsParser expfmt.TextParser
+		metricsParser := expfmt.NewTextParser(model.LegacyValidation)
 		parsedMetrics, err := metricsParser.TextToMetricFamilies(bytes.NewReader(gatewayMetric.metrics))
 		if err != nil {
 			errors = append(errors, fmt.Errorf("failed to parse gateway metrics for target cluster %s: %w", link.Spec.TargetClusterName, err))
