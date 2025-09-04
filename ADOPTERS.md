@@ -84,6 +84,7 @@
 - [SCA](https://sca.com.au)
 - [Search365](https://search365.ai/)
 - [Skit](https://skit.ai/)
+- [Sophotech](https://sopho.tech)
 - [Split](https://www.split.io/)
 - [StackPulse](https://stackpulse.com)
 - [Studyo](https://studyo.co)
