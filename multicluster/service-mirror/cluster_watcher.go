@@ -1549,9 +1549,14 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGatewayAddress() ([]corev1.Endpo
 }
 
 func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) error {
-	endpointRepairCounter.With(prometheus.Labels{
+	counter, err := endpointRepairCounter.GetMetricWith(prometheus.Labels{
 		gatewayClusterName: rcsw.link.Spec.TargetClusterName,
-	}).Inc()
+	})
+	if err != nil {
+		rcsw.log.Errorf("Failed to get endpoint repair counter: %s", err)
+	} else {
+		counter.Inc()
+	}
 
 	// Create or update the gateway mirror endpoints responsible for driving
 	// the cluster watcher's gateway liveness status.

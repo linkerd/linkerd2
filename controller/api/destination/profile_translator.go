@@ -46,7 +46,7 @@ var profileUpdatesQueueOverflowCounter = promauto.NewCounterVec(
 	},
 )
 
-func newProfileTranslator(serviceID watcher.ServiceID, stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endStream chan struct{}) *profileTranslator {
+func newProfileTranslator(serviceID watcher.ServiceID, stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endStream chan struct{}) (*profileTranslator, error) {
 	parentRef := &meta.Metadata{
 		Kind: &meta.Metadata_Resource{
 			Resource: &meta.Resource{
@@ -59,6 +59,11 @@ func newProfileTranslator(serviceID watcher.ServiceID, stream pb.Destination_Get
 		},
 	}
 
+	overflowCounter, err := profileUpdatesQueueOverflowCounter.GetMetricWith(prometheus.Labels{"fqn": fqn, "port": fmt.Sprintf("%d", port)})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create profile updates queue overflow counter: %w", err)
+	}
+
 	return &profileTranslator{
 		fullyQualifiedName: fqn,
 		port:               port,
@@ -67,10 +72,10 @@ func newProfileTranslator(serviceID watcher.ServiceID, stream pb.Destination_Get
 		stream:          stream,
 		endStream:       endStream,
 		log:             log.WithField("component", "profile-translator"),
-		overflowCounter: profileUpdatesQueueOverflowCounter.With(prometheus.Labels{"fqn": fqn, "port": fmt.Sprintf("%d", port)}),
+		overflowCounter: overflowCounter,
 		updates:         make(chan *sp.ServiceProfile, updateQueueCapacity),
 		stop:            make(chan struct{}),
-	}
+	}, nil
 }
 
 // Update is called from a client-go informer callback and therefore must not

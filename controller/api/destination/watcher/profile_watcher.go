@@ -76,7 +76,11 @@ func NewProfileWatcher(k8sAPI *k8s.API, log *logging.Entry) (*ProfileWatcher, er
 func (pw *ProfileWatcher) Subscribe(id ProfileID, listener ProfileUpdateListener) error {
 	pw.log.Debugf("Establishing watch on profile %s", id)
 
-	publisher := pw.getOrNewProfilePublisher(id, nil)
+	publisher, err := pw.getOrNewProfilePublisher(id, nil)
+	if err != nil {
+		pw.log.Errorf("error getting or creating profile publisher %s: %s", id, err)
+		return err
+	}
 
 	publisher.subscribe(listener)
 	return nil
@@ -100,7 +104,11 @@ func (pw *ProfileWatcher) addProfile(obj interface{}) {
 		Name:      profile.Name,
 	}
 
-	publisher := pw.getOrNewProfilePublisher(id, profile)
+	publisher, err := pw.getOrNewProfilePublisher(id, profile)
+	if err != nil {
+		pw.log.Errorf("error getting or creating profile publisher: %s", err)
+		return
+	}
 
 	publisher.update(profile)
 }
@@ -145,7 +153,7 @@ func (pw *ProfileWatcher) deleteProfile(obj interface{}) {
 	}
 }
 
-func (pw *ProfileWatcher) getOrNewProfilePublisher(id ProfileID, profile *sp.ServiceProfile) *profilePublisher {
+func (pw *ProfileWatcher) getOrNewProfilePublisher(id ProfileID, profile *sp.ServiceProfile) (*profilePublisher, error) {
 	pw.Lock()
 	defer pw.Unlock()
 
@@ -162,6 +170,13 @@ func (pw *ProfileWatcher) getOrNewProfilePublisher(id ProfileID, profile *sp.Ser
 			}
 		}
 
+		profileMetrics, err := profileVecs.newMetrics(prometheus.Labels{
+			"namespace": id.Namespace,
+			"profile":   id.Name,
+		})
+		if err != nil {
+			return nil, err
+		}
 		publisher = &profilePublisher{
 			profile:   profile,
 			listeners: make([]ProfileUpdateListener, 0),
@@ -170,15 +185,12 @@ func (pw *ProfileWatcher) getOrNewProfilePublisher(id ProfileID, profile *sp.Ser
 				"ns":        id.Namespace,
 				"profile":   id.Name,
 			}),
-			profileMetrics: profileVecs.newMetrics(prometheus.Labels{
-				"namespace": id.Namespace,
-				"profile":   id.Name,
-			}),
+			profileMetrics: profileMetrics,
 		}
 		pw.profiles[id] = publisher
 	}
 
-	return publisher
+	return publisher, nil
 }
 
 func (pw *ProfileWatcher) getProfilePublisher(id ProfileID) (publisher *profilePublisher, ok bool) {

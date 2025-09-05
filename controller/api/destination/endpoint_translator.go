@@ -101,7 +101,7 @@ func newEndpointTranslator(
 	stream pb.Destination_GetServer,
 	endStream chan struct{},
 	log *logging.Entry,
-) *endpointTranslator {
+) (*endpointTranslator, error) {
 	log = log.WithFields(logging.Fields{
 		"component": "endpoint-translator",
 		"service":   service,
@@ -114,6 +114,11 @@ func newEndpointTranslator(
 	availableEndpoints := newEmptyAddressSet()
 
 	filteredSnapshot := newEmptyAddressSet()
+
+	counter, err := updatesQueueOverflowCounter.GetMetricWith(prometheus.Labels{"service": service})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create updates queue overflow counter: %w", err)
+	}
 
 	return &endpointTranslator{
 		controllerNS,
@@ -133,10 +138,10 @@ func newEndpointTranslator(
 		stream,
 		endStream,
 		log,
-		updatesQueueOverflowCounter.With(prometheus.Labels{"service": service}),
+		counter,
 		make(chan interface{}, updateQueueCapacity),
 		make(chan struct{}),
-	}
+	}, nil
 }
 
 func (et *endpointTranslator) Add(set watcher.AddressSet) {
