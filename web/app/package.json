@@ -7,7 +7,7 @@
     "@babel/eslint-plugin": "7.27.1",
     "@fortawesome/fontawesome-svg-core": "6.7.2",
     "@fortawesome/free-regular-svg-icons": "6.7.2",
-    "@fortawesome/free-solid-svg-icons": "6.7.2",
+    "@fortawesome/free-solid-svg-icons": "7.0.1",
     "@fortawesome/react-fontawesome": "0.2.6",
     "@lingui/core": "^3.17.1",
     "@lingui/macro": "3.17.2",
