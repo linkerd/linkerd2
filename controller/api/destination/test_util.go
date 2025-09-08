@@ -184,6 +184,62 @@ spec:
     isRetryable: false
     condition:
       pathRegex: "/a/b/c"`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  name: name1-20
+  namespace: ns
+status:
+  phase: Pending
+  conditions:
+  - type: Ready
+    status: "False"
+  podIP: 172.17.0.20
+  podIPs:
+  - ip: 172.17.0.20
+spec:
+  containers:
+    - env:
+      - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+        value: 0.0.0.0:4143
+      - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+        value: 0.0.0.0:4191
+      - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+        value: 0.0.0.0:4190
+      name: linkerd-proxy
+      ports:
+      - containerPort: 4191`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  name: name1-21
+  namespace: ns
+status:
+  phase: Pending
+  conditions:
+  - type: Ready
+    status: "False"
+  podIP: 172.17.0.21
+  podIPs:
+  - ip: 172.17.0.21
+spec:
+  initContainers:
+    - env:
+      - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+        value: 0.0.0.0:4143
+      - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+        value: 0.0.0.0:4191
+      - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+        value: 0.0.0.0:4190
+      name: linkerd-proxy
+      ports:
+      - containerPort: 4191`,
 	}
 
 	clientSP := []string{
