@@ -51,7 +51,7 @@ const tpl = `[
     "path": "/spec/{{.ProxyPath}}/env/-",
     "value": {
       "name": "LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES",
-      "value": "k8s.pod.ip=${_pod_ip}\nk8s.pod.uid=$(_pod_uid)\nk8s.container.name=$(_pod_containerName)"
+      "value": "k8s.pod.ip=$(_pod_ip)\nk8s.pod.uid=$(_pod_uid)\nk8s.container.name=$(_pod_containerName)"
     }
   },
   {
