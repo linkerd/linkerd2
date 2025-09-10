@@ -89,7 +89,13 @@ func Inject(linkerdNamespace string, overrider inject.ValueOverrider) webhook.Ha
 		}
 
 		configLabels := configToPrometheusLabels(resourceConfig)
-		proxyInjectionAdmissionRequests.With(admissionRequestLabels(ownerKind, request.Namespace, report.InjectAnnotationAt, configLabels)).Inc()
+
+		counter, err := proxyInjectionAdmissionRequests.GetMetricWith(admissionRequestLabels(ownerKind, request.Namespace, report.InjectAnnotationAt, configLabels))
+		if err != nil {
+			log.Errorf("failed to get proxy_inject_admission_requests metric: %q", err)
+		} else {
+			counter.Inc()
+		}
 
 		// If the resource is injectable then admit it after creating a patch that
 		// adds the proxy-init and proxy containers.
@@ -126,7 +132,14 @@ func Inject(linkerdNamespace string, overrider inject.ValueOverrider) webhook.Ha
 			}
 			log.Infof("injection patch generated for: %s", report.ResName())
 			log.Debugf("injection patch: %s", patchJSON)
-			proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "false", "", report.InjectAnnotationAt, configLabels)).Inc()
+
+			counter, err := proxyInjectionAdmissionResponses.GetMetricWith(admissionResponseLabels(ownerKind, request.Namespace, "false", "", report.InjectAnnotationAt, configLabels))
+			if err != nil {
+				log.Errorf("failed to get proxy_inject_admission_responses metric: %q", err)
+			} else {
+				counter.Inc()
+			}
+
 			patchType := admissionv1beta1.PatchTypeJSONPatch
 			return &admissionv1beta1.AdmissionResponse{
 				UID:       request.UID,
@@ -160,7 +173,14 @@ func Inject(linkerdNamespace string, overrider inject.ValueOverrider) webhook.Ha
 		if len(patchJSON) != 0 {
 			log.Infof("annotation patch generated for: %s", report.ResName())
 			log.Debugf("annotation patch: %s", patchJSON)
-			proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "false", "", report.InjectAnnotationAt, configLabels)).Inc()
+
+			counter, err := proxyInjectionAdmissionResponses.GetMetricWith(admissionResponseLabels(ownerKind, request.Namespace, "false", "", report.InjectAnnotationAt, configLabels))
+			if err != nil {
+				log.Errorf("failed to get proxy_inject_admission_responses metric: %q", err)
+			} else {
+				counter.Inc()
+			}
+
 			patchType := admissionv1beta1.PatchTypeJSONPatch
 			return &admissionv1beta1.AdmissionResponse{
 				UID:       request.UID,
@@ -175,7 +195,14 @@ func Inject(linkerdNamespace string, overrider inject.ValueOverrider) webhook.Ha
 		// entirely skipped and admit without any mutations
 		if resourceConfig.IsPod() {
 			log.Infof("skipped %s: %s", report.ResName(), readableMsg)
-			proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "true", strings.Join(reasons, ","), report.InjectAnnotationAt, configLabels)).Inc()
+
+			counter, err := proxyInjectionAdmissionResponses.GetMetricWith(admissionResponseLabels(ownerKind, request.Namespace, "true", strings.Join(reasons, ","), report.InjectAnnotationAt, configLabels))
+			if err != nil {
+				log.Errorf("failed to get proxy_inject_admission_responses metric: %q", err)
+			} else {
+				counter.Inc()
+			}
+
 			return &admissionv1beta1.AdmissionResponse{
 				UID:     request.UID,
 				Allowed: true,

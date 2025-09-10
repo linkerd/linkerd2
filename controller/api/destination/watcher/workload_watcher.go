@@ -455,6 +455,13 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 	ipPort := IPPort{ip, port}
 	wp, ok := ww.publishers[ipPort]
 	if !ok {
+		metrics, err := ipPortVecs.newMetrics(prometheus.Labels{
+			"ip":   ip,
+			"port": strconv.FormatUint(uint64(port), 10),
+		})
+		if err != nil {
+			return nil, err
+		}
 		wp = &workloadPublisher{
 			defaultOpaquePorts: ww.defaultOpaquePorts,
 			k8sAPI:             ww.k8sAPI,
@@ -463,10 +470,7 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 				IP:   ip,
 				Port: port,
 			},
-			metrics: ipPortVecs.newMetrics(prometheus.Labels{
-				"ip":   ip,
-				"port": strconv.FormatUint(uint64(port), 10),
-			}),
+			metrics: metrics,
 			log: ww.log.WithFields(logging.Fields{
 				"component": "workload-publisher",
 				"ip":        ip,

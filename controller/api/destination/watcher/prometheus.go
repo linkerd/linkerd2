@@ -173,21 +173,45 @@ func newEndpointsMetricsVecs() endpointsMetricsVecs {
 	}
 }
 
-func (mv metricsVecs) newMetrics(labels prometheus.Labels) metrics {
-	return metrics{
-		labels:      labels,
-		subscribers: mv.subscribers.With(labels),
-		updates:     mv.updates.With(labels),
+func (mv metricsVecs) newMetrics(labels prometheus.Labels) (metrics, error) {
+	subscribers, err := mv.subscribers.GetMetricWith(labels)
+	if err != nil {
+		return metrics{}, fmt.Errorf("failed to get subscribers metric: %w", err)
 	}
+
+	updates, err := mv.updates.GetMetricWith(labels)
+	if err != nil {
+		return metrics{}, fmt.Errorf("failed to get updates metric: %w", err)
+	}
+
+	return metrics{
+		labels,
+		subscribers,
+		updates,
+	}, nil
 }
 
-func (emv endpointsMetricsVecs) newEndpointsMetrics(labels prometheus.Labels) endpointsMetrics {
-	metrics := emv.newMetrics(labels)
-	return endpointsMetrics{
-		metrics: metrics,
-		pods:    emv.pods.With(labels),
-		exists:  emv.exists.With(labels),
+func (emv endpointsMetricsVecs) newEndpointsMetrics(labels prometheus.Labels) (endpointsMetrics, error) {
+	metrics, err := emv.newMetrics(labels)
+	if err != nil {
+		return endpointsMetrics{}, err
 	}
+
+	pods, err := emv.pods.GetMetricWith(labels)
+	if err != nil {
+		return endpointsMetrics{}, fmt.Errorf("failed to get pods metric: %w", err)
+	}
+
+	exists, err := emv.exists.GetMetricWith(labels)
+	if err != nil {
+		return endpointsMetrics{}, fmt.Errorf("failed to get exists metric: %w", err)
+	}
+
+	return endpointsMetrics{
+		metrics,
+		pods,
+		exists,
+	}, nil
 }
 
 func (emv endpointsMetricsVecs) unregister(labels prometheus.Labels) {

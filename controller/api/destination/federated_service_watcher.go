@@ -348,7 +348,7 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 		return
 	}
 
-	translator := newEndpointTranslator(
+	translator, err := newEndpointTranslator(
 		fs.config.ControllerNS,
 		remoteConfig.TrustDomain,
 		fs.config.ForceOpaqueTransport,
@@ -365,13 +365,18 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 		subscriber.endStream,
 		fs.log,
 	)
+	if err != nil {
+		fs.log.Errorf("Failed to create endpoint translator for remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
+		return
+	}
+
 	translator.Start()
 	subscriber.remoteTranslators[id] = translator
 
 	fs.log.Debugf("Subscribing to remote discovery service %s in cluster %s", id.service, id.cluster)
-	err := remoteWatcher.Subscribe(watcher.ServiceID{Namespace: id.service.Namespace, Name: id.service.Name}, subscriber.port, subscriber.instanceID, translator)
+	err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: id.service.Namespace, Name: id.service.Name}, subscriber.port, subscriber.instanceID, translator)
 	if err != nil {
-		fs.log.Errorf("Failed to subscribe to remote disocvery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
+		fs.log.Errorf("Failed to subscribe to remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
 	}
 }
 
@@ -397,7 +402,7 @@ func (fs *federatedService) localDiscoverySubscribe(
 	subscriber *federatedServiceSubscriber,
 	localDiscovery string,
 ) {
-	translator := newEndpointTranslator(
+	translator, err := newEndpointTranslator(
 		fs.config.ControllerNS,
 		fs.config.IdentityTrustDomain,
 		fs.config.ForceOpaqueTransport,
@@ -414,11 +419,15 @@ func (fs *federatedService) localDiscoverySubscribe(
 		subscriber.endStream,
 		fs.log,
 	)
+	if err != nil {
+		fs.log.Errorf("Failed to create endpoint translator for %s: %s", localDiscovery, err)
+		return
+	}
 	translator.Start()
 	subscriber.localTranslators[localDiscovery] = translator
 
 	fs.log.Debugf("Subscribing to local discovery service %s", localDiscovery)
-	err := fs.localEndpoints.Subscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID, translator)
+	err = fs.localEndpoints.Subscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID, translator)
 	if err != nil {
 		fs.log.Errorf("Failed to subscribe to %s: %s", localDiscovery, err)
 	}

@@ -137,13 +137,31 @@ func (mv ProbeMetricVecs) NewWorkerMetrics(remoteClusterName string) (*ProbeMetr
 	if err != nil {
 		return nil, err
 	}
-	gatewayEnabled := mv.gatewayEnabled.With(labels)
+	gatewayEnabled, err := mv.gatewayEnabled.GetMetricWith(labels)
+	if err != nil {
+		return nil, err
+	}
 	gatewayEnabled.Set(0)
+
+	alive, err := mv.alive.GetMetricWith(labels)
+	if err != nil {
+		return nil, err
+	}
+
+	latency, err := mv.latency.GetMetricWith(labels)
+	if err != nil {
+		return nil, err
+	}
+
+	latencies, err := mv.latencies.GetMetricWith(labels)
+	if err != nil {
+		return nil, err
+	}
 	return &ProbeMetrics{
 		gatewayEnabled: gatewayEnabled,
-		alive:          mv.alive.With(labels),
-		latency:        mv.latency.With(labels),
-		latencies:      mv.latencies.With(labels),
+		alive:          alive,
+		latency:        latency,
+		latencies:      latencies,
 		probes:         curriedProbes,
 		unregister: func() {
 			mv.unregister(remoteClusterName)
