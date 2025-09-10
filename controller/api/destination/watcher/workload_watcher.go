@@ -249,7 +249,7 @@ func (ww *WorkloadWatcher) submitPodUpdate(pod *corev1.Pod, remove bool) {
 		submitPod = nil
 	}
 
-	for _, container := range pod.Spec.Containers {
+	for _, container := range append(pod.Spec.InitContainers, pod.Spec.Containers...) {
 		for _, containerPort := range container.Ports {
 			if containerPort.ContainerPort != 0 {
 				for _, pip := range pod.Status.PodIPs {
