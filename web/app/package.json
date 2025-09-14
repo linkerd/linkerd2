@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.28.4",
-    "@babel/eslint-parser": "^7.28.0",
+    "@babel/eslint-parser": "^7.28.4",
     "@babel/plugin-proposal-class-properties": "^7.17.12",
     "@babel/preset-env": "^7.28.3",
     "@babel/preset-react": "^7.27.1",
