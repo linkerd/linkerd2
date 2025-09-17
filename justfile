@@ -153,14 +153,14 @@ policy-test-cleanup:
     @while [ $({{ _kubectl }} get ns --selector='linkerd-policy-test' -o json |jq '.items | length') != "0" ]; do sleep 1 ; done
 
 policy-test-deps-pull:
-    docker pull -q docker.io/bitnami/kubectl:latest
+    docker pull -q docker.io/chainguard/kubectl:latest-dev
     docker pull -q docker.io/curlimages/curl:latest
     docker pull -q ghcr.io/olix0r/hokay:latest
 
 # Load all images into the test cluster.
 policy-test-deps-load: _k3d-init policy-test-deps-pull
     for i in {1..3} ; do {{ _k3d-load }} \
-        bitnami/kubectl:latest \
+        chainguard/kubectl:latest-dev \
         curlimages/curl:latest \
         fortio/fortio:latest \
         ghcr.io/olix0r/hokay:latest && exit || sleep 1 ; done
