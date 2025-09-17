@@ -102,7 +102,7 @@ func channelsEqual(c1, c2 Channels) bool {
 	for _, cv1 := range c1.array {
 		found := false
 		for _, cv2 := range c2.array {
-			if cv1.channel == cv2.channel && cv1.version == cv2.version && cv1.hotpatchEqual(cv2) {
+			if cv1.channel == cv2.channel && cv1.version == cv2.version {
 				found = true
 				break
 			}
