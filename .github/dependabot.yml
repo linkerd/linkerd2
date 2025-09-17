@@ -88,6 +88,14 @@ updates:
         patterns:
           - tracing
           - tracing-*
+      serde:
+        patterns:
+          - serde
+          - serde_*
+      pest:
+        patterns:
+          - pest
+          - pest_*
 
   - package-ecosystem: "github-actions"
     directories:
