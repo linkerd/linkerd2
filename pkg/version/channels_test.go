@@ -22,7 +22,6 @@ func TestGetLatestVersions(t *testing.T) {
 			"valid response",
 			map[string]string{
 				"foo":         "foo-1.2.3",
-				"fooHotpatch": "foo-1.2.3-4",
 				"stable":      "stable-2.1.0",
 				"edge":        "edge-2.1.0",
 			},

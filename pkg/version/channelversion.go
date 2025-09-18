@@ -18,8 +18,7 @@ func (cv channelVersion) String() string {
 }
 
 // updateChannel returns the channel name to check for updates, returning the
-// channel name suffixed with "Hotpatch" to indicate that a separate update
-// channel should be used.
+// channel name.
 func (cv channelVersion) updateChannel() string {
 	return cv.channel
 }
