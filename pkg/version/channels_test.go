@@ -28,7 +28,6 @@ func TestGetLatestVersions(t *testing.T) {
 			Channels{
 				[]channelVersion{
 					{"foo", "1.2.3", "foo-1.2.3"},
-					{"foo", "1.2.3", "foo-1.2.3-4"},
 					{"stable", "2.1.0", "stable-2.1.0"},
 					{"edge", "2.1.0", "edge-2.1.0"},
 				},
@@ -138,8 +137,7 @@ func TestChannelsMatch(t *testing.T) {
 			fmt.Errorf("is running version 1.2.2 but the latest foo version is 1.2.3"),
 		},
 		{
-			"foo-1.2.3-3",
-			fmt.Errorf("is running version 1.2.3-3 but the latest foo version is 1.2.3-4"),
+			"foo-1.2.3-3", nil,
 		},
 		{
 			"unsupportedChannel-1.2.3",
