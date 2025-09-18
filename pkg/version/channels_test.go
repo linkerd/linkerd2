@@ -114,13 +114,12 @@ func channelsEqual(c1, c2 Channels) bool {
 }
 
 func TestChannelsMatch(t *testing.T) {
-	four := int64(4)
 	channels := Channels{
 		[]channelVersion{
-			{"stable", "2.1.0", nil, "stable-2.1.0"},
-			{"foo", "1.2.3", nil, "foo-1.2.3"},
-			{"foo", "1.2.3", &four, "foo-1.2.3-4"},
-			{"version", "3.2.1", nil, "version-3.2.1"},
+			{"stable", "2.1.0", "stable-2.1.0"},
+			{"foo", "1.2.3", "foo-1.2.3"},
+			{"foo", "1.2.3", "foo-1.2.3-4"},
+			{"version", "3.2.1", "version-3.2.1"},
 		},
 	}
 
