@@ -63,7 +63,7 @@ func match(expectedVersion, actualVersion string) error {
 
 	if actual.version != expected.version {
 		return fmt.Errorf("is running version %s but the latest %s version is %s",
-			actual.version actual.channel, expected.version)
+			actual.version, actual.channel, expected.version)
 	}
 
 	return nil
