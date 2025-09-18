@@ -2,7 +2,6 @@ ARG BUILDPLATFORM=linux/amd64
 
 # Precompile key slow-to-build dependencies
 FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS go-deps
-RUN apk update && apk add openssl
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 RUN go mod download
@@ -31,31 +30,26 @@ FROM go-gen AS build-linux-amd64
 ENV GOOS=linux GOARCH=amd64
 ENV BIN=/out/linkerd2-cli-${LINKERD_VERSION}-linux-amd64
 RUN go build -o "$BIN" -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
-RUN openssl dgst -sha256 "$BIN" | awk '{print $2}' > "$BIN.sha256"
 
 FROM go-gen AS build-linux-arm64
 ENV GOOS=linux GOARCH=arm64
 ENV BIN=/out/linkerd2-cli-${LINKERD_VERSION}-linux-arm64
 RUN go build -o "$BIN" -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
-RUN openssl dgst -sha256 "$BIN" | awk '{print $2}' > "$BIN.sha256"
 
 FROM go-gen AS build-darwin
 ENV GOOS=darwin GOARCH=amd64
 ENV BIN=/out/linkerd2-cli-${LINKERD_VERSION}-${GOOS}
 RUN go build -o "$BIN" -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
-RUN openssl dgst -sha256 "$BIN" | awk '{print $2}' > "$BIN.sha256"
 
 FROM go-gen AS build-darwin-arm64
 ENV GOOS=darwin GOARCH=arm64
 ENV BIN=/out/linkerd2-cli-${LINKERD_VERSION}-${GOOS}-${GOARCH}
 RUN go build -o "$BIN" -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
-RUN openssl dgst -sha256 "$BIN" | awk '{print $2}' > "$BIN.sha256"
 
 FROM go-gen AS build-windows
 ENV GOOS=windows GOARCH=amd64
 ENV BIN=/out/linkerd2-cli-${LINKERD_VERSION}-${GOOS}.exe
 RUN go build -o "$BIN" -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
-RUN openssl dgst -sha256 "$BIN" | awk '{print $2}' > "$BIN.sha256"
 
 # Used in CI
 FROM scratch AS linux-amd64
