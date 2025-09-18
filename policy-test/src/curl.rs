@@ -198,7 +198,7 @@ impl Runner {
                 service_account: Some("curl".to_string()),
                 init_containers: Some(vec![k8s::api::core::v1::Container {
                     name: "wait-for-web".to_string(),
-                    image: Some("docker.io/bitnami/kubectl:latest".to_string()),
+                    image: Some("docker.io/chainguard/kubectl:latest-dev".to_string()),
                     // In CI, we can hit failures where the watch isn't updated
                     // after the configmap is deleted, even with a long timeout.
                     // Instead, we use a relatively short timeout and retry the
