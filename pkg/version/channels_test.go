@@ -11,7 +11,6 @@ import (
 )
 
 func TestGetLatestVersions(t *testing.T) {
-	four := int64(4)
 	testCases := []struct {
 		name   string
 		resp   interface{}
@@ -21,17 +20,17 @@ func TestGetLatestVersions(t *testing.T) {
 		{
 			"valid response",
 			map[string]string{
-				"foo":         "foo-1.2.3",
-				"stable":      "stable-2.1.0",
-				"edge":        "edge-2.1.0",
+				"foo":    "foo-1.2.3",
+				"stable": "stable-2.1.0",
+				"edge":   "edge-2.1.0",
 			},
 			nil,
 			Channels{
 				[]channelVersion{
-					{"foo", "1.2.3", nil, "foo-1.2.3"},
-					{"foo", "1.2.3", &four, "foo-1.2.3-4"},
-					{"stable", "2.1.0", nil, "stable-2.1.0"},
-					{"edge", "2.1.0", nil, "edge-2.1.0"},
+					{"foo", "1.2.3", "foo-1.2.3"},
+					{"foo", "1.2.3", "foo-1.2.3-4"},
+					{"stable", "2.1.0", "stable-2.1.0"},
+					{"edge", "2.1.0", "edge-2.1.0"},
 				},
 			},
 		},
