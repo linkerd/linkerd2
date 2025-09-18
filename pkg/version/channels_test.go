@@ -11,7 +11,6 @@ import (
 )
 
 func TestGetLatestVersions(t *testing.T) {
-	four := int64(4)
 	testCases := []struct {
 		name   string
 		resp   interface{}
@@ -21,18 +20,16 @@ func TestGetLatestVersions(t *testing.T) {
 		{
 			"valid response",
 			map[string]string{
-				"foo":         "foo-1.2.3",
-				"fooHotpatch": "foo-1.2.3-4",
-				"stable":      "stable-2.1.0",
-				"edge":        "edge-2.1.0",
+				"foo":    "foo-1.2.3",
+				"stable": "stable-2.1.0",
+				"edge":   "edge-2.1.0",
 			},
 			nil,
 			Channels{
 				[]channelVersion{
-					{"foo", "1.2.3", nil, "foo-1.2.3"},
-					{"foo", "1.2.3", &four, "foo-1.2.3-4"},
-					{"stable", "2.1.0", nil, "stable-2.1.0"},
-					{"edge", "2.1.0", nil, "edge-2.1.0"},
+					{"foo", "1.2.3", "foo-1.2.3"},
+					{"stable", "2.1.0", "stable-2.1.0"},
+					{"edge", "2.1.0", "edge-2.1.0"},
 				},
 			},
 		},
@@ -102,7 +99,7 @@ func channelsEqual(c1, c2 Channels) bool {
 	for _, cv1 := range c1.array {
 		found := false
 		for _, cv2 := range c2.array {
-			if cv1.channel == cv2.channel && cv1.version == cv2.version && cv1.hotpatchEqual(cv2) {
+			if cv1.channel == cv2.channel && cv1.version == cv2.version {
 				found = true
 				break
 			}
@@ -116,13 +113,12 @@ func channelsEqual(c1, c2 Channels) bool {
 }
 
 func TestChannelsMatch(t *testing.T) {
-	four := int64(4)
 	channels := Channels{
 		[]channelVersion{
-			{"stable", "2.1.0", nil, "stable-2.1.0"},
-			{"foo", "1.2.3", nil, "foo-1.2.3"},
-			{"foo", "1.2.3", &four, "foo-1.2.3-4"},
-			{"version", "3.2.1", nil, "version-3.2.1"},
+			{"stable", "2.1.0", "stable-2.1.0"},
+			{"foo", "1.2.3", "foo-1.2.3"},
+			{"foo", "1.2.3", "foo-1.2.3-4"},
+			{"version", "3.2.1", "version-3.2.1"},
 		},
 	}
 
@@ -141,8 +137,7 @@ func TestChannelsMatch(t *testing.T) {
 			fmt.Errorf("is running version 1.2.2 but the latest foo version is 1.2.3"),
 		},
 		{
-			"foo-1.2.3-3",
-			fmt.Errorf("is running version 1.2.3-3 but the latest foo version is 1.2.3-4"),
+			"foo-1.2.3-3", nil,
 		},
 		{
 			"unsupportedChannel-1.2.3",
