@@ -321,7 +321,7 @@ impl Validate<MeshTLSAuthenticationSpec> for Admission {
     ) -> Result<()> {
         for id in spec.identities.iter().flatten() {
             if let Err(err) = validation::validate_identity(id) {
-                bail!("id {} is invalid: {}", id, err);
+                bail!("id {id} is invalid: {err}");
             }
         }
 

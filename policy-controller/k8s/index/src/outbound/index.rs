@@ -1979,7 +1979,7 @@ fn parse_duration(s: &str) -> Result<time::Duration> {
     let s = s.trim();
     let offset = s
         .rfind(|c: char| c.is_ascii_digit())
-        .ok_or_else(|| anyhow::anyhow!("{} does not contain a timeout duration value", s))?;
+        .ok_or_else(|| anyhow::anyhow!("{s} does not contain a timeout duration value"))?;
     let (magnitude, unit) = s.split_at(offset + 1);
     let magnitude = magnitude.parse::<u64>()?;
 
@@ -1990,14 +1990,11 @@ fn parse_duration(s: &str) -> Result<time::Duration> {
         "m" => 1000 * 60,
         "h" => 1000 * 60 * 60,
         "d" => 1000 * 60 * 60 * 24,
-        _ => bail!(
-            "invalid duration unit {} (expected one of 'ms', 's', 'm', 'h', or 'd')",
-            unit
-        ),
+        _ => bail!("invalid duration unit {unit} (expected one of 'ms', 's', 'm', 'h', or 'd')"),
     };
 
     let ms = magnitude
         .checked_mul(mul)
-        .ok_or_else(|| anyhow::anyhow!("Timeout value {} overflows when converted to 'ms'", s))?;
+        .ok_or_else(|| anyhow::anyhow!("Timeout value {s} overflows when converted to 'ms'"))?;
     Ok(time::Duration::from_millis(ms))
 }

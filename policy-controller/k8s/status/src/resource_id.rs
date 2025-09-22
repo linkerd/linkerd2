@@ -36,7 +36,7 @@ impl NamespaceGroupKindName {
             (GATEWAY_API_GROUP, "TCPRoute") => Ok(gateway::TCPRoute::api_version(&())),
             (GATEWAY_API_GROUP, "TLSRoute") => Ok(gateway::TLSRoute::api_version(&())),
             (group, kind) => {
-                anyhow::bail!("unknown group + kind combination: ({}, {})", group, kind)
+                anyhow::bail!("unknown group + kind combination: ({group}, {kind})")
             }
         }
     }
