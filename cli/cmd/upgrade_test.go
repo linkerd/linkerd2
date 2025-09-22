@@ -669,7 +669,7 @@ func renderInstall(t *testing.T, values *charts.Values) *bytes.Buffer {
 }
 
 func renderUpgrade(installManifest string, upgradeOpts []flag.Flag, templateOpts valuespkg.Options) (*bytes.Buffer, error) {
-	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(installManifest)})
+	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(externalGatewayAPIManifest), strings.NewReader(installManifest)})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize fake API: %w\n\n%s", err, installManifest)
 	}

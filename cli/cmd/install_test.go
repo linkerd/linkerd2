@@ -22,6 +22,16 @@ const (
 	installProxyVersion        = "install-proxy-version"
 	installControlPlaneVersion = "install-control-plane-version"
 	installDebugVersion        = "install-debug-version"
+
+	externalGatewayAPIManifest = `---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: httproutes.gateway.networking.k8s.io
+spec:
+  versions:
+    - name: v1
+`
 )
 
 func TestRender(t *testing.T) {
@@ -300,16 +310,6 @@ func TestIgnoreCluster(t *testing.T) {
 }
 
 func TestGWApi(t *testing.T) {
-	externalGatewayAPIManifest := `---
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: httproutes.gateway.networking.k8s.io
-spec:
-  versions:
-    - name: v1
-`
-
 	unsupportedGatewayAPIVersionManifest := `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
