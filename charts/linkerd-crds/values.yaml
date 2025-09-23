@@ -1,7 +1,7 @@
 # -- Controls if Linkerd should install the Gateway API CRDs. This value acts
 # as a default and can be overridden by the more specific `enable*Routes`
 # values.
-installGatewayAPI: true
+installGatewayAPI: false
 # -- Controls if Linkerd should install the Gateway API HTTPRoutes and
 # GRPCRoutes CRDs. If unspecified, the value of `installGatewayAPI` is used.
 # enableHttpRoutes: false
