@@ -209,12 +209,12 @@ impl Index {
             .namespaces
             .by_ns
             .get_mut(namespace)
-            .ok_or_else(|| anyhow::anyhow!("namespace not found: {}", namespace))?;
+            .ok_or_else(|| anyhow::anyhow!("namespace not found: {namespace}"))?;
         let pod = ns
             .pods
             .by_name
             .get_mut(pod)
-            .ok_or_else(|| anyhow::anyhow!("pod {}.{} not found", pod, namespace))?;
+            .ok_or_else(|| anyhow::anyhow!("pod {pod}.{namespace} not found"))?;
         Ok(pod
             .port_server_or_default(port, &self.cluster_info)
             .watch
@@ -235,14 +235,12 @@ impl Index {
             .namespaces
             .by_ns
             .get_mut(namespace)
-            .ok_or_else(|| anyhow::anyhow!("namespace not found: {}", namespace))?;
-        let external_workload =
-            ns.external_workloads
-                .by_name
-                .get_mut(workload)
-                .ok_or_else(|| {
-                    anyhow::anyhow!("external workload {}.{} not found", workload, namespace)
-                })?;
+            .ok_or_else(|| anyhow::anyhow!("namespace not found: {namespace}"))?;
+        let external_workload = ns
+            .external_workloads
+            .by_name
+            .get_mut(workload)
+            .ok_or_else(|| anyhow::anyhow!("external workload {workload}.{namespace} not found"))?;
         Ok(external_workload
             .port_server_or_default(port, &self.cluster_info)
             .watch
@@ -1195,7 +1193,7 @@ impl PodIndex {
                 // Pod labels and annotations may change at runtime, but the
                 // port list may not
                 if pod.port_names != port_names {
-                    bail!("pod {} port names must not change", name);
+                    bail!("pod {name} port names must not change");
                 }
 
                 // If there aren't meaningful changes, then don't bother doing
@@ -2060,9 +2058,7 @@ impl PolicyIndex {
                         .and_then(|ns| ns.meshtls.get(name))
                         .ok_or_else(|| {
                             anyhow!(
-                                "could not find MeshTLSAuthentication {} in namespace {}",
-                                name,
-                                namespace
+                                "could not find MeshTLSAuthentication {name} in namespace {namespace}"
                             )
                         })?;
                     tracing::trace!(ids = ?authn.matches, "Found MeshTLSAuthentication");
@@ -2111,11 +2107,7 @@ impl PolicyIndex {
                         continue;
                     }
                 }
-                bail!(
-                    "could not find NetworkAuthentication {} in namespace {}",
-                    name,
-                    namespace
-                );
+                bail!("could not find NetworkAuthentication {name} in namespace {namespace}");
             }
         }
 

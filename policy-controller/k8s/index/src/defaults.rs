@@ -51,7 +51,7 @@ impl std::str::FromStr for DefaultPolicy {
             }),
             "deny" => Ok(Self::Deny),
             "audit" => Ok(Self::Audit),
-            s => Err(anyhow!("invalid mode: {:?}", s)),
+            s => Err(anyhow!("invalid mode: {s:?}")),
         }
     }
 }
