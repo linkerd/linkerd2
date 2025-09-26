@@ -286,9 +286,11 @@ proxy:
     collector:
       # -- The collector endpoint to send traces to.
       endpoint: ""
-      # -- The identity of the collector in the linkerd mesh. If the collector
-      # is unmeshed, this should remain unset.
+      # -- The identity of the collector in the linkerd mesh.
       meshIdentity:
+        # -- Service account name for the trace collector. For most cases, this will be
+        # "<collector service name>.<namespace>", e.g. For a service `collector` in the `monitoring` namespace,
+        # this should be set to `collector.monitoring`.
         serviceAccountName: ""
   inbound:
     server:
