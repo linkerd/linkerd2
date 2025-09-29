@@ -266,6 +266,7 @@ jobs:
           - default-policy-deny
           - external
           - rsa-ca
+          - tracing
           - helm-upgrade
           - uninstall
           - upgrade-edge
