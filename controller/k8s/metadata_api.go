@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/metadata/metadatainformer"
@@ -213,14 +214,14 @@ func (api *MetadataAPI) GetByNamespaceFiltered(
 // Kubernetes singular resource type (e.g. deployment, daemonset, job, etc.).
 // If retry is true, when the shared informer cache doesn't return anything we
 // try again with a direct Kubernetes API call.
-func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry bool) (string, string, error) {
+func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry bool) (string, string) {
 	ownerRefs := pod.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		// pod without a parent
-		return "pod", pod.Name, nil
+		return "pod", pod.Name
 	} else if len(ownerRefs) > 1 {
 		log.Debugf("unexpected owner reference count (%d): %+v", len(ownerRefs), ownerRefs)
-		return "pod", pod.Name, nil
+		return "pod", pod.Name
 	}
 
 	parent := ownerRefs[0]
@@ -258,18 +259,52 @@ func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod
 		}
 
 		if rsObj == nil || !isValidRSParent(rsObj) {
-			return strings.ToLower(parent.Kind), parent.Name, nil
+			return strings.ToLower(parent.Kind), parent.Name
 		}
 		parentObj = rsObj
 	default:
-		return strings.ToLower(parent.Kind), parent.Name, nil
+		return strings.ToLower(parent.Kind), parent.Name
 	}
 
 	if err == nil && len(parentObj.GetOwnerReferences()) == 1 {
 		grandParent := parentObj.GetOwnerReferences()[0]
-		return strings.ToLower(grandParent.Kind), grandParent.Name, nil
+		return strings.ToLower(grandParent.Kind), grandParent.Name
 	}
-	return strings.ToLower(parent.Kind), parent.Name, nil
+	return strings.ToLower(parent.Kind), parent.Name
+}
+
+func (api *MetadataAPI) GetRootOwnerKindAndName(ctx context.Context, tm *metav1.TypeMeta, om *metav1.ObjectMeta, retry bool) (*metav1.TypeMeta, *metav1.ObjectMeta) {
+	ownerRefs := om.OwnerReferences
+	if len(ownerRefs) == 0 {
+		// resource without a parent
+		log.Debugf("Found root owner ref (%s)", om)
+		return tm, om
+	} else if len(ownerRefs) > 1 {
+		log.Debugf("unexpected owner reference count (%d): %+v", len(ownerRefs), ownerRefs)
+		return tm, om
+	}
+
+	parentRef := ownerRefs[0]
+	var parent *metav1.PartialObjectMetadata
+	switch parentRef.Kind {
+	case "ReplicaSet":
+		var err error
+		parent, err = api.getByNamespace(RS, om.Namespace, parentRef.Name)
+		if err == nil {
+			break
+		}
+		log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", om.Namespace, parentRef.Name, err)
+		fallthrough
+	default:
+		var err error
+		parent, err = api.client.Resource(schema.FromAPIVersionAndKind(parentRef.APIVersion, parentRef.Kind).GroupVersion().WithResource(parentRef.Kind)).Namespace(om.Namespace).Get(ctx, parentRef.Name, metav1.GetOptions{})
+		if err != nil {
+			log.Warnf("failed to retrieve resource from direct API call %s/%s/%s: %s", schema.FromAPIVersionAndKind(parentRef.APIVersion, parentRef.Kind), om.Namespace, parentRef.Name, err)
+			return &metav1.TypeMeta{Kind: parentRef.Kind, APIVersion: parentRef.APIVersion}, &metav1.ObjectMeta{Name: parentRef.Name, Namespace: om.Namespace}
+		}
+	}
+
+	return api.GetRootOwnerKindAndName(ctx, &parent.TypeMeta, &parent.ObjectMeta, retry)
 }
 
 func (api *MetadataAPI) addInformer(res APIResource, informerLabels prometheus.Labels) error {

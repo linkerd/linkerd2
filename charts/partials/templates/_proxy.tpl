@@ -158,6 +158,9 @@ env:
 {{- if empty .Values.proxy.tracing.collector.endpoint }}
 {{- fail "proxy.tracing.collector.endpoint must be set if proxy tracing is enabled" }}
 {{- end }}
+{{- if empty .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}
+{{- fail "proxy.tracing.collector.meshIdentity.serviceAccountName must be set if proxy tracing is enabled" }}
+{{- end }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
   value: {{ .Values.proxy.tracing.collector.endpoint }}
 {{ if .Values.proxy.tracing.collector.meshIdentity.serviceAccountName -}}

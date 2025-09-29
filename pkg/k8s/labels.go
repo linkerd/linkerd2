@@ -46,6 +46,11 @@ const (
 	// namespace of the Linkerd control plane.
 	ControllerNSLabel = Prefix + "/control-plane-ns"
 
+	// ProxyRootOwner is injected into mesh-enabled apps, identifying the
+	// root owner that this proxy belongs to.
+	ProxyRootOwnerLabel     = Prefix + "/proxy-root-owner"
+	ProxyRootOwnerKindLabel = Prefix + "/proxy-root-owner-kind"
+
 	// ProxyDeploymentLabel is injected into mesh-enabled apps, identifying the
 	// deployment that this proxy belongs to.
 	ProxyDeploymentLabel = Prefix + "/proxy-deployment"
