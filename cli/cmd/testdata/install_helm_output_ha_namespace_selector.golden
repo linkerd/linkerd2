@@ -632,7 +632,6 @@ data:
           matchNames:
             - {{ .Release.Namespace }}
             - linkerd-viz
-            - linkerd-jaeger
       enabled: false
       proxy:
         enabled: true
