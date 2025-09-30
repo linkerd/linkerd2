@@ -288,10 +288,13 @@ proxy:
       endpoint: ""
       # -- The identity of the collector in the linkerd mesh.
       meshIdentity:
-        # -- Service account name for the trace collector. For most cases, this will be
-        # "<collector service name>.<namespace>", e.g. For a service `collector` in the `monitoring` namespace,
-        # this should be set to `collector.monitoring`.
+        # -- Service account name for the trace collector. If there's no explicitly set service account for the trace
+        # collector, this will be the name of the deployment/stateful set/daemonset of the trace collector instead.
         serviceAccountName: ""
+        # -- Service account namespace for the trace collector. If there's no explicitly set service account for the
+        # trace collector, this will be the namespace of the deployment/stateful set/daemonset of the trace collector
+        # instead.
+        serviceAccountNamespace: ""
   inbound:
     server:
       http2:

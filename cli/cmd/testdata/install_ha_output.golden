@@ -787,6 +787,7 @@ data:
           endpoint: ""
           meshIdentity:
             serviceAccountName: ""
+            serviceAccountNamespace: ""
         enable: false
         protocol: ""
         traceServiceName: linkerd-proxy

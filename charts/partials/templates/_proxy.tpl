@@ -160,10 +160,14 @@ env:
 {{- end }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
   value: {{ .Values.proxy.tracing.collector.endpoint }}
-{{ if .Values.proxy.tracing.collector.meshIdentity.serviceAccountName -}}
+{{- if empty .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}
+{{- fail "proxy.tracing.collector.meshIdentity.serviceAccountName must be set if proxy tracing is enabled" }}
+{{- end }}
+{{- if empty .Values.proxy.tracing.collector.meshIdentity.serviceAccountNamespace }}
+{{- fail "proxy.tracing.collector.meshIdentity.serviceAccountNamespace must be set if proxy tracing is enabled" }}
+{{- end }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-  value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
-{{ end -}}
+  value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.{{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountNamespace }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
 - name: LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES
   value: |
     k8s.pod.ip=$(_pod_ip)

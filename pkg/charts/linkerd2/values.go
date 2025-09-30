@@ -197,7 +197,8 @@ type (
 	}
 
 	ProxyTracingCollectorIdentity struct {
-		ServiceAccountName string `json:"serviceAccountName"`
+		ServiceAccountName      string `json:"serviceAccountName"`
+		ServiceAccountNamespace string `json:"serviceAccountNamespace"`
 	}
 
 	ProxyRuntime struct {
