@@ -41,41 +41,44 @@ func TestNewValues(t *testing.T) {
 			"maxSurge":       "25%",
 		},
 	}
-	defaultController := map[string]interface{}{
-		"podDisruptionBudget": map[string]interface{}{
-			"maxUnavailable": 1.0,
+	defaultController := Controller{
+		PodDisruptionBudget: &PodDisruptionBudget{
+			MaxUnavailable: "1",
+		},
+		Tracing: &Tracing{
+			Collector: &TracingCollector{
+				Endpoint: "",
+			},
 		},
 	}
 	expected := &Values{
-		ControllerImage:              "cr.l5d.io/linkerd/controller",
-		ControllerReplicas:           1,
-		RevisionHistoryLimit:         10,
-		ControllerUID:                2103,
-		ControllerGID:                -1,
-		EnableH2Upgrade:              true,
-		EnablePodAntiAffinity:        false,
-		WebhookFailurePolicy:         "Ignore",
-		DisableHeartBeat:             false,
-		DeploymentStrategy:           defaultDeploymentStrategy,
-		HeartbeatSchedule:            "",
-		ClusterDomain:                "cluster.local",
-		ClusterNetworks:              "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8",
-		ImagePullPolicy:              "IfNotPresent",
-		CliVersion:                   "linkerd/cli dev-undefined",
-		ControllerLogLevel:           "info",
-		ControllerLogFormat:          "plain",
-		LinkerdVersion:               version.Version,
-		ProxyContainerName:           "linkerd-proxy",
-		CNIEnabled:                   false,
-		ControlPlaneTracing:          false,
-		ControlPlaneTracingNamespace: "linkerd-jaeger",
-		HighAvailability:             false,
-		PodAnnotations:               map[string]string{},
-		PodLabels:                    map[string]string{},
-		EnableEndpointSlices:         true,
-		DisableIPv6:                  true,
-		EnablePodDisruptionBudget:    false,
-		Controller:                   defaultController,
+		ControllerImage:           "cr.l5d.io/linkerd/controller",
+		ControllerReplicas:        1,
+		RevisionHistoryLimit:      10,
+		ControllerUID:             2103,
+		ControllerGID:             -1,
+		EnableH2Upgrade:           true,
+		EnablePodAntiAffinity:     false,
+		WebhookFailurePolicy:      "Ignore",
+		DisableHeartBeat:          false,
+		DeploymentStrategy:        defaultDeploymentStrategy,
+		HeartbeatSchedule:         "",
+		ClusterDomain:             "cluster.local",
+		ClusterNetworks:           "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8",
+		ImagePullPolicy:           "IfNotPresent",
+		CliVersion:                "linkerd/cli dev-undefined",
+		ControllerLogLevel:        "info",
+		ControllerLogFormat:       "plain",
+		LinkerdVersion:            version.Version,
+		ProxyContainerName:        "linkerd-proxy",
+		CNIEnabled:                false,
+		HighAvailability:          false,
+		PodAnnotations:            map[string]string{},
+		PodLabels:                 map[string]string{},
+		EnableEndpointSlices:      true,
+		DisableIPv6:               true,
+		EnablePodDisruptionBudget: false,
+		Controller:                &defaultController,
 		PodMonitor: &PodMonitor{
 			Enabled:        false,
 			ScrapeInterval: "10s",
@@ -181,12 +184,12 @@ func TestNewValues(t *testing.T) {
 			Metrics: &ProxyMetrics{
 				HostnameLabels: false,
 			},
-			Tracing: &ProxyTracing{
+			Tracing: &Tracing{
 				Enable:           false,
 				TraceServiceName: "linkerd-proxy",
-				Collector: &ProxyTracingCollector{
+				Collector: &TracingCollector{
 					Endpoint: "",
-					MeshIdentity: &ProxyTracingCollectorIdentity{
+					MeshIdentity: &TracingCollectorIdentity{
 						ServiceAccountName: "",
 					},
 				},
@@ -311,17 +314,11 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 
-		haController := map[string]interface{}{
-			"podDisruptionBudget": map[string]interface{}{
-				"maxUnavailable": 1.0,
-			},
-		}
-
 		expected.HighAvailability = true
 		expected.ControllerReplicas = 3
 		expected.EnablePodAntiAffinity = true
 		expected.EnablePodDisruptionBudget = true
-		expected.Controller = haController
+		expected.Controller = &defaultController
 		expected.DeploymentStrategy = haDeploymentStrategy
 		expected.WebhookFailurePolicy = "Fail"
 

@@ -19,10 +19,6 @@ revisionHistoryLimit: 10
 controllerLogLevel: info
 # -- Log format for the control plane components
 controllerLogFormat: plain
-# -- enables control plane tracing
-controlPlaneTracing: false
-# -- namespace to send control plane traces to
-controlPlaneTracingNamespace: linkerd-jaeger
 # -- control plane version. See Proxy section for proxy version
 linkerdVersion: linkerdVersionValue
 # -- default kubernetes deployment strategy
@@ -51,6 +47,13 @@ controller:
   podDisruptionBudget:
     # -- Maximum number of pods that can be unavailable during disruption
     maxUnavailable: 1
+  # Configures tracing in the controllers and how traces are exported
+  tracing:
+    # -- Enables trace collection and export in the proxy
+    enable: false
+    collector:
+      # -- The collector endpoint to send traces to. Required if tracing is enabled
+      endpoint: ""
 # -- enabling this omits the NET_ADMIN capability in the PSP
 # and the proxy-init container when injecting the proxy;
 # requires the linkerd-cni plugin to already be installed

@@ -73,6 +73,7 @@ func TestRender(t *testing.T) {
 		CNIEnabled:              false,
 		IdentityTrustDomain:     defaultValues.IdentityTrustDomain,
 		IdentityTrustAnchorsPEM: defaultValues.IdentityTrustAnchorsPEM,
+		Controller:              defaultValues.Controller,
 		DestinationController:   defaultValues.DestinationController,
 		PodAnnotations:          map[string]string{},
 		PodLabels:               map[string]string{},
@@ -124,12 +125,12 @@ func TestRender(t *testing.T) {
 			Metrics: &charts.ProxyMetrics{
 				HostnameLabels: false,
 			},
-			Tracing: &charts.ProxyTracing{
+			Tracing: &charts.Tracing{
 				Enable:           false,
 				TraceServiceName: "linkerd-proxy",
-				Collector: &charts.ProxyTracingCollector{
+				Collector: &charts.TracingCollector{
 					Endpoint: "",
-					MeshIdentity: &charts.ProxyTracingCollectorIdentity{
+					MeshIdentity: &charts.TracingCollectorIdentity{
 						ServiceAccountName:      "",
 						ServiceAccountNamespace: "",
 					},
@@ -231,7 +232,12 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withControlPlaneTracingValues.ControlPlaneTracing = true
+	withControlPlaneTracingValues.Controller.Tracing = &charts.Tracing{
+		Enable: true,
+		Collector: &charts.TracingCollector{
+			Endpoint: "tracing.foo:4317",
+		},
+	}
 	addFakeTLSSecrets(withControlPlaneTracingValues)
 
 	customRegistryOverride := "my.custom.registry/linkerd-io"

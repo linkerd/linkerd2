@@ -198,25 +198,21 @@ bin/linkerd viz -n emojivoto tap deploy voting
 #### Deploying Control Plane components with Tracing
 
 Control Plane components have the `trace-collector` flag used to enable
-[Distributed Tracing](https://opentracing.io/docs/overview/what-is-tracing/) for
-development purposes. It can be enabled globally i.e Control plane components
-and their proxies by using the `--set controlPlaneTracing=true` installation
-flag.
+[Distributed Tracing](https://opentracing.io/docs/overview/what-is-tracing/)
+for  development purposes. It can be enabled globally i.e Control plane
+components  and their proxies by using the
+`--set controller.tracing.enable=true` installation flag.
 
-This will configure all the components to send the traces at
-`collector.{{.Values.controlPlaneTracingNamespace}}.svc.{{.Values.ClusterDomain}}:4317`
+This will configure all the components to send the traces to the collector you
+have configured for your cluster.
 
 ```bash
 
 # install Linkerd with tracing
-linkerd install --set controlPlaneTracing=true | kubectl apply -f -
-
-# install the Jaeger extension
-linkerd jaeger install | kubectl apply -f -
-
-# restart the control plane components so that the jaeger-injector enables
-# tracing in their proxies
-kubectl -n linkerd rollout restart deploy
+linkerd install \
+  --set controller.tracing.enable=true \
+  --set controller.tracing.collector.endpoint=<your trace collector endpoint> \
+  | kubectl apply -f -
 ```
 
 ### Publishing images
