@@ -130,8 +130,8 @@ func TestRender(t *testing.T) {
 				Collector: &charts.ProxyTracingCollector{
 					Endpoint: "",
 					MeshIdentity: &charts.ProxyTracingCollectorIdentity{
-						ServiceAccountName:      "",
-						ServiceAccountNamespace: "",
+						Name:      "",
+						Namespace: "",
 					},
 				},
 			},
