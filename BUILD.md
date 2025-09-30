@@ -74,9 +74,6 @@ its extensions are written in Go. The dashboard UI is a React application.
   - [`linkerd-service-mirror-xxx`](multicluster/service-mirror): Controller
     observing the labeling of exported services in the target cluster, each one
     for which it will create a mirrored service in the local cluster.
-- [`jaeger extension`](jaeger)
-  - [`jaeger-injector`](jaeger/injector): Mutating webhook triggered by pods
-    creation, that expands the proxy container for it to produce tracing spans.
 
 ### Data Plane (Rust)
 
@@ -493,7 +490,6 @@ Extensions provide each their own chart:
 - Viz: [`viz/charts/linkerd-viz`](viz/charts/linkerd-viz)
 - Multicluster:
   [`multicluster/charts/linkerd-multicluster`](multicluster/charts/linkerd-multicluster)
-- Jaeger: [`jaeger/charts/linkerd-jaeger`](jaeger/charts/linkerd-jaeger)
 
 ### Making changes to the chart templates
 

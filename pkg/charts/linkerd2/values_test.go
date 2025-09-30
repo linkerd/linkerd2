@@ -88,7 +88,6 @@ func TestNewValues(t *testing.T) {
 				NamespaceSelector: `matchNames:
   - {{ .Release.Namespace }}
   - linkerd-viz
-  - linkerd-jaeger
 `,
 			},
 			ServiceMirror: &PodMonitorComponent{Enabled: true},

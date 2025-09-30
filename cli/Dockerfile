@@ -11,7 +11,6 @@ FROM go-deps AS go-gen
 WORKDIR /linkerd-build
 COPY cli cli
 COPY charts charts
-COPY jaeger jaeger
 COPY multicluster multicluster
 COPY viz viz
 

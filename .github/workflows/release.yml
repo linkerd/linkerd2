@@ -42,7 +42,6 @@ jobs:
         component:
           - controller
           - debug
-          - jaeger-webhook
           - metrics-api
           - proxy
           - tap

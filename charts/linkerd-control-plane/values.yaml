@@ -721,7 +721,6 @@ podMonitor:
       matchNames:
         - {{ .Release.Namespace }}
         - linkerd-viz
-        - linkerd-jaeger
   serviceMirror:
     # -- Enables the creation of PodMonitor for the Service Mirror component
     enabled: true

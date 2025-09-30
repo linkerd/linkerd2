@@ -231,7 +231,6 @@ jobs:
     strategy:
       matrix:
         component:
-          - jaeger-webhook
           - metrics-api
           - tap
           - web

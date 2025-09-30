@@ -18,6 +18,5 @@ if [ -z "${LINKERD_LOCAL_BUILD_CLI:-}" ]; then
 else
     "$bindir"/build-cli-bin
 fi
-"$bindir"/docker-build-jaeger-webhook
 "$bindir"/docker-build-metrics-api
 "$bindir"/docker-build-tap
