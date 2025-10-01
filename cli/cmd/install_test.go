@@ -131,8 +131,8 @@ func TestRender(t *testing.T) {
 				Collector: &charts.TracingCollector{
 					Endpoint: "",
 					MeshIdentity: &charts.TracingCollectorIdentity{
-						ServiceAccountName:      "",
-						ServiceAccountNamespace: "",
+						Name:      "",
+						Namespace: "",
 					},
 				},
 			},

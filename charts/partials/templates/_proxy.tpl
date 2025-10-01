@@ -160,14 +160,18 @@ env:
 {{- end }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
   value: {{ .Values.proxy.tracing.collector.endpoint }}
-{{- if empty .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}
-{{- fail "proxy.tracing.collector.meshIdentity.serviceAccountName must be set if proxy tracing is enabled" }}
-{{- end }}
-{{- if empty .Values.proxy.tracing.collector.meshIdentity.serviceAccountNamespace }}
-{{- fail "proxy.tracing.collector.meshIdentity.serviceAccountNamespace must be set if proxy tracing is enabled" }}
+{{- if .Values.proxy.tracing.collector.meshIdentity.name }}
+{{- if empty .Values.proxy.tracing.collector.meshIdentity.namespace }}
+{{- fail "proxy.tracing.collector.meshIdentity.namespace must be set if proxy tracing mesh identity name is set" }}
 {{- end }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-  value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.{{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountNamespace }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
+  value: {{ .Values.proxy.tracing.collector.meshIdentity.name }}.{{ .Values.proxy.tracing.collector.meshIdentity.namespace }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
+{{- else if .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}
+- name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
+  value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
+{{- else }}
+{{- fail "proxy.tracing.collector.meshIdentity must be set if proxy tracing is enabled"}}
+{{- end }}
 - name: LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES
   value: |
     k8s.pod.ip=$(_pod_ip)
