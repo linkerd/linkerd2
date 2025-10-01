@@ -50,7 +50,7 @@ controller:
   # Configures tracing in the controllers and how traces are exported
   tracing:
     # -- Enables trace collection and export in the proxy
-    enable: false
+    enabled: false
     collector:
       # -- The collector endpoint to send traces to. Required if tracing is enabled
       endpoint: ""

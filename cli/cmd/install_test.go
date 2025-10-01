@@ -233,7 +233,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withControlPlaneTracingValues.Controller.Tracing = &charts.Tracing{
-		Enable: true,
+		Enabled: true,
 		Collector: &charts.TracingCollector{
 			Endpoint: "tracing.foo:4317",
 		},

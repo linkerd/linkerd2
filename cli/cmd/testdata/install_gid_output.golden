@@ -517,7 +517,7 @@ data:
         collector:
           endpoint: ""
           meshIdentity: null
-        enable: false
+        enabled: false
         protocol: ""
         traceServiceName: ""
     controllerGID: 1234
