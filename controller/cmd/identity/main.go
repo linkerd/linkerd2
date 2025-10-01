@@ -40,7 +40,7 @@ func Main(args []string) {
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	identityIssuanceLifeTime := cmd.String("identity-issuance-lifetime", "", "the amount of time for which the Identity issuer should certify identity")
 	identityClockSkewAllowance := cmd.String("identity-clock-skew-allowance", "", "the amount of time to allow for clock skew within a Linkerd cluster")
-	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enabled pprof endpoints on the admin server")
 	qps := cmd.Float64("kube-apiclient-qps", 100, "Maximum QPS sent to the kube-apiserver before throttling")
 	burst := cmd.Int("kube-apiclient-burst", 200, "Burst value over kube-apiclient-qps")
 

@@ -188,7 +188,7 @@ type (
 	}
 
 	Tracing struct {
-		Enable           bool              `json:"enable"`
+		Enabled          bool              `json:"enabled"`
 		Protocol         string            `json:"protocol"`
 		TraceServiceName string            `json:"traceServiceName"`
 		Collector        *TracingCollector `json:"collector"`

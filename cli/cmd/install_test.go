@@ -126,7 +126,7 @@ func TestRender(t *testing.T) {
 				HostnameLabels: false,
 			},
 			Tracing: &charts.Tracing{
-				Enable:           false,
+				Enabled:          false,
 				TraceServiceName: "linkerd-proxy",
 				Collector: &charts.TracingCollector{
 					Endpoint: "",

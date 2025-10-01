@@ -185,7 +185,7 @@ func TestNewValues(t *testing.T) {
 				HostnameLabels: false,
 			},
 			Tracing: &Tracing{
-				Enable:           false,
+				Enabled:          false,
 				TraceServiceName: "linkerd-proxy",
 				Collector: &TracingCollector{
 					Endpoint: "",

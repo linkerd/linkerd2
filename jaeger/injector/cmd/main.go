@@ -28,7 +28,7 @@ func main() {
 		"service account associated with the collector instance")
 	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
 	linkerdNamespace := cmd.String("linkerd-namespace", "linkerd", "namespace in which Linkerd control-plane is installed")
-	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enabled pprof endpoints on the admin server")
 
 	flags.ConfigureAndParse(cmd, os.Args[1:])
 
