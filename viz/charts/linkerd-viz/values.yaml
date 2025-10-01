@@ -83,7 +83,7 @@ prometheusUrl: ""
 prometheusCredsSecret: ""
 
 # -- url of external jaeger instance
-# Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>:16686` if you plan to use jaeger extension
+# Set this to the name of your jaeger instance, e.g. `jaeger.<namespace>.svc.<clusterDomain>:16686`.
 jaegerUrl: ""
 
 # metrics API configuration

@@ -37,7 +37,6 @@ export DOCKER_IMAGES=(${DOCKER_IMAGES:-
     debug
     proxy
     web
-    jaeger-webhook
     tap
 })
 
