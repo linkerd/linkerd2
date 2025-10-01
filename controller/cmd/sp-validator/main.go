@@ -16,7 +16,7 @@ func Main(args []string) {
 	metricsAddr := cmd.String("metrics-addr", fmt.Sprintf(":%d", 9997), "address to serve scrapable metrics on")
 	addr := cmd.String("addr", ":8443", "address to serve on")
 	kubeconfig := cmd.String("kubeconfig", "", "path to kubeconfig")
-	enablePprof := cmd.Bool("enable-pprof", false, "Enabled pprof endpoints on the admin server")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 	flags.ConfigureAndParse(cmd, args)
 
 	webhook.Launch(

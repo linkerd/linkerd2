@@ -19,7 +19,7 @@ func Main(args []string) {
 	addr := cmd.String("addr", ":8443", "address to serve on")
 	kubeconfig := cmd.String("kubeconfig", "", "path to kubeconfig")
 	linkerdNamespace := cmd.String("linkerd-namespace", "linkerd", "control plane namespace")
-	enablePprof := cmd.Bool("enable-pprof", false, "Enabled pprof endpoints on the admin server")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 	flags.ConfigureAndParse(cmd, args)
 
 	webhook.Launch(

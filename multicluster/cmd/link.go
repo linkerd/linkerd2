@@ -396,7 +396,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
 	cmd.Flags().StringSliceVar(&opts.excludedAnnotations, "excluded-annotations", opts.excludedAnnotations, "Annotations to exclude when mirroring services")
 	cmd.Flags().StringSliceVar(&opts.excludedLabels, "excluded-labels", opts.excludedLabels, "Labels to exclude when mirroring services")
-	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enabled HA configuration for the service-mirror deployment (default false)")
+	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enable HA configuration for the service-mirror deployment (default false)")
 	cmd.Flags().BoolVar(&opts.enableGateway, "gateway", opts.enableGateway, "If false, allows a link to be created against a cluster that does not have a gateway service")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "yaml", "Output format. One of: json|yaml")
 

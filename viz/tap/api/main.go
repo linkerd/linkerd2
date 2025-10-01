@@ -28,7 +28,7 @@ func Main(args []string) {
 	tapPort := cmd.Uint("tap-port", 4190, "proxy tap port to connect to")
 	disableCommonNames := cmd.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
 	trustDomain := cmd.String("identity-trust-domain", defaultDomain, "configures the name suffix used for identities")
-	enablePprof := cmd.Bool("enable-pprof", false, "Enabled pprof endpoints on the admin server")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 
 	var ignoreHeaders = &stringMap{}
 	cmd.Var(ignoreHeaders, "ignore-headers", "list of headers to ignore")

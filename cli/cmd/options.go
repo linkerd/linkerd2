@@ -58,7 +58,7 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 
 		// The HA flag must be processed before flags that set these values individually so that the
 		// individual flags can override the HA defaults.
-		flag.NewBoolFlag(installUpgradeFlags, "ha", false, "Enabled HA deployment config for the control plane (default false)",
+		flag.NewBoolFlag(installUpgradeFlags, "ha", false, "Enable HA deployment config for the control plane (default false)",
 			func(values *l5dcharts.Values, value bool) error {
 				values.HighAvailability = value
 				if value {
@@ -384,7 +384,7 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				return nil
 			}),
 
-		flag.NewBoolFlag(proxyFlags, "enable-external-profiles", defaults.Proxy.EnableExternalProfiles, "Enabled service profiles for non-Kubernetes services",
+		flag.NewBoolFlag(proxyFlags, "enable-external-profiles", defaults.Proxy.EnableExternalProfiles, "Enable service profiles for non-Kubernetes services",
 			func(values *l5dcharts.Values, value bool) error {
 				values.Proxy.EnableExternalProfiles = value
 				return nil
@@ -460,7 +460,7 @@ func makeInjectFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 	injectFlags := pflag.NewFlagSet("inject", pflag.ExitOnError)
 
 	flags := []flag.Flag{
-		flag.NewBoolFlag(injectFlags, "native-sidecar", false, "Enabled native sidecar",
+		flag.NewBoolFlag(injectFlags, "native-sidecar", false, "Enable native sidecar",
 			func(values *l5dcharts.Values, value bool) error {
 				values.Proxy.NativeSidecar = value
 				return nil
@@ -485,7 +485,7 @@ func makeInjectFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				return nil
 			}),
 
-		flag.NewBoolFlag(injectFlags, "ingress", defaults.Proxy.IsIngress, "Enabled ingress mode in the linkerd proxy",
+		flag.NewBoolFlag(injectFlags, "ingress", defaults.Proxy.IsIngress, "Enable ingress mode in the linkerd proxy",
 			func(values *l5dcharts.Values, value bool) error {
 				values.Proxy.IsIngress = value
 				return nil

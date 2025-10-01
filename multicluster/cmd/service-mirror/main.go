@@ -53,7 +53,7 @@ func Main(args []string) {
 	repairPeriod := cmd.Duration("endpoint-refresh-period", 1*time.Minute, "frequency to refresh endpoint resolution")
 	enableHeadlessSvc := cmd.Bool("enable-headless-services", false, "toggle support for headless service mirroring")
 	enableNamespaceCreation := cmd.Bool("enable-namespace-creation", false, "toggle support for namespace creation")
-	enablePprof := cmd.Bool("enable-pprof", false, "Enabled pprof endpoints on the admin server")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 	localMirror := cmd.Bool("local-mirror", false, "watch the local cluster for federated service members")
 	federatedServiceSelector := cmd.String("federated-service-selector", k8s.DefaultFederatedServiceSelector, "Selector (label query) for federated service members in the local cluster")
 	exludedAnnotations := cmd.String("excluded-annotations", "", "Annotations to exclude when mirroring services")

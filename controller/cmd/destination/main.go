@@ -35,15 +35,15 @@ func Main(args []string) {
 	outboundTransportMode := cmd.String("outbound-transport-mode", "transparent",
 		"Force proxies to use the legacy transport for meshed traffic, i.e. transparently add TLS to the destination instead of routing to the proxy's inbound port")
 	enableH2Upgrade := cmd.Bool("enable-h2-upgrade", true,
-		"Enabled transparently upgraded HTTP2 connections among pods in the service mesh")
+		"Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", true,
-		"Enabled the usage of EndpointSlice informers and resources")
+		"Enable the usage of EndpointSlice informers and resources")
 	enableIPv6 := cmd.Bool("enable-ipv6", true,
 		"Set to true to allow discovering IPv6 endpoints and preferring IPv6 when both IPv4 and IPv6 are available")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
 	defaultOpaquePorts := cmd.String("default-opaque-ports", "", "configures the default opaque ports")
-	enablePprof := cmd.Bool("enable-pprof", false, "Enabled pprof endpoints on the admin server")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 	// This will default to true. It can be overridden with experimental CLI
 	// flags. Currently not exposed as a configuration value through Helm.
 	exportControllerQueueMetrics := cmd.Bool("export-queue-metrics", true, "Exports queue metrics for the external workload controller")
@@ -54,7 +54,7 @@ func Main(args []string) {
 	// proxies. This feature exists to support experimentation on top of the
 	// Linkerd control plane API.
 	extEndpointZoneWeights := cmd.Bool("ext-endpoint-zone-weights", false,
-		"Enabled setting endpoint weighting based on zone locality")
+		"Enable setting endpoint weighting based on zone locality")
 
 	// Cluster-wide defaults for meshed HTTP/2 client parameters.. These only
 	// apply to meshed connections, as we don't want to conflict with HTTP/2

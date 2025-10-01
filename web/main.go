@@ -40,7 +40,7 @@ func main() {
 	enforcedHost := cmd.String("enforced-host", "", "regexp describing the allowed values for the Host header; protects from DNS-rebinding attacks")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
-	enablePprof := cmd.Bool("enable-pprof", false, "Enabled pprof endpoints on the admin server")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
