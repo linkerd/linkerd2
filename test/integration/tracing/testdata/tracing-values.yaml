@@ -1,0 +1,8 @@
+proxy:
+  tracing:
+    enabled: true
+    collector:
+      endpoint: otel-collector-opentelemetry-collector.tracing:4317
+      meshIdentity:
+        serviceAccountName: otel-collector-opentelemetry-collector
+        namespace: tracing

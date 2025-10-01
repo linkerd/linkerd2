@@ -8,7 +8,6 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/cli/flag"
-	jaeger "github.com/linkerd/linkerd2/jaeger/cmd"
 	multicluster "github.com/linkerd/linkerd2/multicluster/cmd"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
@@ -122,7 +121,6 @@ func NewRootCmd() *cobra.Command {
 	rootCmd.AddCommand(newCmdPrune())
 
 	// Extension Sub Commands
-	rootCmd.AddCommand(jaeger.NewCmdJaeger())
 	rootCmd.AddCommand(multicluster.NewCmdMulticluster())
 	rootCmd.AddCommand(viz.NewCmdViz())
 

@@ -25,7 +25,7 @@ type glob func(string) ([]string, error)
 
 // extension contains the full path of an extension executable. If it's a
 // a built-in extension, path will be the `linkerd` executable and builtin will
-// be the extension name (jaeger, multicluster, or viz).
+// be the extension name (multicluster, or viz).
 type extension struct {
 	path    string
 	builtin string
@@ -33,7 +33,6 @@ type extension struct {
 
 var (
 	builtInChecks = map[string]struct{}{
-		"jaeger":       {},
 		"multicluster": {},
 		"viz":          {},
 	}

@@ -148,7 +148,7 @@ env:
   value: 30s
 - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
   value: {{ .Values.proxy.metrics.hostnameLabels | quote }}
-{{ if .Values.proxy.tracing | default (dict) | dig "enable" false -}}
+{{ if .Values.proxy.tracing | default (dict) | dig "enabled" false -}}
 - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
   value: /var/run/linkerd/podinfo/labels
 - name: LINKERD2_PROXY_TRACE_PROTOCOL
@@ -160,10 +160,14 @@ env:
 {{- end }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
   value: {{ .Values.proxy.tracing.collector.endpoint }}
-{{ if .Values.proxy.tracing.collector.meshIdentity.serviceAccountName -}}
+{{- if empty .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}
+{{- fail "proxy.tracing.collector.meshIdentity.serviceAccountName must be set if proxy tracing is enabled" }}
+{{- end }}
+{{- if empty .Values.proxy.tracing.collector.meshIdentity.namespace }}
+{{- fail "proxy.tracing.collector.meshIdentity.namespace must be set if proxy tracing is enabled" }}
+{{- end }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-  value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
-{{ end -}}
+  value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.{{ .Values.proxy.tracing.collector.meshIdentity.namespace }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
 - name: LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES
   value: |
     k8s.pod.ip=$(_pod_ip)

@@ -26,39 +26,37 @@ var (
 type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
-		ControllerImage              string                 `json:"controllerImage"`
-		ControllerReplicas           uint                   `json:"controllerReplicas"`
-		ControllerUID                int64                  `json:"controllerUID"`
-		ControllerGID                int64                  `json:"controllerGID"`
-		EnableH2Upgrade              bool                   `json:"enableH2Upgrade"`
-		EnablePodAntiAffinity        bool                   `json:"enablePodAntiAffinity"`
-		NodeAffinity                 map[string]interface{} `json:"nodeAffinity"`
-		EnablePodDisruptionBudget    bool                   `json:"enablePodDisruptionBudget"`
-		Controller                   map[string]interface{} `json:"controller"`
-		WebhookFailurePolicy         string                 `json:"webhookFailurePolicy"`
-		DeploymentStrategy           map[string]interface{} `json:"deploymentStrategy,omitempty"`
-		DisableHeartBeat             bool                   `json:"disableHeartBeat"`
-		HeartbeatSchedule            string                 `json:"heartbeatSchedule"`
-		Configs                      ConfigJSONs            `json:"configs"`
-		ClusterDomain                string                 `json:"clusterDomain"`
-		ClusterNetworks              string                 `json:"clusterNetworks"`
-		ImagePullPolicy              string                 `json:"imagePullPolicy"`
-		CliVersion                   string                 `json:"cliVersion"`
-		ControllerLogLevel           string                 `json:"controllerLogLevel"`
-		ControllerLogFormat          string                 `json:"controllerLogFormat"`
-		ProxyContainerName           string                 `json:"proxyContainerName"`
-		HighAvailability             bool                   `json:"highAvailability"`
-		CNIEnabled                   bool                   `json:"cniEnabled"`
-		EnableEndpointSlices         bool                   `json:"enableEndpointSlices"`
-		DisableIPv6                  bool                   `json:"disableIPv6"`
-		ControlPlaneTracing          bool                   `json:"controlPlaneTracing"`
-		ControlPlaneTracingNamespace string                 `json:"controlPlaneTracingNamespace"`
-		IdentityTrustAnchorsPEM      string                 `json:"identityTrustAnchorsPEM"`
-		IdentityTrustDomain          string                 `json:"identityTrustDomain"`
-		PrometheusURL                string                 `json:"prometheusUrl"`
-		ImagePullSecrets             []map[string]string    `json:"imagePullSecrets"`
-		LinkerdVersion               string                 `json:"linkerdVersion"`
-		RevisionHistoryLimit         uint                   `json:"revisionHistoryLimit"`
+		ControllerImage           string                 `json:"controllerImage"`
+		ControllerReplicas        uint                   `json:"controllerReplicas"`
+		ControllerUID             int64                  `json:"controllerUID"`
+		ControllerGID             int64                  `json:"controllerGID"`
+		EnableH2Upgrade           bool                   `json:"enableH2Upgrade"`
+		EnablePodAntiAffinity     bool                   `json:"enablePodAntiAffinity"`
+		NodeAffinity              map[string]interface{} `json:"nodeAffinity"`
+		EnablePodDisruptionBudget bool                   `json:"enablePodDisruptionBudget"`
+		Controller                *Controller            `json:"controller"`
+		WebhookFailurePolicy      string                 `json:"webhookFailurePolicy"`
+		DeploymentStrategy        map[string]interface{} `json:"deploymentStrategy,omitempty"`
+		DisableHeartBeat          bool                   `json:"disableHeartBeat"`
+		HeartbeatSchedule         string                 `json:"heartbeatSchedule"`
+		Configs                   ConfigJSONs            `json:"configs"`
+		ClusterDomain             string                 `json:"clusterDomain"`
+		ClusterNetworks           string                 `json:"clusterNetworks"`
+		ImagePullPolicy           string                 `json:"imagePullPolicy"`
+		CliVersion                string                 `json:"cliVersion"`
+		ControllerLogLevel        string                 `json:"controllerLogLevel"`
+		ControllerLogFormat       string                 `json:"controllerLogFormat"`
+		ProxyContainerName        string                 `json:"proxyContainerName"`
+		HighAvailability          bool                   `json:"highAvailability"`
+		CNIEnabled                bool                   `json:"cniEnabled"`
+		EnableEndpointSlices      bool                   `json:"enableEndpointSlices"`
+		DisableIPv6               bool                   `json:"disableIPv6"`
+		IdentityTrustAnchorsPEM   string                 `json:"identityTrustAnchorsPEM"`
+		IdentityTrustDomain       string                 `json:"identityTrustDomain"`
+		PrometheusURL             string                 `json:"prometheusUrl"`
+		ImagePullSecrets          []map[string]string    `json:"imagePullSecrets"`
+		LinkerdVersion            string                 `json:"linkerdVersion"`
+		RevisionHistoryLimit      uint                   `json:"revisionHistoryLimit"`
 
 		DestinationController *DestinationController `json:"destinationController"`
 		Heartbeat             map[string]interface{} `json:"heartbeat"`
@@ -104,7 +102,7 @@ type (
 
 	// PodDisruptionBudget contains the fields to set the PDB
 	PodDisruptionBudget struct {
-		MaxUnavailable int `json:"maxUnavailable"`
+		MaxUnavailable string `json:"maxUnavailable"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration
@@ -112,6 +110,11 @@ type (
 		Global  string `json:"global"`
 		Proxy   string `json:"proxy"`
 		Install string `json:"install"`
+	}
+
+	Controller struct {
+		PodDisruptionBudget *PodDisruptionBudget `json:"podDisruptionBudget"`
+		Tracing             *Tracing             `json:"tracing"`
 	}
 
 	// Proxy contains the fields to set the proxy sidecar container
@@ -151,7 +154,7 @@ type (
 		LivenessProbe                        *Probe           `json:"livenessProbe"`
 		Control                              *ProxyControl    `json:"control"`
 		Metrics                              *ProxyMetrics    `json:"metrics"`
-		Tracing                              *ProxyTracing    `json:"tracing"`
+		Tracing                              *Tracing         `json:"tracing"`
 
 		AdditionalEnv   []corev1.EnvVar `json:"additionalEnv"`
 		ExperimentalEnv []corev1.EnvVar `json:"experimentalEnv"`
@@ -184,20 +187,21 @@ type (
 		HostnameLabels bool `json:"hostnameLabels"`
 	}
 
-	ProxyTracing struct {
-		Enable           bool                   `json:"enable"`
-		Protocol         string                 `json:"protocol"`
-		TraceServiceName string                 `json:"traceServiceName"`
-		Collector        *ProxyTracingCollector `json:"collector"`
+	Tracing struct {
+		Enabled          bool              `json:"enabled"`
+		Protocol         string            `json:"protocol"`
+		TraceServiceName string            `json:"traceServiceName"`
+		Collector        *TracingCollector `json:"collector"`
 	}
 
-	ProxyTracingCollector struct {
-		Endpoint     string                         `json:"endpoint"`
-		MeshIdentity *ProxyTracingCollectorIdentity `json:"meshIdentity"`
+	TracingCollector struct {
+		Endpoint     string                    `json:"endpoint"`
+		MeshIdentity *TracingCollectorIdentity `json:"meshIdentity"`
 	}
 
-	ProxyTracingCollectorIdentity struct {
+	TracingCollectorIdentity struct {
 		ServiceAccountName string `json:"serviceAccountName"`
+		Namespace          string `json:"namespace"`
 	}
 
 	ProxyRuntime struct {

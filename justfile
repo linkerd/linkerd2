@@ -469,8 +469,6 @@ _linkerd-viz-uninit:
             linkerd-viz-uninstall
     fi
 
-# TODO linkerd-jaeger-install
-
 ##
 ## linkerd multicluster
 ##
