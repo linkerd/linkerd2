@@ -772,7 +772,6 @@ data:
         collector:
           endpoint: ""
           meshIdentity:
-            name: ""
             namespace: ""
             serviceAccountName: ""
         enabled: false

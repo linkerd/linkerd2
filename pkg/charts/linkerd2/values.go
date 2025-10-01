@@ -200,10 +200,8 @@ type (
 	}
 
 	TracingCollectorIdentity struct {
-		Name      string `json:"name"`
-		Namespace string `json:"namespace"`
-		// Deprecated: Name and Namespace fields should be used instead
 		ServiceAccountName string `json:"serviceAccountName"`
+		Namespace          string `json:"namespace"`
 	}
 
 	ProxyRuntime struct {
