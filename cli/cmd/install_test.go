@@ -126,13 +126,13 @@ func TestRender(t *testing.T) {
 				HostnameLabels: false,
 			},
 			Tracing: &charts.Tracing{
-				Enable:           false,
+				Enabled:          false,
 				TraceServiceName: "linkerd-proxy",
 				Collector: &charts.TracingCollector{
 					Endpoint: "",
 					MeshIdentity: &charts.TracingCollectorIdentity{
-						Name:      "",
-						Namespace: "",
+						ServiceAccountName: "",
+						Namespace:          "",
 					},
 				},
 			},
@@ -233,7 +233,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withControlPlaneTracingValues.Controller.Tracing = &charts.Tracing{
-		Enable: true,
+		Enabled: true,
 		Collector: &charts.TracingCollector{
 			Endpoint: "tracing.foo:4317",
 		},

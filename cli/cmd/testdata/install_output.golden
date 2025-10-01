@@ -514,7 +514,7 @@ data:
         collector:
           endpoint: ""
           meshIdentity: null
-        enable: false
+        enabled: false
         protocol: ""
         traceServiceName: ""
     controllerGID: 2103
@@ -715,10 +715,9 @@ data:
         collector:
           endpoint: ""
           meshIdentity:
-            name: ""
             namespace: ""
             serviceAccountName: ""
-        enable: false
+        enabled: false
         protocol: ""
         traceServiceName: linkerd-proxy
       uid: 2102
