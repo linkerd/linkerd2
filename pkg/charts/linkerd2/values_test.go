@@ -182,7 +182,7 @@ func TestNewValues(t *testing.T) {
 				HostnameLabels: false,
 			},
 			Tracing: &ProxyTracing{
-				Enable:           false,
+				Enabled:          false,
 				TraceServiceName: "linkerd-proxy",
 				Collector: &ProxyTracingCollector{
 					Endpoint: "",

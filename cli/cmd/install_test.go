@@ -125,12 +125,13 @@ func TestRender(t *testing.T) {
 				HostnameLabels: false,
 			},
 			Tracing: &charts.ProxyTracing{
-				Enable:           false,
+				Enabled:          false,
 				TraceServiceName: "linkerd-proxy",
 				Collector: &charts.ProxyTracingCollector{
 					Endpoint: "",
 					MeshIdentity: &charts.ProxyTracingCollectorIdentity{
 						ServiceAccountName: "",
+						Namespace:          "",
 					},
 				},
 			},

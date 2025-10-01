@@ -758,8 +758,9 @@ data:
         collector:
           endpoint: ""
           meshIdentity:
+            namespace: ""
             serviceAccountName: ""
-        enable: false
+        enabled: false
         protocol: ""
         traceServiceName: linkerd-proxy
       uid: 2102
