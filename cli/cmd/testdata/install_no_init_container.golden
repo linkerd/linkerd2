@@ -510,11 +510,16 @@ data:
     clusterDomain: cluster.local
     clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8
     cniEnabled: true
-    controlPlaneTracing: false
-    controlPlaneTracingNamespace: linkerd-jaeger
     controller:
       podDisruptionBudget:
-        maxUnavailable: 1
+        maxUnavailable: "1"
+      tracing:
+        collector:
+          endpoint: ""
+          meshIdentity: null
+        enabled: false
+        protocol: ""
+        traceServiceName: ""
     controllerGID: -1
     controllerImage: cr.l5d.io/linkerd/controller
     controllerLogFormat: plain
