@@ -202,7 +202,7 @@ type (
 	TracingCollectorIdentity struct {
 		Name      string `json:"name"`
 		Namespace string `json:"namespace"`
-		// DEPRECATED: Name and Namespace fields should be used instead
+		// Deprecated: Name and Namespace fields should be used instead
 		ServiceAccountName string `json:"serviceAccountName"`
 	}
 
