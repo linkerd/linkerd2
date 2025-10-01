@@ -196,8 +196,8 @@ bin/linkerd viz -n emojivoto tap deploy voting
 
 Control Plane components have the `trace-collector` flag used to enable
 [Distributed Tracing](https://opentracing.io/docs/overview/what-is-tracing/)
-for  development purposes. It can be enabled globally i.e Control plane
-components  and their proxies by using the
+for development purposes. It can be enabled globally i.e Control plane
+components and their proxies by using the
 `--set controller.tracing.enable=true` installation flag.
 
 This will configure all the components to send the traces to the collector you
