@@ -160,17 +160,14 @@ env:
 {{- end }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
   value: {{ .Values.proxy.tracing.collector.endpoint }}
-{{- if .Values.proxy.tracing.collector.meshIdentity.name }}
-{{- if empty .Values.proxy.tracing.collector.meshIdentity.namespace }}
-{{- fail "proxy.tracing.collector.meshIdentity.namespace must be set if proxy tracing mesh identity name is set" }}
-{{- end }}
+{{- if .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}
+{{- if .Values.proxy.tracing.collector.meshIdentity.namespace }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-  value: {{ .Values.proxy.tracing.collector.meshIdentity.name }}.{{ .Values.proxy.tracing.collector.meshIdentity.namespace }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
-{{- else if .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}
+  value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.{{ .Values.proxy.tracing.collector.meshIdentity.namespace }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
+{{- else }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
   value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
-{{- else }}
-{{- fail "proxy.tracing.collector.meshIdentity must be set if proxy tracing is enabled"}}
+{{- end }}
 {{- end }}
 - name: LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES
   value: |

@@ -762,7 +762,7 @@ data:
             name: ""
             namespace: ""
             serviceAccountName: ""
-        enable: false
+        enabled: false
         protocol: ""
         traceServiceName: linkerd-proxy
       uid: 2102

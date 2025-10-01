@@ -230,7 +230,7 @@ func generateAnnotationsDocs() []annotationDoc {
 		},
 		{
 			Name:        k8s.ProxyEnableExternalProfilesAnnotation,
-			Description: "Enable service profiles for non-Kubernetes services",
+			Description: "Enabled service profiles for non-Kubernetes services",
 		},
 		{
 			Name:        k8s.ProxyVersionOverrideAnnotation,
@@ -290,7 +290,7 @@ func generateAnnotationsDocs() []annotationDoc {
 		},
 		{
 			Name:        k8s.ProxyEnableNativeSidecarAnnotation,
-			Description: "Enable KEP-753 native sidecars. This is an experimental feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used.",
+			Description: "Enabled KEP-753 native sidecars. This is an experimental feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used.",
 		},
 	}
 }

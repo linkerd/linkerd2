@@ -281,23 +281,22 @@ proxy:
   # Configures tracing in the proxy and how they are exported
   tracing:
     # -- Enables trace collection and export in the proxy
-    enable: false
+    enabled: false
     traceServiceName: linkerd-proxy
     collector:
       # -- The collector endpoint to send traces to.
       endpoint: ""
       # -- The identity of the collector in the linkerd mesh.
       meshIdentity:
-        # -- Mesh identity name for the trace collector. This should be set to:
-        # - The name of the service account attached to the collector
-        # - If there's no explicitly set service account, the name of the
-        #   deployment/statefulset/daemonset of the trace collector.
-        name: ""
+        # -- Mesh identity name for the trace collector. This should be set to
+        # the name of the service account attached to the collector. If
+        # there's no explicitly set service account, this will probably be
+        # "default".
+        serviceAccountName: ""
         # -- Mesh identity namespace for the trace collector. This should be
-        # set to:
-        # - The namespace of the service account attached to the collector
-        # - If there's no explicitly set service account, the namespace of the
-        #   deployment/statefulset/daemonset of the trace collector.
+        # set to the namespace of the service account attached to the
+        # collector. If there's no explicitly set service account, this is the
+        # namespace of the collector.
         namespace: ""
   inbound:
     server:
