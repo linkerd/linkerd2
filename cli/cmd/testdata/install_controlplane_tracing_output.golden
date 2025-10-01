@@ -978,6 +978,8 @@ spec:
         - -enable-pprof=false
         - -kube-apiclient-qps=100
         - -kube-apiclient-burst=200
+        
+        - -trace-collector=tracing.foo:4317
         env:
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
@@ -1594,6 +1596,8 @@ spec:
         - -enable-ipv6=false
         - -enable-pprof=false
         - --meshed-http2-client-params={"keep_alive":{"interval":{"seconds":10},"timeout":{"seconds":3},"while_idle":true}}
+        
+        - -trace-collector=tracing.foo:4317
         image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
