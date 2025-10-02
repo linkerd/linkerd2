@@ -38,6 +38,103 @@ spec:
         linkerd.io/workload-ns: linkerd
     spec:
       containers:
+      - args:
+        - tap
+        - -controller-namespace=linkerd
+        - -log-level=info
+        image: cr.l5d.io/linkerd/controller:git-a94122bf
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ping
+            port: 9998
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: tap
+        ports:
+        - containerPort: 8088
+          name: grpc
+          protocol: TCP
+        - containerPort: 8089
+          name: apiserver
+          protocol: TCP
+        - containerPort: 9998
+          name: tap-admin
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9998
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        securityContext:
+          runAsGroup: 2103
+          runAsUser: 2103
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
+        - mountPath: /var/run/linkerd/config
+          name: config
+      - image: cr.l5d.io/linkerd/debug:test-inject-debug-version
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - "true"
+        name: linkerd-debug
+        readinessProbe:
+          exec:
+            command:
+            - "true"
+        terminationMessagePolicy: FallbackToLogsOnError
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - --firewall-bin-path
+        - iptables-nft
+        - --firewall-save-bin-path
+        - iptables-nft-save
+        - --ipv6=false
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - 4190,4191,4567,4568
+        - --outbound-ports-to-ignore
+        - 4567,4568
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.3
+        imagePullPolicy: IfNotPresent
+        name: linkerd-init
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+            - NET_ADMIN
+            - NET_RAW
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsGroup: 65534
+          runAsNonRoot: true
+          runAsUser: 65534
+          seccompProfile:
+            type: RuntimeDefault
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
       - env:
         - name: _pod_name
           valueFrom:
@@ -177,13 +274,6 @@ spec:
           value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.cluster.local
         image: cr.l5d.io/linkerd/proxy:test-inject-proxy-version
         imagePullPolicy: IfNotPresent
-        lifecycle:
-          postStart:
-            exec:
-              command:
-              - /usr/lib/linkerd/linkerd-await
-              - --timeout=2m
-              - --port=4191
         livenessProbe:
           httpGet:
             path: /live
@@ -202,6 +292,7 @@ spec:
             port: 4191
           initialDelaySeconds: 2
           timeoutSeconds: 1
+        restartPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -209,109 +300,18 @@ spec:
           runAsUser: 2102
           seccompProfile:
             type: RuntimeDefault
+        startupProbe:
+          failureThreshold: 120
+          httpGet:
+            path: /ready
+            port: 4191
+          periodSeconds: 1
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
-      - args:
-        - tap
-        - -controller-namespace=linkerd
-        - -log-level=info
-        image: cr.l5d.io/linkerd/controller:git-a94122bf
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /ping
-            port: 9998
-            scheme: HTTP
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-        name: tap
-        ports:
-        - containerPort: 8088
-          name: grpc
-          protocol: TCP
-        - containerPort: 8089
-          name: apiserver
-          protocol: TCP
-        - containerPort: 9998
-          name: tap-admin
-          protocol: TCP
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9998
-            scheme: HTTP
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-        securityContext:
-          runAsGroup: 2103
-          runAsUser: 2103
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-        volumeMounts:
-        - mountPath: /var/run/linkerd/tls
-          name: tls
-          readOnly: true
-        - mountPath: /var/run/linkerd/config
-          name: config
-      - image: cr.l5d.io/linkerd/debug:test-inject-debug-version
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          exec:
-            command:
-            - "true"
-        name: linkerd-debug
-        readinessProbe:
-          exec:
-            command:
-            - "true"
-        terminationMessagePolicy: FallbackToLogsOnError
-      dnsPolicy: ClusterFirst
-      initContainers:
-      - args:
-        - --firewall-bin-path
-        - iptables-nft
-        - --firewall-save-bin-path
-        - iptables-nft-save
-        - --ipv6=false
-        - --incoming-proxy-port
-        - "4143"
-        - --outgoing-proxy-port
-        - "4140"
-        - --proxy-uid
-        - "2102"
-        - --inbound-ports-to-ignore
-        - 4190,4191,4567,4568
-        - --outbound-ports-to-ignore
-        - 4567,4568
-        image: cr.l5d.io/linkerd/proxy-init:v2.4.3
-        imagePullPolicy: IfNotPresent
-        name: linkerd-init
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            add:
-            - NET_ADMIN
-            - NET_RAW
-          privileged: false
-          readOnlyRootFilesystem: true
-          runAsGroup: 65534
-          runAsNonRoot: true
-          runAsUser: 65534
-          seccompProfile:
-            type: RuntimeDefault
-        terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /run
-          name: linkerd-proxy-init-xtables-lock
       restartPolicy: Always
       schedulerName: default-scheduler
       securityContext: {}

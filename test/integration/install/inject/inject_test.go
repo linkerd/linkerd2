@@ -56,12 +56,13 @@ func parseDeployment(yamlString string) (*appsv1.Deployment, error) {
 
 func TestInjectManualParams(t *testing.T) {
 	reg := "cr.l5d.io/linkerd"
-	if override := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
+	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
 		reg = override
 	}
 
 	injectionValidator := testutil.InjectValidator{
 		NoInitContainer:        TestHelper.CNI(),
+		NativeSidecar:          true,
 		Version:                "proxy-version",
 		Image:                  reg + "/proxy-image",
 		InitImage:              reg + "/init-image",
@@ -119,6 +120,7 @@ func TestInjectAutoParams(t *testing.T) {
 	TestHelper.WithDataPlaneNamespace(ctx, injectNS, map[string]string{}, t, func(t *testing.T, ns string) {
 		injectionValidator := testutil.InjectValidator{
 			NoInitContainer:         TestHelper.CNI() || TestHelper.Calico(),
+			NativeSidecar:           true,
 			AutoInject:              true,
 			AdminPort:               8888,
 			ControlPort:             8881,
@@ -145,7 +147,7 @@ func TestInjectAutoParams(t *testing.T) {
 			InboundConnectTimeout:   "999ms",
 			SkipOutboundPorts:       "1111,2222,3333",
 			SkipInboundPorts:        "4444,5555,6666",
-			WaitBeforeExitSeconds:   10,
+			WaitBeforeExitSeconds:   0,
 		}
 
 		_, annotations := injectionValidator.GetFlagsAndAnnotations()
@@ -243,8 +245,7 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 				"failed to get pods for namespace %s: %s", ns, err)
 		}
 
-		containers := pods[0].Spec.Containers
-		proxyContainer := testutil.GetProxyContainer(containers)
+		proxyContainer := testutil.GetProxyContainer(pods[0].Spec)
 
 		// Match the pod configuration with the namespace level overrides
 		if proxyContainer.Resources.Requests["memory"] != resource.MustParse(nsProxyMemReq) {
@@ -336,23 +337,7 @@ func TestInjectAutoAnnotationPermutations(t *testing.T) {
 				containers := pods[0].Spec.Containers
 				initContainers := pods[0].Spec.InitContainers
 
-				if shouldBeInjected {
-					if len(containers) != 2 {
-						testutil.Fatalf(t, "expected 2 containers for pod %s/%s, got %d", ns, pods[0].GetName(), len(containers))
-					}
-					if containers[0].Name != containerName && containers[1].Name != containerName {
-						testutil.Fatalf(t, "expected bb-terminus container in pod %s/%s, got %+v", ns, pods[0].GetName(), containers[0])
-					}
-					if containers[0].Name != k8s.ProxyContainerName && containers[1].Name != k8s.ProxyContainerName {
-						testutil.Fatalf(t, "expected %s container in pod %s/%s, got %+v", ns, pods[0].GetName(), k8s.ProxyContainerName, containers[0])
-					}
-					if !TestHelper.CNI() && len(initContainers) != 1 {
-						testutil.Fatalf(t, "expected 1 init container for pod %s/%s, got %d", ns, pods[0].GetName(), len(initContainers))
-					}
-					if !TestHelper.CNI() && initContainers[0].Name != k8s.InitContainerName {
-						testutil.Fatalf(t, "expected %s init container in pod %s/%s, got %+v", ns, pods[0].GetName(), k8s.InitContainerName, initContainers[0])
-					}
-				} else {
+				if !shouldBeInjected {
 					if len(containers) != 1 {
 						testutil.Fatalf(t, "expected 1 container for pod %s/%s, got %d", ns, pods[0].GetName(), len(containers))
 					}
@@ -362,7 +347,42 @@ func TestInjectAutoAnnotationPermutations(t *testing.T) {
 					if len(initContainers) != 0 {
 						testutil.Fatalf(t, "expected 0 init containers for pod %s/%s, got %d", ns, pods[0].GetName(), len(initContainers))
 					}
+
+					return
 				}
+
+				if len(containers) != 1 {
+					testutil.Fatalf(t, "expected 1 container for pod %s/%s, got %d", ns, pods[0].GetName(), len(containers))
+				}
+				if containers[0].Name != containerName {
+					testutil.Fatalf(t, "expected bb-terminus container in pod %s/%s, got %+v", ns, pods[0].GetName(), containers[0])
+				}
+				if !TestHelper.CNI() && len(initContainers) != 2 {
+					testutil.Fatalf(t, "expected 2 init container for pod %s/%s, got %d", ns, pods[0].GetName(), len(initContainers))
+				}
+				if !TestHelper.CNI() && initContainers[0].Name != k8s.InitContainerName {
+					testutil.Fatalf(t, "expected %s init container in pod %s/%s, got %+v", ns, pods[0].GetName(), k8s.InitContainerName, initContainers[0])
+				}
+				if initContainers[1].Name != k8s.ProxyContainerName {
+					testutil.Fatalf(t, "expected %s container in pod %s/%s, got %+v", k8s.ProxyContainerName, ns, pods[0].GetName(), initContainers[1])
+				}
+
+				// the non-native sidecar case
+				/*if len(containers) != 2 {
+					testutil.Fatalf(t, "expected 2 containers for pod %s/%s, got %d", ns, pods[0].GetName(), len(containers))
+				}
+				if containers[0].Name != containerName && containers[1].Name != containerName {
+					testutil.Fatalf(t, "expected bb-terminus container in pod %s/%s, got %+v", ns, pods[0].GetName(), containers[0])
+				}
+				if containers[0].Name != k8s.ProxyContainerName && containers[1].Name != k8s.ProxyContainerName {
+					testutil.Fatalf(t, "expected %s container in pod %s/%s, got %+v", k8s.ProxyContainerName, ns, pods[0].GetName(), containers[0])
+				}
+				if !TestHelper.CNI() && len(initContainers) != 1 {
+					testutil.Fatalf(t, "expected 1 init container for pod %s/%s, got %d", ns, pods[0].GetName(), len(initContainers))
+				}
+				if !TestHelper.CNI() && initContainers[0].Name != k8s.InitContainerName {
+					testutil.Fatalf(t, "expected %s init container in pod %s/%s, got %+v", ns, pods[0].GetName(), k8s.InitContainerName, initContainers[0])
+				}*/
 			}
 		})
 
@@ -480,8 +500,7 @@ func TestInjectAutoPod(t *testing.T) {
 			testutil.Fatalf(t, "expected pod in namespace %s to have %s opaque ports, but it had %s", ns, manualOpaquePorts, annotation)
 		}
 
-		containers := pods[0].Spec.Containers
-		if proxyContainer := testutil.GetProxyContainer(containers); proxyContainer == nil {
+		if proxyContainer := testutil.GetProxyContainer(pods[0].Spec); proxyContainer == nil {
 			testutil.Fatalf(t, "pod in namespace %s wasn't injected with the proxy container", ns)
 		}
 
@@ -561,8 +580,7 @@ func TestInjectDisabledAutoPod(t *testing.T) {
 			testutil.Fatalf(t, "expected pod in namespace %s to have %s opaque ports, but it had %s", ns, manualOpaquePorts, annotation)
 		}
 
-		containers := pods[0].Spec.Containers
-		if proxyContainer := testutil.GetProxyContainer(containers); proxyContainer != nil {
+		if proxyContainer := testutil.GetProxyContainer(pods[0].Spec); proxyContainer != nil {
 			testutil.Fatalf(t, "pod in namespace %s should not have been injected", ns)
 		}
 	})

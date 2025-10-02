@@ -11,7 +11,6 @@ spec:
   template:
     metadata:
       annotations:
-        config.alpha.linkerd.io/proxy-enable-native-sidecar: "true"
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: test-inject-proxy-version
         linkerd.io/trust-root-sha256: 8dc603abd4e755c25c94da05abbf29b9b283a784733651020d72f97ca8ab98e4
