@@ -27,7 +27,7 @@ jobs:
   audit:
     timeout-minutes: 10
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v47-rust
+    container: ghcr.io/linkerd/dev:v48-rust
     strategy:
       matrix:
         checks:
@@ -43,7 +43,7 @@ jobs:
   fmt:
     timeout-minutes: 5
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v47-rust
+    container: ghcr.io/linkerd/dev:v48-rust
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -52,7 +52,7 @@ jobs:
   clippy:
     timeout-minutes: 20
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v47-rust
+    container: ghcr.io/linkerd/dev:v48-rust
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -63,7 +63,7 @@ jobs:
   check:
     timeout-minutes: 20
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v47-rust
+    container: ghcr.io/linkerd/dev:v48-rust
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -74,7 +74,7 @@ jobs:
     name: test
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
-    container: ghcr.io/linkerd/dev:v47-rust
+    container: ghcr.io/linkerd/dev:v48-rust
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
