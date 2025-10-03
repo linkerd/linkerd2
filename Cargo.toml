@@ -8,7 +8,7 @@ members = [
     "policy-controller/k8s/index",
     "policy-controller/k8s/status",
     "policy-controller/runtime",
-    "policy-test",
+    "policy-test", "tap",
 ]
 
 [profile.release]

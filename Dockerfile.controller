@@ -27,6 +27,7 @@ WORKDIR /build
 RUN mkdir -p target/bin
 COPY Cargo.toml Cargo.lock .
 COPY policy-controller policy-controller
+COPY tap tap
 RUN cargo new policy-test --lib
 ENV CARGO="cargo auditable"
 RUN --mount=type=cache,target=/usr/local/cargo/registry \

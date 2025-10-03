@@ -1,0 +1,17 @@
+[package]
+name = "linkerd-tap"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+clap = { version = "4", features = ["derive"] }
+opentelemetry = { version = "0.31" }
+opentelemetry-proto = { version = "0.31" }
+opentelemetry_sdk = { version = "0.31", features = ["rt-tokio"] }
+owo-colors = "4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tonic = { version = "0.14", features = ["gzip"] }
