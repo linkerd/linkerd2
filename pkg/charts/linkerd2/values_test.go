@@ -153,6 +153,7 @@ func TestNewValues(t *testing.T) {
 			OutboundConnectTimeout:               "1000ms",
 			InboundConnectTimeout:                "100ms",
 			OpaquePorts:                          "25,587,3306,4444,5432,6379,9300,11211",
+			NativeSidecar:                        true,
 			Await:                                true,
 			DefaultInboundPolicy:                 "all-unauthenticated",
 			OutboundTransportMode:                "transport-header",

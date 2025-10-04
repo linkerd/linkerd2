@@ -19,6 +19,48 @@ spec:
         linkerd.io/workload-ns: ""
     spec:
       containers:
+      - image: redis
+        name: redis
+        ports:
+        - containerPort: 6379
+          name: server
+      initContainers:
+      - args:
+        - --firewall-bin-path
+        - iptables-nft
+        - --firewall-save-bin-path
+        - iptables-nft-save
+        - --ipv6=false
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - 4190,4191,4567,4568
+        - --outbound-ports-to-ignore
+        - 4567,4568
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.3
+        imagePullPolicy: IfNotPresent
+        name: linkerd-init
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+            - NET_ADMIN
+            - NET_RAW
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsGroup: 65534
+          runAsNonRoot: true
+          runAsUser: 65534
+          seccompProfile:
+            type: RuntimeDefault
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
       - env:
         - name: _pod_name
           valueFrom:
@@ -158,13 +200,6 @@ spec:
           value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.cluster.local
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
-        lifecycle:
-          postStart:
-            exec:
-              command:
-              - /usr/lib/linkerd/linkerd-await
-              - --timeout=2m
-              - --port=4191
         livenessProbe:
           httpGet:
             path: /live
@@ -183,6 +218,7 @@ spec:
             port: 4191
           initialDelaySeconds: 2
           timeoutSeconds: 1
+        restartPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -190,17 +226,58 @@ spec:
           runAsUser: 2102
           seccompProfile:
             type: RuntimeDefault
+        startupProbe:
+          failureThreshold: 120
+          httpGet:
+            path: /ready
+            port: 4191
+          periodSeconds: 1
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
-      - image: redis
-        name: redis
+      volumes:
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
+      - name: linkerd-identity-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              audience: identity.l5d.io
+              expirationSeconds: 86400
+              path: linkerd-identity-token
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      annotations:
+        linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/proxy-version: install-proxy-version
+        linkerd.io/trust-root-sha256: 8dc603abd4e755c25c94da05abbf29b9b283a784733651020d72f97ca8ab98e4
+      labels:
+        app: nginx
+        linkerd.io/control-plane-ns: linkerd
+        linkerd.io/proxy-deployment: nginx
+        linkerd.io/workload-ns: ""
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
         ports:
-        - containerPort: 6379
-          name: server
+        - containerPort: 80
+          name: http
       initContainers:
       - args:
         - --firewall-bin-path
@@ -238,41 +315,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-      volumes:
-      - emptyDir: {}
-        name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
-      - name: linkerd-identity-token
-        projected:
-          sources:
-          - serviceAccountToken:
-              audience: identity.l5d.io
-              expirationSeconds: 86400
-              path: linkerd-identity-token
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx
-spec:
-  selector:
-    matchLabels:
-      app: nginx
-  template:
-    metadata:
-      annotations:
-        linkerd.io/created-by: linkerd/cli dev-undefined
-        linkerd.io/proxy-version: install-proxy-version
-        linkerd.io/trust-root-sha256: 8dc603abd4e755c25c94da05abbf29b9b283a784733651020d72f97ca8ab98e4
-      labels:
-        app: nginx
-        linkerd.io/control-plane-ns: linkerd
-        linkerd.io/proxy-deployment: nginx
-        linkerd.io/workload-ns: ""
-    spec:
-      containers:
       - env:
         - name: _pod_name
           valueFrom:
@@ -412,13 +454,6 @@ spec:
           value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.cluster.local
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
-        lifecycle:
-          postStart:
-            exec:
-              command:
-              - /usr/lib/linkerd/linkerd-await
-              - --timeout=2m
-              - --port=4191
         livenessProbe:
           httpGet:
             path: /live
@@ -437,6 +472,7 @@ spec:
             port: 4191
           initialDelaySeconds: 2
           timeoutSeconds: 1
+        restartPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -444,54 +480,18 @@ spec:
           runAsUser: 2102
           seccompProfile:
             type: RuntimeDefault
+        startupProbe:
+          failureThreshold: 120
+          httpGet:
+            path: /ready
+            port: 4191
+          periodSeconds: 1
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
-      - image: nginx
-        name: nginx
-        ports:
-        - containerPort: 80
-          name: http
-      initContainers:
-      - args:
-        - --firewall-bin-path
-        - iptables-nft
-        - --firewall-save-bin-path
-        - iptables-nft-save
-        - --ipv6=false
-        - --incoming-proxy-port
-        - "4143"
-        - --outgoing-proxy-port
-        - "4140"
-        - --proxy-uid
-        - "2102"
-        - --inbound-ports-to-ignore
-        - 4190,4191,4567,4568
-        - --outbound-ports-to-ignore
-        - 4567,4568
-        image: cr.l5d.io/linkerd/proxy-init:v2.4.3
-        imagePullPolicy: IfNotPresent
-        name: linkerd-init
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            add:
-            - NET_ADMIN
-            - NET_RAW
-          privileged: false
-          readOnlyRootFilesystem: true
-          runAsGroup: 65534
-          runAsNonRoot: true
-          runAsUser: 65534
-          seccompProfile:
-            type: RuntimeDefault
-        terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /run
-          name: linkerd-proxy-init-xtables-lock
       volumes:
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock

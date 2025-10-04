@@ -782,7 +782,7 @@ func GetAnnotatedOpaquePorts(pod *corev1.Pod, defaultPorts map[uint32]struct{}) 
 		return defaultPorts
 	}
 	opaquePorts := make(map[uint32]struct{})
-	namedPorts := util.GetNamedPorts(pod.Spec.Containers)
+	namedPorts := util.GetNamedPorts(append(pod.Spec.InitContainers, pod.Spec.Containers...))
 	if annotation != "" {
 		for _, pr := range util.ParseContainerOpaquePorts(annotation, namedPorts) {
 			for _, port := range pr.Ports() {

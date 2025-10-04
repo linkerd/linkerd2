@@ -725,7 +725,6 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.Proxy.Await = false
 	values.Proxy.AccessLog = "apache"
 	values.Proxy.ShutdownGracePeriod = "60s"
-	values.Proxy.NativeSidecar = true
 
 	expectedOverrides := map[string]string{
 		k8s.ProxyIgnoreInboundPortsAnnotation:  "8500-8505",
@@ -748,7 +747,6 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 		k8s.ProxyAwait:                            "disabled",
 		k8s.ProxyAccessLogAnnotation:              "apache",
 		k8s.ProxyShutdownGracePeriodAnnotation:    "60s",
-		k8s.ProxyEnableNativeSidecarAnnotation:    "true",
 	}
 
 	overrides := getOverrideAnnotations(values, baseValues)
@@ -877,6 +875,7 @@ func TestOverwriteRegistry(t *testing.T) {
 }
 
 func diffOverrides(t *testing.T, expectedOverrides map[string]string, actualOverrides map[string]string) {
+	t.Helper()
 	if len(expectedOverrides) != len(actualOverrides) {
 		t.Fatalf("expected annotations:\n%s\nbut received:\n%s", expectedOverrides, actualOverrides)
 	}

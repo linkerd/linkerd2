@@ -247,7 +247,7 @@ func serverIncludesPod(server serverv1beta3.Server, pods []corev1.Pod) bool {
 
 	for _, pod := range pods {
 		if selector.Matches(labels.Set(pod.Labels)) {
-			for _, container := range pod.Spec.Containers {
+			for _, container := range append(pod.Spec.InitContainers, pod.Spec.Containers...) {
 				for _, p := range container.Ports {
 					if server.Spec.Port.IntVal == p.ContainerPort || server.Spec.Port.StrVal == p.Name {
 						return true

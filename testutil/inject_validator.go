@@ -18,6 +18,7 @@ const enabled = "true"
 // injected pods
 type InjectValidator struct {
 	NoInitContainer         bool
+	NativeSidecar           bool
 	AutoInject              bool
 	AdminPort               int
 	ControlPort             int
@@ -52,9 +53,13 @@ type InjectValidator struct {
 }
 
 func (iv *InjectValidator) getContainer(pod *v1.PodSpec, name string, isInit bool) *v1.Container {
-	containers := pod.Containers
+	var containers []v1.Container
 	if isInit {
 		containers = pod.InitContainers
+	} else if iv.NativeSidecar {
+		containers = append(pod.InitContainers, pod.Containers...)
+	} else {
+		containers = pod.Containers
 	}
 	for _, container := range containers {
 		if container.Name == name {

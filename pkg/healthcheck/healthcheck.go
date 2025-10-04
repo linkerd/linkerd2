@@ -2492,7 +2492,7 @@ func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) err
 func checkPodPorts(service *corev1.Service, pod *corev1.Pod, podPorts []string, port int) error {
 	for _, sp := range service.Spec.Ports {
 		if int(sp.Port) == port {
-			for _, c := range pod.Spec.Containers {
+			for _, c := range append(pod.Spec.InitContainers, pod.Spec.Containers...) {
 				for _, cp := range c.Ports {
 					if cp.ContainerPort == sp.TargetPort.IntVal || cp.Name == sp.TargetPort.StrVal {
 						// The pod exposes a container port that would be
@@ -2544,7 +2544,7 @@ func checkServiceNamePorts(service *corev1.Service, pod *corev1.Pod, port int, s
 			// port to check.
 			continue
 		}
-		for _, c := range pod.Spec.Containers {
+		for _, c := range append(pod.Spec.InitContainers, pod.Spec.Containers...) {
 			for _, cp := range c.Ports {
 				if int(cp.ContainerPort) == port {
 					// This is the containerPort that maps to the opaque port

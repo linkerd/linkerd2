@@ -252,7 +252,7 @@ proxy:
   # -- Enable KEP-753 native sidecars
   # This is an experimental feature. It requires Kubernetes >= 1.29.
   # If enabled, .proxy.waitBeforeExitSeconds should not be used.
-  nativeSidecar: false
+  nativeSidecar: true
   # -- Native sidecar proxy startup probe parameters.
   # -- LivenessProbe timeout and delay configuration
   livenessProbe:
