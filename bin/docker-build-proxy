@@ -29,6 +29,7 @@ get_extra_options() {
 
 # Build proxy base image with apko
 go install chainguard.dev/apko@$apko_version
+export PATH=$PATH:$(go env GOPATH)/bin
 apko build "$rootdir/proxy-base.yml" "proxy-base:${TAG:-$(head_root_tag)}" "$rootdir/proxy-base.tar"
 docker load < "$rootdir/proxy-base.tar"
 
