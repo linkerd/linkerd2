@@ -59,8 +59,8 @@ func newMockAPI(useInformer bool, res resources) (
 
 	if useInformer {
 		api.Sync(nil)
+		metadataAPI.Sync(nil)
 	}
-	metadataAPI.Sync(nil)
 
 	return api, metadataAPI, k8sResults, nil
 }
@@ -1205,7 +1205,7 @@ metadata:
   name: invalid-rs-parent-dcfq4
   namespace: default
   ownerReferences:
-  - apiVersion: v1
+  - apiVersion: apps/v1
     kind: ReplicaSet
     name: invalid-rs-parent-2abdffa`,
 				},

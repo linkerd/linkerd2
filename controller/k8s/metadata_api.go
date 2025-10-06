@@ -313,7 +313,7 @@ func (api *MetadataAPI) GetRootOwnerKindAndName(ctx context.Context, tm *metav1.
 
 	resource := schema.FromAPIVersionAndKind(parentRef.APIVersion, parentRef.Kind).
 		GroupVersion().
-		WithResource(parentRef.Kind)
+		WithResource(strings.ToLower(parentRef.Kind) + "s")
 	parent, err := api.client.Resource(resource).
 		Namespace(om.Namespace).
 		Get(ctx, parentRef.Name, metav1.GetOptions{})
