@@ -42,4 +42,5 @@ docker_build proxy "${TAG:-$(head_root_tag)}" "$dockerfile" \
   --build-arg LINKERD2_PROXY_REPO="${LINKERD2_PROXY_REPO:-linkerd/linkerd2-proxy}" \
   --build-arg LINKERD2_PROXY_VERSION="${LINKERD2_PROXY_VERSION:-$(cat .proxy-version)}" \
   --secret id=github,env=LINKERD2_PROXY_GITHUB_TOKEN \
+  --build-context runtime_image="docker-image://$runtime_image"
   $(get_extra_options)
