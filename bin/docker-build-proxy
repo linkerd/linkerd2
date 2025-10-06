@@ -2,6 +2,8 @@
 
 set -eu
 
+apko_version=v0.30.13
+
 if [ $# -ne 0 ]; then
     echo "no arguments allowed for ${0##*/}, given: $*" >&2
     exit 64
@@ -15,7 +17,7 @@ rootdir=$( cd "$bindir"/.. && pwd )
 # shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
 
-dockerfile=$rootdir/Dockerfile-proxy
+dockerfile=$rootdir/Dockerfile.proxy
 
 get_extra_options() {
     options=
@@ -25,9 +27,15 @@ get_extra_options() {
     echo "$options"
 }
 
+# Build proxy base image with apko
+go install chainguard.dev/apko@$apko_version
+apko build "$rootdir/proxy-base.yml" "proxy-base:${TAG:-$(head_root_tag)}" "$rootdir/proxy-base.tar"
+docker load < "$rootdir/proxy-base.tar"
+
 # We want wordsplit for the extra options here:
 # shellcheck disable=SC2046
 docker_build proxy "${TAG:-$(head_root_tag)}" "$dockerfile" \
+  --build-arg BASE_TAG="${TAG:-$(head_root_tag)}" \
   --build-arg LINKERD_VERSION="${TAG:-$(head_root_tag)}" \
   --build-arg LINKERD2_PROXY_REPO="${LINKERD2_PROXY_REPO:-linkerd/linkerd2-proxy}" \
   --build-arg LINKERD2_PROXY_VERSION="${LINKERD2_PROXY_VERSION:-$(cat .proxy-version)}" \
