@@ -18,6 +18,7 @@ rootdir=$( cd "$bindir"/.. && pwd )
 . "$bindir"/_tag.sh
 
 dockerfile=$rootdir/Dockerfile.proxy
+runtime_image="cr.l5d.io/linkerd/proxy-runtime:${TAG:-$(head_root_tag)}"
 
 get_extra_options() {
     options=
@@ -30,13 +31,13 @@ get_extra_options() {
 # Build proxy base image with apko
 go install chainguard.dev/apko@$apko_version
 export PATH=$PATH:$(go env GOPATH)/bin
-apko build "$rootdir/proxy-base.yml" "proxy-base:${TAG:-$(head_root_tag)}" "$rootdir/proxy-base.tar"
-docker load < "$rootdir/proxy-base.tar"
+apko build "$rootdir/proxy-runtime.yml" "$runtime_image" "$rootdir/proxy-runtime.tar"
+docker load < "$rootdir/proxy-runtime.tar"
 
 # We want wordsplit for the extra options here:
 # shellcheck disable=SC2046
 docker_build proxy "${TAG:-$(head_root_tag)}" "$dockerfile" \
-  --build-arg BASE_TAG="${TAG:-$(head_root_tag)}" \
+  --build-arg RUNTIME_IMAGE="$runtime_image" \
   --build-arg LINKERD_VERSION="${TAG:-$(head_root_tag)}" \
   --build-arg LINKERD2_PROXY_REPO="${LINKERD2_PROXY_REPO:-linkerd/linkerd2-proxy}" \
   --build-arg LINKERD2_PROXY_VERSION="${LINKERD2_PROXY_VERSION:-$(cat .proxy-version)}" \
