@@ -16,9 +16,6 @@ echo "cleaning up viz extension resources, if present [${k8s_context}]"
 echo "cleaning up multicluster resources, if present [${k8s_context}]"
 "$linkerd_path" mc uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
 
-echo "cleaning up jaeger extension resources, if present [${k8s_context}]"
-"$linkerd_path" jaeger uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
-
 echo 'cleaning up the all namespaces labelled with test.linkerd.io/is-test-data-plane'
 kubectl --context="$k8s_context" delete ns -l test.linkerd.io/is-test-data-plane
 

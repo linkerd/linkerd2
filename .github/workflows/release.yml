@@ -42,7 +42,6 @@ jobs:
         component:
           - controller
           - debug
-          - jaeger-webhook
           - metrics-api
           - proxy
           - tap
@@ -52,7 +51,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - name: Set tag
         run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
-      - uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
+      - uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
         with:
           registry: ghcr.io
           username: ${{ secrets.DOCKER_GHCR_USERNAME }}
@@ -88,6 +87,7 @@ jobs:
           - cni-calico-deep
           - deep
           - viz
+          - tracing
           - default-policy-deny
           - external
           - rsa-ca
@@ -101,7 +101,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
         with:
-          go-version: "1.24"
+          go-version-file: go.mod
       - uses: ./.github/actions/cli-setup
         with:
           artifact-id: ${{ needs.cli.outputs.artifact-id }}

@@ -1,7 +1,7 @@
 ARG BUILDPLATFORM=linux/amd64
 
 # Precompile key slow-to-build dependencies
-FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS go-deps
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS go-deps
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 RUN go mod download
@@ -11,7 +11,6 @@ FROM go-deps AS go-gen
 WORKDIR /linkerd-build
 COPY cli cli
 COPY charts charts
-COPY jaeger jaeger
 COPY multicluster multicluster
 COPY viz viz
 

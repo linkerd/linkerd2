@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@4563c729c555b4141fac99c80f699f571219b836
+      - uses: tj-actions/changed-files@212f9a7760ad2b8eb511185b841f3725a62c2ae0
         id: core
         with:
           files: |
@@ -122,7 +122,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
         with:
-          go-version: "1.24"
+          go-version-file: go.mod
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
         with:
           pattern: image-archives-*
@@ -231,7 +231,6 @@ jobs:
     strategy:
       matrix:
         component:
-          - jaeger-webhook
           - metrics-api
           - tap
           - web
@@ -266,6 +265,7 @@ jobs:
           - default-policy-deny
           - external
           - rsa-ca
+          - tracing
           - helm-upgrade
           - uninstall
           - upgrade-edge
@@ -275,7 +275,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
         with:
-          go-version: "1.24"
+          go-version-file: go.mod
       - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
         if: matrix.integration_test == 'helm-upgrade'
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
@@ -305,7 +305,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
         with:
-          go-version: "1.24"
+          go-version-file: go.mod
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
         with:
           pattern: image-archives-*
@@ -344,7 +344,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
         with:
-          go-version: "1.24"
+          go-version-file: go.mod
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
         with:
           pattern: image-archives-*

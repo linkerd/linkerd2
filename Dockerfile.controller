@@ -1,5 +1,5 @@
 # Precompile key slow-to-build dependencies
-FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS go-deps
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS go-deps
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 COPY bin/install-deps bin/
@@ -21,7 +21,7 @@ COPY multicluster multicluster
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/controller -tags prod -mod=readonly -ldflags "-s -w" ./controller/cmd
 
-FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v47-rust-musl AS policy
+FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v48-rust-musl AS policy
 ARG BUILD_TYPE="release"
 WORKDIR /build
 RUN mkdir -p target/bin
@@ -46,7 +46,7 @@ RUN --mount=type=cache,target=target \
         arm64) echo aarch64-unknown-linux-musl ;; \
         *) echo "unsupported architecture: $TARGETARCH" >&2; exit 1 ;; \
     esac) && \
-    just-cargo CFLAGS_aarch64_unknown_linux_musl="" profile=$BUILD_TYPE target=$target build --package=linkerd-policy-controller && \
+    just-cargo profile=$BUILD_TYPE target=$target build --package=linkerd-policy-controller && \
     mkdir /out && mv "target/$target/$BUILD_TYPE/linkerd-policy-controller" /out/
 
 ## package runtime

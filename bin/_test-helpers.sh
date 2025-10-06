@@ -12,7 +12,7 @@ testdir=$bindir/../test/integration
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep deep-native-sidecar viz external helm-upgrade uninstall upgrade-edge default-policy-deny rsa-ca)
+export default_test_names=(deep deep-native-sidecar viz tracing external helm-upgrade uninstall upgrade-edge default-policy-deny rsa-ca)
 export external_resource_test_names=(external-resources)
 # TODO(alpeb): add test cni-calico-deep-dual-stack
 export dual_stack_test_names=(deep-dual-stack)
@@ -288,9 +288,6 @@ Help:
 image_load() {
   cluster_name=$1
   images_load=("${images_load_default[@]}")
-  if [[ "$cluster_name" = *viz ]]; then
-    images_load+=(jaeger-webhook)
-  fi
   case $images in
     docker)
       "$bindir"/image-load --k3d --cluster "$cluster_name" "${images_load[@]}"
@@ -471,6 +468,10 @@ run_cni-calico-deep_test() {
 
 run_rsa-ca_test() {
   run_test "$testdir/rsa-ca/..."
+}
+
+run_tracing_test() {
+  run_test "$testdir/tracing/..."
 }
 
 run_external_test() {

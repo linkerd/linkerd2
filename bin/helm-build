@@ -6,7 +6,6 @@ setValues() {
     sed -i "s/$1/$2/" charts/linkerd-control-plane/values.yaml
     sed -i "s/$1/$2/" charts/linkerd2-cni/values.yaml
     sed -i "s/$1/$2/" multicluster/charts/linkerd-multicluster/values.yaml
-    sed -i "s/$1/$2/" jaeger/charts/linkerd-jaeger/values.yaml
     sed -i "s/$1/$2/" viz/charts/linkerd-viz/values.yaml
 }
 
@@ -26,7 +25,6 @@ rm -f charts/linkerd-crds/charts/*
 rm -f charts/linkerd-control-plane/charts/*
 rm -f charts/linkerd2-cni/charts/*
 rm -f charts/patch/charts/*
-rm -f jaeger/charts/linkerd-jaeger/charts/*
 rm -f viz/charts/linkerd-viz/charts/*
 
 "$bindir"/helm dep up "$rootdir"/multicluster/charts/linkerd-multicluster
@@ -42,8 +40,6 @@ rm -f viz/charts/linkerd-viz/charts/*
 "$bindir"/helm lint "$rootdir"/charts/linkerd-crds
 "$bindir"/helm lint --set identityTrustAnchorsPEM="fake-trust" --set identity.issuer.tls.crtPEM="fake-cert" --set identity.issuer.tls.keyPEM="fake-key" "$rootdir"/charts/linkerd-control-plane
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-cni
-"$bindir"/helm dep up "$rootdir"/jaeger/charts/linkerd-jaeger
-"$bindir"/helm lint "$rootdir"/jaeger/charts/linkerd-jaeger
 "$bindir"/helm dep up "$rootdir"/viz/charts/linkerd-viz
 "$bindir"/helm lint "$rootdir"/viz/charts/linkerd-viz
 
@@ -68,7 +64,6 @@ if [ "$1" = package ]; then
     "$bindir"/helm --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd-control-plane
     "$bindir"/helm --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-cni
     "$bindir"/helm --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/multicluster/charts/linkerd-multicluster
-    "$bindir"/helm --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/jaeger/charts/linkerd-jaeger
     "$bindir"/helm --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/viz/charts/linkerd-viz
 
     mv "$rootdir"/target/helm/index-pre.yaml "$rootdir"/target/helm/index-pre-"$version".yaml

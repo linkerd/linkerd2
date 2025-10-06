@@ -15,7 +15,6 @@ spec:
     spec:
       containers:
       - image: ghcr.io/alpeb/family-server:v1
-        image: golang:1.24-alpine
         name: ipfamilies-server
         ports:
         - containerPort: 8080
