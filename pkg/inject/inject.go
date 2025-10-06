@@ -115,6 +115,9 @@ const (
 // OwnerRetrieverFunc is a function that returns a pod's owner reference
 // kind and name
 type OwnerRetrieverFunc func(*corev1.Pod) (string, string)
+
+// RootOwnerRetrieverFunc is a function that returns a pod's root owner reference
+// type and metadata
 type RootOwnerRetrieverFunc func(*metav1.TypeMeta, *metav1.ObjectMeta) (*metav1.TypeMeta, *metav1.ObjectMeta)
 
 // ResourceConfig contains the parsed information for a given workload
