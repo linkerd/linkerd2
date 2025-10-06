@@ -1,6 +1,3 @@
-ARG BASE_TAG=latest
-ARG TARGETARCH
-ARG RUNTIME_IMAGE=cr.l5d.io/linkerd/proxy-runtime:latest
 ARG BUILDPLATFORM=linux/amd64
 
 # Precompile key slow-to-build dependencies
@@ -61,7 +58,7 @@ ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH GO111MODULE=on \
     go build -o /out/linkerd2-proxy-init -mod=readonly -ldflags "-s -w" -v ./proxy-init
 
-FROM $RUNTIME_IMAGE-$TARGETARCH AS runtime
+FROM runtime_image AS runtime
 LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 
 COPY --from=proxy-init /out/linkerd2-proxy-init /usr/lib/linkerd/linkerd2-proxy-init

@@ -16,6 +16,8 @@ rootdir=$( cd "$bindir"/.. && pwd )
 . "$bindir"/_docker.sh
 # shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
+# shellcheck source=_os.sh
+. "$bindir"/_os.sh
 
 dockerfile=$rootdir/Dockerfile.proxy
 runtime_image="cr.l5d.io/linkerd/proxy-runtime:${TAG:-$(head_root_tag)}"
@@ -42,5 +44,5 @@ docker_build proxy "${TAG:-$(head_root_tag)}" "$dockerfile" \
   --build-arg LINKERD2_PROXY_REPO="${LINKERD2_PROXY_REPO:-linkerd/linkerd2-proxy}" \
   --build-arg LINKERD2_PROXY_VERSION="${LINKERD2_PROXY_VERSION:-$(cat .proxy-version)}" \
   --secret id=github,env=LINKERD2_PROXY_GITHUB_TOKEN \
-  --build-context runtime_image="docker-image://$runtime_image"
+  --build-context runtime_image="docker-image://$runtime_image-$(architecture)" \
   $(get_extra_options)
