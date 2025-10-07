@@ -287,7 +287,7 @@ const (
 	ProxyWaitBeforeExitSecondsAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-wait-before-exit-seconds"
 
 	// ProxyEnableNativeSidecarAnnotationAlpha enables the new native initContainer sidecar.
-	// Deprecated, use ProxyEnableNativeSidecarAnnotationBeta instead.
+	// Deprecated: use ProxyEnableNativeSidecarAnnotationBeta instead.
 	ProxyEnableNativeSidecarAnnotationAlpha = ProxyConfigAnnotationsPrefixAlpha + "/proxy-enable-native-sidecar"
 
 	// ProxyEnableNativeSidecarAnnotationBeta enables the new native initContainer sidecar
