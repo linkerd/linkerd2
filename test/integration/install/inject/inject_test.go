@@ -64,7 +64,6 @@ func TestInjectManualParams(t *testing.T) {
 		NoInitContainer:        TestHelper.CNI(),
 		Version:                "proxy-version",
 		Image:                  reg + "/proxy-image",
-		InitImage:              reg + "/init-image",
 		ImagePullPolicy:        "Never",
 		ControlPort:            123,
 		SkipInboundPorts:       "234,345",
@@ -126,8 +125,6 @@ func TestInjectAutoParams(t *testing.T) {
 			EnableDebug:             true,
 			ImagePullPolicy:         "Never",
 			InboundPort:             8882,
-			InitImage:               "init-image",
-			InitImageVersion:        "init-image-version",
 			OutboundPort:            8883,
 			CPULimit:                "160m",
 			CPURequest:              "150m",
@@ -395,7 +392,7 @@ func TestInjectAutoPod(t *testing.T) {
 	}
 	expectedInitContainer := v1.Container{
 		Name:  k8s.InitContainerName,
-		Image: reg + "/proxy-init:" + version.ProxyInitVersion,
+		Image: reg + "/proxy:" + version.Version,
 		Args: []string{
 			"--firewall-bin-path", "iptables-nft",
 			"--firewall-save-bin-path", "iptables-nft-save",

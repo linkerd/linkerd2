@@ -146,12 +146,7 @@ func TestRender(t *testing.T) {
 			},
 		},
 		ProxyInit: &charts.ProxyInit{
-			IptablesMode: "legacy",
-			Image: &charts.Image{
-				Name:       "ProxyInitImageName",
-				PullPolicy: "ImagePullPolicy",
-				Version:    "ProxyInitVersion",
-			},
+			IptablesMode:        "legacy",
 			IgnoreOutboundPorts: "443",
 			XTMountPath: &charts.VolumeMountPath{
 				MountPath: "/run",

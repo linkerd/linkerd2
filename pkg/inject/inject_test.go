@@ -6,7 +6,6 @@ import (
 	"github.com/go-test/deep"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
@@ -42,7 +41,6 @@ func TestGetOverriddenValues(t *testing.T) {
 						Annotations: map[string]string{
 							k8s.ProxyImageAnnotation:                         "cr.l5d.io/linkerd/proxy",
 							k8s.ProxyImagePullPolicyAnnotation:               pullPolicy,
-							k8s.ProxyInitImageAnnotation:                     "cr.l5d.io/linkerd/proxy-init",
 							k8s.ProxyControlPortAnnotation:                   "4000",
 							k8s.ProxyInboundPortAnnotation:                   "5000",
 							k8s.ProxyAdminPortAnnotation:                     "5001",
@@ -112,9 +110,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				}
 				values.Proxy.UID = 8500
 				values.Proxy.GID = 8500
-				values.ProxyInit.Image.Name = "cr.l5d.io/linkerd/proxy-init"
-				values.ProxyInit.Image.PullPolicy = pullPolicy
-				values.ProxyInit.Image.Version = version.ProxyInitVersion
 				values.ProxyInit.IgnoreInboundPorts = "4222,6222"
 				values.ProxyInit.IgnoreOutboundPorts = "8079,8080"
 				values.ProxyInit.SkipSubnets = "172.17.0.0/16"
@@ -150,7 +145,6 @@ func TestGetOverriddenValues(t *testing.T) {
 			nsAnnotations: map[string]string{
 				k8s.ProxyImageAnnotation:                      "cr.l5d.io/linkerd/proxy",
 				k8s.ProxyImagePullPolicyAnnotation:            pullPolicy,
-				k8s.ProxyInitImageAnnotation:                  "cr.l5d.io/linkerd/proxy-init",
 				k8s.ProxyControlPortAnnotation:                "4000",
 				k8s.ProxyInboundPortAnnotation:                "5000",
 				k8s.ProxyAdminPortAnnotation:                  "5001",
@@ -213,9 +207,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				}
 				values.Proxy.UID = 8500
 				values.Proxy.GID = 8500
-				values.ProxyInit.Image.Name = "cr.l5d.io/linkerd/proxy-init"
-				values.ProxyInit.Image.PullPolicy = pullPolicy
-				values.ProxyInit.Image.Version = version.ProxyInitVersion
 				values.ProxyInit.IgnoreInboundPorts = "4222,6222"
 				values.ProxyInit.IgnoreOutboundPorts = "8079,8080"
 				values.Proxy.OutboundConnectTimeout = "6000ms"

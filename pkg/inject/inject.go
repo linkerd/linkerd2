@@ -47,8 +47,6 @@ var (
 		k8s.ProxyEnableExternalProfilesAnnotation,
 		k8s.ProxyImagePullPolicyAnnotation,
 		k8s.ProxyInboundPortAnnotation,
-		k8s.ProxyInitImageAnnotation,
-		k8s.ProxyInitImageVersionAnnotation,
 		k8s.ProxyOutboundPortAnnotation,
 		k8s.ProxyPodInboundPortsAnnotation,
 		k8s.ProxyCPULimitAnnotation,
@@ -223,10 +221,6 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 
 	if override, ok := annotations[k8s.ProxyImagePullPolicyAnnotation]; ok {
 		values.Proxy.Image.PullPolicy = override
-	}
-
-	if override, ok := annotations[k8s.ProxyInitImageVersionAnnotation]; ok {
-		values.ProxyInit.Image.Version = override
 	}
 
 	if override, ok := annotations[k8s.ProxyControlPortAnnotation]; ok {
@@ -482,14 +476,6 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		if err == nil {
 			values.Proxy.EnableExternalProfiles = value
 		}
-	}
-
-	if override, ok := annotations[k8s.ProxyInitImageAnnotation]; ok {
-		values.ProxyInit.Image.Name = override
-	}
-
-	if override, ok := annotations[k8s.ProxyImagePullPolicyAnnotation]; ok {
-		values.ProxyInit.Image.PullPolicy = override
 	}
 
 	if override, ok := annotations[k8s.ProxyIgnoreInboundPortsAnnotation]; ok {

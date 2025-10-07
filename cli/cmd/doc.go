@@ -129,14 +129,6 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Docker image pull policy",
 		},
 		{
-			Name:        k8s.ProxyInitImageAnnotation,
-			Description: "Linkerd init container image name",
-		},
-		{
-			Name:        k8s.ProxyInitImageVersionAnnotation,
-			Description: "Linkerd init container image version",
-		},
-		{
 			Name:        k8s.DebugImageAnnotation,
 			Description: "Linkerd debug container image name",
 		},

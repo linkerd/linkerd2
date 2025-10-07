@@ -780,10 +780,6 @@ data:
       closeWaitTimeoutSecs: 0
       ignoreInboundPorts: "222"
       ignoreOutboundPorts: "111"
-      image:
-        name: cr.l5d.io/linkerd/proxy-init
-        pullPolicy: ""
-        version: test-proxy-init-version
       iptablesMode: nft
       kubeAPIServerPorts: 443,6443
       logFormat: ""
@@ -1260,7 +1256,8 @@ spec:
         - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
+        image: cr.l5d.io/linkerd/proxy:test-proxy-version
+        command: ["/usr/lib/linkerd/linkerd2-proxy-init"]
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1859,7 +1856,8 @@ spec:
         - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
+        image: cr.l5d.io/linkerd/proxy:test-proxy-version
+        command: ["/usr/lib/linkerd/linkerd2-proxy-init"]
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2340,7 +2338,8 @@ spec:
         - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
+        image: cr.l5d.io/linkerd/proxy:test-proxy-version
+        command: ["/usr/lib/linkerd/linkerd2-proxy-init"]
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
