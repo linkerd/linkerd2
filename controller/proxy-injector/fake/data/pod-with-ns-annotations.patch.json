@@ -1,11 +1,6 @@
 [
   {
     "op": "add",
-    "path": "/metadata/annotations/config.alpha.linkerd.io~1proxy-wait-before-exit-seconds",
-    "value": "300"
-  },
-  {
-    "op": "add",
     "path": "/metadata/annotations/config.linkerd.io~1skip-outbound-ports",
     "value": "34567"
   },
@@ -54,7 +49,7 @@
   },
   {
     "op": "add",
-    "path": "/spec/initContainers/-",
+    "path": "/spec/initContainers/0",
     "value": {
       "args": [
         "--firewall-bin-path",
@@ -133,7 +128,7 @@
   },
   {
     "op": "add",
-    "path": "/spec/containers/0",
+    "path": "/spec/initContainers/1",
     "value": {
       "env": [
         {
@@ -383,25 +378,6 @@
       ],
       "image": "cr.l5d.io/linkerd/proxy:dev-undefined",
       "imagePullPolicy": "IfNotPresent",
-      "lifecycle": {
-        "postStart": {
-          "exec": {
-            "command": [
-              "/usr/lib/linkerd/linkerd-await",
-              "--timeout=2m",
-              "--port=4191"
-            ]
-          }
-        },
-        "preStop": {
-          "exec": {
-            "command": [
-              "/bin/sleep",
-              "300"
-            ]
-          }
-        }
-      },
       "livenessProbe": {
         "httpGet": {
           "path": "/live",
@@ -430,6 +406,7 @@
         "timeoutSeconds": 1
       },
       "resources": null,
+      "restartPolicy": "Always",
       "securityContext": {
         "allowPrivilegeEscalation": false,
         "readOnlyRootFilesystem": true,
@@ -438,6 +415,15 @@
         "seccompProfile": {
           "type": "RuntimeDefault"
         }
+      },
+      "startupProbe": {
+          "failureThreshold": 120,
+          "httpGet": {
+            "path": "/ready",
+            "port": 4191
+          },
+          "initialDelaySeconds": 0,
+          "periodSeconds": 1
       },
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "volumeMounts": [
