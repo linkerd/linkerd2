@@ -505,7 +505,7 @@ func getOverrideAnnotations(values *linkerd2.Values, base *linkerd2.Values) map[
 	}
 
 	if proxy.NativeSidecar != baseProxy.NativeSidecar {
-		overrideAnnotations[k8s.ProxyEnableNativeSidecarAnnotation] = strconv.FormatBool(proxy.NativeSidecar)
+		overrideAnnotations[k8s.ProxyEnableNativeSidecarAnnotationBeta] = strconv.FormatBool(proxy.NativeSidecar)
 	}
 
 	return overrideAnnotations
