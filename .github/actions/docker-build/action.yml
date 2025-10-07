@@ -33,6 +33,8 @@ runs:
         DOCKER_TARGET: ${{ inputs.docker-target }}
         DOCKER_PUSH: ${{ inputs.docker-push }}
         TAG: ${{ inputs.tag }}
+        RUNTIME_IMAGE: localhost:5000/linkerd/proxy-runtime:${{ inputs.tag }}
+        PUSH_RUNTIME_IMAGE: true
       shell: bash
       run: bin/docker-build-${{ inputs.component }}
 

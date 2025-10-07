@@ -1,5 +1,5 @@
 ARG BUILDPLATFORM=linux/amd64
-ARG RUNTIME_IMAGE=proxy-runtime:latest
+ARG RUNTIME_IMAGE="cr.l5d.io/linkerd/proxy-runtime:latest"
 ARG TARGETARCH
 
 # Precompile key slow-to-build dependencies
