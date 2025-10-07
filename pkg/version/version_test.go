@@ -28,6 +28,16 @@ func TestMatch(t *testing.T) {
 			actual:   "dev-0.1.2-baz",
 		},
 		{
+			name:     "up-to-date with hotpatch",
+			expected: "dev-0.1.2-3",
+			actual:   "dev-0.1.2-3",
+		},
+		{
+			name:     "up-to-date with hotpatch and different build info",
+			expected: "dev-0.1.2-3-bar",
+			actual:   "dev-0.1.2-3-baz",
+		},
+		{
 			name:     "not up-to-date",
 			expected: "dev-0.1.2",
 			actual:   "dev-0.1.1",
@@ -38,6 +48,12 @@ func TestMatch(t *testing.T) {
 			expected: "dev-0.1.2-bar",
 			actual:   "dev-0.1.1-bar",
 			err:      errors.New("is running version 0.1.1 but the latest dev version is 0.1.2"),
+		},
+		{
+			name:     "not up-to-date with hotpatch",
+			expected: "dev-0.1.2-3",
+			actual:   "dev-0.1.2-2",
+			err:      errors.New("is running version 0.1.2-2 but the latest dev version is 0.1.2-3"),
 		},
 		{
 			name:     "mismatched channels",
