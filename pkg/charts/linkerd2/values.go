@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/imdario/mergo"
+	"dario.cat/mergo"
 	"github.com/linkerd/linkerd2/charts"
 	chartspkg "github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
