@@ -77,7 +77,10 @@ func NewFakeClusterScopedAPI(clientSet kubernetes.Interface, l5dClientSet l5dcrd
 // NewFakeMetadataAPI provides a mock Kubernetes API for testing.
 func NewFakeMetadataAPI(configs []string) (*MetadataAPI, error) {
 	sch := runtime.NewScheme()
-	metav1.AddMetaToScheme(sch)
+	err := metav1.AddMetaToScheme(sch)
+	if err != nil {
+		return nil, err
+	}
 
 	var objs []runtime.Object
 	for _, config := range configs {
