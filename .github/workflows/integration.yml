@@ -153,11 +153,11 @@ jobs:
         # Test the latest Kubernetes version with the latest Gateway API
         # version, as well as the vendored Gateway API CRDs.
         k8s:
-          - v1.32
+          - v1.34
         gateway-api:
           - version: linkerd
             channel: experimental
-          - version: v1.3.0-rc.1
+          - version: v1.4.0
             channel: experimental
         # Also test the Minimum Supported Kubernetes Version with the Minimum
         # Supported Gateway API version.
@@ -334,8 +334,8 @@ jobs:
       matrix:
         cases:
         - {k8s: "v1.23", manage-controllers: false}
-        - {k8s: "v1.32", manage-controllers: false}
-        - {k8s: "v1.32", manage-controllers: true}
+        - {k8s: "v1.34", manage-controllers: false}
+        - {k8s: "v1.34", manage-controllers: true}
     name: "test-multicluster(${{ matrix.cases.k8s }}, ${{ matrix.cases.manage-controllers && 'managed-controllers' || 'unmanaged-controllers' }})"
     steps:
       - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
