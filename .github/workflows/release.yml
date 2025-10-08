@@ -132,7 +132,7 @@ jobs:
           path: cli
       - name: Create release
         id: create_release
-        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836
+        uses: softprops/action-gh-release@aec2ec56f94eb8180ceec724245f64ef008b89f5
         with:
           name: "${{ needs.tag.outputs.tag }}"
           generate_release_notes: true
@@ -151,7 +151,7 @@ jobs:
       contents: write
     steps:
       - name: Create linkerd/website repository dispatch event
-        uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0
+        uses: peter-evans/repository-dispatch@5fc4efd1a4797ddb68ffd0714a238564e4cc0e6f
         with:
           token: ${{ secrets.RELEASE_TOKEN }}
           repository: linkerd/website

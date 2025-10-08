@@ -53,7 +53,7 @@ const (
 	// identifying the root owner kind that this proxy belongs to.
 	ProxyRootParentKindLabel = Prefix + "/proxy-root-parent-kind"
 	// ProxyRootParentGroupLabel is injected into mesh-enabled apps,
-	// identifying the root owner grpu[ that this proxy belongs to.
+	// identifying the root owner group that this proxy belongs to.
 	ProxyRootParentGroupLabel = Prefix + "/proxy-root-parent-group"
 
 	// ProxyDeploymentLabel is injected into mesh-enabled apps, identifying the
@@ -136,6 +136,9 @@ const (
 
 	// ProxyConfigAnnotationsPrefixAlpha is the prefix of newly released config-related annotations
 	ProxyConfigAnnotationsPrefixAlpha = "config.alpha.linkerd.io"
+
+	// ProxyConfigAnnotationsPrefixBeta is the prefix for config-related annotations more mature than alpha but not yet stable
+	ProxyConfigAnnotationsPrefixBeta = "config.beta.linkerd.io"
 
 	// ProxyImageAnnotation can be used to override the proxyImage config.
 	ProxyImageAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-image"
@@ -293,8 +296,12 @@ const (
 	// configured for the Pod
 	ProxyWaitBeforeExitSecondsAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-wait-before-exit-seconds"
 
-	// ProxyEnableNativeSidecarAnnotation enables the new native initContainer sidecar
-	ProxyEnableNativeSidecarAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-enable-native-sidecar"
+	// ProxyEnableNativeSidecarAnnotationAlpha enables the new native initContainer sidecar.
+	// Deprecated: use ProxyEnableNativeSidecarAnnotationBeta instead.
+	ProxyEnableNativeSidecarAnnotationAlpha = ProxyConfigAnnotationsPrefixAlpha + "/proxy-enable-native-sidecar"
+
+	// ProxyEnableNativeSidecarAnnotationBeta enables the new native initContainer sidecar
+	ProxyEnableNativeSidecarAnnotationBeta = ProxyConfigAnnotationsPrefixBeta + "/proxy-enable-native-sidecar"
 
 	// ProxyAwait can be used to force the application to wait for the proxy
 	// to be ready.

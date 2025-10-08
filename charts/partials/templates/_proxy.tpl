@@ -151,6 +151,8 @@ env:
 {{ if .Values.proxy.tracing | default (dict) | dig "enabled" false -}}
 - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
   value: /var/run/linkerd/podinfo/labels
+- name: LINKERD2_PROXY_TRACE_ANNOTATIONS_PATH
+  value: /var/run/linkerd/podinfo/annotations
 - name: LINKERD2_PROXY_TRACE_PROTOCOL
   value: {{ default "opentelemetry" .Values.proxy.tracing.protocol }}
 - name: LINKERD2_PROXY_TRACE_SERVICE_NAME

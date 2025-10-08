@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      - uses: tj-actions/changed-files@212f9a7760ad2b8eb511185b841f3725a62c2ae0
+      - uses: tj-actions/changed-files@d03a93c0dbfac6d6dd6a0d8a5e7daff992b07449
         id: changed
         with:
           files: |

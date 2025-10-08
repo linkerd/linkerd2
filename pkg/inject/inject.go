@@ -39,7 +39,6 @@ var (
 	rTrail = regexp.MustCompile(`\},\s*\]`)
 
 	// ProxyAnnotations is the list of possible annotations that can be applied on a pod or namespace.
-	// All these annotations should be prefixed with "config.linkerd.io"
 	ProxyAnnotations = []string{
 		k8s.ProxyAdminPortAnnotation,
 		k8s.ProxyControlPortAnnotation,
@@ -81,12 +80,13 @@ var (
 		k8s.ProxyInboundDiscoveryCacheUnusedTimeout,
 		k8s.ProxyDisableOutboundProtocolDetectTimeout,
 		k8s.ProxyDisableInboundProtocolDetectTimeout,
+		k8s.ProxyEnableNativeSidecarAnnotationBeta,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
 	// (config.alpha prefix) that can be applied to a pod or namespace.
 	ProxyAlphaConfigAnnotations = []string{
 		k8s.ProxyWaitBeforeExitSecondsAnnotation,
-		k8s.ProxyEnableNativeSidecarAnnotation,
+		k8s.ProxyEnableNativeSidecarAnnotationAlpha,
 	}
 )
 
@@ -377,7 +377,13 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyEnableNativeSidecarAnnotation]; ok {
+	// ProxyEnableNativeSidecarAnnotationBeta should take precedence over ProxyEnableNativeSidecarAnnotationAlpha
+	if override, ok := annotations[k8s.ProxyEnableNativeSidecarAnnotationBeta]; ok {
+		value, err := strconv.ParseBool(override)
+		if err == nil {
+			values.Proxy.NativeSidecar = value
+		}
+	} else if override, ok = annotations[k8s.ProxyEnableNativeSidecarAnnotationAlpha]; ok {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
 			values.Proxy.NativeSidecar = value
@@ -601,6 +607,13 @@ func (conf *ResourceConfig) WithNsAnnotations(m map[string]string) *ResourceConf
 // the kind and name of the workload's owner reference
 func (conf *ResourceConfig) WithOwnerRetriever(f OwnerRetrieverFunc) *ResourceConfig {
 	conf.ownerRetriever = f
+	return conf
+}
+
+// WithRootOwnerRetriever enriches ResourceConfig with a function that allows to retrieve
+// the kind and name of the workload's root owner reference
+func (conf *ResourceConfig) WithRootOwnerRetriever(f RootOwnerRetrieverFunc) *ResourceConfig {
+	conf.rootOwnerRetriever = f
 	return conf
 }
 

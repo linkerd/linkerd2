@@ -313,9 +313,9 @@ linkerd *flags:
 
 # Install crds on the test cluster.
 linkerd-crds-install: _k3d-init
-    if [ -n "{{ _gateway-url }}" ]; then {{ _kubectl }} apply -f "{{ _gateway-url }}" ; fi
+    if [ -n "{{ _gateway-url }}" ]; then {{ _kubectl }} apply --server-side -f "{{ _gateway-url }}" ; fi
     {{ _linkerd }} install --crds --set installGatewayAPI={{ if _gateway-url == "" { "true "} else { "false "} }} \
-        | {{ _kubectl }} apply -f -
+        | {{ _kubectl }} apply --server-side -f -
     {{ _kubectl }} wait crd --for condition=established \
         --selector='linkerd.io/control-plane-ns' \
         --timeout=1m
