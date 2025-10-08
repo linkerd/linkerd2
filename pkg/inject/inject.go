@@ -617,13 +617,6 @@ func (conf *ResourceConfig) WithRootOwnerRetriever(f RootOwnerRetrieverFunc) *Re
 	return conf
 }
 
-// WithRootOwnerRetriever enriches ResourceConfig with a function that allows to retrieve
-// the kind and name of the workload's root owner reference
-func (conf *ResourceConfig) WithRootOwnerRetriever(f RootOwnerRetrieverFunc) *ResourceConfig {
-	conf.rootOwnerRetriever = f
-	return conf
-}
-
 // GetOwnerRef returns a reference to the resource's owner resource, if any
 func (conf *ResourceConfig) GetOwnerRef() *metav1.OwnerReference {
 	return conf.workload.ownerRef

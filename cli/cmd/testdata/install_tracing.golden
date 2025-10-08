@@ -1113,6 +1113,8 @@ spec:
           value: "false"
         - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
           value: /var/run/linkerd/podinfo/labels
+        - name: LINKERD2_PROXY_TRACE_ANNOTATIONS_PATH
+          value: /var/run/linkerd/podinfo/annotations
         - name: LINKERD2_PROXY_TRACE_PROTOCOL
           value: opentelemetry
         - name: LINKERD2_PROXY_TRACE_SERVICE_NAME
@@ -1516,6 +1518,8 @@ spec:
           value: "false"
         - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
           value: /var/run/linkerd/podinfo/labels
+        - name: LINKERD2_PROXY_TRACE_ANNOTATIONS_PATH
+          value: /var/run/linkerd/podinfo/annotations
         - name: LINKERD2_PROXY_TRACE_PROTOCOL
           value: opentelemetry
         - name: LINKERD2_PROXY_TRACE_SERVICE_NAME
@@ -2060,6 +2064,8 @@ spec:
           value: "false"
         - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
           value: /var/run/linkerd/podinfo/labels
+        - name: LINKERD2_PROXY_TRACE_ANNOTATIONS_PATH
+          value: /var/run/linkerd/podinfo/annotations
         - name: LINKERD2_PROXY_TRACE_PROTOCOL
           value: opentelemetry
         - name: LINKERD2_PROXY_TRACE_SERVICE_NAME
