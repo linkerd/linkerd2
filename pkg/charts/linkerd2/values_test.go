@@ -184,7 +184,12 @@ func TestNewValues(t *testing.T) {
 				HostnameLabels: false,
 			},
 			Tracing: &Tracing{
-				Enabled:          false,
+				Enabled: false,
+				Labels: map[string]string{
+					"k8s.pod.ip":         "$(_pod_ip)",
+					"k8s.pod.uid":        "$(_pod_uid)",
+					"k8s.container.name": "$(_pod_containerName)",
+				},
 				TraceServiceName: "linkerd-proxy",
 				Collector: &TracingCollector{
 					Endpoint: "",

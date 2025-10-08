@@ -190,6 +190,7 @@ type (
 	Tracing struct {
 		Enabled          bool              `json:"enabled"`
 		Protocol         string            `json:"protocol"`
+		Labels           map[string]string `json:"labels"`
 		TraceServiceName string            `json:"traceServiceName"`
 		Collector        *TracingCollector `json:"collector"`
 	}

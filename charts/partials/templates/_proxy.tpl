@@ -170,9 +170,9 @@ env:
   value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.{{ .Values.proxy.tracing.collector.meshIdentity.namespace }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
 - name: LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES
   value: |
-    k8s.pod.ip=$(_pod_ip)
-    k8s.pod.uid=$(_pod_uid)
-    k8s.container.name=$(_pod_containerName)
+    {{- range $k, $v := .Values.proxy.tracing.labels }}
+    {{ $k }}={{ $v }}
+    {{- end }}
 {{ end -}}
 {{/* Configure inbound and outbound parameters, e.g. for HTTP/2 servers. */ -}}
 {{ range $proxyK, $proxyV := (dict "inbound" .Values.proxy.inbound "outbound" .Values.proxy.outbound) -}}
