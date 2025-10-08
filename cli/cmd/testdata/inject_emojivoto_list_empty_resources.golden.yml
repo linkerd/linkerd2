@@ -20,6 +20,10 @@ items:
           app: web-svc
           linkerd.io/control-plane-ns: linkerd
           linkerd.io/proxy-deployment: web
+          linkerd.io/proxy-root-parent: web
+          linkerd.io/proxy-root-parent-group: apps
+          linkerd.io/proxy-root-parent-kind: Deployment
+          linkerd.io/proxy-root-parent-version: v1
           linkerd.io/workload-ns: emojivoto
       spec:
         containers:
@@ -284,6 +288,10 @@ items:
           app: emoji-svc
           linkerd.io/control-plane-ns: linkerd
           linkerd.io/proxy-deployment: emoji
+          linkerd.io/proxy-root-parent: emoji
+          linkerd.io/proxy-root-parent-group: apps
+          linkerd.io/proxy-root-parent-kind: Deployment
+          linkerd.io/proxy-root-parent-version: v1
           linkerd.io/workload-ns: emojivoto
       spec:
         containers:
