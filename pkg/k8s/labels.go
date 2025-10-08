@@ -48,8 +48,13 @@ const (
 
 	// ProxyRootParentLabel is injected into mesh-enabled apps, identifying the
 	// root owner that this proxy belongs to.
-	ProxyRootParentLabel     = Prefix + "/proxy-root-parent"
+	ProxyRootParentLabel = Prefix + "/proxy-root-parent"
+	// ProxyRootParentKindLabel is injected into mesh-enabled apps,
+	// identifying the root owner kind that this proxy belongs to.
 	ProxyRootParentKindLabel = Prefix + "/proxy-root-parent-kind"
+	// ProxyRootParentGroupLabel is injected into mesh-enabled apps,
+	// identifying the root owner grpu[ that this proxy belongs to.
+	ProxyRootParentGroupLabel = Prefix + "/proxy-root-parent-group"
 
 	// ProxyDeploymentLabel is injected into mesh-enabled apps, identifying the
 	// deployment that this proxy belongs to.

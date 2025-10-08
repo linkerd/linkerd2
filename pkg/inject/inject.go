@@ -1018,6 +1018,7 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 			tm, om := conf.rootOwnerRetriever(&v.TypeMeta, &v.ObjectMeta)
 			conf.pod.labels[k8s.ProxyRootParentLabel] = om.Name
 			conf.pod.labels[k8s.ProxyRootParentKindLabel] = tm.Kind
+			conf.pod.labels[k8s.ProxyRootParentGroupLabel] = tm.GroupVersionKind().Group
 		}
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		if conf.pod.meta.Annotations == nil {
