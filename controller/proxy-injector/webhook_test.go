@@ -113,7 +113,8 @@ func TestGetPodPatch(t *testing.T) {
 				fakeReq := getFakePodReq(pod)
 				fullConf := testCase.conf.
 					WithKind(fakeReq.Kind.Kind).
-					WithOwnerRetriever(ownerRetrieverFake)
+					WithOwnerRetriever(ownerRetrieverFake).
+					WithRootOwnerRetriever(rootOwnerRetrieverFake)
 				_, err = fullConf.ParseMetaAndYAML(fakeReq.Object.Raw)
 				if err != nil {
 					t.Fatal(err)
@@ -136,7 +137,9 @@ func TestGetPodPatch(t *testing.T) {
 
 		pod := fileContents(factory, t, "pod-with-debug-enabled.yaml")
 		fakeReq := getFakePodReq(pod)
-		conf := confNsEnabled().WithKind(fakeReq.Kind.Kind).WithOwnerRetriever(ownerRetrieverFake)
+		conf := confNsEnabled().WithKind(fakeReq.Kind.Kind).
+			WithOwnerRetriever(ownerRetrieverFake).
+			WithRootOwnerRetriever(rootOwnerRetrieverFake)
 		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
 		if err != nil {
 			t.Fatal(err)
@@ -157,7 +160,9 @@ func TestGetPodPatch(t *testing.T) {
 
 		pod := fileContents(factory, t, "pod-with-custom-debug-tag.yaml")
 		fakeReq := getFakePodReq(pod)
-		conf := confNsEnabled().WithKind(fakeReq.Kind.Kind).WithOwnerRetriever(ownerRetrieverFake)
+		conf := confNsEnabled().WithKind(fakeReq.Kind.Kind).
+			WithOwnerRetriever(ownerRetrieverFake).
+			WithRootOwnerRetriever(rootOwnerRetrieverFake)
 		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
 		if err != nil {
 			t.Fatal(err)
@@ -180,7 +185,8 @@ func TestGetPodPatch(t *testing.T) {
 		fakeReq := getFakePodReq(pod)
 		conf := confNsWithoutOpaquePorts().
 			WithKind(fakeReq.Kind.Kind).
-			WithOwnerRetriever(ownerRetrieverFake)
+			WithOwnerRetriever(ownerRetrieverFake).
+			WithRootOwnerRetriever(rootOwnerRetrieverFake)
 		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
 		if err != nil {
 			t.Fatal(err)
@@ -204,7 +210,8 @@ func TestGetPodPatch(t *testing.T) {
 		fakeReq := getFakePodReq(pod)
 		conf := confNsWithoutOpaquePorts().
 			WithKind(fakeReq.Kind.Kind).
-			WithOwnerRetriever(ownerRetrieverFake)
+			WithOwnerRetriever(ownerRetrieverFake).
+			WithRootOwnerRetriever(rootOwnerRetrieverFake)
 		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
 		if err != nil {
 			t.Fatal(err)
@@ -231,7 +238,8 @@ func TestGetPodPatch(t *testing.T) {
 		fakeReq := getFakePodReq(pod)
 		conf := confNsWithConfigAnnotations().
 			WithKind(fakeReq.Kind.Kind).
-			WithOwnerRetriever(ownerRetrieverFake)
+			WithOwnerRetriever(ownerRetrieverFake).
+			WithRootOwnerRetriever(rootOwnerRetrieverFake)
 		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
 		if err != nil {
 			t.Fatal(err)
