@@ -44,9 +44,9 @@ jobs:
 
       - name: Initialize
         # Unpinned action version so that we automatically get analyzer updates.
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
 
       - name: Analyze
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
