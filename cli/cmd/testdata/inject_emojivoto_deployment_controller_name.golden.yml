@@ -21,7 +21,6 @@ spec:
         linkerd.io/proxy-root-parent: controller
         linkerd.io/proxy-root-parent-group: apps
         linkerd.io/proxy-root-parent-kind: Deployment
-        linkerd.io/proxy-root-parent-version: v1
         linkerd.io/workload-ns: emojivoto
     spec:
       containers:
@@ -290,7 +289,6 @@ spec:
         linkerd.io/proxy-root-parent: not-controller
         linkerd.io/proxy-root-parent-group: apps
         linkerd.io/proxy-root-parent-kind: Deployment
-        linkerd.io/proxy-root-parent-version: v1
         linkerd.io/workload-ns: linkerd
     spec:
       containers:

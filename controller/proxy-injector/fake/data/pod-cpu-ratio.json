@@ -36,11 +36,6 @@
     },
     {
         "op": "add",
-        "path": "/metadata/labels/linkerd.io~1proxy-root-parent-version",
-        "value": "v1"
-    },
-    {
-        "op": "add",
         "path": "/metadata/labels/linkerd.io~1workload-ns",
         "value": "kube-public"
     },

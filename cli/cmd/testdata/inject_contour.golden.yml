@@ -27,7 +27,6 @@ spec:
         linkerd.io/proxy-root-parent: contour
         linkerd.io/proxy-root-parent-group: apps
         linkerd.io/proxy-root-parent-kind: Deployment
-        linkerd.io/proxy-root-parent-version: v1
         linkerd.io/workload-ns: heptio-contour
     spec:
       containers:

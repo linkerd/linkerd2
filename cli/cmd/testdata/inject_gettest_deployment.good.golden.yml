@@ -17,7 +17,6 @@ spec:
         linkerd.io/proxy-root-parent: get-test-deploy-injected-1
         linkerd.io/proxy-root-parent-group: apps
         linkerd.io/proxy-root-parent-kind: Deployment
-        linkerd.io/proxy-root-parent-version: v1
         linkerd.io/workload-ns: ""
     spec:
       containers:
@@ -288,7 +287,6 @@ spec:
         linkerd.io/proxy-root-parent: get-test-deploy-injected-2
         linkerd.io/proxy-root-parent-group: apps
         linkerd.io/proxy-root-parent-kind: Deployment
-        linkerd.io/proxy-root-parent-version: v1
         linkerd.io/workload-ns: ""
     spec:
       containers:
