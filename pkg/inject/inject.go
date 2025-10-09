@@ -202,11 +202,11 @@ func GetOverriddenValues(rc *ResourceConfig) (*l5dcharts.Values, error) {
 		namedPorts = util.GetNamedPorts(rc.pod.spec.Containers)
 	}
 
-	ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), namedPorts)
+	ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), rc.GetLabelOverrides(), namedPorts)
 	return copyValues, nil
 }
 
-func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, namedPorts map[string]int32) {
+func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, labels map[string]string, namedPorts map[string]int32) {
 	if override, ok := annotations[k8s.ProxyInjectAnnotation]; ok {
 		if override == k8s.ProxyInjectIngress {
 			values.Proxy.IsIngress = true
@@ -553,6 +553,19 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 	if override, ok := annotations[k8s.ProxyAccessLogAnnotation]; ok {
 		values.Proxy.AccessLog = override
 	}
+
+	if override, ok := labels[k8s.TracingInstanceLabel]; ok {
+		values.Proxy.Tracing.Labels[k8s.TracingServiceName] = override
+	} else if override, ok := labels[k8s.TracingNameLabel]; ok {
+		values.Proxy.Tracing.Labels[k8s.TracingServiceName] = override
+	}
+
+	for name, value := range annotations {
+		after, found := strings.CutPrefix(name, k8s.TracingSemanticConventionPrefix)
+		if found {
+			values.Proxy.Tracing.Labels[after] = value
+		}
+	}
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
@@ -675,6 +688,20 @@ func (conf *ResourceConfig) GetAnnotationOverrides() map[string]string {
 
 	if conf.origin != OriginCLI {
 		for k, v := range conf.pod.annotations {
+			overrides[k] = v
+		}
+	}
+	return overrides
+}
+
+func (conf *ResourceConfig) GetLabelOverrides() map[string]string {
+	overrides := map[string]string{}
+	for k, v := range conf.pod.meta.Labels {
+		overrides[k] = v
+	}
+
+	if conf.origin != OriginCLI {
+		for k, v := range conf.pod.labels {
 			overrides[k] = v
 		}
 	}
@@ -1035,6 +1062,8 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 			conf.pod.labels[k8s.ProxyRootParentLabel] = om.Name
 			conf.pod.labels[k8s.ProxyRootParentKindLabel] = tm.Kind
 			conf.pod.labels[k8s.ProxyRootParentGroupLabel] = tm.GroupVersionKind().Group
+
+			conf.GetValues().Proxy.Tracing.Labels[k8s.TracingServiceName] = om.Name + "-linkerd-proxy"
 		}
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		if conf.pod.meta.Annotations == nil {

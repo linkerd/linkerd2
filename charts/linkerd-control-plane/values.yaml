@@ -286,6 +286,13 @@ proxy:
     # -- Enables trace collection and export in the proxy
     enabled: false
     traceServiceName: linkerd-proxy
+    # -- Additional labels to add to the traces emitted by the proxy.
+    # These should generally not be set globally, and instead overridden on
+    # individual workloads via `resource.opentelemetry.io/<label>` annotations.
+    labels:
+      k8s.pod.ip: "$(_pod_ip)"
+      k8s.pod.uid: "$(_pod_uid)"
+      k8s.container.name: "$(_pod_containerName)"
     collector:
       # -- The collector endpoint to send traces to.
       endpoint: ""

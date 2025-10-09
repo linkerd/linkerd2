@@ -530,6 +530,15 @@ const (
 
 	// ProbePortName is the name of the probe port of the gateway
 	ProbePortName = "mc-probe"
+
+	// TracingNameLabel is a pod label that the trace service name can be populated from
+	TracingNameLabel = "app.kubernetes.io/name"
+	// TracingInstanceLabel is a pod label that the trace service name can be populated from
+	TracingInstanceLabel = "app.kubernetes.io/instance"
+	// TracingSemanticConventionPrefix is the prefix for pod annotations that specify custom trace labels
+	TracingSemanticConventionPrefix = "resource.opentelemetry.io/"
+	// TracingServiceName is the label for the trace service name
+	TracingServiceName = "service.name"
 )
 
 // CreatedByAnnotationValue returns the value associated with

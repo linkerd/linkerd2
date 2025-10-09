@@ -146,6 +146,25 @@ func TestGetOverriddenValues(t *testing.T) {
 				return values
 			},
 		},
+		{id: "use tracing annotations",
+			nsAnnotations: make(map[string]string),
+			spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							k8s.TracingSemanticConventionPrefix + k8s.TracingServiceName: "foo",
+						},
+					},
+					Spec: corev1.PodSpec{},
+				},
+			},
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues()
+
+				values.Proxy.Tracing.Labels[k8s.TracingServiceName] = "foo"
+				return values
+			},
+		},
 		{id: "use namespace overrides",
 			nsAnnotations: map[string]string{
 				k8s.ProxyImageAnnotation:                      "cr.l5d.io/linkerd/proxy",
