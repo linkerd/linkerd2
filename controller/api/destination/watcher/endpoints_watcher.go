@@ -1145,13 +1145,13 @@ func (pp *portPublisher) newPodRefAddress(
 	if err != nil {
 		return Address{}, PodID{}, fmt.Errorf("unable to fetch pod %v: %w", id, err)
 	}
-	ownerKind, ownerName := pp.metadataAPI.GetOwnerKindAndName(context.Background(), pod, false)
+	ownerType, ownerMeta := pp.metadataAPI.GetRootOwnerKindAndName(context.Background(), &pod.TypeMeta, &pod.ObjectMeta, false)
 	addr := Address{
 		IP:        endpointIP,
 		Port:      endpointPort,
 		Pod:       pod,
-		OwnerName: ownerName,
-		OwnerKind: ownerKind,
+		OwnerName: ownerMeta.Name,
+		OwnerKind: strings.ToLower(ownerType.Kind),
 	}
 
 	return addr, id, nil

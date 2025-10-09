@@ -30,8 +30,9 @@ var (
 				Name:      "pod1",
 				Namespace: "ns",
 				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "linkerd",
-					k8s.ProxyDeploymentLabel: "deployment-name",
+					k8s.ControllerNSLabel:        "linkerd",
+					k8s.ProxyRootParentLabel:     "deployment-name",
+					k8s.ProxyRootParentKindLabel: "Deployment",
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -69,8 +70,9 @@ var (
 				Name:      "pod1",
 				Namespace: "ns",
 				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "linkerd",
-					k8s.ProxyDeploymentLabel: "deployment-name",
+					k8s.ControllerNSLabel:        "linkerd",
+					k8s.ProxyRootParentLabel:     "deployment-name",
+					k8s.ProxyRootParentKindLabel: "Deployment",
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -108,8 +110,9 @@ var (
 				Name:      "pod2",
 				Namespace: "ns",
 				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "linkerd",
-					k8s.ProxyDeploymentLabel: "deployment-name",
+					k8s.ControllerNSLabel:        "linkerd",
+					k8s.ProxyRootParentLabel:     "deployment-name",
+					k8s.ProxyRootParentKindLabel: "Deployment",
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -144,8 +147,9 @@ var (
 				Name:      "pod3",
 				Namespace: "ns",
 				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "linkerd",
-					k8s.ProxyDeploymentLabel: "deployment-name",
+					k8s.ControllerNSLabel:        "linkerd",
+					k8s.ProxyRootParentLabel:     "deployment-name",
+					k8s.ProxyRootParentKindLabel: "Deployment",
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -180,8 +184,9 @@ var (
 				Name:      "pod4",
 				Namespace: "ns",
 				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "linkerd",
-					k8s.ProxyDeploymentLabel: "deployment-name",
+					k8s.ControllerNSLabel:        "linkerd",
+					k8s.ProxyRootParentLabel:     "deployment-name",
+					k8s.ProxyRootParentKindLabel: "Deployment",
 				},
 				Annotations: map[string]string{
 					k8s.ProxyOpaquePortsAnnotation: "4",
@@ -220,8 +225,9 @@ var (
 				Name:      "podAdmin",
 				Namespace: "ns",
 				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "linkerd",
-					k8s.ProxyDeploymentLabel: "deployment-name",
+					k8s.ControllerNSLabel:        "linkerd",
+					k8s.ProxyRootParentLabel:     "deployment-name",
+					k8s.ProxyRootParentKindLabel: "Deployment",
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -259,8 +265,9 @@ var (
 				Name:      "podControl",
 				Namespace: "ns",
 				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "linkerd",
-					k8s.ProxyDeploymentLabel: "deployment-name",
+					k8s.ControllerNSLabel:        "linkerd",
+					k8s.ProxyRootParentLabel:     "deployment-name",
+					k8s.ProxyRootParentKindLabel: "Deployment",
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -323,8 +330,9 @@ var (
 				Name:      "ew-2",
 				Namespace: "ns",
 				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "linkerd",
-					k8s.ProxyDeploymentLabel: "deployment-name",
+					k8s.ControllerNSLabel:        "linkerd",
+					k8s.ProxyRootParentLabel:     "deployment-name",
+					k8s.ProxyRootParentKindLabel: "Deployment",
 				},
 			},
 			Spec: ewv1beta1.ExternalWorkloadSpec{
@@ -350,8 +358,9 @@ var (
 				Name:      "ew-3",
 				Namespace: "ns",
 				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "linkerd",
-					k8s.ProxyDeploymentLabel: "deployment-name",
+					k8s.ControllerNSLabel:        "linkerd",
+					k8s.ProxyRootParentLabel:     "deployment-name",
+					k8s.ProxyRootParentKindLabel: "Deployment",
 				},
 			},
 			Spec: ewv1beta1.ExternalWorkloadSpec{
@@ -480,8 +489,9 @@ var (
 				Name:      "pod1",
 				Namespace: "ns",
 				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "linkerd",
-					k8s.ProxyDeploymentLabel: "deployment-name",
+					k8s.ControllerNSLabel:        "linkerd",
+					k8s.ProxyRootParentLabel:     "deployment-name",
+					k8s.ProxyRootParentKindLabel: "Deployment",
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -497,8 +507,9 @@ var (
 				Name:      "pod1",
 				Namespace: "ns",
 				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "linkerd",
-					k8s.ProxyDeploymentLabel: "deployment-name",
+					k8s.ControllerNSLabel:        "linkerd",
+					k8s.ProxyRootParentLabel:     "deployment-name",
+					k8s.ProxyRootParentKindLabel: "Deployment",
 				},
 			},
 			Spec: corev1.PodSpec{
