@@ -16,6 +16,9 @@ spec:
         app: nginx
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: nginx
+        linkerd.io/proxy-root-parent: nginx
+        linkerd.io/proxy-root-parent-group: apps
+        linkerd.io/proxy-root-parent-kind: Deployment
         linkerd.io/workload-ns: ""
     spec:
       containers:
