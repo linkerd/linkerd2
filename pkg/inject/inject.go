@@ -936,7 +936,6 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 		conf.pod.labels[k8s.ProxyDeploymentLabel] = v.Name
 		conf.pod.labels[k8s.ProxyRootParentLabel] = v.Name
 		conf.pod.labels[k8s.ProxyRootParentGroupLabel] = gvk.Group
-		conf.pod.labels[k8s.ProxyRootParentVersionLabel] = gvk.Version
 		conf.pod.labels[k8s.ProxyRootParentKindLabel] = gvk.Kind
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
@@ -948,7 +947,6 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 		conf.pod.labels[k8s.ProxyReplicationControllerLabel] = v.Name
 		conf.pod.labels[k8s.ProxyRootParentLabel] = v.Name
 		conf.pod.labels[k8s.ProxyRootParentGroupLabel] = gvk.Group
-		conf.pod.labels[k8s.ProxyRootParentVersionLabel] = gvk.Version
 		conf.pod.labels[k8s.ProxyRootParentKindLabel] = gvk.Kind
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(v.Spec.Template)
@@ -960,7 +958,6 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 		conf.pod.labels[k8s.ProxyReplicaSetLabel] = v.Name
 		conf.pod.labels[k8s.ProxyRootParentLabel] = v.Name
 		conf.pod.labels[k8s.ProxyRootParentGroupLabel] = gvk.Group
-		conf.pod.labels[k8s.ProxyRootParentVersionLabel] = gvk.Version
 		conf.pod.labels[k8s.ProxyRootParentKindLabel] = gvk.Kind
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
@@ -972,7 +969,6 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 		conf.pod.labels[k8s.ProxyJobLabel] = v.Name
 		conf.pod.labels[k8s.ProxyRootParentLabel] = v.Name
 		conf.pod.labels[k8s.ProxyRootParentGroupLabel] = gvk.Group
-		conf.pod.labels[k8s.ProxyRootParentVersionLabel] = gvk.Version
 		conf.pod.labels[k8s.ProxyRootParentKindLabel] = gvk.Kind
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
@@ -984,7 +980,6 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 		conf.pod.labels[k8s.ProxyDaemonSetLabel] = v.Name
 		conf.pod.labels[k8s.ProxyRootParentLabel] = v.Name
 		conf.pod.labels[k8s.ProxyRootParentGroupLabel] = gvk.Group
-		conf.pod.labels[k8s.ProxyRootParentVersionLabel] = gvk.Version
 		conf.pod.labels[k8s.ProxyRootParentKindLabel] = gvk.Kind
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
@@ -996,7 +991,6 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 		conf.pod.labels[k8s.ProxyStatefulSetLabel] = v.Name
 		conf.pod.labels[k8s.ProxyRootParentLabel] = v.Name
 		conf.pod.labels[k8s.ProxyRootParentGroupLabel] = gvk.Group
-		conf.pod.labels[k8s.ProxyRootParentVersionLabel] = gvk.Version
 		conf.pod.labels[k8s.ProxyRootParentKindLabel] = gvk.Kind
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
@@ -1041,7 +1035,6 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 			conf.pod.labels[k8s.ProxyRootParentLabel] = om.Name
 			conf.pod.labels[k8s.ProxyRootParentKindLabel] = tm.Kind
 			conf.pod.labels[k8s.ProxyRootParentGroupLabel] = tm.GroupVersionKind().Group
-			conf.pod.labels[k8s.ProxyRootParentVersionLabel] = tm.GroupVersionKind().Version
 		}
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		if conf.pod.meta.Annotations == nil {
