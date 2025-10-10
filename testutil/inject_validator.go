@@ -25,8 +25,6 @@ type InjectValidator struct {
 	EnableExternalProfiles  bool
 	ImagePullPolicy         string
 	InboundPort             int
-	InitImage               string
-	InitImageVersion        string
 	OutboundPort            int
 	CPULimit                string
 	EphemeralStorageLimit   string
@@ -333,27 +331,6 @@ func (iv *InjectValidator) validateInitContainer(pod *v1.PodSpec) error {
 		return fmt.Errorf("container %s missing", k8s.InitContainerName)
 	}
 
-	if iv.InitImage != "" || iv.InitImageVersion != "" {
-
-		image := strings.Split(initContainer.Image, ":")
-
-		if len(image) != 2 {
-			return fmt.Errorf("invalid proxy init image string: %s", initContainer.Image)
-		}
-
-		if iv.InitImage != "" {
-			if image[0] != iv.InitImage {
-				return fmt.Errorf("proxyInitImage: expected %s, actual %s", iv.InitImage, image[0])
-			}
-		}
-
-		if iv.InitImageVersion != "" {
-			if image[1] != iv.InitImageVersion {
-				return fmt.Errorf("proxyInitImageVersion: expected %s, actual %s", iv.InitImageVersion, image[1])
-			}
-		}
-	}
-
 	if iv.InboundPort != 0 {
 		if err := iv.validateArg(initContainer, "--incoming-proxy-port", strconv.Itoa(iv.InboundPort)); err != nil {
 			return err
@@ -468,16 +445,6 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 	if iv.InboundPort != 0 {
 		annotations[k8s.ProxyInboundPortAnnotation] = strconv.Itoa(iv.InboundPort)
 		flags = append(flags, fmt.Sprintf("--inbound-port=%s", strconv.Itoa(iv.InboundPort)))
-	}
-
-	if iv.InitImage != "" {
-		annotations[k8s.ProxyInitImageAnnotation] = iv.InitImage
-		flags = append(flags, fmt.Sprintf("--init-image=%s", iv.InitImage))
-	}
-
-	if iv.InitImageVersion != "" {
-		annotations[k8s.ProxyInitImageVersionAnnotation] = iv.InitImageVersion
-		flags = append(flags, fmt.Sprintf("--init-image-version=%s", iv.InitImageVersion))
 	}
 
 	if iv.OutboundPort != 0 {

@@ -16,8 +16,6 @@ func TestNewValues(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	testVersion := "linkerd-dev"
-
 	matchExpressionsSimple := []metav1.LabelSelectorRequirement{
 		{
 			Key:      "config.linkerd.io/admission-webhooks",
@@ -227,10 +225,6 @@ func TestNewValues(t *testing.T) {
 			KubeAPIServerPorts:  "443,6443",
 			LogLevel:            "",
 			LogFormat:           "",
-			Image: &Image{
-				Name:    "cr.l5d.io/linkerd/proxy-init",
-				Version: testVersion,
-			},
 			XTMountPath: &VolumeMountPath{
 				Name:      "linkerd-proxy-init-xtables-lock",
 				MountPath: "/run",
@@ -290,11 +284,6 @@ func TestNewValues(t *testing.T) {
 		PolicyValidator:  &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorSimple},
 		Egress:           &Egress{GlobalEgressNetworkNamespace: "linkerd-egress"},
 	}
-
-	// pin the versions to ensure consistent test result.
-	// in non-test environment, the default versions are read from the
-	// values.yaml.
-	actual.ProxyInit.Image.Version = testVersion
 
 	// Make Add-On Values nil to not have to check for their defaults
 	actual.ImagePullSecrets = nil
@@ -360,11 +349,6 @@ func TestNewValues(t *testing.T) {
 				Request: "20Mi",
 			},
 		}
-
-		// pin the versions to ensure consistent test result.
-		// in non-test environment, the default versions are read from the
-		// values.yaml.
-		actual.ProxyInit.Image.Version = testVersion
 
 		if diff := deep.Equal(expected, actual); diff != nil {
 			t.Errorf("HA Helm values\n%+v", diff)
