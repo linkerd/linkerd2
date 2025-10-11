@@ -7,6 +7,7 @@ import (
 	gonet "net"
 	"net/netip"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -203,7 +204,10 @@ func TestGet(t *testing.T) {
 		}()
 
 		select {
-		case <-errCh:
+		case err := <-errCh:
+			if !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
+				t.Fatalf("expected cancellation error, got %v", err)
+			}
 		case <-time.After(5 * time.Second):
 			t.Fatal("timed out waiting for Get to return")
 		}
@@ -231,8 +235,6 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("Cancels stream when federated endpoint update queue overflows", func(t *testing.T) {
-		t.Skip("TODO: fix stream cancelation")
-
 		srv, remoteStore := getServerWithRemoteStore(t)
 		remoteAPI, ok := remoteStore.Get("target")
 		if !ok {
@@ -1701,6 +1703,9 @@ func addEndpointToSlice(t *testing.T, server *server, podName, ip string) {
 func addEndpointToRemoteSlice(t *testing.T, api *k8s.API, namespace, sliceName, ip string) {
 	t.Helper()
 
+	podName := fmt.Sprintf("%s-%s", sliceName, strings.ReplaceAll(ip, ".", "-"))
+	createPodWithAPI(t, api, namespace, podName, ip)
+
 	sliceClient := api.Client.DiscoveryV1().EndpointSlices(namespace)
 	ready := true
 
@@ -1708,16 +1713,18 @@ func addEndpointToRemoteSlice(t *testing.T, api *k8s.API, namespace, sliceName, 
 	if err != nil {
 		t.Fatalf("failed to get remote endpoint slice: %v", err)
 	}
-
-	updated := slice.DeepCopy()
-	updated.Endpoints = append(updated.Endpoints, discovery.Endpoint{
+	slice.Endpoints = append(slice.Endpoints, discovery.Endpoint{
 		Addresses: []string{ip},
 		Conditions: discovery.EndpointConditions{
 			Ready: &ready,
 		},
+		TargetRef: &corev1.ObjectReference{
+			Kind:      "Pod",
+			Name:      podName,
+			Namespace: namespace,
+		},
 	})
-
-	if _, err := sliceClient.Update(context.Background(), updated, metav1.UpdateOptions{}); err != nil {
+	if _, err = sliceClient.Update(context.Background(), slice, metav1.UpdateOptions{}); err != nil {
 		t.Fatalf("failed to update remote endpoint slice: %v", err)
 	}
 }
@@ -1725,10 +1732,16 @@ func addEndpointToRemoteSlice(t *testing.T, api *k8s.API, namespace, sliceName, 
 func createPod(t *testing.T, server *server, podName, ip string) {
 	t.Helper()
 
+	createPodWithAPI(t, server.k8sAPI, "ns", podName, ip)
+}
+
+func createPodWithAPI(t *testing.T, api *k8s.API, namespace, podName, ip string) {
+	t.Helper()
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      podName,
-			Namespace: "ns",
+			Namespace: namespace,
 			Labels: map[string]string{
 				pkgk8s.ControllerNSLabel: "linkerd",
 			},
@@ -1755,11 +1768,11 @@ func createPod(t *testing.T, server *server, podName, ip string) {
 		},
 	}
 
-	if _, err := server.k8sAPI.Client.CoreV1().Pods("ns").Create(context.Background(), pod, metav1.CreateOptions{}); err != nil {
+	if _, err := api.Client.CoreV1().Pods(namespace).Create(context.Background(), pod, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("failed to create pod %s: %v", podName, err)
 	}
 
-	_, _ = server.k8sAPI.Client.CoreV1().Pods("ns").UpdateStatus(context.Background(), pod, metav1.UpdateOptions{})
+	_, _ = api.Client.CoreV1().Pods(namespace).UpdateStatus(context.Background(), pod, metav1.UpdateOptions{})
 }
 
 func TestIpWatcherGetSvcID(t *testing.T) {
