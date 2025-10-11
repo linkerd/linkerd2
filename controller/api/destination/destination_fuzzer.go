@@ -25,8 +25,7 @@ func FuzzAdd(data []byte) int {
 	}
 	t := &testing.T{}
 	_, translator := makeEndpointTranslator(t)
-	translator.Start()
-	defer translator.Stop()
+	defer translator.Close()
 	translator.Add(set)
 	translator.Remove(set)
 	return 1

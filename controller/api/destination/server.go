@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/util"
 	logging "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
@@ -150,7 +152,16 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 
 	log.Debugf("Get %s", dest.GetPath())
 
-	streamEnd := make(chan struct{})
+	// Allow the translator to queue a single update without blocking the stream.
+	// We only need one extra slot—the gRPC stream already provides additional
+	// buffering and we merely want to detect backpressure.
+	updates := make(chan *pb.Update, 1)
+
+	// ctx governs all background work started for this request; cancelling it
+	// tears down watchers and the update-forwarding goroutine.
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
+
 	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
 	if err != nil {
@@ -179,113 +190,111 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		return status.Errorf(codes.Internal, "Failed to get service %s", dest.GetPath())
 	}
 
+	// Track teardown callbacks for any watchers we register below.  The stack
+	// executes in reverse order so we unwire resources in the opposite order
+	// they were added.
+	teardown := cleanupStack{}
+	defer teardown.run()
+
 	if isFederatedService(svc) {
-		// Federated service
 		remoteDiscovery := svc.Annotations[labels.RemoteDiscoveryAnnotation]
 		localDiscovery := svc.Annotations[labels.LocalDiscoveryAnnotation]
 		log.Debugf("Federated service discovery, remote:[%s] local:[%s]", remoteDiscovery, localDiscovery)
-		err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, instanceID, stream, streamEnd)
-		if err != nil {
+		if err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, instanceID, updates, cancel); err != nil {
 			log.Errorf("Failed to subscribe to federated service %q: %s", dest.GetPath(), err)
 			return err
 		}
-		defer s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, stream)
+		teardown.add(func() { s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, updates) })
 	} else if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
-		log.Debug("Remote discovery service detected")
-		// Remote discovery
-		remoteSvc, found := svc.Labels[labels.RemoteServiceLabel]
-		if !found {
+		remoteSvc, ok := svc.Labels[labels.RemoteServiceLabel]
+		if !ok {
 			log.Debugf("Remote discovery service missing remote service name %s", service)
 			return status.Errorf(codes.FailedPrecondition, "Remote discovery service missing remote service name %s", dest.GetPath())
 		}
-		remoteWatcher, remoteConfig, found := s.clusterStore.Get(cluster)
-		if !found {
-			log.Errorf("Failed to get remote cluster %s", cluster)
-			return status.Errorf(codes.NotFound, "Remote cluster not found: %s", cluster)
-		}
-		translator, err := newEndpointTranslator(
-			s.config.ControllerNS,
-			remoteConfig.TrustDomain,
-			s.config.ForceOpaqueTransport,
-			s.config.EnableH2Upgrade,
-			false, // Disable endpoint filtering for remote discovery.
-			s.config.EnableIPv6,
-			s.config.ExtEndpointZoneWeights,
-			s.config.MeshedHttp2ClientParams,
-			fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port),
-			token.NodeName,
-			s.config.DefaultOpaquePorts,
-			s.metadataAPI,
-			stream,
-			streamEnd,
-			log,
-		)
-		if err != nil {
-			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
-		}
-		translator.Start()
-		defer translator.Stop()
 
-		err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
+		cleanupFn, err := s.registerRemoteDiscovery(dest.GetPath(), service, remoteSvc, cluster, port, instanceID, token, updates, cancel, log)
 		if err != nil {
-			var ise watcher.InvalidService
-			if errors.As(err, &ise) {
-				log.Debugf("Invalid remote discovery service %s", dest.GetPath())
-				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
-			}
-			log.Errorf("Failed to subscribe to remote discovery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
 			return err
 		}
-		defer remoteWatcher.Unsubscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
-
+		teardown.add(cleanupFn)
 	} else {
-		log.Debug("Local discovery service detected")
-		// Local discovery
-		translator, err := newEndpointTranslator(
-			s.config.ControllerNS,
-			s.config.IdentityTrustDomain,
-			s.config.ForceOpaqueTransport,
-			s.config.EnableH2Upgrade,
-			true,
-			s.config.EnableIPv6,
-			s.config.ExtEndpointZoneWeights,
-			s.config.MeshedHttp2ClientParams,
-			dest.GetPath(),
-			token.NodeName,
-			s.config.DefaultOpaquePorts,
-			s.metadataAPI,
-			stream,
-			streamEnd,
-			log,
-		)
+		cleanupFn, err := s.registerLocalDiscovery(dest.GetPath(), service, port, instanceID, token, updates, cancel, log)
 		if err != nil {
-			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
-		}
-		translator.Start()
-		defer translator.Stop()
-
-		err = s.endpoints.Subscribe(service, port, instanceID, translator)
-		if err != nil {
-			var ise watcher.InvalidService
-			if errors.As(err, &ise) {
-				log.Debugf("Invalid service %s", dest.GetPath())
-				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
-			}
-			log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
 			return err
 		}
-		defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
+		teardown.add(cleanupFn)
 	}
 
+	// Forward updates from the translator onto the gRPC stream. This runs in
+	// its own goroutine so that translator backpressure is limited only by the
+	// single buffered slot above.
+	group, sendCtx := errgroup.WithContext(ctx)
+	group.Go(func() error {
+		for {
+			select {
+			case <-sendCtx.Done():
+				return sendCtx.Err()
+			case update, ok := <-updates:
+				if !ok {
+					return nil
+				}
+				if err := stream.Send(update); err != nil {
+					return err
+				}
+			}
+		}
+	})
+
+	// Wait until shutdown is initiated or the stream is reset.
 	select {
 	case <-s.shutdown:
-	case <-stream.Context().Done():
-		log.Debugf("Get %s cancelled", dest.GetPath())
-	case <-streamEnd:
-		log.Errorf("Get %s stream aborted", dest.GetPath())
+		cancel()
+	case <-ctx.Done():
+	}
+
+	// Propagate unexpected send failures immediately. Context cancellations are
+	// handled below so that we return the original ctx.Err() when appropriate.
+	waitErr := group.Wait()
+	if waitErr != nil &&
+		!errors.Is(waitErr, context.Canceled) &&
+		!errors.Is(waitErr, context.DeadlineExceeded) &&
+		status.Code(waitErr) != codes.Canceled &&
+		status.Code(waitErr) != codes.DeadlineExceeded {
+		log.Errorf("Get %s: Send failed: %v", dest.GetPath(), waitErr)
+		return waitErr
+	}
+
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		switch {
+		case errors.Is(ctxErr, context.Canceled):
+			if stream.Context().Err() != nil {
+				log.Debugf("Get %s cancelled", dest.GetPath())
+			} else {
+				log.Errorf("Get %s stream aborted", dest.GetPath())
+			}
+		case errors.Is(ctxErr, context.DeadlineExceeded):
+			log.Errorf("Get %s deadline exceeded", dest.GetPath())
+		}
+		return ctxErr
 	}
 
 	return nil
+}
+
+type cleanupStack struct {
+	fns []func()
+}
+
+func (cs *cleanupStack) add(fn func()) {
+	if fn != nil {
+		cs.fns = append(cs.fns, fn)
+	}
+}
+
+func (cs *cleanupStack) run() {
+	for i := len(cs.fns) - 1; i >= 0; i-- {
+		cs.fns[i]()
+	}
 }
 
 func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetProfileServer) error {
@@ -335,6 +344,115 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		log.Errorf("Failed to subscribe to profile by name %q: %q", dest.GetPath(), err)
 	}
 	return err
+}
+
+func (s *server) registerRemoteDiscovery(
+	destPath string,
+	service watcher.ID,
+	remoteSvc string,
+	cluster string,
+	port uint32,
+	instanceID string,
+	token contextToken,
+	updates chan<- *pb.Update,
+	cancel context.CancelFunc,
+	log *logging.Entry,
+) (func(), error) {
+	remoteWatcher, remoteConfig, found := s.clusterStore.Get(cluster)
+	if !found {
+		log.Errorf("Failed to get remote cluster %s", cluster)
+		return nil, status.Errorf(codes.NotFound, "Remote cluster not found: %s", cluster)
+	}
+
+	translator, err := newEndpointTranslator(
+		s.config.ControllerNS,
+		remoteConfig.TrustDomain,
+		s.config.ForceOpaqueTransport,
+		s.config.EnableH2Upgrade,
+		false,
+		s.config.EnableIPv6,
+		s.config.ExtEndpointZoneWeights,
+		s.config.MeshedHttp2ClientParams,
+		fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port),
+		token.NodeName,
+		s.config.DefaultOpaquePorts,
+		s.metadataAPI,
+		updates,
+		cancel,
+		log,
+	)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
+	}
+
+	remoteServiceID := watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}
+	if err := remoteWatcher.Subscribe(remoteServiceID, port, instanceID, translator); err != nil {
+		translator.Close()
+		var invalid watcher.InvalidService
+		if errors.As(err, &invalid) {
+			log.Debugf("Invalid remote discovery service %s", destPath)
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid authority: %s", destPath)
+		}
+		log.Errorf("Failed to subscribe to remote discovery service %q in cluster %s: %v", destPath, cluster, err)
+		return nil, err
+	}
+
+	cleanup := func() {
+		remoteWatcher.Unsubscribe(remoteServiceID, port, instanceID, translator)
+		translator.Close()
+	}
+
+	return cleanup, nil
+}
+
+func (s *server) registerLocalDiscovery(
+	destPath string,
+	service watcher.ID,
+	port uint32,
+	instanceID string,
+	token contextToken,
+	updates chan<- *pb.Update,
+	cancel context.CancelFunc,
+	log *logging.Entry,
+) (func(), error) {
+	translator, err := newEndpointTranslator(
+		s.config.ControllerNS,
+		s.config.IdentityTrustDomain,
+		s.config.ForceOpaqueTransport,
+		s.config.EnableH2Upgrade,
+		true,
+		s.config.EnableIPv6,
+		s.config.ExtEndpointZoneWeights,
+		s.config.MeshedHttp2ClientParams,
+		destPath,
+		token.NodeName,
+		s.config.DefaultOpaquePorts,
+		s.metadataAPI,
+		updates,
+		cancel,
+		log,
+	)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
+	}
+
+	if err := s.endpoints.Subscribe(service, port, instanceID, translator); err != nil {
+		translator.Close()
+		var invalid watcher.InvalidService
+		if errors.As(err, &invalid) {
+			log.Debugf("Invalid service %s", destPath)
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid authority: %s", destPath)
+		}
+		log.Errorf("Failed to subscribe to %s: %v", destPath, err)
+		return nil, err
+	}
+
+	cleanup := func() {
+		s.endpoints.Unsubscribe(service, port, instanceID, translator)
+		translator.Close()
+	}
+
+	return cleanup, nil
 }
 
 func (s *server) getProfileByIP(

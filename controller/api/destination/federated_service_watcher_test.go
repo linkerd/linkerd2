@@ -25,7 +25,7 @@ func TestFederatedService(t *testing.T) {
 
 	mockGetServer := newMockDestinationGetServer(50)
 
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, mockGetServer.EndStream())
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer.updatesReceived, mockGetServer.abort)
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -42,7 +42,7 @@ func TestRemoteJoinFederatedService(t *testing.T) {
 
 	mockGetServer := newMockDestinationGetServer(50)
 
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, mockGetServer.EndStream())
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer.updatesReceived, mockGetServer.abort)
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -70,7 +70,7 @@ func TestRemoteLeaveFederatedService(t *testing.T) {
 
 	mockGetServer := newMockDestinationGetServer(50)
 
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, mockGetServer.EndStream())
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer.updatesReceived, mockGetServer.abort)
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -98,7 +98,7 @@ func TestLocalLeaveFederatedService(t *testing.T) {
 
 	mockGetServer := newMockDestinationGetServer(50)
 
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, mockGetServer.EndStream())
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer.updatesReceived, mockGetServer.abort)
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)

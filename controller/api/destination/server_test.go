@@ -7,6 +7,7 @@ import (
 	gonet "net"
 	"net/netip"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -203,7 +204,10 @@ func TestGet(t *testing.T) {
 		}()
 
 		select {
-		case <-errCh:
+		case err := <-errCh:
+			if !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
+				t.Fatalf("expected cancellation error, got %v", err)
+			}
 		case <-time.After(5 * time.Second):
 			t.Fatal("timed out waiting for Get to return")
 		}
@@ -229,17 +233,22 @@ func TestGet(t *testing.T) {
 
 		stream.WaitForSend(t, 5*time.Second)
 
-		for i := range updateQueueCapacity + 10 {
-			addEndpointToSlice(t, server,
-				fmt.Sprintf("name1-overflow-%d", i),
-				fmt.Sprintf("172.17.0.%d", i))
-			time.Sleep(50 * time.Millisecond)
-		}
+		addEndpointToSlice(t, server, "name1-overflow-a", "172.17.0.201")
+		time.Sleep(100 * time.Millisecond)
+
+		addEndpointToSlice(t, server, "name1-overflow-b", "172.17.0.202")
+		time.Sleep(50 * time.Millisecond)
 
 		stream.Release()
 
 		select {
-		case <-errCh:
+		case err := <-errCh:
+			if err == nil {
+				t.Fatal("expected Get to be canceled after overflow")
+			}
+			if !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
+				t.Fatalf("expected cancellation error, got %v", err)
+			}
 		case <-time.After(5 * time.Second):
 			t.Fatal("timed out waiting for Get to return after overflow")
 		}
@@ -247,11 +256,17 @@ func TestGet(t *testing.T) {
 		if got := stream.SendCount(); got == 0 {
 			t.Fatal("expected at least one update before overflow")
 		}
+
+		updates := stream.Updates()
+		if updates[0].GetAdd() == nil {
+			t.Fatalf("expected initial update to be an Add, got %T", updates[0].GetUpdate())
+		}
+		if len(updates) > 1 && updates[1].GetAdd() == nil {
+			t.Fatalf("expected buffered update to be an Add, got %T", updates[1].GetUpdate())
+		}
 	})
 
 	t.Run("Cancels stream when federated endpoint update queue overflows", func(t *testing.T) {
-		t.Skip("Known to fail presently; re-enable when fixed")
-
 		server, remoteStore := getServerWithRemoteStore(t)
 
 		remoteAPI, ok := remoteStore.Get("target")
@@ -1672,6 +1687,9 @@ func addEndpointToSlice(t *testing.T, server *server, podName, ip string) {
 func addEndpointToRemoteSlice(t *testing.T, api *k8s.API, namespace, sliceName, ip string) {
 	t.Helper()
 
+	podName := fmt.Sprintf("%s-%s", sliceName, strings.ReplaceAll(ip, ".", "-"))
+	createPodWithAPI(t, api, namespace, podName, ip)
+
 	sliceClient := api.Client.DiscoveryV1().EndpointSlices(namespace)
 	ready := true
 
@@ -1679,16 +1697,18 @@ func addEndpointToRemoteSlice(t *testing.T, api *k8s.API, namespace, sliceName, 
 	if err != nil {
 		t.Fatalf("failed to get remote endpoint slice: %v", err)
 	}
-
-	updated := slice.DeepCopy()
-	updated.Endpoints = append(updated.Endpoints, discovery.Endpoint{
+	slice.Endpoints = append(slice.Endpoints, discovery.Endpoint{
 		Addresses: []string{ip},
 		Conditions: discovery.EndpointConditions{
 			Ready: &ready,
 		},
+		TargetRef: &corev1.ObjectReference{
+			Kind:      "Pod",
+			Name:      podName,
+			Namespace: namespace,
+		},
 	})
-
-	if _, err := sliceClient.Update(context.Background(), updated, metav1.UpdateOptions{}); err != nil {
+	if _, err = sliceClient.Update(context.Background(), slice, metav1.UpdateOptions{}); err != nil {
 		t.Fatalf("failed to update remote endpoint slice: %v", err)
 	}
 }
@@ -1696,10 +1716,16 @@ func addEndpointToRemoteSlice(t *testing.T, api *k8s.API, namespace, sliceName, 
 func createPod(t *testing.T, server *server, podName, ip string) {
 	t.Helper()
 
+	createPodWithAPI(t, server.k8sAPI, "ns", podName, ip)
+}
+
+func createPodWithAPI(t *testing.T, api *k8s.API, namespace, podName, ip string) {
+	t.Helper()
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      podName,
-			Namespace: "ns",
+			Namespace: namespace,
 			Labels: map[string]string{
 				pkgk8s.ControllerNSLabel: "linkerd",
 			},
@@ -1726,11 +1752,11 @@ func createPod(t *testing.T, server *server, podName, ip string) {
 		},
 	}
 
-	if _, err := server.k8sAPI.Client.CoreV1().Pods("ns").Create(context.Background(), pod, metav1.CreateOptions{}); err != nil {
+	if _, err := api.Client.CoreV1().Pods(namespace).Create(context.Background(), pod, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("failed to create pod %s: %v", podName, err)
 	}
 
-	_, _ = server.k8sAPI.Client.CoreV1().Pods("ns").UpdateStatus(context.Background(), pod, metav1.UpdateOptions{})
+	_, _ = api.Client.CoreV1().Pods(namespace).UpdateStatus(context.Background(), pod, metav1.UpdateOptions{})
 }
 
 func TestIpWatcherGetSvcID(t *testing.T) {

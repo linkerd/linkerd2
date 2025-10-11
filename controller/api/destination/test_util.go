@@ -1206,9 +1206,9 @@ func (s *blockingProfileStream) Unblock() {
 
 type mockDestinationGetServer struct {
 	util.MockServerStream
-
 	updatesReceived chan *pb.Update
-	endStream       chan struct{}
+	abortOnce       sync.Once
+	aborted         bool
 }
 
 // nolint:unparam // buffer kept for future tests that require custom channel sizing.
@@ -1216,7 +1216,6 @@ func newMockDestinationGetServer(buffer int) *mockDestinationGetServer {
 	return &mockDestinationGetServer{
 		MockServerStream: util.NewMockServerStream(),
 		updatesReceived:  make(chan *pb.Update, buffer),
-		endStream:        make(chan struct{}),
 	}
 }
 
@@ -1225,8 +1224,13 @@ func (m *mockDestinationGetServer) Send(update *pb.Update) error {
 	return nil
 }
 
-func (m *mockDestinationGetServer) EndStream() chan struct{} {
-	return m.endStream
+func (m *mockDestinationGetServer) abort() {
+	m.abortOnce.Do(func() {
+		m.aborted = true
+		if m.MockServerStream.Cancel != nil {
+			m.MockServerStream.Cancel()
+		}
+	})
 }
 
 type mockDestinationGetProfileServer struct {
@@ -1290,8 +1294,8 @@ metadata:
 		"test-123",
 		map[uint32]struct{}{},
 		metadataAPI,
-		mockGetServer,
-		mockGetServer.EndStream(),
+		mockGetServer.updatesReceived,
+		mockGetServer.abort,
 		logging.WithField("test", t.Name()),
 	)
 	if err != nil {
