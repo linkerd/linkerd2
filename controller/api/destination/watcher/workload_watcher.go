@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -61,7 +60,7 @@ type (
 	}
 )
 
-var ipPortVecs = newMetricsVecs("ip_port", []string{"ip", "port"})
+var ipPortVecs = newMetricsVecs("ip_port", []string{})
 
 func NewWorkloadWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.Entry, enableEndpointSlices bool, defaultOpaquePorts map[uint32]struct{}) (*WorkloadWatcher, error) {
 	ww := &WorkloadWatcher{
@@ -455,10 +454,8 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 	ipPort := IPPort{ip, port}
 	wp, ok := ww.publishers[ipPort]
 	if !ok {
-		metrics, err := ipPortVecs.newMetrics(prometheus.Labels{
-			"ip":   ip,
-			"port": strconv.FormatUint(uint64(port), 10),
-		})
+		// Omit high-cardinality IP:port labels.
+		metrics, err := ipPortVecs.newMetrics(prometheus.Labels{})
 		if err != nil {
 			return nil, err
 		}
