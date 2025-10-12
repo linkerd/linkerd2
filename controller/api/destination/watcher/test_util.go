@@ -10,6 +10,47 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 )
 
+// MockRemoteAPIStore tracks fake remote APIs created by decoder helpers.
+type MockRemoteAPIStore struct {
+	apis sync.Map
+}
+
+// NewMockRemoteAPIStore creates an empty store.
+func NewMockRemoteAPIStore() *MockRemoteAPIStore {
+	return &MockRemoteAPIStore{}
+}
+
+// Reset clears the stored remote APIs.
+func (s *MockRemoteAPIStore) Reset() {
+	if s == nil {
+		return
+	}
+	s.apis.Range(func(key, _ any) bool {
+		s.apis.Delete(key)
+		return true
+	})
+}
+
+// Get returns the remote API associated with the provided cluster.
+func (s *MockRemoteAPIStore) Get(cluster string) (*k8s.API, bool) {
+	if s == nil {
+		return nil, false
+	}
+	val, ok := s.apis.Load(cluster)
+	if !ok {
+		return nil, false
+	}
+	api, ok := val.(*k8s.API)
+	return api, ok
+}
+
+func (s *MockRemoteAPIStore) store(cluster string, api *k8s.API) {
+	if s == nil {
+		return
+	}
+	s.apis.Store(cluster, api)
+}
+
 // DeletingProfileListener implements ProfileUpdateListener and registers
 // deletions. Useful for unit testing
 type DeletingProfileListener struct {
@@ -44,7 +85,7 @@ func NewBufferingProfileListener() *BufferingProfileListener {
 	}
 }
 
-func CreateMockDecoder(configs ...string) configDecoder {
+func CreateMockDecoder(store *MockRemoteAPIStore, configs ...string) configDecoder {
 	// Create a mock decoder with some random objs to satisfy client creation
 	return func(data []byte, cluster string, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
 		remoteAPI, err := k8s.NewFakeAPI(configs...)
@@ -57,18 +98,20 @@ func CreateMockDecoder(configs ...string) configDecoder {
 			return nil, nil, err
 		}
 
+		store.store(cluster, remoteAPI)
+
 		return remoteAPI, metadataAPI, nil
 	}
 
 }
 
-func CreateMulticlusterDecoder(configs map[string][]string) configDecoder {
+func CreateMulticlusterDecoder(store *MockRemoteAPIStore, configs map[string][]string) configDecoder {
 	return func(data []byte, cluster string, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
-		configs, ok := configs[cluster]
+		clusterConfigs, ok := configs[cluster]
 		if !ok {
 			return nil, nil, fmt.Errorf("cluster %s not found in configs", cluster)
 		}
-		remoteAPI, err := k8s.NewFakeAPI(configs...)
+		remoteAPI, err := k8s.NewFakeAPI(clusterConfigs...)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -77,6 +120,8 @@ func CreateMulticlusterDecoder(configs map[string][]string) configDecoder {
 		if err != nil {
 			return nil, nil, err
 		}
+
+		store.store(cluster, remoteAPI)
 
 		return remoteAPI, metadataAPI, nil
 	}

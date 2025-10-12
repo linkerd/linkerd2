@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
@@ -35,9 +34,7 @@ func TestEndpointProfileTranslator(t *testing.T) {
 	}
 
 	t.Run("Sends update", func(t *testing.T) {
-		mockGetProfileServer := &mockDestinationGetProfileServer{
-			profilesReceived: make(chan *pb.DestinationProfile), // UNBUFFERED
-		}
+		mockGetProfileServer := newMockDestinationGetProfileServer(0) // unbuffered
 		log := logging.WithField("test", t.Name())
 		translator := newEndpointProfileTranslator(
 			true, true, "cluster", "identity", make(map[uint32]struct{}), nil,
@@ -78,9 +75,7 @@ func TestEndpointProfileTranslator(t *testing.T) {
 	})
 
 	t.Run("Handles overflow", func(t *testing.T) {
-		mockGetProfileServer := &mockDestinationGetProfileServer{
-			profilesReceived: make(chan *pb.DestinationProfile, 1),
-		}
+		mockGetProfileServer := newMockDestinationGetProfileServer(1)
 		log := logging.WithField("test", t.Name())
 		endStream := make(chan struct{})
 		translator := newEndpointProfileTranslator(

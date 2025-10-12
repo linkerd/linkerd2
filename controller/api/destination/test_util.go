@@ -2,6 +2,7 @@ package destination
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
@@ -15,11 +16,23 @@ import (
 
 func makeServer(t *testing.T) *server {
 	t.Helper()
-	srv, _ := getServerWithClient(t)
+	srv, _, _ := buildServer(t)
 	return srv
 }
 
 func getServerWithClient(t *testing.T) (*server, l5dcrdclient.Interface) {
+	t.Helper()
+	srv, client, _ := buildServer(t)
+	return srv, client
+}
+
+func getServerWithRemoteStore(t *testing.T) (*server, *watcher.MockRemoteAPIStore) {
+	t.Helper()
+	srv, _, store := buildServer(t)
+	return srv, store
+}
+
+func buildServer(t *testing.T) (*server, l5dcrdclient.Interface, *watcher.MockRemoteAPIStore) {
 	t.Helper()
 	meshedPodResources := []string{`
 apiVersion: v1
@@ -1057,7 +1070,9 @@ spec:
 	}
 
 	prom := prometheus.NewRegistry()
-	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", true, watcher.CreateMockDecoder(exportedServiceResources...), prom)
+	remoteStore := watcher.NewMockRemoteAPIStore()
+	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", true,
+		watcher.CreateMockDecoder(remoteStore, exportedServiceResources...), prom)
 	if err != nil {
 		t.Fatalf("can't create cluster store: %s", err)
 	}
@@ -1093,12 +1108,24 @@ spec:
 		metadataAPI,
 		log,
 		make(<-chan struct{}),
-	}, k8sAPI.L5dClient
+	}, k8sAPI.L5dClient, remoteStore
 }
 
 type bufferingGetStream struct {
 	updates chan *pb.Update
 	util.MockServerStream
+}
+
+type failingSendGetStream struct {
+	util.MockServerStream
+	err       error
+	sendCalls int
+}
+
+func (s *failingSendGetStream) Send(*pb.Update) error {
+	s.sendCalls++
+	s.Cancel()
+	return s.err
 }
 
 func (bgs *bufferingGetStream) Send(update *pb.Update) error {
@@ -1125,9 +1152,72 @@ func (bgps *bufferingGetProfileStream) Updates() []*pb.DestinationProfile {
 	return bgps.updates
 }
 
+type failingSendProfileStream struct {
+	util.MockServerStream
+	err       error
+	sendCalls int
+}
+
+func (s *failingSendProfileStream) Send(profile *pb.DestinationProfile) error {
+	s.sendCalls++
+	s.Cancel()
+	return s.err
+}
+
+type blockingProfileStream struct {
+	util.MockServerStream
+	block     chan struct{}
+	sendCalls int32
+}
+
+func newBlockingProfileStream() *blockingProfileStream {
+	// By default the channel remains blocked, simulating a gRPC client that is
+	// not consuming responses from the stream.
+	return &blockingProfileStream{
+		MockServerStream: util.NewMockServerStream(),
+		block:            make(chan struct{}),
+	}
+}
+
+func (s *blockingProfileStream) Send(profile *pb.DestinationProfile) error {
+	atomic.AddInt32(&s.sendCalls, 1)
+	select {
+	case <-s.block:
+		return nil
+	case <-s.Context().Done():
+		return s.Context().Err()
+	}
+}
+
+func (s *blockingProfileStream) Calls() int32 {
+	return atomic.LoadInt32(&s.sendCalls)
+}
+
+func (s *blockingProfileStream) Unblock() {
+	// Closing the channel allows Send to return, mirroring a client that
+	// suddenly resumes reading.
+	select {
+	case <-s.block:
+		// already closed
+	default:
+		close(s.block)
+	}
+}
+
 type mockDestinationGetServer struct {
 	util.MockServerStream
+
 	updatesReceived chan *pb.Update
+	endStream       chan struct{}
+}
+
+// nolint:unparam // buffer kept for future tests that require custom channel sizing.
+func newMockDestinationGetServer(buffer int) *mockDestinationGetServer {
+	return &mockDestinationGetServer{
+		MockServerStream: util.NewMockServerStream(),
+		updatesReceived:  make(chan *pb.Update, buffer),
+		endStream:        make(chan struct{}),
+	}
 }
 
 func (m *mockDestinationGetServer) Send(update *pb.Update) error {
@@ -1135,9 +1225,20 @@ func (m *mockDestinationGetServer) Send(update *pb.Update) error {
 	return nil
 }
 
+func (m *mockDestinationGetServer) EndStream() chan struct{} {
+	return m.endStream
+}
+
 type mockDestinationGetProfileServer struct {
 	util.MockServerStream
 	profilesReceived chan *pb.DestinationProfile
+}
+
+func newMockDestinationGetProfileServer(buffer int) *mockDestinationGetProfileServer {
+	return &mockDestinationGetProfileServer{
+		MockServerStream: util.NewMockServerStream(),
+		profilesReceived: make(chan *pb.DestinationProfile, buffer),
+	}
 }
 
 func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) error {
@@ -1174,7 +1275,8 @@ metadata:
 	}
 	metadataAPI.Sync(nil)
 
-	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+	// We run with a 50-update buffer to simulate a grpc stream that has capacity.
+	mockGetServer := newMockDestinationGetServer(50)
 	translator, err := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
@@ -1189,7 +1291,7 @@ metadata:
 		map[uint32]struct{}{},
 		metadataAPI,
 		mockGetServer,
-		nil,
+		mockGetServer.EndStream(),
 		logging.WithField("test", t.Name()),
 	)
 	if err != nil {

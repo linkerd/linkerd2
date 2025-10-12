@@ -84,7 +84,8 @@ func TestClusterStoreHandlers(t *testing.T) {
 			}
 
 			prom := prometheus.NewRegistry()
-			cs, err := NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", tt.enableEndpointSlices, CreateMockDecoder(), prom)
+			remoteStore := NewMockRemoteAPIStore()
+			cs, err := NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", tt.enableEndpointSlices, CreateMockDecoder(remoteStore), prom)
 			if err != nil {
 				t.Fatalf("Unexpected error when starting watcher cache: %s", err)
 			}

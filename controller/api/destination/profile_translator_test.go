@@ -480,7 +480,7 @@ var (
 func newMockTranslator(t *testing.T) (*profileTranslator, chan *pb.DestinationProfile) {
 	t.Helper()
 	id := watcher.ServiceID{Namespace: "bar", Name: "foo"}
-	server := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
+	server := newMockDestinationGetProfileServer(50)
 	translator, err := newProfileTranslator(id, server, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
 	if err != nil {
 		t.Fatalf("failed to create profile translator: %s", err)

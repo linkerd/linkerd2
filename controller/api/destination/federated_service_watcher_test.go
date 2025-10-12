@@ -23,9 +23,9 @@ func TestFederatedService(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+	mockGetServer := newMockDestinationGetServer(50)
 
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, nil)
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, mockGetServer.EndStream())
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -40,9 +40,9 @@ func TestRemoteJoinFederatedService(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+	mockGetServer := newMockDestinationGetServer(50)
 
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, nil)
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, mockGetServer.EndStream())
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -68,9 +68,9 @@ func TestRemoteLeaveFederatedService(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+	mockGetServer := newMockDestinationGetServer(50)
 
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, nil)
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, mockGetServer.EndStream())
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -96,9 +96,9 @@ func TestLocalLeaveFederatedService(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+	mockGetServer := newMockDestinationGetServer(50)
 
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, nil)
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, mockGetServer.EndStream())
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -141,8 +141,9 @@ func mockFederatedServiceWatcher(t *testing.T) (*federatedServiceWatcher, error)
 	}
 
 	prom := prometheus.NewRegistry()
+	remoteStore := watcher.NewMockRemoteAPIStore()
 	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", false,
-		watcher.CreateMulticlusterDecoder(map[string][]string{
+		watcher.CreateMulticlusterDecoder(remoteStore, map[string][]string{
 			"east":  eastConfigs,
 			"north": northConfigs,
 		}),

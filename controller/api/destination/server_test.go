@@ -2,10 +2,12 @@ package destination
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	gonet "net"
 	"net/netip"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,11 +20,13 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/testutil"
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	logging "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
+	discovery "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -55,6 +59,7 @@ const port uint32 = 8989
 const linkerdAdminPort uint32 = 4191
 const opaquePort uint32 = 4242
 const skippedPort uint32 = 24224
+const policyPort uint32 = 80
 
 func TestGet(t *testing.T) {
 	t.Run("Returns error if not valid service name", func(t *testing.T) {
@@ -178,6 +183,176 @@ func TestGet(t *testing.T) {
 			}
 		case err := <-errs:
 			t.Fatalf("Got error: %s", err)
+		}
+	})
+
+	t.Run("Propagates client cancellation after first Send", func(t *testing.T) {
+		server := makeServer(t)
+
+		stream := &failingSendGetStream{
+			MockServerStream: util.NewMockServerStream(),
+			err:              status.Error(codes.Canceled, "client cancelled"),
+		}
+
+		errCh := make(chan error, 1)
+		go func() {
+			errCh <- server.Get(&pb.GetDestination{
+				Scheme: "k8s",
+				Path:   fmt.Sprintf("%s:%d", fullyQualifiedName, port),
+			}, stream)
+		}()
+
+		select {
+		case <-errCh:
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for Get to return")
+		}
+
+		if stream.sendCalls == 0 {
+			t.Fatal("expected at least one call to Send before cancellation")
+		}
+	})
+
+	t.Run("Cancels stream when endpoint update queue overflows", func(t *testing.T) {
+		server := makeServer(t)
+
+		stream := newBlockingGetStream()
+		defer stream.Cancel()
+
+		errCh := make(chan error, 1)
+		go func() {
+			errCh <- server.Get(&pb.GetDestination{
+				Scheme: "k8s",
+				Path:   fmt.Sprintf("%s:%d", fullyQualifiedName, port),
+			}, stream)
+		}()
+
+		stream.WaitForSend(t, 5*time.Second)
+
+		for i := range updateQueueCapacity + 10 {
+			addEndpointToSlice(t, server,
+				fmt.Sprintf("name1-overflow-%d", i),
+				fmt.Sprintf("172.17.0.%d", i))
+			time.Sleep(50 * time.Millisecond)
+		}
+
+		stream.Release()
+
+		select {
+		case <-errCh:
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for Get to return after overflow")
+		}
+
+		if got := stream.SendCount(); got == 0 {
+			t.Fatal("expected at least one update before overflow")
+		}
+	})
+
+	t.Run("Cancels stream when federated endpoint update queue overflows", func(t *testing.T) {
+		t.Skip("Known to fail presently; re-enable when fixed")
+
+		server, remoteStore := getServerWithRemoteStore(t)
+
+		remoteAPI, ok := remoteStore.Get("target")
+		if !ok {
+			t.Fatal("remote cluster API not found")
+		}
+
+		ctx := context.Background()
+		svc := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo-federated",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					pkgk8s.RemoteDiscoveryAnnotation: "foo@target",
+				},
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{Port: 80},
+				},
+			},
+		}
+
+		if _, err := server.k8sAPI.Client.CoreV1().Services("ns").Create(ctx, svc, metav1.CreateOptions{}); err != nil {
+			t.Fatalf("failed to create federated service: %v", err)
+		}
+
+		id := watcher.ServiceID{Namespace: "ns", Name: "foo-federated"}
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			server.federatedServices.RLock()
+			_, found := server.federatedServices.services[id]
+			server.federatedServices.RUnlock()
+			if found {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("federated service %s/%s not registered", "ns", "foo-federated")
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		stream := newBlockingGetStream()
+		defer stream.Cancel()
+
+		errCh := make(chan error, 1)
+		go func() {
+			errCh <- server.Get(&pb.GetDestination{
+				Scheme: "k8s",
+				Path:   "foo-federated.ns.svc.mycluster.local:80",
+			}, stream)
+		}()
+
+		stream.WaitForSend(t, 5*time.Second)
+
+		serviceLabel := "ns/foo.ns.svc.cluster.local:80"
+		metric, err := updatesQueueOverflowCounter.GetMetricWith(prometheus.Labels{
+			"service": serviceLabel,
+		})
+		if err != nil {
+			t.Fatalf("failed to get overflow counter: %v", err)
+		}
+		initialOverflow := counterValue(t, metric)
+
+		for i := 0; i < updateQueueCapacity+10; i++ {
+			addEndpointToRemoteSlice(t, remoteAPI, "ns", "foo", fmt.Sprintf("172.17.155.%d", i+1))
+			time.Sleep(50 * time.Millisecond)
+			if counterValue(t, metric) > initialOverflow {
+				break
+			}
+		}
+
+		overflowDeadline := time.Now().Add(10 * time.Second)
+		overflowed := false
+		for time.Now().Before(overflowDeadline) {
+			if counterValue(t, metric) > initialOverflow {
+				overflowed = true
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		if !overflowed {
+			t.Fatalf("waiting for federated endpoint translator overflow for %s", serviceLabel)
+		}
+
+		stream.Release()
+
+		select {
+		case err := <-errCh:
+			if err == nil {
+				t.Fatal("expected Get to be canceled after overflow")
+			}
+			if !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
+				t.Fatalf("expected cancellation error, got %v", err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for Get to return after overflow")
+		}
+
+		if got := stream.SendCount(); got == 0 {
+			t.Fatal("expected at least one update before overflow")
 		}
 	})
 
@@ -389,6 +564,205 @@ func TestGetProfiles(t *testing.T) {
 		code := status.Code(err)
 		if code != codes.InvalidArgument {
 			t.Fatalf("Expected InvalidArgument, got %s", code)
+		}
+	})
+
+	t.Run("Propagates client cancellation after first Send", func(t *testing.T) {
+		server := makeServer(t)
+
+		stream := &failingSendProfileStream{
+			MockServerStream: util.NewMockServerStream(),
+			err:              status.Error(codes.Canceled, "client cancelled"),
+		}
+
+		errCh := make(chan error, 1)
+		go func() {
+			errCh <- server.GetProfile(&pb.GetDestination{
+				Scheme: "k8s",
+				Path:   fmt.Sprintf("%s:%d", fullyQualifiedName, port),
+			}, stream)
+		}()
+
+		select {
+		case <-errCh:
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for GetProfile to return")
+		}
+
+		if stream.sendCalls == 0 {
+			t.Fatal("expected Send to be called at least once before cancellation")
+		}
+	})
+
+	t.Run("Cancels blocked stream when translator overflows", func(t *testing.T) {
+		server, client := getServerWithClient(t)
+
+		stream := newBlockingProfileStream()
+		errCh := make(chan error, 1)
+
+		go func() {
+			errCh <- server.GetProfile(&pb.GetDestination{
+				Scheme: "k8s",
+				Path:   fmt.Sprintf("%s:%d", fullyQualifiedName, port),
+			}, stream)
+		}()
+
+		sendDeadline := time.Now().Add(5 * time.Second)
+		for {
+			if stream.Calls() > 0 {
+				break
+			}
+			if time.Now().After(sendDeadline) {
+				t.Fatal("waiting for initial profile send")
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		metric, err := profileUpdatesQueueOverflowCounter.GetMetricWith(prometheus.Labels{
+			"fqn":  fullyQualifiedName,
+			"port": fmt.Sprintf("%d", port),
+		})
+		if err != nil {
+			t.Fatalf("failed to get overflow counter: %v", err)
+		}
+		initialOverflow := counterValue(t, metric)
+
+		// Trigger enough profile updates so the translator tries to enqueue more
+		// messages than the buffered queue can hold while the stream remains
+		// blocked.
+		profiles := client.LinkerdV1alpha2().ServiceProfiles("ns")
+		for i := 0; i < updateQueueCapacity+10; i++ {
+			profile, err := profiles.Get(context.TODO(), fullyQualifiedName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("failed to fetch service profile: %v", err)
+			}
+			cp := profile.DeepCopy()
+			if len(cp.Spec.Routes) == 0 {
+				t.Fatal("service profile missing routes")
+			}
+			cp.Spec.Routes[0].Name = fmt.Sprintf("route-%d", i)
+			if _, err := profiles.Update(context.TODO(), cp, metav1.UpdateOptions{}); err != nil {
+				t.Fatalf("failed to update service profile: %v", err)
+			}
+			if counterValue(t, metric) > initialOverflow {
+				break
+			}
+		}
+
+		profileDeadline := time.Now().Add(10 * time.Second)
+		profileOverflowed := false
+		for time.Now().Before(profileDeadline) {
+			if counterValue(t, metric) > initialOverflow {
+				profileOverflowed = true
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		if !profileOverflowed {
+			t.Fatalf("waiting for profile translator overflow for %s:%d", fullyQualifiedName, port)
+		}
+
+		// The translator has invoked the cancel func; manually cancel the stream so
+		// our mock gRPC Send returns just as real gRPC would.
+		stream.Cancel()
+
+		select {
+		case <-errCh:
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for GetProfile to return after cancel")
+		}
+	})
+
+	t.Run("Cancels blocked stream for endpoint profiles when translator overflows", func(t *testing.T) {
+		t.Skip("Known to fail presently; re-enable when fixed")
+
+		server := makeServer(t)
+
+		stream := newBlockingProfileStream()
+		errCh := make(chan error, 1)
+
+		go func() {
+			errCh <- server.GetProfile(&pb.GetDestination{
+				Scheme: "k8s",
+				Path:   gonet.JoinHostPort(podIPPolicy, fmt.Sprintf("%d", policyPort)),
+			}, stream)
+		}()
+
+		endpointSendDeadline := time.Now().Add(5 * time.Second)
+		for {
+			if stream.Calls() > 0 {
+				break
+			}
+			if time.Now().After(endpointSendDeadline) {
+				t.Fatal("waiting for initial profile send")
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		initialOverflow := counterValue(t, endpointProfileUpdatesQueueOverflowCounter)
+		pods := server.k8sAPI.Client.CoreV1().Pods("ns")
+		original, err := pods.Get(context.TODO(), "policy-test", metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("failed to fetch pod: %v", err)
+		}
+
+		if err := pods.Delete(context.TODO(), original.Name, metav1.DeleteOptions{}); err != nil {
+			t.Fatalf("failed to delete pod: %v", err)
+		}
+
+		time.Sleep(50 * time.Millisecond)
+
+		recreated := original.DeepCopy()
+		recreated.ResourceVersion = ""
+		recreated.UID = ""
+		recreated.CreationTimestamp = metav1.Time{}
+		recreated.ManagedFields = nil
+		if recreated.Labels == nil {
+			recreated.Labels = map[string]string{}
+		}
+		recreated.Labels["overflow-test"] = "true"
+
+		if _, err := pods.Create(context.TODO(), recreated, metav1.CreateOptions{}); err != nil {
+			t.Fatalf("failed to recreate pod: %v", err)
+		}
+
+		for i := 0; i < updateQueueCapacity+10; i++ {
+			if counterValue(t, endpointProfileUpdatesQueueOverflowCounter) > initialOverflow {
+				break
+			}
+			current, err := pods.Get(context.TODO(), recreated.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("failed to fetch pod: %v", err)
+			}
+			cp := current.DeepCopy()
+			if cp.Labels == nil {
+				cp.Labels = map[string]string{}
+			}
+			cp.Labels["overflow-test"] = fmt.Sprintf("true-%d", i)
+			if _, err := pods.Update(context.TODO(), cp, metav1.UpdateOptions{}); err != nil {
+				t.Fatalf("failed to update pod labels: %v", err)
+			}
+		}
+
+		endpointProfileDeadline := time.Now().Add(10 * time.Second)
+		endpointOverflowed := false
+		for time.Now().Before(endpointProfileDeadline) {
+			if counterValue(t, endpointProfileUpdatesQueueOverflowCounter) > initialOverflow {
+				endpointOverflowed = true
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		if !endpointOverflowed {
+			t.Fatal("waiting for endpoint profile translator overflow")
+		}
+
+		stream.Cancel()
+
+		select {
+		case <-errCh:
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for GetProfile to return after cancel")
 		}
 	})
 
@@ -1208,6 +1582,157 @@ func toAddress(path string, port uint32) (*net.TcpAddress, error) {
 	}, nil
 }
 
+type blockingGetStream struct {
+	util.MockServerStream
+
+	mu          sync.Mutex
+	updates     []*pb.Update
+	sendStarted chan struct{}
+	startOnce   sync.Once
+	release     chan struct{}
+	releaseOnce sync.Once
+}
+
+func newBlockingGetStream() *blockingGetStream {
+	return &blockingGetStream{
+		MockServerStream: util.NewMockServerStream(),
+		sendStarted:      make(chan struct{}),
+		release:          make(chan struct{}),
+	}
+}
+
+func (bgs *blockingGetStream) Send(update *pb.Update) error {
+	bgs.mu.Lock()
+	bgs.updates = append(bgs.updates, update)
+	bgs.mu.Unlock()
+
+	bgs.startOnce.Do(func() { close(bgs.sendStarted) })
+
+	<-bgs.release
+	return nil
+}
+
+func (bgs *blockingGetStream) WaitForSend(t *testing.T, timeout time.Duration) {
+	t.Helper()
+	select {
+	case <-bgs.sendStarted:
+	case <-time.After(timeout):
+		t.Fatalf("timed out waiting for first update")
+	}
+}
+
+func (bgs *blockingGetStream) Release() {
+	bgs.releaseOnce.Do(func() {
+		close(bgs.release)
+	})
+}
+
+func (bgs *blockingGetStream) SendCount() int {
+	bgs.mu.Lock()
+	defer bgs.mu.Unlock()
+	return len(bgs.updates)
+}
+
+func (bgs *blockingGetStream) Updates() []*pb.Update {
+	bgs.mu.Lock()
+	defer bgs.mu.Unlock()
+	cpy := make([]*pb.Update, len(bgs.updates))
+	copy(cpy, bgs.updates)
+	return cpy
+}
+
+func addEndpointToSlice(t *testing.T, server *server, podName, ip string) {
+	t.Helper()
+
+	createPod(t, server, podName, ip)
+
+	sliceClient := server.k8sAPI.Client.DiscoveryV1().EndpointSlices("ns")
+	ready := true
+
+	slice, err := sliceClient.Get(context.Background(), "name1-ipv4", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to get endpoint slice: %v", err)
+	}
+	slice.Endpoints = append(slice.Endpoints, discovery.Endpoint{
+		Addresses: []string{ip},
+		Conditions: discovery.EndpointConditions{
+			Ready: &ready,
+		},
+		TargetRef: &corev1.ObjectReference{
+			Kind:      "Pod",
+			Name:      podName,
+			Namespace: "ns",
+		},
+	})
+	if _, err = sliceClient.Update(context.Background(), slice, metav1.UpdateOptions{}); err != nil {
+		t.Fatalf("failed to update endpoint slice: %v", err)
+	}
+}
+
+func addEndpointToRemoteSlice(t *testing.T, api *k8s.API, namespace, sliceName, ip string) {
+	t.Helper()
+
+	sliceClient := api.Client.DiscoveryV1().EndpointSlices(namespace)
+	ready := true
+
+	slice, err := sliceClient.Get(context.Background(), sliceName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to get remote endpoint slice: %v", err)
+	}
+
+	updated := slice.DeepCopy()
+	updated.Endpoints = append(updated.Endpoints, discovery.Endpoint{
+		Addresses: []string{ip},
+		Conditions: discovery.EndpointConditions{
+			Ready: &ready,
+		},
+	})
+
+	if _, err := sliceClient.Update(context.Background(), updated, metav1.UpdateOptions{}); err != nil {
+		t.Fatalf("failed to update remote endpoint slice: %v", err)
+	}
+}
+
+func createPod(t *testing.T, server *server, podName, ip string) {
+	t.Helper()
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: "ns",
+			Labels: map[string]string{
+				pkgk8s.ControllerNSLabel: "linkerd",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name: pkgk8s.ProxyContainerName,
+					Env: []corev1.EnvVar{
+						{Name: envInboundListenAddr, Value: "0.0.0.0:4143"},
+						{Name: envAdminListenAddr, Value: "0.0.0.0:4191"},
+						{Name: envControlListenAddr, Value: "0.0.0.0:4190"},
+					},
+				},
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			Conditions: []corev1.PodCondition{
+				{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+			},
+			PodIP:  ip,
+			PodIPs: []corev1.PodIP{{IP: ip}},
+		},
+	}
+
+	if _, err := server.k8sAPI.Client.CoreV1().Pods("ns").Create(context.Background(), pod, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("failed to create pod %s: %v", podName, err)
+	}
+
+	_, _ = server.k8sAPI.Client.CoreV1().Pods("ns").UpdateStatus(context.Background(), pod, metav1.UpdateOptions{})
+}
+
 func TestIpWatcherGetSvcID(t *testing.T) {
 	name := "service"
 	namespace := "test"
@@ -1329,6 +1854,18 @@ func testReturnEndpointsForServer(t *testing.T, server *server, stream *bufferin
 	}
 }
 
+func counterValue(t *testing.T, c prometheus.Counter) float64 {
+	t.Helper()
+	m := &dto.Metric{}
+	if err := c.Write(m); err != nil {
+		t.Fatalf("failed to read counter: %v", err)
+	}
+	if m.GetCounter() == nil {
+		t.Fatal("counter metric missing value")
+	}
+	return m.GetCounter().GetValue()
+}
+
 func assertSingleProfile(t *testing.T, updates []*pb.DestinationProfile) *pb.DestinationProfile {
 	t.Helper()
 	// Under normal conditions the creation of resources by the fake API will
@@ -1355,7 +1892,11 @@ func profileStream(t *testing.T, server *server, host string, port uint32, token
 			Path:         gonet.JoinHostPort(host, fmt.Sprintf("%d", port)),
 			ContextToken: token,
 		}, stream)
-		if err != nil {
+		if err != nil &&
+			!errors.Is(err, context.Canceled) &&
+			!errors.Is(err, context.DeadlineExceeded) &&
+			status.Code(err) != codes.Canceled &&
+			status.Code(err) != codes.DeadlineExceeded {
 			logging.Fatalf("Got error: %s", err)
 		}
 	}()
@@ -1368,16 +1909,15 @@ func profileStream(t *testing.T, server *server, host string, port uint32, token
 func getLastProfileUpdate(t *testing.T, stream *bufferingGetProfileStream, expectedUpdates int) *pb.DestinationProfile {
 	t.Helper()
 
-	err := testutil.RetryFor(time.Second*10, func() error {
+	deadline := time.Now().Add(10 * time.Second)
+	for {
 		updates := stream.Updates()
-		if len(updates) < expectedUpdates {
-			return fmt.Errorf("expected %d updates, got %d", expectedUpdates, len(updates))
+		if len(updates) >= expectedUpdates {
+			return updates[expectedUpdates-1]
 		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
+		if time.Now().After(deadline) {
+			t.Fatalf("expected %d updates, got %d", expectedUpdates, len(updates))
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
-
-	return stream.Updates()[expectedUpdates-1]
 }
