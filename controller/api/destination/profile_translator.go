@@ -1,9 +1,11 @@
 package destination
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
@@ -26,13 +28,13 @@ type profileTranslator struct {
 	port               uint32
 	parentRef          *meta.Metadata
 
-	stream          pb.Destination_GetProfileServer
-	endStream       chan struct{}
+	updateCh        chan<- *pb.DestinationProfile
+	cancel          context.CancelFunc
 	log             *logging.Entry
 	overflowCounter prometheus.Counter
 
-	updates chan *sp.ServiceProfile
-	stop    chan struct{}
+	mu     sync.Mutex
+	closed bool
 }
 
 var profileUpdatesQueueOverflowCounter = promauto.NewCounterVec(
@@ -46,7 +48,7 @@ var profileUpdatesQueueOverflowCounter = promauto.NewCounterVec(
 	},
 )
 
-func newProfileTranslator(serviceID watcher.ServiceID, stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endStream chan struct{}) (*profileTranslator, error) {
+func newProfileTranslator(serviceID watcher.ServiceID, updateCh chan<- *pb.DestinationProfile, log *logging.Entry, fqn string, port uint32, cancel context.CancelFunc) (*profileTranslator, error) {
 	parentRef := &meta.Metadata{
 		Kind: &meta.Metadata_Resource{
 			Resource: &meta.Resource{
@@ -64,83 +66,73 @@ func newProfileTranslator(serviceID watcher.ServiceID, stream pb.Destination_Get
 		return nil, fmt.Errorf("failed to create profile updates queue overflow counter: %w", err)
 	}
 
+	if cancel == nil {
+		cancel = func() {}
+	}
+
 	return &profileTranslator{
 		fullyQualifiedName: fqn,
 		port:               port,
 		parentRef:          parentRef,
 
-		stream:          stream,
-		endStream:       endStream,
+		updateCh:        updateCh,
+		cancel:          cancel,
 		log:             log.WithField("component", "profile-translator"),
 		overflowCounter: overflowCounter,
-		updates:         make(chan *sp.ServiceProfile, updateQueueCapacity),
-		stop:            make(chan struct{}),
 	}, nil
 }
 
 // Update is called from a client-go informer callback and therefore must not
-// We enqueue an update in a channel so that it can be processed asyncronously.
-// To ensure that enqueuing does not block, we first check to see if there is
-// capacity in the buffered channel. If there is not, we drop the update and
-// signal to the stream that it has fallen too far behind and should be closed.
+// block. It emits translated profile updates onto the shared channel.
 func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
-	select {
-	case pt.updates <- profile:
-		// Update has been successfully enqueued.
-	default:
-		// We are unable to enqueue because the channel does not have capacity.
-		// The stream has fallen too far behind and should be closed.
-		pt.overflowCounter.Inc()
-		select {
-		case <-pt.endStream:
-			// The endStream channel has already been closed so no action is
-			// necessary.
-		default:
-			pt.log.Error("profile update queue full; aborting stream")
-			close(pt.endStream)
-		}
+	pt.mu.Lock()
+	defer pt.mu.Unlock()
+
+	if pt.closed {
+		return
 	}
-}
 
-// Start initiates a goroutine which processes update events off of the
-// profileTranslator's internal queue and sends to the grpc stream as
-// appropriate. The goroutine calls non-thread-safe Send, therefore Start must
-// not be called more than once.
-func (pt *profileTranslator) Start() {
-	go func() {
-		for {
-			select {
-			case update := <-pt.updates:
-				pt.update(update)
-			case <-pt.stop:
-				return
-			}
-		}
-	}()
-}
-
-// Stop terminates the goroutine started by Start.
-func (pt *profileTranslator) Stop() {
-	close(pt.stop)
-}
-
-func (pt *profileTranslator) update(profile *sp.ServiceProfile) {
+	var destinationProfile *pb.DestinationProfile
 	if profile == nil {
 		pt.log.Debugf("Sending default profile")
-		if err := pt.stream.Send(pt.defaultServiceProfile()); err != nil {
-			pt.log.Errorf("failed to send default service profile: %s", err)
+		destinationProfile = pt.defaultServiceProfile()
+	} else {
+		var err error
+		destinationProfile, err = pt.createDestinationProfile(profile)
+		if err != nil {
+			pt.log.Error(err)
+			return
 		}
+		pt.log.Debugf("Sending profile update: %+v", destinationProfile)
+	}
+
+	pt.sendLocked(destinationProfile)
+}
+
+// Close prevents the translator from emitting further updates.
+func (pt *profileTranslator) Close() {
+	pt.mu.Lock()
+	defer pt.mu.Unlock()
+	if pt.closed {
+		return
+	}
+	pt.closed = true
+}
+
+func (pt *profileTranslator) sendLocked(profile *pb.DestinationProfile) {
+	if pt.closed {
 		return
 	}
 
-	destinationProfile, err := pt.createDestinationProfile(profile)
-	if err != nil {
-		pt.log.Error(err)
-		return
-	}
-	pt.log.Debugf("Sending profile update: %+v", destinationProfile)
-	if err := pt.stream.Send(destinationProfile); err != nil {
-		pt.log.Errorf("failed to send profile update: %s", err)
+	select {
+	case pt.updateCh <- profile:
+	default:
+		pt.overflowCounter.Inc()
+		if !pt.closed {
+			pt.log.Error("profile update queue full; aborting stream")
+			pt.closed = true
+			pt.cancel()
+		}
 	}
 }
 

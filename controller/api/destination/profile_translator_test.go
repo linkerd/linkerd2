@@ -481,7 +481,7 @@ func newMockTranslator(t *testing.T) (*profileTranslator, chan *pb.DestinationPr
 	t.Helper()
 	id := watcher.ServiceID{Namespace: "bar", Name: "foo"}
 	server := newMockDestinationGetProfileServer(50)
-	translator, err := newProfileTranslator(id, server, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+	translator, err := newProfileTranslator(id, server.profilesReceived, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
 	if err != nil {
 		t.Fatalf("failed to create profile translator: %s", err)
 	}
@@ -491,8 +491,7 @@ func newMockTranslator(t *testing.T) (*profileTranslator, chan *pb.DestinationPr
 func TestProfileTranslator(t *testing.T) {
 	t.Run("Sends update", func(t *testing.T) {
 		translator, profilesReceived := newMockTranslator(t)
-		translator.Start()
-		defer translator.Stop()
+		defer translator.Close()
 
 		translator.Update(profile)
 
@@ -508,8 +507,7 @@ func TestProfileTranslator(t *testing.T) {
 
 	t.Run("Request match with more than one field becomes ALL", func(t *testing.T) {
 		translator, profilesReceived := newMockTranslator(t)
-		translator.Start()
-		defer translator.Stop()
+		defer translator.Close()
 
 		translator.Update(multipleRequestMatches)
 
@@ -525,8 +523,7 @@ func TestProfileTranslator(t *testing.T) {
 
 	t.Run("Ignores request match without any fields", func(t *testing.T) {
 		translator, profilesReceived := newMockTranslator(t)
-		translator.Start()
-		defer translator.Stop()
+		defer translator.Close()
 
 		translator.Update(notEnoughRequestMatches)
 
@@ -538,8 +535,7 @@ func TestProfileTranslator(t *testing.T) {
 
 	t.Run("Response match with more than one field becomes ALL", func(t *testing.T) {
 		translator, profilesReceived := newMockTranslator(t)
-		translator.Start()
-		defer translator.Stop()
+		defer translator.Close()
 
 		translator.Update(multipleResponseMatches)
 
@@ -555,8 +551,7 @@ func TestProfileTranslator(t *testing.T) {
 
 	t.Run("Ignores response match without any fields", func(t *testing.T) {
 		translator, profilesReceived := newMockTranslator(t)
-		translator.Start()
-		defer translator.Stop()
+		defer translator.Close()
 
 		translator.Update(notEnoughResponseMatches)
 
@@ -568,8 +563,7 @@ func TestProfileTranslator(t *testing.T) {
 
 	t.Run("Ignores response match with invalid status range", func(t *testing.T) {
 		translator, profilesReceived := newMockTranslator(t)
-		translator.Start()
-		defer translator.Stop()
+		defer translator.Close()
 
 		translator.Update(invalidStatusRange)
 
@@ -581,8 +575,7 @@ func TestProfileTranslator(t *testing.T) {
 
 	t.Run("Sends update for one sided status range", func(t *testing.T) {
 		translator, profilesReceived := newMockTranslator(t)
-		translator.Start()
-		defer translator.Stop()
+		defer translator.Close()
 
 		translator.Update(oneSidedStatusRange)
 
@@ -595,31 +588,77 @@ func TestProfileTranslator(t *testing.T) {
 	})
 
 	t.Run("Sends empty update", func(t *testing.T) {
-		server := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
-		translator, err := newProfileTranslator(watcher.ID{}, server, logging.WithField("test", t.Name()), "", 80, nil)
+		updates := make(chan *pb.DestinationProfile, 1)
+		translator, err := newProfileTranslator(watcher.ID{}, updates, logging.WithField("test", t.Name()), "", 80, func() {})
 		if err != nil {
 			t.Fatalf("failed to create profile translator: %s", err)
 		}
 
-		translator.Start()
-		defer translator.Stop()
+		defer translator.Close()
 
 		translator.Update(nil)
 
-		actualPbProfile := <-server.profilesReceived
+		actualPbProfile := <-updates
 		if !proto.Equal(actualPbProfile, defaultPbProfile) {
 			t.Fatalf("Expected profile sent to be [%v] but was [%v]", defaultPbProfile, actualPbProfile)
 		}
-		numProfiles := len(server.profilesReceived) + 1
+		numProfiles := len(updates) + 1
 		if numProfiles != 1 {
-			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, server.profilesReceived)
+			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, updates)
+		}
+	})
+
+	t.Run("Cancels when downstream is not draining", func(t *testing.T) {
+		cancelCalled := false
+		cancel := func() { cancelCalled = true }
+		updates := make(chan *pb.DestinationProfile, 1)
+
+		translator, err := newProfileTranslator(
+			watcher.ServiceID{Namespace: "bar", Name: "foo"},
+			updates,
+			logging.WithField("test", t.Name()),
+			"foo.bar.svc.cluster.local",
+			80,
+			cancel,
+		)
+		if err != nil {
+			t.Fatalf("failed to create profile translator: %s", err)
+		}
+		defer translator.Close()
+
+		translator.Update(profile)
+
+		if len(updates) != 1 {
+			t.Fatalf("expected channel to contain a single profile, got %d", len(updates))
+		}
+
+		translator.Update(profile)
+
+		if !cancelCalled {
+			t.Fatal("expected cancel to be invoked when queue overflows")
+		}
+		if len(updates) != 1 {
+			t.Fatalf("expected only the initial profile to remain queued, got %d", len(updates))
+		}
+
+		select {
+		case <-updates:
+		default:
+			t.Fatal("expected queued profile to be readable")
+		}
+
+		translator.Update(profile)
+
+		select {
+		case <-updates:
+			t.Fatal("unexpected profile sent after translator closed")
+		default:
 		}
 	})
 
 	t.Run("Sends update with custom timeout", func(t *testing.T) {
 		translator, profilesReceived := newMockTranslator(t)
-		translator.Start()
-		defer translator.Stop()
+		defer translator.Close()
 
 		translator.Update(profileWithTimeout)
 

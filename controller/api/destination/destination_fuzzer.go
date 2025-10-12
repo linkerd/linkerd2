@@ -93,12 +93,15 @@ func FuzzProfileTranslatorUpdate(data []byte) int {
 
 	id := watcher.ServiceID{Namespace: "bar", Name: "foo"}
 	server := newMockDestinationGetProfileServer(50)
-	translator, err := newProfileTranslator(id, server, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+	translator, err := newProfileTranslator(id, server.profilesReceived, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
 	if err != nil {
 		return 0
 	}
-	translator.Start()
-	defer translator.Stop()
+	defer translator.Close()
 	translator.Update(profile)
+	select {
+	case <-server.profilesReceived:
+	default:
+	}
 	return 1
 }

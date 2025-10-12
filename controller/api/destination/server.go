@@ -312,38 +312,90 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		log = log.WithFields(logging.Fields{"context-pod": token.Pod, "context-ns": token.Ns})
 	}
 
-	log.Debugf("Getting profile for %s", dest.GetPath())
+	log.Debugf("GetProfile %s", dest.GetPath())
 
-	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
 	if err != nil {
 		log.Debugf("Invalid address %q", dest.GetPath())
 		return status.Errorf(codes.InvalidArgument, "invalid authority: %q: %q", dest.GetPath(), err)
 	}
 
+	updates := make(chan *pb.DestinationProfile, 1)
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
+
+	// Track teardown callbacks so we only clean up resources that were
+	// successfully registered, and release them in reverse order regardless of
+	// which discovery path executed.
+	teardown := cleanupStack{}
+	defer teardown.run()
+
 	if ip := net.ParseIP(host); ip != nil {
-		err = s.getProfileByIP(token, ip, port, log, stream)
+		cleanup, err := s.getProfileByIP(token, ip, port, log, updates, cancel)
 		if err != nil {
-			var ise watcher.InvalidService
-			if errors.As(err, &ise) {
-				log.Debugf("Invalid service %s", dest.GetPath())
-				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
-			}
-			log.Errorf("Failed to subscribe to profile by ip %q: %q", dest.GetPath(), err)
+			return translateProfileError(log, dest.GetPath(), err)
 		}
-		return err
+		teardown.add(cleanup)
+	} else {
+		cleanup, err := s.getProfileByName(token, host, port, log, updates, cancel)
+		if err != nil {
+			return translateProfileError(log, dest.GetPath(), err)
+		}
+		teardown.add(cleanup)
 	}
 
-	err = s.getProfileByName(token, host, port, log, stream)
-	if err != nil {
-		var ise watcher.InvalidService
-		if errors.As(err, &ise) {
-			log.Debugf("Invalid service %s", dest.GetPath())
-			return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+	// Forward updates from the translator onto the gRPC stream. This runs in
+	// its own goroutine so that translator backpressure is limited only by the
+	// single buffered slot above.
+	group, sendCtx := errgroup.WithContext(ctx)
+	group.Go(func() error {
+		for {
+			select {
+			case <-sendCtx.Done():
+				return sendCtx.Err()
+			case profile, ok := <-updates:
+				if !ok {
+					return nil
+				}
+				if err := stream.Send(profile); err != nil {
+					return err
+				}
+			}
 		}
-		log.Errorf("Failed to subscribe to profile by name %q: %q", dest.GetPath(), err)
+	})
+
+	// Wait until shutdown is initiated or the stream is reset.
+	select {
+	case <-s.shutdown:
+		cancel()
+	case <-ctx.Done():
 	}
-	return err
+
+	waitErr := group.Wait()
+	if waitErr != nil &&
+		!errors.Is(waitErr, context.Canceled) &&
+		!errors.Is(waitErr, context.DeadlineExceeded) &&
+		status.Code(waitErr) != codes.Canceled &&
+		status.Code(waitErr) != codes.DeadlineExceeded {
+		log.Errorf("GetProfile %s: Send failed: %v", dest.GetPath(), waitErr)
+		return translateProfileError(log, dest.GetPath(), waitErr)
+	}
+
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		switch {
+		case errors.Is(ctxErr, context.Canceled):
+			if stream.Context().Err() != nil {
+				log.Debugf("GetProfile %s cancelled", dest.GetPath())
+			} else {
+				log.Errorf("GetProfile %s stream aborted", dest.GetPath())
+			}
+		case errors.Is(ctxErr, context.DeadlineExceeded):
+			log.Errorf("GetProfile %s deadline exceeded", dest.GetPath())
+		}
+		return ctxErr
+	}
+
+	return nil
 }
 
 func (s *server) registerRemoteDiscovery(
@@ -460,206 +512,162 @@ func (s *server) getProfileByIP(
 	ip net.IP,
 	port uint32,
 	log *logging.Entry,
-	stream pb.Destination_GetProfileServer,
-) error {
-	// Get the service that the IP currently maps to.
+	updates chan<- *pb.DestinationProfile,
+	cancel context.CancelFunc,
+) (func(), error) {
 	svcID, err := getSvcID(s.k8sAPI, ip.String(), s.log)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if svcID == nil {
-		return s.subscribeToEndpointProfile(nil, "", ip.String(), port, log, stream)
+		return s.registerEndpointProfile(nil, "", ip.String(), port, log, updates, cancel)
 	}
 
 	fqn := fmt.Sprintf("%s.%s.svc.%s", svcID.Name, svcID.Namespace, s.config.ClusterDomain)
-	return s.subscribeToServiceProfile(*svcID, token, fqn, port, log, stream)
+	return s.registerServiceProfile(*svcID, token, fqn, port, log, updates, cancel)
 }
-
 func (s *server) getProfileByName(
 	token contextToken,
 	host string,
 	port uint32,
 	log *logging.Entry,
-	stream pb.Destination_GetProfileServer,
-) error {
+	updates chan<- *pb.DestinationProfile,
+	cancel context.CancelFunc,
+) (func(), error) {
 	service, hostname, err := parseK8sServiceName(host, s.config.ClusterDomain)
 	if err != nil {
 		s.log.Debugf("Invalid service %s", host)
-		return status.Errorf(codes.InvalidArgument, "invalid service %q: %q", host, err)
+		return nil, status.Errorf(codes.InvalidArgument, "invalid service %q: %q", host, err)
 	}
 
-	// If the pod name (instance ID) is not empty, it means we parsed a DNS
-	// name. When we fetch the profile using a pod's DNS name, we want to
-	// return an endpoint in the profile response.
 	if hostname != "" {
-		return s.subscribeToEndpointProfile(&service, hostname, "", port, log, stream)
+		return s.registerEndpointProfile(&service, hostname, "", port, log, updates, cancel)
 	}
 
-	return s.subscribeToServiceProfile(service, token, host, port, log, stream)
+	return s.registerServiceProfile(service, token, host, port, log, updates, cancel)
 }
 
-// Resolves a profile for a service, sending updates to the provided stream.
-//
-// This function does not return until the stream is closed.
-func (s *server) subscribeToServiceProfile(
+// registerServiceProfile sets up profile subscriptions and returns a cleanup function.
+func (s *server) registerServiceProfile(
 	service watcher.ID,
 	token contextToken,
 	fqn string,
 	port uint32,
 	log *logging.Entry,
-	stream pb.Destination_GetProfileServer,
-) error {
-	log = log.
-		WithField("ns", service.Namespace).
-		WithField("svc", service.Name).
-		WithField("port", port)
-
-	canceled := stream.Context().Done()
-	streamEnd := make(chan struct{})
-
-	// We build up the pipeline of profile updaters backwards, starting from
-	// the translator which takes profile updates, translates them to protobuf
-	// and pushes them onto the gRPC stream.
-	translator, err := newProfileTranslator(service, stream, log, fqn, port, streamEnd)
-	if err != nil {
-		return status.Errorf(codes.Internal, "Failed to create profile translator: %s", err)
+	updates chan<- *pb.DestinationProfile,
+	cancel context.CancelFunc,
+) (func(), error) {
+	cleanups := make([]func(), 0, 3)
+	addCleanup := func(fn func()) {
+		if fn != nil {
+			cleanups = append(cleanups, fn)
+		}
 	}
-	translator.Start()
-	defer translator.Stop()
+	runCleanup := func() {
+		for i := len(cleanups) - 1; i >= 0; i-- {
+			cleanups[i]()
+		}
+	}
 
-	// The opaque ports adaptor merges profile updates with service opaque
-	// port annotation updates; it then publishes the result to the traffic
-	// split adaptor.
+	translator, err := newProfileTranslator(service, updates, log, fqn, port, cancel)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to create profile translator: %s", err)
+	}
+	addCleanup(func() { translator.Close() })
+
 	opaquePortsAdaptor := newOpaquePortsAdaptor(translator)
-
-	// Create an adaptor that merges service-level opaque port configurations
-	// onto profile updates.
-	err = s.opaquePorts.Subscribe(service, opaquePortsAdaptor)
-	if err != nil {
+	if err := s.opaquePorts.Subscribe(service, opaquePortsAdaptor); err != nil {
 		log.Warnf("Failed to subscribe to service updates for %s: %s", service, err)
-		return err
+		runCleanup()
+		return nil, err
 	}
-	defer s.opaquePorts.Unsubscribe(service, opaquePortsAdaptor)
+	addCleanup(func() { s.opaquePorts.Unsubscribe(service, opaquePortsAdaptor) })
 
-	// Ensure that (1) nil values are turned into a default policy and (2)
-	// subsequent updates that refer to same service profile object are
-	// deduplicated to prevent sending redundant updates.
 	dup := newDedupProfileListener(opaquePortsAdaptor, log)
 	defaultProfile := sp.ServiceProfile{}
 	listener := newDefaultProfileListener(&defaultProfile, dup, log)
 
-	// The primary lookup uses the context token to determine the requester's
-	// namespace. If there's no namespace in the token, start a single
-	// subscription.
+	var cleanup func()
 	if token.Ns == "" {
-		return s.subscribeToServiceWithoutContext(fqn, listener, canceled, log, streamEnd)
+		cleanup, err = s.registerServiceWithoutContext(fqn, listener, log)
+	} else {
+		cleanup, err = s.registerServicesWithContext(fqn, token, listener, log)
 	}
-	return s.subscribeToServicesWithContext(fqn, token, listener, canceled, log, streamEnd)
+	if err != nil {
+		runCleanup()
+		return nil, err
+	}
+	addCleanup(cleanup)
+
+	return func() { runCleanup() }, nil
 }
 
-// subscribeToServicesWithContext establishes two profile watches: a "backup"
-// watch (ignoring the client namespace) and a preferred "primary" watch
-// assuming the client's context. Once updates are received for both watches, we
-// select over both watches to send profile updates to the stream. A nil update
-// may be sent if both the primary and backup watches are initialized with a nil
-// value.
-func (s *server) subscribeToServicesWithContext(
+func (s *server) registerServiceWithoutContext(
+	fqn string,
+	listener watcher.ProfileUpdateListener,
+	log *logging.Entry,
+) (func(), error) {
+	id, err := profileID(fqn, contextToken{}, s.config.ClusterDomain)
+	if err != nil {
+		log.Debug("Invalid service")
+		return nil, status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
+	}
+	if err := s.profiles.Subscribe(id, listener); err != nil {
+		log.Warnf("Failed to subscribe to profile: %s", err)
+		return nil, err
+	}
+
+	return func() {
+		s.profiles.Unsubscribe(id, listener)
+	}, nil
+}
+
+func (s *server) registerServicesWithContext(
 	fqn string,
 	token contextToken,
 	listener watcher.ProfileUpdateListener,
-	canceled <-chan struct{},
 	log *logging.Entry,
-	streamEnd <-chan struct{},
-) error {
-	// We ned to support two subscriptions:
-	// - First, a backup subscription that assumes the context of the server
-	//   namespace.
-	// - And then, a primary subscription that assumes the context of the client
-	//   namespace.
+) (func(), error) {
 	primary, backup := newFallbackProfileListener(listener, log)
 
-	// The backup lookup ignores the context token to lookup any
-	// server-namespace-hosted profiles.
 	backupID, err := profileID(fqn, contextToken{}, s.config.ClusterDomain)
 	if err != nil {
 		log.Debug("Invalid service")
-		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
+		return nil, status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 	}
-	err = s.profiles.Subscribe(backupID, backup)
-	if err != nil {
+	if err := s.profiles.Subscribe(backupID, backup); err != nil {
 		log.Warnf("Failed to subscribe to profile: %s", err)
-		return err
+		return nil, err
 	}
-	defer s.profiles.Unsubscribe(backupID, backup)
 
 	primaryID, err := profileID(fqn, token, s.config.ClusterDomain)
 	if err != nil {
 		log.Debug("Invalid service")
-		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
+		s.profiles.Unsubscribe(backupID, backup)
+		return nil, status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 	}
-	err = s.profiles.Subscribe(primaryID, primary)
-	if err != nil {
+	if err := s.profiles.Subscribe(primaryID, primary); err != nil {
 		log.Warnf("Failed to subscribe to profile: %s", err)
-		return err
+		s.profiles.Unsubscribe(backupID, backup)
+		return nil, err
 	}
-	defer s.profiles.Unsubscribe(primaryID, primary)
 
-	select {
-	case <-s.shutdown:
-	case <-canceled:
-		log.Debugf("GetProfile %s cancelled", fqn)
-	case <-streamEnd:
-		log.Errorf("GetProfile %s stream aborted", fqn)
-	}
-	return nil
+	return func() {
+		s.profiles.Unsubscribe(primaryID, primary)
+		s.profiles.Unsubscribe(backupID, backup)
+	}, nil
 }
 
-// subscribeToServiceWithoutContext establishes a single profile watch, assuming
-// no client context. All udpates are published to the provided listener.
-func (s *server) subscribeToServiceWithoutContext(
-	fqn string,
-	listener watcher.ProfileUpdateListener,
-	canceled <-chan struct{},
-	log *logging.Entry,
-	streamEnd <-chan struct{},
-) error {
-	id, err := profileID(fqn, contextToken{}, s.config.ClusterDomain)
-	if err != nil {
-		log.Debug("Invalid service")
-		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
-	}
-	err = s.profiles.Subscribe(id, listener)
-	if err != nil {
-		log.Warnf("Failed to subscribe to profile: %s", err)
-		return err
-	}
-	defer s.profiles.Unsubscribe(id, listener)
-
-	select {
-	case <-s.shutdown:
-	case <-canceled:
-		log.Debugf("GetProfile %s cancelled", fqn)
-	case <-streamEnd:
-		log.Errorf("GetProfile %s stream aborted", fqn)
-	}
-	return nil
-}
-
-// Resolves a profile for a single endpoint, sending updates to the provided
-// stream.
-//
-// This function does not return until the stream is closed.
-func (s *server) subscribeToEndpointProfile(
+func (s *server) registerEndpointProfile(
 	service *watcher.ServiceID,
 	hostname,
 	ip string,
 	port uint32,
 	log *logging.Entry,
-	stream pb.Destination_GetProfileServer,
-) error {
-	canceled := stream.Context().Done()
-	streamEnd := make(chan struct{})
+	updates chan<- *pb.DestinationProfile,
+	cancel context.CancelFunc,
+) (func(), error) {
 	translator := newEndpointProfileTranslator(
 		s.config.ForceOpaqueTransport,
 		s.config.EnableH2Upgrade,
@@ -667,28 +675,40 @@ func (s *server) subscribeToEndpointProfile(
 		s.config.IdentityTrustDomain,
 		s.config.DefaultOpaquePorts,
 		s.config.MeshedHttp2ClientParams,
-		stream,
-		streamEnd,
+		updates,
+		cancel,
 		log,
 	)
-	translator.Start()
-	defer translator.Stop()
 
-	var err error
-	ip, err = s.workloads.Subscribe(service, hostname, ip, port, translator)
+	cleanups := []func(){func() { translator.Close() }}
+	addCleanup := func(fn func()) {
+		if fn != nil {
+			cleanups = append(cleanups, fn)
+		}
+	}
+	runCleanup := func() {
+		for i := len(cleanups) - 1; i >= 0; i-- {
+			cleanups[i]()
+		}
+	}
+
+	resolvedIP, err := s.workloads.Subscribe(service, hostname, ip, port, translator)
 	if err != nil {
-		return err
+		runCleanup()
+		return nil, err
 	}
-	defer s.workloads.Unsubscribe(ip, port, translator)
+	addCleanup(func() { s.workloads.Unsubscribe(resolvedIP, port, translator) })
 
-	select {
-	case <-s.shutdown:
-	case <-canceled:
-		s.log.Debugf("Cancelled")
-	case <-streamEnd:
-		log.Errorf("GetProfile %s:%d stream aborted", ip, port)
+	return func() { runCleanup() }, nil
+}
+
+func translateProfileError(log *logging.Entry, path string, err error) error {
+	var invalid watcher.InvalidService
+	if errors.As(err, &invalid) {
+		log.Debugf("Invalid service %s", path)
+		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", path)
 	}
-	return nil
+	return err
 }
 
 // getSvcID returns the service that corresponds to a Cluster IP address if one

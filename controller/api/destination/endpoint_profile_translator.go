@@ -1,7 +1,9 @@
 package destination
 
 import (
+	"context"
 	"fmt"
+	"sync"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -20,15 +22,15 @@ type endpointProfileTranslator struct {
 
 	meshedHttp2ClientParams *pb.Http2ClientParams
 
-	stream    pb.Destination_GetProfileServer
-	endStream chan struct{}
-
-	updates chan *watcher.Address
-	stop    chan struct{}
+	updateCh chan<- *pb.DestinationProfile
+	cancel   context.CancelFunc
 
 	current *pb.DestinationProfile
 
 	log *logging.Entry
+
+	mu     sync.Mutex
+	closed bool
 }
 
 // endpointProfileUpdatesQueueOverflowCounter is a prometheus counter that is incremented
@@ -51,10 +53,14 @@ func newEndpointProfileTranslator(
 	identityTrustDomain string,
 	defaultOpaquePorts map[uint32]struct{},
 	meshedHTTP2ClientParams *pb.Http2ClientParams,
-	stream pb.Destination_GetProfileServer,
-	endStream chan struct{},
+	updateCh chan<- *pb.DestinationProfile,
+	cancel context.CancelFunc,
 	log *logging.Entry,
 ) *endpointProfileTranslator {
+	if cancel == nil {
+		cancel = func() {}
+	}
+
 	return &endpointProfileTranslator{
 		forceOpaqueTransport: forceOpaqueTransport,
 		enableH2Upgrade:      enableH2Upgrade,
@@ -64,65 +70,36 @@ func newEndpointProfileTranslator(
 
 		meshedHttp2ClientParams: meshedHTTP2ClientParams,
 
-		stream:    stream,
-		endStream: endStream,
-		updates:   make(chan *watcher.Address, updateQueueCapacity),
-		stop:      make(chan struct{}),
+		updateCh: updateCh,
+		cancel:   cancel,
 
 		log: log.WithField("component", "endpoint-profile-translator"),
 	}
 }
 
-// Start initiates a goroutine which processes update events off of the
-// endpointProfileTranslator's internal queue and sends to the grpc stream as
-// appropriate. The goroutine calls non-thread-safe Send, therefore Start must
-// not be called more than once.
-func (ept *endpointProfileTranslator) Start() {
-	go func() {
-		for {
-			select {
-			case update := <-ept.updates:
-				ept.update(update)
-			case <-ept.stop:
-				return
-			}
-		}
-	}()
-}
-
-// Stop terminates the goroutine started by Start.
-func (ept *endpointProfileTranslator) Stop() {
-	close(ept.stop)
+// Close prevents the translator from emitting further updates.
+func (ept *endpointProfileTranslator) Close() {
+	ept.mu.Lock()
+	defer ept.mu.Unlock()
+	if ept.closed {
+		return
+	}
+	ept.closed = true
 }
 
 // Update enqueues an address update to be translated into a DestinationProfile.
 // An error is returned if the update cannot be enqueued.
 func (ept *endpointProfileTranslator) Update(address *watcher.Address) error {
-	select {
-	case ept.updates <- address:
-		// Update has been successfully enqueued.
-		return nil
-	default:
-		select {
-		case <-ept.endStream:
-			// The endStream channel has already been closed so no action is
-			// necessary.
-			return fmt.Errorf("profile update stream closed")
-		default:
-			// We are unable to enqueue because the channel does not have capacity.
-			// The stream has fallen too far behind and should be closed.
-			endpointProfileUpdatesQueueOverflowCounter.Inc()
-			close(ept.endStream)
-			return fmt.Errorf("profile update queue full; aborting stream")
-		}
+	if address == nil {
+		return fmt.Errorf("received nil address update")
 	}
-}
 
-func (ept *endpointProfileTranslator) queueLen() int {
-	return len(ept.updates)
-}
+	ept.mu.Lock()
+	defer ept.mu.Unlock()
+	if ept.closed {
+		return nil
+	}
 
-func (ept *endpointProfileTranslator) update(address *watcher.Address) {
 	var opaquePorts map[uint32]struct{}
 	if address.Pod != nil {
 		opaquePorts = watcher.GetAnnotatedOpaquePorts(address.Pod, ept.defaultOpaquePorts)
@@ -133,7 +110,7 @@ func (ept *endpointProfileTranslator) update(address *watcher.Address) {
 	if err != nil {
 		ept.log.Errorf("Failed to create endpoint for %s:%d: %s",
 			address.IP, address.Port, err)
-		return
+		return err
 	}
 	ept.log.Debugf("Created endpoint: %+v", endpoint)
 
@@ -145,16 +122,31 @@ func (ept *endpointProfileTranslator) update(address *watcher.Address) {
 	}
 	if proto.Equal(profile, ept.current) {
 		ept.log.Debugf("Ignoring redundant profile update: %+v", profile)
-		return
+		return nil
 	}
 
 	ept.log.Debugf("Sending profile update: %+v", profile)
-	if err := ept.stream.Send(profile); err != nil {
-		ept.log.Errorf("failed to send profile update: %s", err)
-		return
+	if err := ept.sendLocked(profile); err != nil {
+		return err
 	}
 
 	ept.current = profile
+	return nil
+}
+
+func (ept *endpointProfileTranslator) sendLocked(profile *pb.DestinationProfile) error {
+	select {
+	case ept.updateCh <- profile:
+		return nil
+	default:
+		endpointProfileUpdatesQueueOverflowCounter.Inc()
+		if !ept.closed {
+			ept.log.Error("endpoint profile update queue full; aborting stream")
+			ept.closed = true
+			ept.cancel()
+		}
+		return fmt.Errorf("endpoint profile update queue full")
+	}
 }
 
 func (ept *endpointProfileTranslator) createEndpoint(address watcher.Address, opaquePorts map[uint32]struct{}) (*pb.WeightedAddr, error) {

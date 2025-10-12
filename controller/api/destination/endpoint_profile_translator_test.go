@@ -1,8 +1,6 @@
 package destination
 
 import (
-	"errors"
-	"net/http"
 	"testing"
 	"time"
 
@@ -14,9 +12,6 @@ import (
 )
 
 func TestEndpointProfileTranslator(t *testing.T) {
-	// logging.SetLevel(logging.TraceLevel)
-	// defer logging.SetLevel(logging.PanicLevel)
-
 	addr := &watcher.Address{
 		IP:   "10.10.11.11",
 		Port: 8080,
@@ -34,95 +29,86 @@ func TestEndpointProfileTranslator(t *testing.T) {
 	}
 
 	t.Run("Sends update", func(t *testing.T) {
-		mockGetProfileServer := newMockDestinationGetProfileServer(0) // unbuffered
+		mockGetProfileServer := newMockDestinationGetProfileServer(1)
 		log := logging.WithField("test", t.Name())
+
+		cancelCalled := false
+		cancel := func() {
+			mockGetProfileServer.Cancel()
+			cancelCalled = true
+		}
+
 		translator := newEndpointProfileTranslator(
-			true, true, "cluster", "identity", make(map[uint32]struct{}), nil,
-			mockGetProfileServer,
-			nil,
+			true, // forceOpaqueTransport
+			true, // enableH2Upgrade
+			"cluster",
+			"identity",
+			make(map[uint32]struct{}),
+			nil, // meshedHTTP2ClientParams
+			mockGetProfileServer.profilesReceived,
+			cancel,
 			log,
 		)
-		translator.Start()
-		defer translator.Stop()
+		defer translator.Close()
 
 		if err := translator.Update(addr); err != nil {
-			t.Fatal("Expected update")
+			t.Fatalf("Expected update, got error: %v", err)
 		}
 		select {
-		case p := <-mockGetProfileServer.profilesReceived:
-			log.Debugf("Received update: %v", p)
-		case <-time.After(1 * time.Second):
-			t.Fatal("No update received")
+		case <-mockGetProfileServer.profilesReceived:
+		case <-time.After(time.Second):
+			t.Fatal("No update received for initial address")
 		}
 
 		if err := translator.Update(addr); err != nil {
-			t.Fatal("Unexpected update")
+			t.Fatalf("Unexpected error on duplicate update: %v", err)
 		}
 		select {
-		case p := <-mockGetProfileServer.profilesReceived:
-			t.Fatalf("Duplicate update sent: %v", p)
-		case <-time.After(1 * time.Second):
+		case upd := <-mockGetProfileServer.profilesReceived:
+			t.Fatalf("Duplicate update sent: %+v", upd)
+		default:
 		}
 
 		if err := translator.Update(podAddr); err != nil {
-			t.Fatal("Expected update")
+			t.Fatalf("Expected pod update, got error: %v", err)
 		}
 		select {
-		case p := <-mockGetProfileServer.profilesReceived:
-			log.Debugf("Received update: %v", p)
-		case <-time.After(1 * time.Second):
+		case <-mockGetProfileServer.profilesReceived:
+		case <-time.After(time.Second):
+			t.Fatal("No update received for pod address")
+		}
+
+		if cancelCalled {
+			t.Fatal("Unexpected cancel invocation")
 		}
 	})
 
 	t.Run("Handles overflow", func(t *testing.T) {
-		mockGetProfileServer := newMockDestinationGetProfileServer(1)
+		mockGetProfileServer := newMockDestinationGetProfileServer(0) // unbuffered
 		log := logging.WithField("test", t.Name())
-		endStream := make(chan struct{})
+
+		cancelCalled := false
+		cancel := func() {
+			mockGetProfileServer.Cancel()
+			cancelCalled = true
+		}
 		translator := newEndpointProfileTranslator(
-			true, true, "cluster", "identity", make(map[uint32]struct{}), nil,
-			mockGetProfileServer,
-			endStream,
+			true,
+			true,
+			"cluster",
+			"identity",
+			make(map[uint32]struct{}),
+			nil,
+			mockGetProfileServer.profilesReceived,
+			cancel,
 			log,
 		)
 
-		// We avoid starting the translator so that it doesn't drain its update
-		// queue and we can test the overflow behavior.
-
-		for i := 0; i < updateQueueCapacity/2; i++ {
-			if err := translator.Update(podAddr); err != nil {
-				t.Fatal("Expected update")
-			}
-			select {
-			case <-endStream:
-				t.Fatal("Stream ended prematurely")
-			default:
-			}
-
-			if err := translator.Update(addr); err != nil {
-				t.Fatal("Expected update")
-			}
-			select {
-			case <-endStream:
-				t.Fatal("Stream ended prematurely")
-			default:
-			}
-		}
-
-		// The queue should be full and the next update should fail.
-		t.Logf("Queue length=%d capacity=%d", translator.queueLen(), updateQueueCapacity)
 		if err := translator.Update(podAddr); err == nil {
-			if !errors.Is(err, http.ErrServerClosed) {
-				t.Fatalf("Expected update to fail; queue=%d; capacity=%d", translator.queueLen(), updateQueueCapacity)
-			}
+			t.Fatal("Expected update to fail when downstream is not draining")
 		}
-
-		select {
-		case <-endStream:
-		default:
-			t.Fatal("Stream should have ended")
+		if !cancelCalled {
+			t.Fatal("Expected cancel to be invoked on overflow")
 		}
-
-		// XXX We should assert that endpointProfileUpdatesQueueOverflowCounter
-		// == 1 but we can't read counter values.
 	})
 }

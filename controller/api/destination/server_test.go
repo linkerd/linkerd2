@@ -331,7 +331,7 @@ func TestGet(t *testing.T) {
 		}
 		initialOverflow := counterValue(t, metric)
 
-		for i := 0; i < updateQueueCapacity+10; i++ {
+		for i := 0; i < 3; i++ {
 			addEndpointToRemoteSlice(t, remoteAPI, "ns", "foo", fmt.Sprintf("172.17.155.%d", i+1))
 			time.Sleep(50 * time.Millisecond)
 			if counterValue(t, metric) > initialOverflow {
@@ -599,7 +599,10 @@ func TestGetProfiles(t *testing.T) {
 		}()
 
 		select {
-		case <-errCh:
+		case err := <-errCh:
+			if !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
+				t.Fatalf("expected cancellation error, got %v", err)
+			}
 		case <-time.After(5 * time.Second):
 			t.Fatal("timed out waiting for GetProfile to return")
 		}
@@ -642,11 +645,11 @@ func TestGetProfiles(t *testing.T) {
 		}
 		initialOverflow := counterValue(t, metric)
 
-		// Trigger enough profile updates so the translator tries to enqueue more
-		// messages than the buffered queue can hold while the stream remains
+		// Trigger three profile updates so the translator tries to enqueue more
+		// messages than the single-slot queue can hold while the stream remains
 		// blocked.
 		profiles := client.LinkerdV1alpha2().ServiceProfiles("ns")
-		for i := 0; i < updateQueueCapacity+10; i++ {
+		for i := 0; i < 3; i++ {
 			profile, err := profiles.Get(context.TODO(), fullyQualifiedName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("failed to fetch service profile: %v", err)
@@ -682,15 +685,22 @@ func TestGetProfiles(t *testing.T) {
 		stream.Cancel()
 
 		select {
-		case <-errCh:
+		case err := <-errCh:
+			if !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
+				t.Fatalf("expected cancellation error, got %v", err)
+			}
 		case <-time.After(5 * time.Second):
 			t.Fatal("timed out waiting for GetProfile to return after cancel")
+		}
+
+		// Only the first update should have been attempted because the translator
+		// cancelled once the queue overflowed.
+		if stream.Calls() != 1 {
+			t.Fatalf("expected exactly one send attempt, got %d", stream.Calls())
 		}
 	})
 
 	t.Run("Cancels blocked stream for endpoint profiles when translator overflows", func(t *testing.T) {
-		t.Skip("Known to fail presently; re-enable when fixed")
-
 		server := makeServer(t)
 
 		stream := newBlockingProfileStream()
@@ -741,8 +751,11 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("failed to recreate pod: %v", err)
 		}
 
-		for i := 0; i < updateQueueCapacity+10; i++ {
+		endpointProfileDeadline := time.Now().Add(10 * time.Second)
+		endpointOverflowed := false
+		for i := 0; time.Now().Before(endpointProfileDeadline); i++ {
 			if counterValue(t, endpointProfileUpdatesQueueOverflowCounter) > initialOverflow {
+				endpointOverflowed = true
 				break
 			}
 			current, err := pods.Get(context.TODO(), recreated.Name, metav1.GetOptions{})
@@ -757,15 +770,6 @@ func TestGetProfiles(t *testing.T) {
 			if _, err := pods.Update(context.TODO(), cp, metav1.UpdateOptions{}); err != nil {
 				t.Fatalf("failed to update pod labels: %v", err)
 			}
-		}
-
-		endpointProfileDeadline := time.Now().Add(10 * time.Second)
-		endpointOverflowed := false
-		for time.Now().Before(endpointProfileDeadline) {
-			if counterValue(t, endpointProfileUpdatesQueueOverflowCounter) > initialOverflow {
-				endpointOverflowed = true
-				break
-			}
 			time.Sleep(10 * time.Millisecond)
 		}
 		if !endpointOverflowed {
@@ -775,9 +779,16 @@ func TestGetProfiles(t *testing.T) {
 		stream.Cancel()
 
 		select {
-		case <-errCh:
+		case err := <-errCh:
+			if !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
+				t.Fatalf("expected cancellation error, got %v", err)
+			}
 		case <-time.After(5 * time.Second):
 			t.Fatal("timed out waiting for GetProfile to return after cancel")
+		}
+
+		if stream.Calls() != 1 {
+			t.Fatalf("expected exactly one send attempt, got %d", stream.Calls())
 		}
 	})
 

@@ -29,8 +29,6 @@ const (
 	envAdminListenAddr   = "LINKERD2_PROXY_ADMIN_LISTEN_ADDR"
 	envControlListenAddr = "LINKERD2_PROXY_CONTROL_LISTEN_ADDR"
 
-	updateQueueCapacity = 100
-
 	defaultProxyInboundPort = 4143
 )
 
