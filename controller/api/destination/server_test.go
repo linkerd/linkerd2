@@ -1546,7 +1546,7 @@ func runEndpointOverflowTest(t *testing.T, sc endpointOverflowScenario) {
 	// cannot terminate while a Send is blocked.
 	select {
 	case err := <-errCh:
-		if err != nil && !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
+		if err != nil {
 			t.Fatalf("expected Get to be end after overflow, got %v", err)
 		}
 	case <-time.After(5 * time.Second):
