@@ -214,146 +214,79 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("Cancels stream when endpoint update queue overflows", func(t *testing.T) {
-		server := makeServer(t)
+		srv := makeServer(t)
 
-		stream := newBlockingGetStream()
-		defer stream.Cancel()
-
-		errCh := make(chan error, 1)
-		go func() {
-			errCh <- server.Get(&pb.GetDestination{
-				Scheme: "k8s",
-				Path:   fmt.Sprintf("%s:%d", fullyQualifiedName, port),
-			}, stream)
-		}()
-
-		stream.WaitForSend(t, 5*time.Second)
-
-		for i := range updateQueueCapacity + 10 {
-			addEndpointToSlice(t, server,
-				fmt.Sprintf("name1-overflow-%d", i),
-				fmt.Sprintf("172.17.0.%d", i))
-			time.Sleep(50 * time.Millisecond)
-		}
-
-		stream.Release()
-
-		select {
-		case <-errCh:
-		case <-time.After(5 * time.Second):
-			t.Fatal("timed out waiting for Get to return after overflow")
-		}
-
-		if got := stream.SendCount(); got == 0 {
-			t.Fatal("expected at least one update before overflow")
-		}
+		runEndpointOverflowTest(t, endpointOverflowScenario{
+			server:      srv,
+			servicePath: fmt.Sprintf("%s:%d", fullyQualifiedName, port),
+			metricLabels: prometheus.Labels{
+				"service": fmt.Sprintf("%s:%d", fullyQualifiedName, port),
+			},
+			waitMessage: fmt.Sprintf("endpoint translator overflow for %s:%d", fullyQualifiedName, port),
+			trigger: func(t *testing.T, srv *server, i int) {
+				addEndpointToSlice(t, srv, fmt.Sprintf("name1-overflow-%d", i), fmt.Sprintf("172.17.0.%d", 201+i))
+				time.Sleep(10 * time.Millisecond)
+			},
+		})
 	})
 
 	t.Run("Cancels stream when federated endpoint update queue overflows", func(t *testing.T) {
-		t.Skip("Known to fail presently; re-enable when fixed")
+		t.Skip("TODO: fix stream cancelation")
 
-		server, remoteStore := getServerWithRemoteStore(t)
-
+		srv, remoteStore := getServerWithRemoteStore(t)
 		remoteAPI, ok := remoteStore.Get("target")
 		if !ok {
 			t.Fatal("remote cluster API not found")
 		}
 
-		ctx := context.Background()
-		svc := &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo-federated",
-				Namespace: "ns",
-				Annotations: map[string]string{
-					pkgk8s.RemoteDiscoveryAnnotation: "foo@target",
-				},
+		runEndpointOverflowTest(t, endpointOverflowScenario{
+			server:      srv,
+			servicePath: "foo-federated.ns.svc.mycluster.local:80",
+			metricLabels: prometheus.Labels{
+				"service": "ns/foo.ns.svc.cluster.local:80",
 			},
-			Spec: corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{
-					{Port: 80},
-				},
+			waitMessage: "federated endpoint translator overflow for ns/foo.ns.svc.cluster.local:80",
+			prepare: func(t *testing.T, srv *server) {
+				ctx := context.Background()
+				svc := &corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "foo-federated",
+						Namespace: "ns",
+						Annotations: map[string]string{
+							pkgk8s.RemoteDiscoveryAnnotation: "foo@target",
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{Port: 80},
+						},
+					},
+				}
+
+				if _, err := srv.k8sAPI.Client.CoreV1().Services("ns").Create(ctx, svc, metav1.CreateOptions{}); err != nil {
+					t.Fatalf("failed to create federated service: %v", err)
+				}
+
+				id := watcher.ServiceID{Namespace: "ns", Name: "foo-federated"}
+				deadline := time.Now().Add(5 * time.Second)
+				for {
+					srv.federatedServices.RLock()
+					_, found := srv.federatedServices.services[id]
+					srv.federatedServices.RUnlock()
+					if found {
+						break
+					}
+					if time.Now().After(deadline) {
+						t.Fatalf("federated service %s/%s not registered", "ns", "foo-federated")
+					}
+					time.Sleep(10 * time.Millisecond)
+				}
 			},
-		}
-
-		if _, err := server.k8sAPI.Client.CoreV1().Services("ns").Create(ctx, svc, metav1.CreateOptions{}); err != nil {
-			t.Fatalf("failed to create federated service: %v", err)
-		}
-
-		id := watcher.ServiceID{Namespace: "ns", Name: "foo-federated"}
-		deadline := time.Now().Add(5 * time.Second)
-		for {
-			server.federatedServices.RLock()
-			_, found := server.federatedServices.services[id]
-			server.federatedServices.RUnlock()
-			if found {
-				break
-			}
-			if time.Now().After(deadline) {
-				t.Fatalf("federated service %s/%s not registered", "ns", "foo-federated")
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-
-		stream := newBlockingGetStream()
-		defer stream.Cancel()
-
-		errCh := make(chan error, 1)
-		go func() {
-			errCh <- server.Get(&pb.GetDestination{
-				Scheme: "k8s",
-				Path:   "foo-federated.ns.svc.mycluster.local:80",
-			}, stream)
-		}()
-
-		stream.WaitForSend(t, 5*time.Second)
-
-		serviceLabel := "ns/foo.ns.svc.cluster.local:80"
-		metric, err := updatesQueueOverflowCounter.GetMetricWith(prometheus.Labels{
-			"service": serviceLabel,
+			trigger: func(t *testing.T, _ *server, i int) {
+				addEndpointToRemoteSlice(t, remoteAPI, "ns", "foo", fmt.Sprintf("172.17.155.%d", i+1))
+				time.Sleep(50 * time.Millisecond)
+			},
 		})
-		if err != nil {
-			t.Fatalf("failed to get overflow counter: %v", err)
-		}
-		initialOverflow := counterValue(t, metric)
-
-		for i := 0; i < updateQueueCapacity+10; i++ {
-			addEndpointToRemoteSlice(t, remoteAPI, "ns", "foo", fmt.Sprintf("172.17.155.%d", i+1))
-			time.Sleep(50 * time.Millisecond)
-			if counterValue(t, metric) > initialOverflow {
-				break
-			}
-		}
-
-		overflowDeadline := time.Now().Add(10 * time.Second)
-		overflowed := false
-		for time.Now().Before(overflowDeadline) {
-			if counterValue(t, metric) > initialOverflow {
-				overflowed = true
-				break
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-		if !overflowed {
-			t.Fatalf("waiting for federated endpoint translator overflow for %s", serviceLabel)
-		}
-
-		stream.Release()
-
-		select {
-		case err := <-errCh:
-			if err == nil {
-				t.Fatal("expected Get to be canceled after overflow")
-			}
-			if !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
-				t.Fatalf("expected cancellation error, got %v", err)
-			}
-		case <-time.After(5 * time.Second):
-			t.Fatal("timed out waiting for Get to return after overflow")
-		}
-
-		if got := stream.SendCount(); got == 0 {
-			t.Fatal("expected at least one update before overflow")
-		}
 	})
 
 	t.Run("Return endpoint with unknown protocol hint and identity when service name contains skipped inbound port", func(t *testing.T) {
@@ -1582,6 +1515,98 @@ func toAddress(path string, port uint32) (*net.TcpAddress, error) {
 	}, nil
 }
 
+type endpointOverflowScenario struct {
+	server       *server
+	servicePath  string
+	metricLabels prometheus.Labels
+	waitMessage  string
+	prepare      func(*testing.T, *server)
+	trigger      func(*testing.T, *server, int)
+}
+
+func runEndpointOverflowTest(t *testing.T, sc endpointOverflowScenario) {
+	t.Helper()
+
+	if sc.server == nil {
+		t.Fatal("endpoint overflow scenario requires a server")
+	}
+	if sc.trigger == nil {
+		t.Fatal("endpoint overflow scenario requires a trigger function")
+	}
+	if sc.waitMessage == "" {
+		sc.waitMessage = fmt.Sprintf("endpoint translator overflow for %s", sc.servicePath)
+	}
+
+	if sc.prepare != nil {
+		sc.prepare(t, sc.server)
+	}
+
+	stream := newBlockingGetStream()
+	defer stream.Release()
+	defer stream.Cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- sc.server.Get(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   sc.servicePath,
+		}, stream)
+	}()
+
+	stream.WaitForSend(t, 5*time.Second)
+
+	metric, err := updatesQueueOverflowCounter.GetMetricWith(sc.metricLabels)
+	if err != nil {
+		t.Fatalf("failed to get overflow counter: %v", err)
+	}
+	initialOverflow := counterValue(t, metric)
+
+	for i := 0; i < updateQueueCapacity+10; i++ {
+		sc.trigger(t, sc.server, i)
+		if counterValue(t, metric) > initialOverflow {
+			break
+		}
+	}
+
+	overflowDeadline := time.Now().Add(10 * time.Second)
+	overflowed := false
+	for time.Now().Before(overflowDeadline) {
+		if counterValue(t, metric) > initialOverflow {
+			overflowed = true
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !overflowed {
+		t.Fatalf("waiting for %s", sc.waitMessage)
+	}
+
+	// Wait for Get to finish without unblocking Send so we catch streams that
+	// cannot terminate while a Send is blocked.
+	select {
+	case err := <-errCh:
+		if err != nil && !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
+			t.Fatalf("expected Get to be end after overflow, got %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for Get to return after overflow")
+	}
+
+	stream.Release()
+
+	if got := stream.SendCount(); got == 0 {
+		t.Fatal("expected at least one update before overflow")
+	}
+
+	updates := stream.Updates()
+	if len(updates) == 0 || updates[0].GetAdd() == nil {
+		t.Fatalf("expected initial update to be an Add, got %T", updates[0].GetUpdate())
+	}
+	if len(updates) > 1 && updates[1].GetAdd() == nil {
+		t.Fatalf("expected buffered update to be an Add, got %T", updates[1].GetUpdate())
+	}
+}
+
 type blockingGetStream struct {
 	util.MockServerStream
 
@@ -1608,8 +1633,12 @@ func (bgs *blockingGetStream) Send(update *pb.Update) error {
 
 	bgs.startOnce.Do(func() { close(bgs.sendStarted) })
 
-	<-bgs.release
-	return nil
+	select {
+	case <-bgs.release:
+		return nil
+	case <-bgs.Context().Done():
+		return bgs.Context().Err()
+	}
 }
 
 func (bgs *blockingGetStream) WaitForSend(t *testing.T, timeout time.Duration) {
