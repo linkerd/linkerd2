@@ -71,5 +71,5 @@ func (s *synchronizedGetStream) Start() {
 }
 
 func (s *synchronizedGetStream) Stop() {
-	s.done <- struct{}{}
+	close(s.done)
 }
