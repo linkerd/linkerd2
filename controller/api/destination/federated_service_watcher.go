@@ -364,6 +364,7 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 		subscriber.stream,
 		subscriber.endStream,
 		fs.log,
+		fs.config.StreamQueueCapacity,
 	)
 	if err != nil {
 		fs.log.Errorf("Failed to create endpoint translator for remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
@@ -418,6 +419,7 @@ func (fs *federatedService) localDiscoverySubscribe(
 		subscriber.stream,
 		subscriber.endStream,
 		fs.log,
+		fs.config.StreamQueueCapacity,
 	)
 	if err != nil {
 		fs.log.Errorf("Failed to create endpoint translator for %s: %s", localDiscovery, err)

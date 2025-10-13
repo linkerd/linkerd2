@@ -27,8 +27,6 @@ const (
 	envAdminListenAddr   = "LINKERD2_PROXY_ADMIN_LISTEN_ADDR"
 	envControlListenAddr = "LINKERD2_PROXY_CONTROL_LISTEN_ADDR"
 
-	updateQueueCapacity = 100
-
 	defaultProxyInboundPort = 4143
 )
 
@@ -101,6 +99,7 @@ func newEndpointTranslator(
 	stream pb.Destination_GetServer,
 	endStream chan struct{},
 	log *logging.Entry,
+	queueCapacity int,
 ) (*endpointTranslator, error) {
 	log = log.WithFields(logging.Fields{
 		"component": "endpoint-translator",
@@ -139,7 +138,7 @@ func newEndpointTranslator(
 		endStream,
 		log,
 		counter,
-		make(chan interface{}, updateQueueCapacity),
+		make(chan interface{}, queueCapacity),
 		make(chan struct{}),
 	}, nil
 }

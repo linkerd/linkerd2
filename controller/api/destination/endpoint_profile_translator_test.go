@@ -44,6 +44,7 @@ func TestEndpointProfileTranslator(t *testing.T) {
 			mockGetProfileServer,
 			nil,
 			log,
+			DefaultStreamQueueCapacity,
 		)
 		translator.Start()
 		defer translator.Stop()
@@ -83,17 +84,19 @@ func TestEndpointProfileTranslator(t *testing.T) {
 		}
 		log := logging.WithField("test", t.Name())
 		endStream := make(chan struct{})
+		queueCapacity := DefaultStreamQueueCapacity
 		translator := newEndpointProfileTranslator(
 			true, true, "cluster", "identity", make(map[uint32]struct{}), nil,
 			mockGetProfileServer,
 			endStream,
 			log,
+			queueCapacity,
 		)
 
 		// We avoid starting the translator so that it doesn't drain its update
 		// queue and we can test the overflow behavior.
 
-		for i := 0; i < updateQueueCapacity/2; i++ {
+		for i := 0; i < queueCapacity/2; i++ {
 			if err := translator.Update(podAddr); err != nil {
 				t.Fatal("Expected update")
 			}
@@ -114,10 +117,10 @@ func TestEndpointProfileTranslator(t *testing.T) {
 		}
 
 		// The queue should be full and the next update should fail.
-		t.Logf("Queue length=%d capacity=%d", translator.queueLen(), updateQueueCapacity)
+		t.Logf("Queue length=%d capacity=%d", translator.queueLen(), queueCapacity)
 		if err := translator.Update(podAddr); err == nil {
 			if !errors.Is(err, http.ErrServerClosed) {
-				t.Fatalf("Expected update to fail; queue=%d; capacity=%d", translator.queueLen(), updateQueueCapacity)
+				t.Fatalf("Expected update to fail; queue=%d; capacity=%d", translator.queueLen(), queueCapacity)
 			}
 		}
 
