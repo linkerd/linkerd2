@@ -8,11 +8,13 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/metadata/metadatainformer"
@@ -206,65 +208,68 @@ func (api *MetadataAPI) GetByNamespaceFiltered(
 	return objMetas, nil
 }
 
-// GetRootOwnerKindAndName returns the resource's owner's type and metadata, using owner
-// references from the Kubernetes API. Parent refs are recursively traversed to find the
-// root parent resource, at least as far as the controller has permissions to query.
-// This will attempt to lookup resources through the shared informer cache where possible,
-// but may fall back to direct Kubernetes API calls where necessary.
-func (api *MetadataAPI) GetRootOwnerKindAndName(ctx context.Context, tm *metav1.TypeMeta, om *metav1.ObjectMeta, retry bool) (*metav1.TypeMeta, *metav1.ObjectMeta) {
-	ownerRefs := om.OwnerReferences
+// GetOwnerKindAndName returns the pod owner's kind and name, using owner
+// references from the Kubernetes API. The kind is represented as the
+// Kubernetes singular resource type (e.g. deployment, daemonset, job, etc.).
+// If retry is true, when the shared informer cache doesn't return anything we
+// try again with a direct Kubernetes API call.
+func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry bool) (string, string, error) {
+	ownerRefs := pod.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
-		// resource without a parent
-		log.Debugf("Found root owner ref in ns %s: %s/%s: %s", om.Namespace, tm.APIVersion, tm.Kind, om.Name)
-		return tm, om
+		// pod without a parent
+		return "pod", pod.Name, nil
 	} else if len(ownerRefs) > 1 {
 		log.Debugf("unexpected owner reference count (%d): %+v", len(ownerRefs), ownerRefs)
-		return tm, om
+		return "pod", pod.Name, nil
 	}
 
-	parentRef := ownerRefs[0]
-	parentType := metav1.TypeMeta{Kind: parentRef.Kind, APIVersion: parentRef.APIVersion}
-	// The set of resources that we look up in the indexer are fairly niche. They all must be able to:
-	// - be a parent of another resource, usually a Pod
-	// - have a parent resource themselves
-	// Currently, this is limited to Jobs (parented by CronJobs) and ReplicaSets (parented by
-	// Deployments, StatefulSets, argo Rollouts, etc.). This list may change in the future, but
-	// is sufficient for now.
-	switch parentRef.Kind {
+	parent := ownerRefs[0]
+	var parentObj metav1.Object
+	var err error
+	switch parent.Kind {
 	case "Job":
-		parent, err := api.getByNamespace(Job, om.Namespace, parentRef.Name)
-		if err == nil {
-			return api.GetRootOwnerKindAndName(ctx, &parentType, &parent.ObjectMeta, retry)
-		}
-		log.Warnf("failed to retrieve job from indexer %s/%s: %s", om.Namespace, parentRef.Name, err)
-		if !retry {
-			return &parentType, &metav1.ObjectMeta{Name: parentRef.Name, Namespace: om.Namespace}
+		parentObj, err = api.getByNamespace(Job, pod.Namespace, parent.Name)
+		if err != nil {
+			log.Warnf("failed to retrieve job from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
+			if retry {
+				parentObj, err = api.client.
+					Resource(batchv1.SchemeGroupVersion.WithResource("jobs")).
+					Namespace(pod.Namespace).
+					Get(ctx, parent.Name, metav1.GetOptions{})
+				if err != nil {
+					log.Warnf("failed to retrieve job from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
+				}
+			}
 		}
 	case "ReplicaSet":
-		parent, err := api.getByNamespace(RS, om.Namespace, parentRef.Name)
-		if err == nil {
-			return api.GetRootOwnerKindAndName(ctx, &parentType, &parent.ObjectMeta, retry)
+		var rsObj *metav1.PartialObjectMetadata
+		rsObj, err = api.getByNamespace(RS, pod.Namespace, parent.Name)
+		if err != nil {
+			log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
+			if retry {
+				rsObj, err = api.client.
+					Resource(appsv1.SchemeGroupVersion.WithResource("replicasets")).
+					Namespace(pod.Namespace).
+					Get(ctx, parent.Name, metav1.GetOptions{})
+				if err != nil {
+					log.Warnf("failed to retrieve replicaset from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
+				}
+			}
 		}
-		log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", om.Namespace, parentRef.Name, err)
-		if !retry {
-			return &parentType, &metav1.ObjectMeta{Name: parentRef.Name, Namespace: om.Namespace}
+
+		if rsObj == nil || !isValidRSParent(rsObj) {
+			return strings.ToLower(parent.Kind), parent.Name, nil
 		}
-	case "":
-		log.Warnf("parent ref has no kind: %v", parentRef)
-		return tm, om
+		parentObj = rsObj
+	default:
+		return strings.ToLower(parent.Kind), parent.Name, nil
 	}
 
-	resource := schema.FromAPIVersionAndKind(parentRef.APIVersion, parentRef.Kind).
-		GroupVersion().
-		WithResource(strings.ToLower(parentRef.Kind) + "s")
-	parent, err := api.client.Resource(resource).
-		Namespace(om.Namespace).
-		Get(ctx, parentRef.Name, metav1.GetOptions{})
-	if err != nil {
-		log.Warnf("failed to retrieve resource from direct API call %s/%s/%s: %s", schema.FromAPIVersionAndKind(parentRef.APIVersion, parentRef.Kind), om.Namespace, parentRef.Name, err)
-		return &parentType, &metav1.ObjectMeta{Name: parentRef.Name, Namespace: om.Namespace}
+	if err == nil && len(parentObj.GetOwnerReferences()) == 1 {
+		grandParent := parentObj.GetOwnerReferences()[0]
+		return strings.ToLower(grandParent.Kind), grandParent.Name, nil
 	}
-	return api.GetRootOwnerKindAndName(ctx, &parentType, &parent.ObjectMeta, retry)
+	return strings.ToLower(parent.Kind), parent.Name, nil
 }
 
 func (api *MetadataAPI) addInformer(res APIResource, informerLabels prometheus.Labels) error {

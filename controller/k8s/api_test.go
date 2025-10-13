@@ -1057,16 +1057,12 @@ func TestGetOwnerKindAndName(t *testing.T) {
 	for i, tt := range []struct {
 		resources
 
-		expectedOwnerKind     string
-		expectedOwnerName     string
-		expectedRootOwnerKind string
-		expectedRootOwnerName string
+		expectedOwnerKind string
+		expectedOwnerName string
 	}{
 		{
-			expectedOwnerKind:     "deployment",
-			expectedOwnerName:     "t2",
-			expectedRootOwnerKind: "Deployment",
-			expectedRootOwnerName: "t2",
+			expectedOwnerKind: "deployment",
+			expectedOwnerName: "t2",
 			resources: resources{
 				results: []string{`
 apiVersion: v1
@@ -1088,14 +1084,13 @@ metadata:
   ownerReferences:
   - apiVersion: apps/v1
     kind: Deployment
-    name: t2`},
+    name: t2`,
+				},
 			},
 		},
 		{
-			expectedOwnerKind:     "replicaset",
-			expectedOwnerName:     "t1-b4f55d87f",
-			expectedRootOwnerKind: "ReplicaSet",
-			expectedRootOwnerName: "t1-b4f55d87f",
+			expectedOwnerKind: "replicaset",
+			expectedOwnerName: "t1-b4f55d87f",
 			resources: resources{
 				results: []string{`
 apiVersion: v1
@@ -1111,10 +1106,8 @@ metadata:
 			},
 		},
 		{
-			expectedOwnerKind:     "job",
-			expectedOwnerName:     "slow-cooker",
-			expectedRootOwnerKind: "Job",
-			expectedRootOwnerName: "slow-cooker",
+			expectedOwnerKind: "job",
+			expectedOwnerName: "slow-cooker",
 			resources: resources{
 				results: []string{`
 apiVersion: v1
@@ -1130,10 +1123,8 @@ metadata:
 			},
 		},
 		{
-			expectedOwnerKind:     "replicationcontroller",
-			expectedOwnerName:     "web",
-			expectedRootOwnerKind: "ReplicationController",
-			expectedRootOwnerName: "web",
+			expectedOwnerKind: "replicationcontroller",
+			expectedOwnerName: "web",
 			resources: resources{
 				results: []string{`
 apiVersion: v1
@@ -1149,10 +1140,8 @@ metadata:
 			},
 		},
 		{
-			expectedOwnerKind:     "pod",
-			expectedOwnerName:     "vote-bot",
-			expectedRootOwnerKind: "Pod",
-			expectedRootOwnerName: "vote-bot",
+			expectedOwnerKind: "pod",
+			expectedOwnerName: "vote-bot",
 			resources: resources{
 				results: []string{`
 apiVersion: v1
@@ -1164,10 +1153,8 @@ metadata:
 			},
 		},
 		{
-			expectedOwnerKind:     "cronjob",
-			expectedOwnerName:     "my-cronjob",
-			expectedRootOwnerKind: "CronJob",
-			expectedRootOwnerName: "my-cronjob",
+			expectedOwnerKind: "cronjob",
+			expectedOwnerName: "my-cronjob",
 			resources: resources{
 				results: []string{`
 apiVersion: v1
@@ -1189,14 +1176,13 @@ metadata:
   ownerReferences:
   - apiVersion: batch/v1
     kind: CronJob
-    name: my-cronjob`},
+    name: my-cronjob`,
+				},
 			},
 		},
 		{
-			expectedOwnerKind:     "replicaset",
-			expectedOwnerName:     "invalid-rs-parent-2abdffa",
-			expectedRootOwnerKind: "InvalidParentKind",
-			expectedRootOwnerName: "invalid-parent",
+			expectedOwnerKind: "replicaset",
+			expectedOwnerName: "invalid-rs-parent-2abdffa",
 			resources: resources{
 				results: []string{`
 apiVersion: v1
@@ -1205,7 +1191,7 @@ metadata:
   name: invalid-rs-parent-dcfq4
   namespace: default
   ownerReferences:
-  - apiVersion: apps/v1
+  - apiVersion: v1
     kind: ReplicaSet
     name: invalid-rs-parent-2abdffa`,
 				},
@@ -1218,7 +1204,8 @@ metadata:
   ownerReferences:
   - apiVersion: invalidParent/v1
     kind: InvalidParentKind
-    name: invalid-parent`},
+    name: invalid-parent`,
+				},
 			},
 		},
 	} {
@@ -1245,14 +1232,17 @@ metadata:
 					t.Fatalf("Expected name to be [%s], got [%s]", tt.expectedOwnerName, ownerName)
 				}
 
-				tm, om := metadataAPI.GetRootOwnerKindAndName(context.Background(), &pod.TypeMeta, &pod.ObjectMeta, retry)
-
-				if tm.Kind != tt.expectedRootOwnerKind {
-					t.Fatalf("Expected root kind to be [%s], got [%s]", tt.expectedRootOwnerKind, tm.Kind)
+				ownerKind, ownerName, err = metadataAPI.GetOwnerKindAndName(context.Background(), pod, retry)
+				if err != nil {
+					t.Fatalf("Unexpected error: %s", err)
 				}
 
-				if om.Name != tt.expectedRootOwnerName {
-					t.Fatalf("Expected root name to be [%s], got [%s]", tt.expectedRootOwnerName, om.Name)
+				if ownerKind != tt.expectedOwnerKind {
+					t.Fatalf("Expected kind to be [%s], got [%s]", tt.expectedOwnerKind, ownerKind)
+				}
+
+				if ownerName != tt.expectedOwnerName {
+					t.Fatalf("Expected name to be [%s], got [%s]", tt.expectedOwnerName, ownerName)
 				}
 			})
 		}
