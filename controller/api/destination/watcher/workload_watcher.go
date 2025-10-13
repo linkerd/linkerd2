@@ -60,7 +60,7 @@ type (
 	}
 )
 
-var ipPortVecs = newMetricsVecs("ip_port", []string{})
+var workloadVecs = newMetricsVecs("workload", []string{})
 
 func NewWorkloadWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.Entry, enableEndpointSlices bool, defaultOpaquePorts map[uint32]struct{}) (*WorkloadWatcher, error) {
 	ww := &WorkloadWatcher{
@@ -455,7 +455,7 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 	wp, ok := ww.publishers[ipPort]
 	if !ok {
 		// Omit high-cardinality IP:port labels.
-		metrics, err := ipPortVecs.newMetrics(prometheus.Labels{})
+		metrics, err := workloadVecs.newMetrics(prometheus.Labels{})
 		if err != nil {
 			return nil, err
 		}
