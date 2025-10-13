@@ -24,6 +24,10 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
+// DefaultStreamQueueCapacity defines the default maximum number of pending
+// updates buffered per stream before the stream is closed.
+const DefaultStreamQueueCapacity = 100
+
 type (
 	Config struct {
 		ControllerNS,
@@ -39,6 +43,8 @@ type (
 		MeshedHttp2ClientParams *pb.Http2ClientParams
 
 		DefaultOpaquePorts map[uint32]struct{}
+
+		StreamQueueCapacity int
 	}
 
 	server struct {
@@ -219,6 +225,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			stream,
 			streamEnd,
 			log,
+			s.config.StreamQueueCapacity,
 		)
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
@@ -257,6 +264,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			stream,
 			streamEnd,
 			log,
+			s.config.StreamQueueCapacity,
 		)
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
@@ -403,7 +411,7 @@ func (s *server) subscribeToServiceProfile(
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator, err := newProfileTranslator(service, stream, log, fqn, port, streamEnd)
+	translator, err := newProfileTranslatorWithCapacity(service, stream, log, fqn, port, streamEnd, s.config.StreamQueueCapacity)
 	if err != nil {
 		return status.Errorf(codes.Internal, "Failed to create profile translator: %s", err)
 	}
@@ -552,6 +560,7 @@ func (s *server) subscribeToEndpointProfile(
 		stream,
 		streamEnd,
 		log,
+		s.config.StreamQueueCapacity,
 	)
 	translator.Start()
 	defer translator.Stop()
