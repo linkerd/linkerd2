@@ -17,7 +17,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/util"
 	logging "github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
@@ -227,41 +226,34 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 
 	// Forward updates from the translator onto the gRPC stream. This runs in
 	// its own goroutine so that translator backpressure is limited only by the
-	// single buffered slot above.
-	group, sendCtx := errgroup.WithContext(ctx)
-	group.Go(func() error {
+	// single buffered slot above. The handler exit tears down the underlying
+	// gRPC stream, so returning from Get will unblock any Send in progress.
+	go func() {
 		for {
 			select {
-			case <-sendCtx.Done():
-				return sendCtx.Err()
+			case <-ctx.Done():
+				return
 			case update, ok := <-updates:
 				if !ok {
-					return nil
+					return
 				}
 				if err := stream.Send(update); err != nil {
-					return err
+					if ctx.Err() != nil {
+						return
+					}
+					log.Errorf("Get %s: Send failed: %v", dest.GetPath(), err)
+					cancel()
+					return
 				}
 			}
 		}
-	})
+	}()
 
 	// Wait until shutdown is initiated or the stream is reset.
 	select {
 	case <-s.shutdown:
 		cancel()
 	case <-ctx.Done():
-	}
-
-	// Propagate unexpected send failures immediately. Context cancellations are
-	// handled below so that we return the original ctx.Err() when appropriate.
-	waitErr := group.Wait()
-	if waitErr != nil &&
-		!errors.Is(waitErr, context.Canceled) &&
-		!errors.Is(waitErr, context.DeadlineExceeded) &&
-		status.Code(waitErr) != codes.Canceled &&
-		status.Code(waitErr) != codes.DeadlineExceeded {
-		log.Errorf("Get %s: Send failed: %v", dest.GetPath(), waitErr)
-		return waitErr
 	}
 
 	if ctxErr := ctx.Err(); ctxErr != nil {
@@ -274,6 +266,8 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			}
 		case errors.Is(ctxErr, context.DeadlineExceeded):
 			log.Errorf("Get %s deadline exceeded", dest.GetPath())
+		default:
+			log.Errorf("Get %s: unexpected error: %v", dest.GetPath(), ctxErr)
 		}
 		return ctxErr
 	}
