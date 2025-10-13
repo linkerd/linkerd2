@@ -1245,7 +1245,17 @@ metadata:
 					t.Fatalf("Expected name to be [%s], got [%s]", tt.expectedOwnerName, ownerName)
 				}
 
-				tm, om := metadataAPI.GetRootOwnerKindAndName(context.Background(), &pod.TypeMeta, &pod.ObjectMeta, retry)
+				ownerKind, ownerName = metadataAPI.GetOwnerKindAndName(context.Background(), pod, retry)
+
+				if ownerKind != tt.expectedOwnerKind {
+					t.Fatalf("Expected kind to be [%s], got [%s]", tt.expectedOwnerKind, ownerKind)
+				}
+
+				if ownerName != tt.expectedOwnerName {
+					t.Fatalf("Expected name to be [%s], got [%s]", tt.expectedOwnerName, ownerName)
+				}
+
+				tm, om := metadataAPI.GetRootOwnerKindAndName(context.Background(), &pod.TypeMeta, &pod.ObjectMeta)
 
 				if tm.Kind != tt.expectedRootOwnerKind {
 					t.Fatalf("Expected root kind to be [%s], got [%s]", tt.expectedRootOwnerKind, tm.Kind)

@@ -695,9 +695,9 @@ func (wp *workloadPublisher) updatePod(pod *corev1.Pod) {
 
 		// Fill in ownership.
 		if wp.addr.Pod != nil {
-			ownerType, ownerMeta := wp.metadataAPI.GetRootOwnerKindAndName(context.Background(), &wp.addr.Pod.TypeMeta, &wp.addr.Pod.ObjectMeta, true)
-			wp.addr.OwnerKind = strings.ToLower(ownerType.Kind)
-			wp.addr.OwnerName = ownerMeta.Name
+			ownerKind, ownerName := wp.metadataAPI.GetOwnerKindAndName(context.Background(), wp.addr.Pod, true)
+			wp.addr.OwnerKind = ownerKind
+			wp.addr.OwnerName = ownerName
 		}
 
 		// Compute opaque protocol.
