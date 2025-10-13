@@ -8,7 +8,7 @@ members = [
     "policy-controller/k8s/index",
     "policy-controller/k8s/status",
     "policy-controller/runtime",
-    "policy-test",
+    "policy-test", "tap",
 ]
 
 [profile.release]
@@ -47,5 +47,7 @@ path = "./policy-controller/runtime"
 default-features = false
 
 [workspace.dependencies.linkerd2-proxy-api]
-version = "0.17.0"
-features = ["inbound", "outbound"]
+#version = "0.17.0"
+features = ["inbound", "outbound", "tap"]
+git = "https://github.com/linkerd/linkerd2-proxy-api"
+branch = "sfleen/tap-v2"
