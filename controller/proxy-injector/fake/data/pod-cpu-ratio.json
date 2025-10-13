@@ -21,21 +21,6 @@
     },
     {
         "op": "add",
-        "path": "/metadata/labels/linkerd.io~1proxy-root-parent",
-        "value": "owner-deployment"
-    },
-    {
-        "op": "add",
-        "path": "/metadata/labels/linkerd.io~1proxy-root-parent-group",
-        "value": "apps"
-    },
-    {
-        "op": "add",
-        "path": "/metadata/labels/linkerd.io~1proxy-root-parent-kind",
-        "value": "Deployment"
-    },
-    {
-        "op": "add",
         "path": "/metadata/labels/linkerd.io~1workload-ns",
         "value": "kube-public"
     },

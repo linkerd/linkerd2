@@ -114,11 +114,7 @@ const (
 
 // OwnerRetrieverFunc is a function that returns a pod's owner reference
 // kind and name
-type OwnerRetrieverFunc func(*corev1.Pod) (string, string)
-
-// RootOwnerRetrieverFunc is a function that returns a pod's root owner reference
-// type and metadata
-type RootOwnerRetrieverFunc func(*metav1.TypeMeta, *metav1.ObjectMeta) (*metav1.TypeMeta, *metav1.ObjectMeta)
+type OwnerRetrieverFunc func(*corev1.Pod) (string, string, error)
 
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
@@ -132,10 +128,9 @@ type ResourceConfig struct {
 	// These annotations from the resources's namespace are used as a base.
 	// The resources's annotations will be applied on top of these, which
 	// allows the nsAnnotations to act as a default.
-	nsAnnotations      map[string]string
-	ownerRetriever     OwnerRetrieverFunc
-	rootOwnerRetriever RootOwnerRetrieverFunc
-	origin             Origin
+	nsAnnotations  map[string]string
+	ownerRetriever OwnerRetrieverFunc
+	origin         Origin
 
 	workload struct {
 		obj      runtime.Object
@@ -610,13 +605,6 @@ func (conf *ResourceConfig) WithOwnerRetriever(f OwnerRetrieverFunc) *ResourceCo
 	return conf
 }
 
-// WithRootOwnerRetriever enriches ResourceConfig with a function that allows to retrieve
-// the kind and name of the workload's root owner reference
-func (conf *ResourceConfig) WithRootOwnerRetriever(f RootOwnerRetrieverFunc) *ResourceConfig {
-	conf.rootOwnerRetriever = f
-	return conf
-}
-
 // GetOwnerRef returns a reference to the resource's owner resource, if any
 func (conf *ResourceConfig) GetOwnerRef() *metav1.OwnerReference {
 	return conf.workload.ownerRef
@@ -1030,7 +1018,10 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 		conf.pod.meta = &v.ObjectMeta
 
 		if conf.ownerRetriever != nil {
-			kind, name := conf.ownerRetriever(v)
+			kind, name, err := conf.ownerRetriever(v)
+			if err != nil {
+				return err
+			}
 			conf.workload.ownerRef = &metav1.OwnerReference{Kind: kind, Name: name}
 			switch kind {
 			case k8s.Deployment:
@@ -1046,14 +1037,6 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 			case k8s.StatefulSet:
 				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
 			}
-		}
-		if conf.rootOwnerRetriever != nil {
-			tm, om := conf.rootOwnerRetriever(&v.TypeMeta, &v.ObjectMeta)
-			conf.pod.labels[k8s.ProxyRootParentLabel] = om.Name
-			conf.pod.labels[k8s.ProxyRootParentKindLabel] = tm.Kind
-			conf.pod.labels[k8s.ProxyRootParentGroupLabel] = tm.GroupVersionKind().Group
-
-			conf.GetValues().Proxy.Tracing.Labels[k8s.TracingServiceName] = om.Name + "-linkerd-proxy"
 		}
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		if conf.pod.meta.Annotations == nil {
