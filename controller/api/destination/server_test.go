@@ -228,7 +228,7 @@ func TestGet(t *testing.T) {
 			},
 			waitMessage: fmt.Sprintf("endpoint translator overflow for %s:%d", fullyQualifiedName, port),
 			trigger: func(t *testing.T, srv *server, i int) {
-				addEndpointToSlice(t, srv, fmt.Sprintf("name1-overflow-%d", i), fmt.Sprintf("172.17.0.%d", 201+i))
+				addEndpointToSlice(t, srv, fmt.Sprintf("name1-overflow-%d", i), fmt.Sprintf("172.17.0.%d", i))
 				time.Sleep(10 * time.Millisecond)
 			},
 		})
@@ -245,9 +245,9 @@ func TestGet(t *testing.T) {
 			server:      srv,
 			servicePath: "foo-federated.ns.svc.mycluster.local:80",
 			metricLabels: prometheus.Labels{
-				"service": "ns/foo.ns.svc.cluster.local:80",
+				"service": "foo.ns.svc.cluster.local:80",
 			},
-			waitMessage: "federated endpoint translator overflow for ns/foo.ns.svc.cluster.local:80",
+			waitMessage: "federated endpoint translator overflow for foo.ns.svc.cluster.local:80",
 			prepare: func(t *testing.T, srv *server) {
 				ctx := context.Background()
 				svc := &corev1.Service{
@@ -584,32 +584,18 @@ func TestGetProfiles(t *testing.T) {
 			}
 		}
 
-		profileDeadline := time.Now().Add(10 * time.Second)
-		profileOverflowed := false
-		for time.Now().Before(profileDeadline) {
-			if counterValue(t, metric) > initialOverflow {
-				profileOverflowed = true
-				break
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-		if !profileOverflowed {
-			t.Fatalf("waiting for profile translator overflow for %s:%d", fullyQualifiedName, port)
-		}
-
-		// The translator has invoked the cancel func; manually cancel the stream so
-		// our mock gRPC Send returns just as real gRPC would.
-		stream.Cancel()
-
 		select {
 		case <-errCh:
 		case <-time.After(5 * time.Second):
-			t.Fatal("timed out waiting for GetProfile to return after cancel")
+			t.Fatal("timed out waiting for GetProfile to return after overflow")
+		}
+		if counterValue(t, metric) == initialOverflow {
+			t.Fatal("profile translator should overflow")
 		}
 	})
 
 	t.Run("Cancels blocked stream for endpoint profiles when translator overflows", func(t *testing.T) {
-		t.Skip("Known to fail presently; re-enable when fixed")
+		t.Skip("TODO: fix stream cancelation")
 
 		server := makeServer(t)
 
@@ -679,25 +665,13 @@ func TestGetProfiles(t *testing.T) {
 			}
 		}
 
-		endpointProfileDeadline := time.Now().Add(10 * time.Second)
-		endpointOverflowed := false
-		for time.Now().Before(endpointProfileDeadline) {
-			if counterValue(t, endpointProfileUpdatesQueueOverflowCounter) > initialOverflow {
-				endpointOverflowed = true
-				break
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-		if !endpointOverflowed {
-			t.Fatal("waiting for endpoint profile translator overflow")
-		}
-
-		stream.Cancel()
-
 		select {
 		case <-errCh:
 		case <-time.After(5 * time.Second):
-			t.Fatal("timed out waiting for GetProfile to return after cancel")
+			t.Fatal("timed out waiting for GetProfile to return after overflow")
+		}
+		if counterValue(t, endpointProfileUpdatesQueueOverflowCounter) == initialOverflow {
+			t.Fatal("endpoint profile translator overflow")
 		}
 	})
 
@@ -1561,26 +1535,13 @@ func runEndpointOverflowTest(t *testing.T, sc endpointOverflowScenario) {
 	if err != nil {
 		t.Fatalf("failed to get overflow counter: %v", err)
 	}
-	initialOverflow := counterValue(t, metric)
 
+	initialOverflow := counterValue(t, metric)
 	for i := 0; i < updateQueueCapacity+10; i++ {
 		sc.trigger(t, sc.server, i)
 		if counterValue(t, metric) > initialOverflow {
 			break
 		}
-	}
-
-	overflowDeadline := time.Now().Add(10 * time.Second)
-	overflowed := false
-	for time.Now().Before(overflowDeadline) {
-		if counterValue(t, metric) > initialOverflow {
-			overflowed = true
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if !overflowed {
-		t.Fatalf("waiting for %s", sc.waitMessage)
 	}
 
 	// Wait for Get to finish without unblocking Send so we catch streams that
@@ -1592,6 +1553,9 @@ func runEndpointOverflowTest(t *testing.T, sc endpointOverflowScenario) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("timed out waiting for Get to return after overflow")
+	}
+	if counterValue(t, metric) == initialOverflow {
+		t.Fatalf("%s", sc.waitMessage)
 	}
 
 	stream.Release()
