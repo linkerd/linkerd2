@@ -65,8 +65,8 @@ type federatedServiceSubscriber struct {
 	localTranslators  map[string]*endpointTranslator
 	remoteTranslators map[remoteDiscoveryID]*endpointTranslator
 
-	stream    *synchronizedGetStream
-	endStream chan struct{}
+	messages    chan<- *pb.Update
+	resetStream func()
 }
 
 func newFederatedServiceWatcher(
@@ -107,15 +107,15 @@ func (fsw *federatedServiceWatcher) Subscribe(
 	port uint32,
 	nodeName string,
 	instanceID string,
-	stream pb.Destination_GetServer,
-	endStream chan struct{},
+	messages chan<- *pb.Update,
+	resetStream func(),
 ) error {
 	id := watcher.ServiceID{Namespace: namespace, Name: service}
 	fsw.RLock()
 	if federatedService, ok := fsw.services[id]; ok {
 		fsw.RUnlock()
 		fsw.log.Debugf("Subscribing to federated service %s/%s", namespace, service)
-		federatedService.subscribe(port, nodeName, instanceID, stream, endStream)
+		federatedService.subscribe(port, nodeName, instanceID, messages, resetStream)
 		return nil
 	} else {
 		fsw.RUnlock()
@@ -126,14 +126,14 @@ func (fsw *federatedServiceWatcher) Subscribe(
 func (fsw *federatedServiceWatcher) Unsubscribe(
 	service string,
 	namespace string,
-	stream pb.Destination_GetServer,
+	messages chan<- *pb.Update,
 ) {
 	id := watcher.ServiceID{Namespace: namespace, Name: service}
 	fsw.RLock()
 	if federatedService, ok := fsw.services[id]; ok {
 		fsw.RUnlock()
 		fsw.log.Debugf("Unsubscribing from federated service %s/%s", namespace, service)
-		federatedService.unsubscribe(stream)
+		federatedService.unsubscribe(messages)
 	} else {
 		fsw.RUnlock()
 	}
@@ -273,13 +273,10 @@ func (fs *federatedService) delete() {
 				continue
 			}
 			remoteWatcher.Unsubscribe(id.service, subscriber.port, subscriber.instanceID, translator)
-			translator.Stop()
 		}
 		for localDiscovery, translator := range subscriber.localTranslators {
 			fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID, translator)
-			translator.Stop()
 		}
-		close(subscriber.endStream)
 	}
 }
 
@@ -287,18 +284,15 @@ func (fs *federatedService) subscribe(
 	port uint32,
 	nodeName string,
 	instanceID string,
-	stream pb.Destination_GetServer,
-	endStream chan struct{},
+	messages chan<- *pb.Update,
+	resetStream func(),
 ) {
 	fs.Lock()
 	defer fs.Unlock()
 
-	syncStream := newSyncronizedGetStream(stream, fs.log)
-	syncStream.Start()
-
 	subscriber := federatedServiceSubscriber{
-		stream:            syncStream,
-		endStream:         endStream,
+		messages:          messages,
+		resetStream:       resetStream,
 		remoteTranslators: make(map[remoteDiscoveryID]*endpointTranslator, 0),
 		localTranslators:  make(map[string]*endpointTranslator, 0),
 		port:              port,
@@ -316,21 +310,21 @@ func (fs *federatedService) subscribe(
 }
 
 func (fs *federatedService) unsubscribe(
-	stream pb.Destination_GetServer,
+	messages chan<- *pb.Update,
 ) {
 	fs.Lock()
 	defer fs.Unlock()
 
 	subscribers := make([]federatedServiceSubscriber, 0)
 	for i, subscriber := range fs.subscribers {
-		if subscriber.stream.inner == stream {
+		// Compare channels by their address (they're reference types)
+		if &subscriber.messages == &messages {
 			for id := range subscriber.remoteTranslators {
 				fs.remoteDiscoveryUnsubscribe(&fs.subscribers[i], id)
 			}
 			for localDiscovery := range subscriber.localTranslators {
 				fs.localDiscoveryUnsubscribe(&fs.subscribers[i], localDiscovery)
 			}
-			subscriber.stream.Stop()
 		} else {
 			subscribers = append(subscribers, subscriber)
 		}
@@ -361,17 +355,15 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 		subscriber.nodeName,
 		fs.config.DefaultOpaquePorts,
 		fs.metadataAPI,
-		subscriber.stream,
-		subscriber.endStream,
+		subscriber.messages,
+		subscriber.resetStream,
 		fs.log,
-		fs.config.StreamQueueCapacity,
 	)
 	if err != nil {
 		fs.log.Errorf("Failed to create endpoint translator for remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
 		return
 	}
 
-	translator.Start()
 	subscriber.remoteTranslators[id] = translator
 
 	fs.log.Debugf("Subscribing to remote discovery service %s in cluster %s", id.service, id.cluster)
@@ -395,7 +387,6 @@ func (fs *federatedService) remoteDiscoveryUnsubscribe(
 	fs.log.Debugf("Unsubscribing from remote discovery service %s in cluster %s", id.service, id.cluster)
 	remoteWatcher.Unsubscribe(id.service, subscriber.port, subscriber.instanceID, translator)
 	translator.NoEndpoints(true)
-	translator.DrainAndStop()
 	delete(subscriber.remoteTranslators, id)
 }
 
@@ -416,16 +407,14 @@ func (fs *federatedService) localDiscoverySubscribe(
 		subscriber.nodeName,
 		fs.config.DefaultOpaquePorts,
 		fs.metadataAPI,
-		subscriber.stream,
-		subscriber.endStream,
+		subscriber.messages,
+		subscriber.resetStream,
 		fs.log,
-		fs.config.StreamQueueCapacity,
 	)
 	if err != nil {
 		fs.log.Errorf("Failed to create endpoint translator for %s: %s", localDiscovery, err)
 		return
 	}
-	translator.Start()
 	subscriber.localTranslators[localDiscovery] = translator
 
 	fs.log.Debugf("Subscribing to local discovery service %s", localDiscovery)
@@ -444,7 +433,6 @@ func (fs *federatedService) localDiscoveryUnsubscribe(
 		fs.log.Debugf("Unsubscribing to local discovery service %s", localDiscovery)
 		fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID, translator)
 		translator.NoEndpoints(true)
-		translator.DrainAndStop()
 		delete(subscriber.localTranslators, localDiscovery)
 	}
 }

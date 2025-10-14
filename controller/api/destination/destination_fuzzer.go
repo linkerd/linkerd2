@@ -25,8 +25,6 @@ func FuzzAdd(data []byte) int {
 	}
 	t := &testing.T{}
 	_, translator := makeEndpointTranslator(t)
-	translator.Start()
-	defer translator.Stop()
 	translator.Add(set)
 	translator.Remove(set)
 	return 1
@@ -98,8 +96,6 @@ func FuzzProfileTranslatorUpdate(data []byte) int {
 	if err != nil {
 		return 0
 	}
-	translator.Start()
-	defer translator.Stop()
 	translator.Update(profile)
 	return 1
 }
