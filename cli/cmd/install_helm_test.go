@@ -113,11 +113,6 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, additionalValues m
      "version":"test-proxy-version"
     }
    },
-   "proxyInit":{
-    "image":{
-     "version":"test-proxy-init-version"
-    }
-   },
   "identity":{
     "issuer":{
       "tls":{

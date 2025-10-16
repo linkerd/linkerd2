@@ -37,6 +37,11 @@ jobs:
       contents: read
       packages: write # for docker/login-action
       id-token: write # for cosign
+    services:
+      registry:
+        image: registry:3
+        ports:
+          - 5000:5000
     strategy:
       matrix:
         component:
