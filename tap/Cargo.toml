@@ -5,18 +5,26 @@ edition = "2021"
 license = "Apache-2.0"
 publish = false
 
+[[bin]]
+name = "cli"
+path = "bin/cli.rs"
+
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
+clap = "4"
 linkerd2-proxy-api.workspace = true
 opentelemetry-proto = { version = "=0.30.0", default-features = false, features = ["gen-tonic", "trace"] }
+owo-colors = "4"
 prost = "0.13"
 prost-types = "0.13"
+serde = "1"
+serde_json = "1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tonic = "0.13"
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 tokio-util = "0.7"
-tokio-stream = "0.1"
+tokio-stream = { version = "0.1", features = ["sync"] }
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 jemallocator = "0.5"

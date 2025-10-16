@@ -19,8 +19,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::select;
 use tokio::sync::broadcast::error::RecvError;
-use tokio::sync::{broadcast, mpsc};
-use tokio_stream::wrappers::ReceiverStream;
+use tokio::sync::{broadcast, mpsc, watch};
+use tokio_stream::wrappers::{ReceiverStream, WatchStream};
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
 use tonic::codegen::BoxStream;
@@ -83,7 +83,7 @@ async fn main() -> anyhow::Result<()> {
                         })
                         .collect(),
                 });
-                if client.stream.send(new_match).await.is_err() {
+                if client.stream.send(new_match).is_err() {
                     clients.remove(&batch.client);
                 }
             } else {
@@ -94,9 +94,7 @@ async fn main() -> anyhow::Result<()> {
             }
         } else {
             if let Some(matches) = batch.matches {
-                let (tx, rx) = mpsc::channel(1);
-                tx.try_send(matches.clone())
-                    .expect("First send must succeed");
+                let (tx, rx) = watch::channel(matches.clone());
                 clients.insert(
                     batch.client,
                     MatchStream {
@@ -112,7 +110,7 @@ async fn main() -> anyhow::Result<()> {
                     };
                     let mut client = TapClient::new(channel);
                     let _ = client
-                        .observe_trace(ReceiverStream::new(rx).map(|matches| {
+                        .observe_trace(WatchStream::new(rx).map(|matches| {
                             ObserveTraceRequest {
                                 sample_percent: Some(1.0),
                                 max_samples_per_second: None,
@@ -170,7 +168,7 @@ struct MatchBatch {
 
 struct MatchStream {
     requests: HashMap<u64, Match>,
-    stream: mpsc::Sender<Match>,
+    stream: watch::Sender<Match>,
 }
 
 #[async_trait]
@@ -190,7 +188,7 @@ impl linkerd2_proxy_api::tap::instrument_server::Instrument for TraceReceiver {
             todo!()
         };
         let req_id = self.next_req_id.fetch_add(1, Ordering::Relaxed);
-        if let Err(e) = self
+        if self
             .match_tx
             .send(MatchBatch {
                 client: (),
@@ -198,6 +196,7 @@ impl linkerd2_proxy_api::tap::instrument_server::Instrument for TraceReceiver {
                 matches: Some(matches.r#match.unwrap()),
             })
             .await
+            .is_err()
         {
             token.cancel();
             return Ok(Response::new(Box::pin(tokio_stream::empty())));
