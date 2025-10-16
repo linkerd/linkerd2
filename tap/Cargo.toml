@@ -9,6 +9,10 @@ publish = false
 name = "cli"
 path = "bin/cli.rs"
 
+[[bin]]
+name = "tap"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
@@ -20,6 +24,7 @@ prost = "0.13"
 prost-types = "0.13"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tonic = "0.13"
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }

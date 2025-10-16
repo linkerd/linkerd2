@@ -28,6 +28,7 @@ use tokio_util::sync::CancellationToken;
 use tonic::codegen::BoxStream;
 use tonic::transport::Channel;
 use tonic::{Request, Response, Status};
+use tracing::{debug, info};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -62,9 +63,11 @@ async fn main() -> anyhow::Result<()> {
 
     let mut pods = HashMap::<(), MatchStream>::new();
     while let Some(batch) = match_rx.recv().await {
+        info!("Match batch: {batch:?}");
         if let Some(pod) = pods.get_mut(&batch.pod) {
             if let Some(matches) = batch.matches {
                 if let Some(existing_match) = pod.requests.get_mut(&batch.req_id) {
+                    info!("Updating existing match for {}", batch.req_id);
                     *existing_match = Match::All(Seq {
                         matches: vec![
                             observe_request::Match {
@@ -76,6 +79,7 @@ async fn main() -> anyhow::Result<()> {
                         ],
                     });
                 } else {
+                    info!("Inserting new match for {}", batch.req_id);
                     pod.requests.insert(batch.req_id, matches.clone());
                 }
                 let new_match = pod
@@ -113,6 +117,7 @@ async fn main() -> anyhow::Result<()> {
                     },
                 );
 
+                info!("Spawning pod connection");
                 tokio::spawn(async move {
                     let channel = match Channel::from_static("127.0.0.1:4190").connect().await {
                         Ok(c) => c,
@@ -121,6 +126,7 @@ async fn main() -> anyhow::Result<()> {
                     let mut client = TapClient::new(channel);
                     let _ = client
                         .observe_trace(WatchStream::new(rx).map(|matches| {
+                            info!("Sending tap update: {matches:?}");
                             ObserveTraceRequest {
                                 sample_percent: Some(1.0),
                                 max_samples_per_second: None,
@@ -168,6 +174,7 @@ struct InstrumentHandler {
     next_req_id: AtomicU64,
 }
 
+#[derive(Debug)]
 struct MatchBatch {
     pod: (),
     req_id: String,
@@ -187,12 +194,14 @@ impl linkerd2_proxy_api::tap::instrument_server::Instrument for InstrumentHandle
         &self,
         request: Request<WatchRequest>,
     ) -> Result<Response<Self::WatchStream>, Status> {
+
         let mut rx = self.tx.subscribe();
         let (client_tx, client_rx) = mpsc::channel(100);
 
         let token = CancellationToken::new();
 
         let request = request.into_inner();
+        info!("Got tap request: {request:?}");
         let Some(matches) = request.r#match else {
             todo!()
         };
