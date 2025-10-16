@@ -554,16 +554,22 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		values.Proxy.AccessLog = override
 	}
 
-	if override, ok := labels[k8s.TracingInstanceLabel]; ok {
-		values.Proxy.Tracing.Labels[k8s.TracingServiceName] = override
-	} else if override, ok := labels[k8s.TracingNameLabel]; ok {
-		values.Proxy.Tracing.Labels[k8s.TracingServiceName] = override
-	}
+	if values.Proxy.Tracing != nil {
+		if values.Proxy.Tracing.Labels == nil {
+			values.Proxy.Tracing.Labels = make(map[string]string)
+		}
 
-	for name, value := range annotations {
-		after, found := strings.CutPrefix(name, k8s.TracingSemanticConventionPrefix)
-		if found {
-			values.Proxy.Tracing.Labels[after] = value
+		if override, ok := labels[k8s.TracingInstanceLabel]; ok {
+			values.Proxy.Tracing.Labels[k8s.TracingServiceName] = override
+		} else if override, ok := labels[k8s.TracingNameLabel]; ok {
+			values.Proxy.Tracing.Labels[k8s.TracingServiceName] = override
+		}
+
+		for name, value := range annotations {
+			after, found := strings.CutPrefix(name, k8s.TracingSemanticConventionPrefix)
+			if found {
+				values.Proxy.Tracing.Labels[after] = value
+			}
 		}
 	}
 }
