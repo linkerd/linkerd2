@@ -1189,10 +1189,9 @@ metadata:
 		"test-123",
 		map[uint32]struct{}{},
 		metadataAPI,
-		mockGetServer,
-		nil,
+		mockGetServer.updatesReceived,
+		func() {}, // resetStream - no-op for tests
 		logging.WithField("test", t.Name()),
-		DefaultStreamQueueCapacity,
 	)
 	if err != nil {
 		t.Fatalf("failed to create endpoint translator: %s", err)

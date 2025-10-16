@@ -511,8 +511,6 @@ var (
 func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(remoteGateway1, remoteGateway2))
 		translator.Remove(mkAddressSetForServices(remoteGateway2))
@@ -528,8 +526,6 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 	t.Run("Recovers after emptying address et", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(remoteGateway1))
 		translator.Remove(mkAddressSetForServices(remoteGateway1))
@@ -557,8 +553,6 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(remoteGateway2))
 
@@ -594,8 +588,6 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(remoteGatewayAuthOverride))
 
@@ -622,8 +614,6 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 	t.Run("Does not send TlsIdentity when not present", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(remoteGateway1))
 
@@ -645,8 +635,6 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForPods(t, pod1, pod2))
 		translator.Remove(mkAddressSetForPods(t, pod2))
@@ -662,8 +650,6 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(pod1, pod2, pod3))
 		translator.Remove(mkAddressSetForServices(pod3))
@@ -701,8 +687,6 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslatorWithOpaqueTransport(t, true)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForPods(t, pod1, pod2, pod3))
 
@@ -729,8 +713,6 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslatorWithOpaqueTransport(t, true)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForPods(t, podAdmin, podControl))
 
@@ -751,8 +733,6 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 	t.Run("Sends metric labels with added addresses", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForPods(t, pod1))
 
@@ -784,8 +764,6 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForPods(t, pod1))
 
@@ -811,8 +789,6 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(podOpaque))
 
@@ -829,8 +805,6 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 	t.Run("Sends IPv6 only when pod has both IPv4 and IPv6", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForPods(t, pod1, pod1IPv6))
 
@@ -849,8 +823,6 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 	t.Run("Sends IPv4 only when pod has both IPv4 and IPv6 but the latter in another zone ", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		pod1West1a := pod1
 		pod1West1a.ForZones = []v1.ForZone{
@@ -881,8 +853,6 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForExternalWorkloads(ew1, ew2))
 		translator.Remove(mkAddressSetForExternalWorkloads(ew2))
@@ -898,8 +868,6 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForExternalWorkloads(ew1, ew2, ew3))
 		translator.Remove(mkAddressSetForExternalWorkloads(ew3))
@@ -928,8 +896,6 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 
 	t.Run("Sends metric labels with added addresses", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForExternalWorkloads(ew1))
 
@@ -966,8 +932,6 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForExternalWorkloads(ew1))
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
@@ -992,8 +956,6 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForExternalWorkloads(ewOpaque))
 
@@ -1019,8 +981,6 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslatorWithOpaqueTransport(t, true)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForExternalWorkloads(ewNoProxyPort))
 
@@ -1046,8 +1006,6 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslatorWithOpaqueTransport(t, true)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForExternalWorkloads(ewOverrideProxyPort))
 
@@ -1066,8 +1024,6 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 func TestEndpointTranslatorTopologyAwareFilter(t *testing.T) {
 	t.Run("Sends one update for add and none for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(west1aAddress, west1bAddress))
 		translator.Remove(mkAddressSetForServices(west1bAddress))
@@ -1101,8 +1057,6 @@ func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 	t.Run("Disabled", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 		translator.extEndpointZoneWeights = false
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(addrA, addrB))
 
@@ -1120,8 +1074,6 @@ func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 	t.Run("Applies weights", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 		translator.extEndpointZoneWeights = true
-		translator.Start()
-		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(addrA, addrB))
 
@@ -1140,8 +1092,6 @@ func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 	t.Run("Sends one update for add and none for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 		addressSet := mkAddressSetForServices(AddressOnTest123Node, AddressNotOnTest123Node)
 		addressSet.LocalTrafficPolicy = true
 		translator.Add(addressSet)
@@ -1160,8 +1110,6 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 
 	t.Run("Removes cannot change LocalTrafficPolicy", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
 		addressSet := mkAddressSetForServices(AddressOnTest123Node, AddressNotOnTest123Node)
 		addressSet.LocalTrafficPolicy = true
 		translator.Add(addressSet)
@@ -1187,8 +1135,6 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 // TestConcurrency, to be triggered with `go test -race`, shouldn't report a race condition
 func TestConcurrency(t *testing.T) {
 	_, translator := makeEndpointTranslator(t)
-	translator.Start()
-	defer translator.Stop()
 
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
