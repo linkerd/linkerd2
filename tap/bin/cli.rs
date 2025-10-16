@@ -3,6 +3,7 @@ use clap::Parser;
 use linkerd2_proxy_api::tap::instrument_client::InstrumentClient;
 use linkerd2_proxy_api::tap::observe_request::r#match::{http, Http};
 use linkerd2_proxy_api::tap::observe_request::{r#match, Match};
+use linkerd2_proxy_api::tap::watch_resposne::Kind;
 use linkerd2_proxy_api::tap::{WatchRequest, WatchResposne};
 use opentelemetry_proto::tonic::collector::trace::v1::{
     ExportTraceServiceRequest, ExportTraceServiceResponse,
@@ -10,16 +11,15 @@ use opentelemetry_proto::tonic::collector::trace::v1::{
 use opentelemetry_proto::tonic::common::v1::any_value::Value;
 use opentelemetry_proto::tonic::common::v1::{AnyValue, KeyValue};
 use opentelemetry_proto::tonic::trace::v1::span::SpanKind;
+use opentelemetry_proto::tonic::trace::v1::ResourceSpans;
 use owo_colors::OwoColorize;
+use prost::{DecodeError, Message};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter};
 use std::future::Future;
 use std::io::stdout;
 use std::time::Duration;
-use linkerd2_proxy_api::tap::watch_resposne::Kind;
-use opentelemetry_proto::tonic::trace::v1::ResourceSpans;
-use prost::{DecodeError, Message};
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
@@ -39,21 +39,22 @@ async fn main() -> anyhow::Result<()> {
         tonic::transport::Endpoint::from_static("http://localhost:8080").connect_lazy(),
     );
 
-    let mut stream = client.watch(WatchRequest {
-        id: Uuid::new_v4().to_string(),
-        r#match: Some(Match {
-            r#match: Some(r#match::Match::DestinationLabel(r#match::Label {
-                key: "app".to_string(),
-                value: "voting".to_string(),
-            })),
-        }),
-    }).await?.into_inner();
+    let mut stream = client
+        .watch(WatchRequest {
+            id: Uuid::new_v4().to_string(),
+            r#match: Some(Match {
+                r#match: Some(r#match::Match::DestinationLabel(r#match::Label {
+                    key: "app".to_string(),
+                    value: "voting".to_string(),
+                })),
+            }),
+        })
+        .await?
+        .into_inner();
 
     loop {
         let msg = match stream.message().await {
-            Ok(Some(msg)) => {
-                msg
-            }
+            Ok(Some(msg)) => msg,
             Ok(None) => {
                 println!("Disconnected");
                 break;
@@ -65,17 +66,14 @@ async fn main() -> anyhow::Result<()> {
         };
         let span = match msg.kind {
             None => continue,
-            Some(Kind::Spans(spans)) => {
-                match ResourceSpans::decode(spans.as_slice()) {
-                    Ok(spans) => spans,
-                    Err(e) => {
-                        println!("Failed to decode resource spans: {e:?}");
-                        continue;
-                    }
+            Some(Kind::Spans(spans)) => match ResourceSpans::decode(spans.as_slice()) {
+                Ok(spans) => spans,
+                Err(e) => {
+                    println!("Failed to decode resource spans: {e:?}");
+                    continue;
                 }
-            }
+            },
         };
-
 
         let Some(resource) = span.resource else {
             continue;
@@ -105,8 +103,7 @@ async fn main() -> anyhow::Result<()> {
                     direction: span_attrs.get_string("direction"),
                     method: span_attrs.get_string("http.request.method"),
                     url: span_attrs.get_string("url.full"),
-                    content_length: span_attrs
-                        .try_get_string("http.request.header.content-length"),
+                    content_length: span_attrs.try_get_string("http.request.header.content-length"),
                     status: span_attrs.get_string("http.response.status_code"),
                     user_agent: span_attrs.get_string("user_agent.original"),
                     attrs: &attrs,
@@ -115,7 +112,7 @@ async fn main() -> anyhow::Result<()> {
                 //     let _ = serde_json::to_writer(stdout(), &entry);
                 //     println!();
                 // } else {
-                    println!("{entry:?}");
+                println!("{entry:?}");
                 // }
                 // println!(
                 //     // "{}: {}: {}, latency={:?}, kind={:?}, direction={}, {} {}://{}:{}{}?{} -> {}, attrs={:?}",

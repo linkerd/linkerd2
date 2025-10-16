@@ -5,7 +5,7 @@ use linkerd2_proxy_api::tap::{
     observe_request,
     observe_request::r#match::{Match, Seq},
     tap_client::TapClient,
-    ObserveTraceRequest, TraceMatch, WatchRequest, WatchResposne,
+    ObserveTraceRequest, ObserveTraceResponse, TraceMatch, WatchRequest, WatchResposne,
 };
 use opentelemetry_proto::tonic::collector::trace::v1::trace_service_server::{
     TraceService, TraceServiceServer,
@@ -67,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
         if let Some(pod) = pods.get_mut(&batch.pod) {
             if let Some(matches) = batch.matches {
                 if let Some(existing_match) = pod.requests.get_mut(&batch.req_id) {
-                    info!("Updating existing match for {}", batch.req_id);
+                    info!(id = batch.req_id, "Updating existing match");
                     *existing_match = Match::All(Seq {
                         matches: vec![
                             observe_request::Match {
@@ -79,7 +79,7 @@ async fn main() -> anyhow::Result<()> {
                         ],
                     });
                 } else {
-                    info!("Inserting new match for {}", batch.req_id);
+                    info!(id = batch.req_id, "Inserting new match");
                     pod.requests.insert(batch.req_id, matches.clone());
                 }
                 let new_match = pod
@@ -96,6 +96,7 @@ async fn main() -> anyhow::Result<()> {
                     pods.remove(&batch.pod);
                 }
             } else {
+                info!(id = batch.req_id, "Closing pod connection");
                 pod.requests.remove(&batch.req_id);
                 if pod.requests.is_empty() {
                     pods.remove(&batch.pod);
@@ -117,16 +118,13 @@ async fn main() -> anyhow::Result<()> {
                     },
                 );
 
-                info!("Spawning pod connection");
                 tokio::spawn(async move {
-                    let channel = match Channel::from_static("127.0.0.1:4190").connect().await {
-                        Ok(c) => c,
-                        Err(_) => return,
-                    };
+                    let channel = Channel::from_static("127.0.0.1:4190").connect_lazy();
                     let mut client = TapClient::new(channel);
-                    let _ = client
+                    info!("Connecting to pod");
+                    let a = client
                         .observe_trace(WatchStream::new(rx).map(|matches| {
-                            info!("Sending tap update: {matches:?}");
+                            info!(?matches, "Sending tap update");
                             ObserveTraceRequest {
                                 sample_percent: Some(1.0),
                                 max_samples_per_second: None,
@@ -138,6 +136,15 @@ async fn main() -> anyhow::Result<()> {
                             }
                         }))
                         .await;
+                    match a {
+                        Ok(resp) => {
+                            let resp = resp.into_inner();
+                            info!(?resp, "Pod connection complete");
+                        }
+                        Err(e) => {
+                            info!(status=%e, "Pod connection failed");
+                        }
+                    }
                 });
             }
         }
@@ -194,14 +201,13 @@ impl linkerd2_proxy_api::tap::instrument_server::Instrument for InstrumentHandle
         &self,
         request: Request<WatchRequest>,
     ) -> Result<Response<Self::WatchStream>, Status> {
-
         let mut rx = self.tx.subscribe();
         let (client_tx, client_rx) = mpsc::channel(100);
 
         let token = CancellationToken::new();
 
         let request = request.into_inner();
-        info!("Got tap request: {request:?}");
+        info!(?request, "Got tap request");
         let Some(matches) = request.r#match else {
             todo!()
         };
@@ -221,11 +227,14 @@ impl linkerd2_proxy_api::tap::instrument_server::Instrument for InstrumentHandle
 
         {
             let token = token.clone();
+            let request_id = request.id.clone();
+            let match_tx = self.match_tx.clone();
             tokio::spawn(async move {
                 loop {
                     let res = select! {
                         res = rx.recv() => res,
                         _ = token.cancelled() => break,
+                        _ = client_tx.closed() => break,
                     };
 
                     let mut spans = match res {
@@ -249,7 +258,7 @@ impl linkerd2_proxy_api::tap::instrument_server::Instrument for InstrumentHandle
                                 else {
                                     return false;
                                 };
-                                value.split(',').any(|id| id == request.id)
+                                value.split(',').any(|id| id == request_id)
                             })
                         });
 
@@ -269,9 +278,27 @@ impl linkerd2_proxy_api::tap::instrument_server::Instrument for InstrumentHandle
                         break;
                     }
                 }
+
+                token.cancel();
+                info!(%request_id, "Closing client connection");
+                let _ = match_tx
+                    .send(MatchBatch {
+                        pod: (),
+                        req_id: request_id,
+                        matches: None,
+                    })
+                    .await;
             });
         }
-        let stream = ReceiverStream::new(client_rx);
+
+        let token = token.clone();
+
+        let stream = ReceiverStream::new(client_rx).chain(
+            tokio_stream::once(Ok(WatchResposne::default())).filter(move |_| {
+                token.cancel();
+                false
+            }),
+        );
 
         Ok(Response::new(Box::pin(stream)))
     }
