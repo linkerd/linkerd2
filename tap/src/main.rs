@@ -96,7 +96,11 @@ async fn main() -> anyhow::Result<()> {
                     pods.remove(&batch.pod);
                 }
             } else {
-                info!(id = batch.req_id, "Closing pod connection");
+                info!(
+                    pod = ?batch.pod,
+                    request = batch.req_id,
+                    "Removing pod connection"
+                );
                 pod.requests.remove(&batch.req_id);
                 if pod.requests.is_empty() {
                     pods.remove(&batch.pod);
@@ -113,13 +117,13 @@ async fn main() -> anyhow::Result<()> {
                 pods.insert(
                     batch.pod,
                     MatchStream {
-                        requests: HashMap::from_iter([(batch.req_id, matches.clone())]),
+                        requests: HashMap::from_iter([(batch.req_id.clone(), matches.clone())]),
                         stream: tx,
                     },
                 );
 
                 tokio::spawn(async move {
-                    let channel = Channel::from_static("127.0.0.1:4190").connect_lazy();
+                    let channel = Channel::from_static("http://127.0.0.1:4190").connect_lazy();
                     let mut client = TapClient::new(channel);
                     info!("Connecting to pod");
                     let a = client
@@ -139,10 +143,20 @@ async fn main() -> anyhow::Result<()> {
                     match a {
                         Ok(resp) => {
                             let resp = resp.into_inner();
-                            info!(?resp, "Pod connection complete");
+                            info!(
+                                pod = ?batch.pod,
+                                request = batch.req_id,
+                                ?resp,
+                                "Pod connection complete"
+                            );
                         }
                         Err(e) => {
-                            info!(status=%e, "Pod connection failed");
+                            info!(
+                                pod = ?batch.pod,
+                                request = batch.req_id,
+                                status=%e,
+                                "Pod connection failed"
+                            );
                         }
                     }
                 });
