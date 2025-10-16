@@ -1,22 +1,38 @@
 package trace
 
 import (
-	"contrib.go.opencensus.io/exporter/ocagent"
-	"go.opencensus.io/trace"
+	"context"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
 // InitializeTracing initiates trace, exporter and the sampler
 func InitializeTracing(serviceName string, address string) error {
-	oce, err := ocagent.NewExporter(
-		ocagent.WithInsecure(),
-		ocagent.WithAddress(address),
-		ocagent.WithServiceName(serviceName))
+	ctx := context.Background()
+	ote, err := otlptracegrpc.New(ctx, otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(address))
 	if err != nil {
 		return err
 	}
-	trace.RegisterExporter(oce)
-	trace.ApplyConfig(trace.Config{
-		DefaultSampler: trace.AlwaysSample(),
-	})
+
+	r, err := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceName(serviceName),
+		),
+	)
+	if err != nil {
+		return err
+	}
+
+	traceProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(ote),
+		sdktrace.WithResource(r))
+	otel.SetTracerProvider(traceProvider)
 	return nil
 }

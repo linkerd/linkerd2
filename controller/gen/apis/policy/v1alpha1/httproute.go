@@ -295,9 +295,9 @@ const (
 //
 // Invalid values include:
 //
-// * ":method" - ":" is an invalid character. This means that HTTP/2 pseudo
-//   headers are not currently supported by this type.
-// * "/invalid" - "/" is an invalid character
+//   - ":method" - ":" is an invalid character. This means that HTTP/2 pseudo
+//     headers are not currently supported by this type.
+//   - "/invalid" - "/" is an invalid character
 //
 // +kubebuilder:validation:MinLength=1
 // +kubebuilder:validation:MaxLength=256
@@ -441,11 +441,13 @@ const (
 //
 // ```
 // match:
-//   path:
-//     value: "/foo"
-//   headers:
-//   - name: "version"
-//     value "v1"
+//
+//	path:
+//	  value: "/foo"
+//	headers:
+//	- name: "version"
+//	  value "v1"
+//
 // ```
 type HTTPRouteMatch struct {
 	// Path specifies a HTTP request path matcher. If this field is not
