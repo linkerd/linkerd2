@@ -12,19 +12,20 @@ path = "bin/cli.rs"
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
-clap = "4"
+clap = { version = "4", features = ["derive"] }
 linkerd2-proxy-api.workspace = true
-opentelemetry-proto = { version = "=0.30.0", default-features = false, features = ["gen-tonic", "trace"] }
+opentelemetry-proto = { version = "=0.30.0", default-features = false, features = ["gen-tonic", "trace", "with-serde"] }
 owo-colors = "4"
 prost = "0.13"
 prost-types = "0.13"
-serde = "1"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tonic = "0.13"
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 tokio-util = "0.7"
 tokio-stream = { version = "0.1", features = ["sync"] }
+uuid = { version = "1", features = ["v4"] }
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 jemallocator = "0.5"

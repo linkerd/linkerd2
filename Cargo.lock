@@ -1665,12 +1665,13 @@ dependencies = [
  "tokio-util",
  "tonic",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
 name = "linkerd2-proxy-api"
 version = "0.17.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=sfleen%2Ftap-v2#3d694401e1cb0451db53832e4da607fb901c5736"
+source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=sfleen%2Ftap-v2#f127bae5c204b40e4d9be6e4594e766bacf00680"
 dependencies = [
  "h2",
  "http",
@@ -1874,9 +1875,12 @@ version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e046fd7660710fe5a05e8748e70d9058dc15c94ba914e7c4faa7c728f0e8ddc"
 dependencies = [
+ "base64",
+ "hex",
  "opentelemetry",
  "opentelemetry_sdk",
  "prost",
+ "serde",
  "tonic",
 ]
 
@@ -2989,6 +2993,17 @@ name = "utf8parse"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
+
+[[package]]
+name = "uuid"
+version = "1.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f87b8aa10b915a06587d0dec516c282ff295b475d94abf425d62b57710070a2"
+dependencies = [
+ "getrandom 0.3.3",
+ "js-sys",
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "valuable"
