@@ -240,7 +240,7 @@ impl linkerd2_proxy_api::tap::instrument_server::Instrument for InstrumentHandle
                                 else {
                                     return false;
                                 };
-                                value.contains(&request.id)
+                                value.split(',').any(|id| id == request.id)
                             })
                         });
 
