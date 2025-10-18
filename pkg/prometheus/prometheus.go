@@ -7,8 +7,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
-	"go.opencensus.io/plugin/ocgrpc"
-	"go.opencensus.io/plugin/ochttp"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"google.golang.org/grpc"
 )
 
@@ -116,7 +116,7 @@ func NewGrpcServer(opt ...grpc.ServerOption) *grpc.Server {
 		append([]grpc.ServerOption{
 			grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 			grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-			grpc.StatsHandler(&ocgrpc.ServerHandler{}),
+			grpc.StatsHandler(otelgrpc.NewClientHandler()),
 		}, opt...)...,
 	)
 
@@ -129,13 +129,11 @@ func NewGrpcServer(opt ...grpc.ServerOption) *grpc.Server {
 	return server
 }
 
-// WithTelemetry instruments the HTTP server with prometheus and oc-http handler
+// WithTelemetry instruments the HTTP server with prometheus and otel-http handler
 func WithTelemetry(handler http.Handler) http.Handler {
-	return &ochttp.Handler{
-		Handler: promhttp.InstrumentHandlerDuration(serverLatency,
-			promhttp.InstrumentHandlerResponseSize(serverResponseSize,
-				promhttp.InstrumentHandlerCounter(serverCounter, handler))),
-	}
+	return otelhttp.NewHandler(promhttp.InstrumentHandlerDuration(serverLatency,
+		promhttp.InstrumentHandlerResponseSize(serverResponseSize,
+			promhttp.InstrumentHandlerCounter(serverCounter, handler))), "")
 }
 
 // ClientWithTelemetry instruments the HTTP client with prometheus
