@@ -5,7 +5,7 @@ use linkerd2_proxy_api::tap::{
     observe_request,
     observe_request::r#match::{Match, Seq},
     tap_client::TapClient,
-    ObserveTraceRequest, ObserveTraceResponse, TraceMatch, WatchRequest, WatchResposne,
+    ObserveTraceRequest, TraceMatch, WatchRequest, WatchResposne,
 };
 use opentelemetry_proto::tonic::collector::trace::v1::trace_service_server::{
     TraceService, TraceServiceServer,
@@ -17,7 +17,6 @@ use opentelemetry_proto::tonic::common::v1::{any_value, AnyValue};
 use opentelemetry_proto::tonic::trace::v1::ResourceSpans;
 use prost::Message;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::select;
 use tokio::sync::broadcast::error::RecvError;
@@ -25,6 +24,7 @@ use tokio::sync::{broadcast, mpsc, watch};
 use tokio_stream::wrappers::{ReceiverStream, WatchStream};
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
+use tonic::codec::CompressionEncoding;
 use tonic::codegen::BoxStream;
 use tonic::transport::Channel;
 use tonic::{Request, Response, Status};
@@ -34,7 +34,8 @@ use tracing_subscriber::EnvFilter;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::new("debug"))
+        // .with_env_filter(EnvFilter::new("debug"))
+        .with_env_filter(EnvFilter::new("info"))
         .init();
 
     let (span_tx, _) = broadcast::channel(100);
@@ -44,7 +45,11 @@ async fn main() -> anyhow::Result<()> {
         let tx = span_tx.clone();
         tokio::spawn(
             tonic::transport::Server::builder()
-                .add_service(TraceServiceServer::new(TraceCollector { tx }))
+                .add_service(
+                    TraceServiceServer::new(TraceCollector { tx })
+                        .send_compressed(CompressionEncoding::Gzip)
+                        .accept_compressed(CompressionEncoding::Gzip),
+                )
                 .serve("0.0.0.0:4317".parse().expect("Must parse correctly")),
         );
     }
@@ -55,15 +60,14 @@ async fn main() -> anyhow::Result<()> {
                 .add_service(InstrumentServer::new(InstrumentHandler {
                     tx: span_tx,
                     match_tx,
-                    next_req_id: AtomicU64::new(0),
                 }))
                 .serve("0.0.0.0:8080".parse().expect("Must parse correctly")),
         );
     }
 
-    let mut pods = HashMap::<(), MatchStream>::new();
+    let mut pods = HashMap::<String, MatchStream>::new();
     while let Some(batch) = match_rx.recv().await {
-        info!("Match batch: {batch:?}");
+        // info!(%batch, "");
         if let Some(pod) = pods.get_mut(&batch.pod) {
             if let Some(matches) = batch.matches {
                 if let Some(existing_match) = pod.requests.get_mut(&batch.req_id) {
@@ -106,61 +110,61 @@ async fn main() -> anyhow::Result<()> {
                     pods.remove(&batch.pod);
                 }
             }
-        } else {
-            if let Some(matches) = batch.matches {
-                let (tx, rx) = watch::channel(vec![TraceMatch {
-                    id: batch.req_id.clone(),
-                    r#match: Some(observe_request::Match {
-                        r#match: Some(matches.clone()),
-                    }),
-                }]);
-                pods.insert(
-                    batch.pod,
-                    MatchStream {
-                        requests: HashMap::from_iter([(batch.req_id.clone(), matches.clone())]),
-                        stream: tx,
-                    },
-                );
+        } else if let Some(matches) = batch.matches {
+            let (tx, rx) = watch::channel(vec![TraceMatch {
+                id: batch.req_id.clone(),
+                r#match: Some(observe_request::Match {
+                    r#match: Some(matches.clone()),
+                }),
+            }]);
+            pods.insert(
+                batch.pod.clone(),
+                MatchStream {
+                    requests: HashMap::from_iter([(batch.req_id.clone(), matches.clone())]),
+                    stream: tx,
+                },
+            );
 
-                tokio::spawn(async move {
-                    let channel = Channel::from_static("http://127.0.0.1:4190").connect_lazy();
-                    let mut client = TapClient::new(channel);
-                    info!("Connecting to pod");
-                    let a = client
-                        .observe_trace(WatchStream::new(rx).map(|matches| {
-                            info!(?matches, "Sending tap update");
-                            ObserveTraceRequest {
-                                sample_percent: Some(1.0),
-                                max_samples_per_second: None,
-                                report_interval: Some(
-                                    prost_types::Duration::try_from(Duration::from_secs(1))
-                                        .expect("must convert"),
-                                ),
-                                matches,
-                            }
-                        }))
-                        .await;
-                    match a {
-                        Ok(resp) => {
-                            let resp = resp.into_inner();
-                            info!(
-                                pod = ?batch.pod,
-                                request = batch.req_id,
-                                ?resp,
-                                "Pod connection complete"
-                            );
+            tokio::spawn(async move {
+                let channel = Channel::from_static("http://127.0.0.1:4190").connect_lazy();
+                let mut client = TapClient::new(channel);
+                info!("Connecting to pod");
+                let a = client
+                    .observe_trace(WatchStream::new(rx).map(|matches| {
+                        info!(?matches, "Sending tap update");
+                        ObserveTraceRequest {
+                            sample_percent: Some(1.0),
+                            max_samples_per_second: None,
+                            report_interval: Some(
+                                prost_types::Duration::try_from(Duration::from_secs(1))
+                                    .expect("must convert"),
+                            ),
+                            matches,
                         }
-                        Err(e) => {
-                            info!(
-                                pod = ?batch.pod,
-                                request = batch.req_id,
-                                status=%e,
-                                "Pod connection failed"
-                            );
-                        }
+                    }))
+                    .await;
+                match a {
+                    Ok(resp) => {
+                        let resp = resp.into_inner();
+                        info!(
+                            pod = ?batch.pod,
+                            request = batch.req_id,
+                            ?resp,
+                            "Pod connection complete"
+                        );
                     }
-                });
-            }
+                    Err(e) => {
+                        info!(
+                            pod = ?batch.pod,
+                            request = batch.req_id,
+                            status=%e,
+                            "Pod connection failed"
+                        );
+                    }
+                }
+            });
+        } else {
+            info!(request = batch.req_id, "Ignoring empty request");
         }
     }
 
@@ -178,6 +182,15 @@ impl TraceService for TraceCollector {
         request: Request<ExportTraceServiceRequest>,
     ) -> Result<Response<ExportTraceServiceResponse>, Status> {
         let request = request.into_inner();
+        // for span in &request.resource_spans {
+        //     // debug!("resource attrs: {:?}", span.resource.as_ref().map(|r| &r.attributes));
+        //     for span in &span.scope_spans {
+        //         // debug!("span scope attrs: {:?}", span.scope.as_ref().map(|s| &s.attributes));
+        //         for span in &span.spans {
+        //             debug!("span attrs: {:?}", span.attributes);
+        //         }
+        //     }
+        // }
         for span in request.resource_spans {
             // Ignore errors. No receivers just means no clients are currently connected.
             let _ = self.tx.send(span);
@@ -192,12 +205,11 @@ impl TraceService for TraceCollector {
 struct InstrumentHandler {
     tx: broadcast::Sender<ResourceSpans>,
     match_tx: mpsc::Sender<MatchBatch>,
-    next_req_id: AtomicU64,
 }
 
 #[derive(Debug)]
 struct MatchBatch {
-    pod: (),
+    pod: String,
     req_id: String,
     matches: Option<Match>,
 }
@@ -228,7 +240,7 @@ impl linkerd2_proxy_api::tap::instrument_server::Instrument for InstrumentHandle
         if self
             .match_tx
             .send(MatchBatch {
-                pod: (),
+                pod: "web".to_string(),
                 req_id: request.id.clone(),
                 matches: Some(matches.r#match.unwrap()),
             })
@@ -260,6 +272,8 @@ impl linkerd2_proxy_api::tap::instrument_server::Instrument for InstrumentHandle
                         }
                     };
 
+                    info!("Received {} spans", spans.scope_spans.iter().flat_map(|s| &s.spans).count());
+
                     spans.scope_spans.retain_mut(|spans| {
                         spans.spans.retain(|s| {
                             s.attributes.iter().any(|attr| {
@@ -279,14 +293,18 @@ impl linkerd2_proxy_api::tap::instrument_server::Instrument for InstrumentHandle
                         !spans.spans.is_empty()
                     });
                     if spans.scope_spans.is_empty() {
+                        info!("Ignoring all spans");
                         continue;
                     }
 
-                    if let Err(_) = client_tx
+                    info!("Sending {} spans", spans.scope_spans.iter().flat_map(|s| &s.spans).count());
+
+                    if client_tx
                         .send(Ok(WatchResposne {
                             kind: Some(Kind::Spans(spans.encode_to_vec())),
                         }))
                         .await
+                        .is_err()
                     {
                         token.cancel();
                         break;
@@ -297,7 +315,7 @@ impl linkerd2_proxy_api::tap::instrument_server::Instrument for InstrumentHandle
                 info!(%request_id, "Closing client connection");
                 let _ = match_tx
                     .send(MatchBatch {
-                        pod: (),
+                        pod: "web".to_string(),
                         req_id: request_id,
                         matches: None,
                     })

@@ -26,7 +26,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tonic = "0.13"
+tonic = { version = "0.13", features = ["gzip"] }
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 tokio-util = "0.7"
 tokio-stream = { version = "0.1", features = ["sync"] }

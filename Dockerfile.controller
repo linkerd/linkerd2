@@ -28,6 +28,7 @@ RUN mkdir -p target/bin
 COPY Cargo.toml Cargo.lock .
 COPY policy-controller policy-controller
 RUN cargo new policy-test --lib
+RUN cargo new tap --bin
 ENV CARGO="cargo auditable"
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     just-cargo fetch

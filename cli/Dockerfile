@@ -53,6 +53,7 @@ RUN go build -o "$BIN" -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
 # Used in CI
 FROM scratch AS linux-amd64
 COPY --from=build-linux-amd64 /out/* /
+CMD ["ehco", "foo"]
 
 FROM scratch AS multi-arch
 COPY --from=build-linux-amd64  /out/* /
