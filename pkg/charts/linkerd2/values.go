@@ -338,6 +338,7 @@ type (
 	// sidecar container
 	Identity struct {
 		ExternalCA                    bool              `json:"externalCA"`
+		TemporaryCA                   string            `json:"temporaryCA"`
 		ServiceAccountTokenProjection bool              `json:"serviceAccountTokenProjection"`
 		Issuer                        *Issuer           `json:"issuer"`
 		KubeAPI                       *KubeAPI          `json:"kubeAPI"`

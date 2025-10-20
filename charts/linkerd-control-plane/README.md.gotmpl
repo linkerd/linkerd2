@@ -39,6 +39,17 @@ installed with `identity.externalCA=true`. To use an existing issuer
 certificate, Linkerd should be installed with
 `identity.issuer.scheme=kubernetes.io/tls`.
 
+A lightweight alternative for demos and development is to have the chart
+generate short-lived credentials on your behalf by setting
+`identity.temporaryCA` to a [Go duration
+string](https://pkg.go.dev/time#ParseDuration) such as `24h`. This will create a
+new trust anchor and issuer secret with a validity roughly matching the
+provided duration (rounded up to full days) and automatically enables
+`identity.externalCA`. The chart will emit a `kubernetes.io/tls` secret and
+matching trust-roots ConfigMap that mirror the resources you would prepare when
+running with `identity.externalCA=true`, making it easy to copy them into your
+own automation later.
+
 A more comprehensive description is in the [automatic certificate rotation
 guide](https://linkerd.io/2.12/tasks/automatically-rotating-control-plane-tls-credentials/#a-note-on-third-party-cert-management-solutions).
 

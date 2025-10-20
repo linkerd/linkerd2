@@ -474,6 +474,12 @@ identity:
   # -- If the linkerd-identity-trust-roots ConfigMap has already been created
   externalCA: false
 
+  # -- When set to a Go duration (for example `24h`), generate a temporary
+  # identity certificate authority valid for roughly that duration (rounded up
+  # to full days). This automatically enables `identity.externalCA` and renders
+  # exemplar `kubernetes.io/tls` resources matching the external CA workflow.
+  temporaryCA: ""
+
   # -- Use [Service Account token Volume projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection) for pod validation instead of the default token
   serviceAccountTokenProjection: true
 

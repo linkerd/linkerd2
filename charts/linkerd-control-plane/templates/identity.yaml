@@ -1,4 +1,66 @@
+{{- $temporaryCAEnabled := false -}}
+{{- $temporaryCACert := "" -}}
+{{- $temporaryCAKey := "" -}}
+{{- if .Values.identity }}
+{{- $rawTemporaryCA := .Values.identity.temporaryCA -}}
+{{- $temporaryCADuration := "" -}}
+{{- if kindIs "string" $rawTemporaryCA -}}
+  {{- $temporaryCADuration = trim $rawTemporaryCA -}}
+{{- else if $rawTemporaryCA }}
+  {{- $temporaryCADuration = trim (printf "%v" $rawTemporaryCA) -}}
+{{- end }}
+{{- if ne $temporaryCADuration "" }}
+  {{- $temporaryCAEnabled = true }}
+  {{- if not .Values.identity.issuer }}
+    {{- $_ := set .Values.identity "issuer" (dict) }}
+  {{- end }}
+  {{- if not (.Values.identity.issuer.tls) }}
+    {{- $_ := set .Values.identity.issuer "tls" (dict) }}
+  {{- end }}
+  {{- $nowEpoch := now | unixEpoch | atoi }}
+  {{- $targetEpoch := (now | dateModify $temporaryCADuration) | unixEpoch | atoi }}
+  {{- $seconds := sub $targetEpoch $nowEpoch }}
+  {{- if le $seconds 0 }}
+    {{- fail (printf "identity.temporaryCA must be a positive duration (got %s)" $temporaryCADuration) }}
+  {{- end }}
+  {{- $days := div (add $seconds 86399) 86400 }}
+  {{- if lt $days 1 }}
+    {{- $days = 1 }}
+  {{- end }}
+  {{- $days = int $days }}
+  {{- $_ := set .Values.identity "externalCA" true }}
+  {{- $_ := set .Values.identity.issuer "scheme" "kubernetes.io/tls" }}
+  {{- $trustDomain := default .Values.clusterDomain .Values.identityTrustDomain }}
+  {{- $cn := printf "identity.%s.%s" .Release.Namespace $trustDomain }}
+  {{- $ca := genCA $cn $days }}
+  {{- $temporaryCACert = trim $ca.Cert }}
+  {{- $temporaryCAKey = trim $ca.Key }}
+{{- end }}
+{{- end }}
 {{if .Values.identity -}}
+{{- if $temporaryCAEnabled }}
+---
+###
+### Temporary Identity Issuer Secret (kubernetes.io/tls)
+###
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-identity-issuer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+type: kubernetes.io/tls
+data:
+  tls.crt: {{b64enc $temporaryCACert}}
+  tls.key: {{b64enc $temporaryCAKey}}
+  ca.crt: {{b64enc $temporaryCACert}}
+---
+{{- end }}
 ---
 ###
 ### Identity Controller Service
@@ -20,7 +82,8 @@ data:
   key.pem: {{b64enc (required "Please provide the identity issue private key" .Values.identity.issuer.tls.keyPEM | trim)}}
 ---
 {{- end}}
-{{ if not (.Values.identity.externalCA) -}}
+{{- $useExternalCA := and .Values.identity.externalCA (not $temporaryCAEnabled) -}}
+{{ if not $useExternalCA -}}
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -33,7 +96,12 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
 data:
-  ca-bundle.crt: |-{{.Values.identityTrustAnchorsPEM | trim | nindent 4}}
+  ca-bundle.crt: |-
+{{- if $temporaryCAEnabled }}
+{{ $temporaryCACert | nindent 4 }}
+{{- else }}
+{{ .Values.identityTrustAnchorsPEM | trim | nindent 4 }}
+{{- end }}
 ---
 {{- end}}
 kind: Service
