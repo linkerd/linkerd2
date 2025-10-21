@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 anyhow = "1"
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
-rustls = { version = "0.23.32", default-features = false, features = ["aws-lc-rs"] }
+rustls = { version = "0.23.33", default-features = false, features = ["aws-lc-rs"] }
 
 [dependencies.linkerd-policy-controller-runtime]
 workspace = true
