@@ -253,23 +253,10 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				return nil
 			}),
 
-		flag.NewStringFlag(proxyFlags, "init-image", defaults.ProxyInit.Image.Name, "Linkerd init container image name",
-			func(values *l5dcharts.Values, value string) error {
-				values.ProxyInit.Image.Name = value
-				return nil
-			}),
-
-		flag.NewStringFlag(proxyFlags, "init-image-version", defaults.ProxyInit.Image.Version,
-			"Linkerd init container image version", func(values *l5dcharts.Values, value string) error {
-				values.ProxyInit.Image.Version = value
-				return nil
-			}),
-
 		flag.NewStringFlag(proxyFlags, "image-pull-policy", defaults.ImagePullPolicy,
 			"Docker image pull policy", func(values *l5dcharts.Values, value string) error {
 				values.ImagePullPolicy = value
 				values.Proxy.Image.PullPolicy = value
-				values.ProxyInit.Image.PullPolicy = value
 				values.DebugContainer.Image.PullPolicy = value
 				return nil
 			}),
@@ -409,7 +396,6 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 			values.ControllerImage = cmd.RegistryOverride(values.ControllerImage, value)
 			values.DebugContainer.Image.Name = cmd.RegistryOverride(values.DebugContainer.Image.Name, value)
 			values.Proxy.Image.Name = cmd.RegistryOverride(values.Proxy.Image.Name, value)
-			values.ProxyInit.Image.Name = cmd.RegistryOverride(values.ProxyInit.Image.Name, value)
 			return nil
 		})
 	if reg := os.Getenv(flagspkg.EnvOverrideDockerRegistry); reg != "" {
@@ -430,8 +416,6 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 		proxyFlags.MarkHidden("proxy-image")
 		proxyFlags.MarkHidden("proxy-version")
 		proxyFlags.MarkHidden("image-pull-policy")
-		proxyFlags.MarkHidden("init-image")
-		proxyFlags.MarkHidden("init-image-version")
 	}
 
 	return flags, proxyFlags
@@ -571,10 +555,6 @@ func validateProxyValues(values *l5dcharts.Values) error {
 
 	if values.Proxy.Image.Version != "" && !alphaNumDashDot.MatchString(values.Proxy.Image.Version) {
 		return fmt.Errorf("%s is not a valid version", values.Proxy.Image.Version)
-	}
-
-	if !alphaNumDashDot.MatchString(values.ProxyInit.Image.Version) {
-		return fmt.Errorf("%s is not a valid version", values.ProxyInit.Image.Version)
 	}
 
 	if values.ImagePullPolicy != "Always" && values.ImagePullPolicy != "IfNotPresent" && values.ImagePullPolicy != "Never" {
