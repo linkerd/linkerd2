@@ -52,7 +52,9 @@ controller:
     # -- Enables trace collection and export in the proxy
     enabled: false
     collector:
-      # -- The collector endpoint to send traces to. Required if tracing is enabled
+      # -- The collector endpoint to send traces to. Required if tracing is
+      # enabled. If this is unset and `proxy.tracing.collector.endpoint` is set,
+      # that endpoint will be re-used here.
       endpoint: ""
 # -- enabling this omits the NET_ADMIN capability in the PSP
 # and the proxy-init container when injecting the proxy;
