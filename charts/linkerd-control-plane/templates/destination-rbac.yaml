@@ -12,7 +12,7 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: ["apps"]
-  resources: ["replicasets"]
+  resources: ["replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["batch"]
   resources: ["jobs"]
