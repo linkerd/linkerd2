@@ -77,7 +77,7 @@ plane. The default values displayed in the Flags section below only apply to the
 install command.
 
 The upgrade can be configured by using the --set, --values, --set-string and --set-file flags.
-A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd-control-plane/values.yaml
 `,
 
 		Example: `  # Upgrade CRDs first
