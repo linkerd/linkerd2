@@ -3,4 +3,5 @@ gateway:
 
 enablePodAntiAffinity: true
 
-# nodeAffinity:
+localServiceMirror:
+  replicas: 3
