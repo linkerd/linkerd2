@@ -9,9 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
-	"go.opencensus.io/trace"
 )
 
 type promType string
@@ -51,9 +53,10 @@ func extractSampleValue(sample *model.Sample) uint64 {
 func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {
 	log.Debugf("Query request: %q", query)
 
-	_, span := trace.StartSpan(ctx, "query.prometheus")
+	tracer := otel.GetTracerProvider().Tracer("metrics-api/prometheus")
+	_, span := tracer.Start(ctx, "query.prometheus")
 	defer span.End()
-	span.AddAttributes(trace.StringAttribute("queryString", query))
+	span.SetAttributes(attribute.String("queryString", query))
 
 	if s.prometheusAPI == nil {
 		return nil, ErrNoPrometheusInstance
