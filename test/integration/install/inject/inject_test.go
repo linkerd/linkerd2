@@ -12,7 +12,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -64,7 +63,6 @@ func TestInjectManualParams(t *testing.T) {
 		NoInitContainer:        TestHelper.CNI(),
 		Version:                "proxy-version",
 		Image:                  reg + "/proxy-image",
-		InitImage:              reg + "/init-image",
 		ImagePullPolicy:        "Never",
 		ControlPort:            123,
 		SkipInboundPorts:       "234,345",
@@ -126,8 +124,6 @@ func TestInjectAutoParams(t *testing.T) {
 			EnableDebug:             true,
 			ImagePullPolicy:         "Never",
 			InboundPort:             8882,
-			InitImage:               "init-image",
-			InitImageVersion:        "init-image-version",
 			OutboundPort:            8883,
 			CPULimit:                "160m",
 			CPURequest:              "150m",
@@ -389,13 +385,9 @@ func TestInjectAutoPod(t *testing.T) {
 	initUser := int64(65534)
 	initGroup := int64(65534)
 	seccompProfile := &v1.SeccompProfile{Type: v1.SeccompProfileTypeRuntimeDefault}
-	reg := "cr.l5d.io/linkerd"
-	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
-		reg = override
-	}
 	expectedInitContainer := v1.Container{
-		Name:  k8s.InitContainerName,
-		Image: reg + "/proxy-init:" + version.ProxyInitVersion,
+		Name:    k8s.InitContainerName,
+		Command: []string{"/usr/lib/linkerd/linkerd2-proxy-init"},
 		Args: []string{
 			"--firewall-bin-path", "iptables-nft",
 			"--firewall-save-bin-path", "iptables-nft-save",
@@ -496,6 +488,8 @@ func TestInjectAutoPod(t *testing.T) {
 			}
 			// Removed token volume name from comparison because it contains a random string
 			initContainer.VolumeMounts[1].Name = ""
+			// Expect the init container image to use the proxy container image
+			expectedInitContainer.Image = testutil.GetProxyContainer(pods[0].Spec.Containers).Image
 			if diff := deep.Equal(expectedInitContainer, initContainer); diff != nil {
 				testutil.AnnotatedFatalf(t, "malformed init container", "malformed init container:\n%v", diff)
 			}

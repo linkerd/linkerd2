@@ -225,7 +225,6 @@ type (
 		SkipSubnets         string           `json:"skipSubnets"`
 		LogLevel            string           `json:"logLevel"`
 		LogFormat           string           `json:"logFormat"`
-		Image               *Image           `json:"image"`
 		SAMountPath         *VolumeMountPath `json:"saMountPath"`
 		XTMountPath         *VolumeMountPath `json:"xtMountPath"`
 		/* DEPRECATED: should be removed after stable-2.16.0, left in for bc */
