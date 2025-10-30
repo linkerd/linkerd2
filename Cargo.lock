@@ -556,7 +556,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.0",
 ]
 
 [[package]]
@@ -718,11 +718,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4369c3e046bbeb9c1eadb2a3e954ba7f0fbdbea165c96b7a0e698ac381b736d4"
 dependencies = [
  "delegate",
- "k8s-openapi",
+ "k8s-openapi 0.25.0",
  "kube",
  "once_cell",
  "regex-lite",
- "schemars",
+ "schemars 0.8.22",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -1006,7 +1006,7 @@ dependencies = [
  "hyper",
  "libc",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.0",
  "tokio",
  "tower-service",
  "tracing",
@@ -1058,7 +1058,7 @@ version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "469fb0b9cefa57e3ef31275ee7cacb78f2fdca44e4765491884a2b119d4eb130"
 dependencies = [
- "schemars",
+ "schemars 0.8.22",
  "serde",
 ]
 
@@ -1167,7 +1167,20 @@ checksum = "aa60a41b57ae1a0a071af77dbcf89fc9819cfe66edaf2beeb204c34459dcf0b2"
 dependencies = [
  "base64",
  "chrono",
- "schemars",
+ "schemars 0.8.22",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "k8s-openapi"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d13f06d5326a915becaffabdfab75051b8cdc260c2a5c06c0e90226ede89a692"
+dependencies = [
+ "base64",
+ "chrono",
+ "schemars 1.0.4",
  "serde",
  "serde_json",
 ]
@@ -1178,7 +1191,7 @@ version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "778f98664beaf4c3c11372721e14310d1ae00f5e2d9aabcf8906c881aa4e9f51"
 dependencies = [
- "k8s-openapi",
+ "k8s-openapi 0.25.0",
  "kube-client",
  "kube-core",
  "kube-derive",
@@ -1206,7 +1219,7 @@ dependencies = [
  "hyper-timeout",
  "hyper-util",
  "jsonpath-rust",
- "k8s-openapi",
+ "k8s-openapi 0.25.0",
  "kube-core",
  "pem",
  "rustls",
@@ -1234,8 +1247,8 @@ dependencies = [
  "form_urlencoded",
  "http",
  "json-patch",
- "k8s-openapi",
- "schemars",
+ "k8s-openapi 0.25.0",
+ "schemars 0.8.22",
  "serde",
  "serde-value",
  "serde_json",
@@ -1271,7 +1284,7 @@ dependencies = [
  "hashbrown 0.15.5",
  "hostname",
  "json-patch",
- "k8s-openapi",
+ "k8s-openapi 0.25.0",
  "kube-client",
  "parking_lot",
  "pin-project",
@@ -1300,7 +1313,7 @@ dependencies = [
  "http-body-util",
  "hyper",
  "hyper-util",
- "k8s-openapi",
+ "k8s-openapi 0.25.0",
  "kube-client",
  "kube-core",
  "kube-runtime",
@@ -1420,9 +1433,9 @@ version = "0.1.0"
 dependencies = [
  "gateway-api",
  "ipnet",
- "k8s-openapi",
+ "k8s-openapi 0.26.0",
  "kube",
- "schemars",
+ "schemars 0.8.22",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -1440,7 +1453,7 @@ dependencies = [
  "chrono",
  "futures",
  "http",
- "k8s-openapi",
+ "k8s-openapi 0.26.0",
  "kube",
  "kubert",
  "linkerd-policy-controller-core",
@@ -1489,7 +1502,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "ipnet",
- "k8s-openapi",
+ "k8s-openapi 0.26.0",
  "kube",
  "kubert",
  "linkerd-policy-controller-core",
@@ -1522,7 +1535,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "ipnet",
- "k8s-openapi",
+ "k8s-openapi 0.26.0",
  "kube",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-grpc",
@@ -1531,7 +1544,7 @@ dependencies = [
  "maplit",
  "rand",
  "regex",
- "schemars",
+ "schemars 0.8.22",
  "serde",
  "serde_json",
  "tokio",
@@ -1993,6 +2006,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ref-cast"
+version = "1.0.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f354300ae66f76f1c85c5f84693f0ce81d747e2c3f21a45fef496d89c960bf7d"
+dependencies = [
+ "ref-cast-impl",
+]
+
+[[package]]
+name = "ref-cast-impl"
+version = "1.0.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7186006dcb21920990093f30e3dea63b7d6e977bf1256be20c3563a5db070da"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "regex"
 version = "1.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2057,7 +2090,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2154,6 +2187,18 @@ checksum = "3fbf2ae1b8bc8e02df939598064d22402220cd5bbcca1c76f7d6a310974d5615"
 dependencies = [
  "dyn-clone",
  "schemars_derive",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "schemars"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82d20c4491bc164fa2f6c5d44565947a52ad80b9505d8e36f8d54c27c739fcd0"
+dependencies = [
+ "dyn-clone",
+ "ref-cast",
  "serde",
  "serde_json",
 ]
