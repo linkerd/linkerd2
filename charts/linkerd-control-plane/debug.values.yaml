@@ -2,7 +2,6 @@
 # Linkerd Control Plane Chart - Debug Values
 # =============================================================================
 # This file contains test configurations for debugging and validating
-# the PodMonitor functionality and other chart features.
 #
 # Usage:
 #   helm template . -f debug.values.yaml
@@ -124,7 +123,7 @@ podMonitor:
     metricRelabelings:
       # Drop high cardinality histogram buckets (production optimization)
       - sourceLabels: [le]
-        regex: '0\.005|0\.01|0\.025|0\.05|2\.[0-9]+|3\.[0-9]+|4\.[0-9]+|5\.[0-9]+'
+        regex: '2\.[0-9]+|3\.[0-9]+|4\.[0-9]+|5\.[0-9]+'
         action: drop
 
       # Drop verbose TCP metrics that cause high cardinality
@@ -173,16 +172,3 @@ identityResources:
   memory:
     request: "32Mi"
     limit: "64Mi"
-
-# -----------------------------------------------------------------------------
-# Additional Debug Features
-# -----------------------------------------------------------------------------
-# Add debug annotations to all pods
-podAnnotations: {}
-
-
-# Add debug labels
-podLabels: []
-
-# Common labels for all resources
-commonLabels: []
