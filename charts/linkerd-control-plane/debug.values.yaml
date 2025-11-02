@@ -34,7 +34,6 @@ identity:
 # -----------------------------------------------------------------------------
 # Basic Chart Configuration
 # -----------------------------------------------------------------------------
-linkerdVersion: "dev-test-1.0.0"
 controllerReplicas: 1
 controllerLogLevel: "debug"
 controllerLogFormat: "json"
@@ -49,14 +48,14 @@ enablePodDisruptionBudget: true
 podMonitor:
   # Enable PodMonitor creation
   enabled: true
-  
+
   # Global PodMonitor settings
   scrapeInterval: "15s"
   scrapeTimeout: "10s"
   labels:
     environment: "debug"
     team: "platform"
-    
+
   # -----------------------------------------------------------------------------
   # Controller PodMonitor Configuration
   # -----------------------------------------------------------------------------
@@ -92,7 +91,7 @@ podMonitor:
   # -----------------------------------------------------------------------------
   serviceMirror:
     enabled: true
-    
+
     # Test metricRelabelings for service mirror
     metricRelabelings:
       # Drop error metrics for testing
@@ -103,7 +102,7 @@ podMonitor:
       - sourceLabels: [__name__]
         regex: 'service_mirror_connection_.*_histogram'
         action: drop
-    
+
     # Test additionalRelabelings for service mirror
     additionalRelabelings:
       # Add source cluster information
@@ -120,26 +119,25 @@ podMonitor:
   # -----------------------------------------------------------------------------
   proxy:
     enabled: true
-    
+
     # Test metricRelabelings for proxy (cardinality control)
     metricRelabelings:
       # Drop high cardinality histogram buckets (production optimization)
       - sourceLabels: [le]
         regex: '0\.005|0\.01|0\.025|0\.05|2\.[0-9]+|3\.[0-9]+|4\.[0-9]+|5\.[0-9]+'
         action: drop
-      
+
       # Drop verbose TCP metrics that cause high cardinality
       - sourceLabels: [__name__]
         regex: 'tcp_(read|write)_bytes_total|tcp_connection_.*'
         action: drop
-      
 
     # Test additionalRelabelings for proxy
-    additionalRelabelings:     
+    additionalRelabelings:
       # Clean up temporary labels
       - action: labeldrop
         regex: '__tmp_.*'
-      
+
       # Add deployment information
       - sourceLabels: [__meta_kubernetes_pod_label_pod_template_hash]
         targetLabel: deployment_generation
@@ -180,7 +178,7 @@ identityResources:
 # Additional Debug Features
 # -----------------------------------------------------------------------------
 # Add debug annotations to all pods
-podAnnotations: []
+podAnnotations: {}
 
 
 # Add debug labels
