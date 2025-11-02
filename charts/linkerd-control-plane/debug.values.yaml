@@ -1,0 +1,190 @@
+# =============================================================================
+# Linkerd Control Plane Chart - Debug Values
+# =============================================================================
+# This file contains test configurations for debugging and validating
+# the PodMonitor functionality and other chart features.
+#
+# Usage:
+#   helm template . -f debug.values.yaml
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Required Identity Configuration (Minimal for testing)
+# -----------------------------------------------------------------------------
+identityTrustAnchorsPEM: |
+  -----BEGIN CERTIFICATE-----
+  MIIB8TCCAZegAwIBAgIUHj2...
+  [test certificate]
+  -----END CERTIFICATE-----
+
+identity:
+  issuer:
+    tls:
+      crtPEM: |
+        -----BEGIN CERTIFICATE-----
+        MIIB8TCCAZegAwIBAgIUHj2...
+        [test certificate]
+        -----END CERTIFICATE-----
+      keyPEM: |
+        -----BEGIN PRIVATE KEY-----
+        MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg...
+        [test private key]
+        -----END PRIVATE KEY-----
+
+# -----------------------------------------------------------------------------
+# Basic Chart Configuration
+# -----------------------------------------------------------------------------
+linkerdVersion: "dev-test-1.0.0"
+controllerReplicas: 1
+controllerLogLevel: "debug"
+controllerLogFormat: "json"
+
+# Enable debug features
+enablePprof: true
+enablePodDisruptionBudget: true
+
+# -----------------------------------------------------------------------------
+# PodMonitor Configuration - Main Feature Testing
+# -----------------------------------------------------------------------------
+podMonitor:
+  # Enable PodMonitor creation
+  enabled: true
+  
+  # Global PodMonitor settings
+  scrapeInterval: "15s"
+  scrapeTimeout: "10s"
+  labels:
+    environment: "debug"
+    team: "platform"
+    
+  # -----------------------------------------------------------------------------
+  # Controller PodMonitor Configuration
+  # -----------------------------------------------------------------------------
+  controller:
+    enabled: true
+    
+    # Test metricRelabelings for controller
+    metricRelabelings:
+      # Drop high cardinality histogram buckets
+      - sourceLabels: [__name__]
+        regex: 'controller_.*_duration_seconds_bucket'
+        action: drop
+      # Drop specific controller metrics
+      - sourceLabels: [__name__]
+        regex: 'controller_k8s_api_.*_latency_.*'
+        action: drop
+      # Rename metrics
+
+    # Test additionalRelabelings for controller
+    additionalRelabelings:
+      # Add environment labels
+      - sourceLabels: [__meta_kubernetes_pod_label_environment]
+        targetLabel: environment
+        action: replace
+      # Drop unwanted labels
+      - action: labeldrop
+        regex: 'pod_template_hash|controller_revision_hash'
+      # Add version information
+
+
+  # -----------------------------------------------------------------------------
+  # Service Mirror PodMonitor Configuration
+  # -----------------------------------------------------------------------------
+  serviceMirror:
+    enabled: true
+    
+    # Test metricRelabelings for service mirror
+    metricRelabelings:
+      # Drop error metrics for testing
+      - sourceLabels: [__name__]
+        regex: 'service_mirror_.*_errors_total'
+        action: drop
+      # Drop verbose connection metrics
+      - sourceLabels: [__name__]
+        regex: 'service_mirror_connection_.*_histogram'
+        action: drop
+    
+    # Test additionalRelabelings for service mirror
+    additionalRelabelings:
+      # Add source cluster information
+      - sourceLabels: [__meta_kubernetes_pod_label_source_cluster]
+        targetLabel: source_cluster
+        action: replace
+      # Add destination cluster
+      - sourceLabels: [__meta_kubernetes_pod_label_dest_cluster]
+        targetLabel: dest_cluster
+        action: replace
+
+  # -----------------------------------------------------------------------------
+  # Proxy PodMonitor Configuration (Most Important)
+  # -----------------------------------------------------------------------------
+  proxy:
+    enabled: true
+    
+    # Test metricRelabelings for proxy (cardinality control)
+    metricRelabelings:
+      # Drop high cardinality histogram buckets (production optimization)
+      - sourceLabels: [le]
+        regex: '0\.005|0\.01|0\.025|0\.05|2\.[0-9]+|3\.[0-9]+|4\.[0-9]+|5\.[0-9]+'
+        action: drop
+      
+      # Drop verbose TCP metrics that cause high cardinality
+      - sourceLabels: [__name__]
+        regex: 'tcp_(read|write)_bytes_total|tcp_connection_.*'
+        action: drop
+      
+
+    # Test additionalRelabelings for proxy
+    additionalRelabelings:     
+      # Clean up temporary labels
+      - action: labeldrop
+        regex: '__tmp_.*'
+      
+      # Add deployment information
+      - sourceLabels: [__meta_kubernetes_pod_label_pod_template_hash]
+        targetLabel: deployment_generation
+        action: replace
+
+# -----------------------------------------------------------------------------
+# Test Resource Configurations
+# -----------------------------------------------------------------------------
+proxy:
+  logLevel: "debug"
+  logFormat: "json"
+  resources:
+    cpu:
+      request: "50m"
+      limit: "100m"
+    memory:
+      request: "64Mi"
+      limit: "128Mi"
+
+# Controller resources for testing
+destinationResources:
+  cpu:
+    request: "50m"
+    limit: "100m"
+  memory:
+    request: "64Mi"
+    limit: "128Mi"
+
+identityResources:
+  cpu:
+    request: "25m"
+    limit: "50m"
+  memory:
+    request: "32Mi"
+    limit: "64Mi"
+
+# -----------------------------------------------------------------------------
+# Additional Debug Features
+# -----------------------------------------------------------------------------
+# Add debug annotations to all pods
+podAnnotations: []
+
+
+# Add debug labels
+podLabels: []
+
+# Common labels for all resources
+commonLabels: []
