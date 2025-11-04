@@ -116,6 +116,10 @@ const (
 // kind and name
 type OwnerRetrieverFunc func(*corev1.Pod) (string, string, error)
 
+// RootOwnerRetrieverFunc is a function that returns a pod's most root owner
+// metadata and type
+type RootOwnerRetrieverFunc func(tm *metav1.TypeMeta, om *metav1.ObjectMeta) (*metav1.TypeMeta, *metav1.ObjectMeta)
+
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
 	// These values used for the rendering of the patch may be further
@@ -128,9 +132,10 @@ type ResourceConfig struct {
 	// These annotations from the resources's namespace are used as a base.
 	// The resources's annotations will be applied on top of these, which
 	// allows the nsAnnotations to act as a default.
-	nsAnnotations  map[string]string
-	ownerRetriever OwnerRetrieverFunc
-	origin         Origin
+	nsAnnotations      map[string]string
+	ownerRetriever     OwnerRetrieverFunc
+	rootOwnerRetriever RootOwnerRetrieverFunc
+	origin             Origin
 
 	workload struct {
 		obj      runtime.Object
@@ -611,6 +616,13 @@ func (conf *ResourceConfig) WithOwnerRetriever(f OwnerRetrieverFunc) *ResourceCo
 	return conf
 }
 
+// WithOwnerRetriever enriches ResourceConfig with a function that allows to retrieve
+// the kind and name of the workload's owner reference
+func (conf *ResourceConfig) WithRootOwnerRetriever(f RootOwnerRetrieverFunc) *ResourceConfig {
+	conf.rootOwnerRetriever = f
+	return conf
+}
+
 // GetOwnerRef returns a reference to the resource's owner resource, if any
 func (conf *ResourceConfig) GetOwnerRef() *metav1.OwnerReference {
 	return conf.workload.ownerRef
@@ -963,44 +975,68 @@ func (conf *ResourceConfig) JSONToYAML(bytes []byte) ([]byte, error) {
 func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 	switch v := obj.(type) {
 	case *appsv1.Deployment:
+		gvk := v.TypeMeta.GroupVersionKind()
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyDeploymentLabel] = v.Name
+		conf.pod.labels[k8s.ProxyRootParentLabel] = v.Name
+		conf.pod.labels[k8s.ProxyRootParentGroupLabel] = gvk.Group
+		conf.pod.labels[k8s.ProxyRootParentKindLabel] = gvk.Kind
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *corev1.ReplicationController:
+		gvk := v.TypeMeta.GroupVersionKind()
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyReplicationControllerLabel] = v.Name
+		conf.pod.labels[k8s.ProxyRootParentLabel] = v.Name
+		conf.pod.labels[k8s.ProxyRootParentGroupLabel] = gvk.Group
+		conf.pod.labels[k8s.ProxyRootParentKindLabel] = gvk.Kind
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(v.Spec.Template)
 
 	case *appsv1.ReplicaSet:
+		gvk := v.TypeMeta.GroupVersionKind()
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyReplicaSetLabel] = v.Name
+		conf.pod.labels[k8s.ProxyRootParentLabel] = v.Name
+		conf.pod.labels[k8s.ProxyRootParentGroupLabel] = gvk.Group
+		conf.pod.labels[k8s.ProxyRootParentKindLabel] = gvk.Kind
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *batchv1.Job:
+		gvk := v.TypeMeta.GroupVersionKind()
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyJobLabel] = v.Name
+		conf.pod.labels[k8s.ProxyRootParentLabel] = v.Name
+		conf.pod.labels[k8s.ProxyRootParentGroupLabel] = gvk.Group
+		conf.pod.labels[k8s.ProxyRootParentKindLabel] = gvk.Kind
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *appsv1.DaemonSet:
+		gvk := v.TypeMeta.GroupVersionKind()
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyDaemonSetLabel] = v.Name
+		conf.pod.labels[k8s.ProxyRootParentLabel] = v.Name
+		conf.pod.labels[k8s.ProxyRootParentGroupLabel] = gvk.Group
+		conf.pod.labels[k8s.ProxyRootParentKindLabel] = gvk.Kind
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *appsv1.StatefulSet:
+		gvk := v.TypeMeta.GroupVersionKind()
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyStatefulSetLabel] = v.Name
+		conf.pod.labels[k8s.ProxyRootParentLabel] = v.Name
+		conf.pod.labels[k8s.ProxyRootParentGroupLabel] = gvk.Group
+		conf.pod.labels[k8s.ProxyRootParentKindLabel] = gvk.Kind
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
@@ -1023,26 +1059,29 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 		conf.pod.spec = &v.Spec
 		conf.pod.meta = &v.ObjectMeta
 
-		if conf.ownerRetriever != nil {
-			kind, name, err := conf.ownerRetriever(v)
-			if err != nil {
-				return err
-			}
-			conf.workload.ownerRef = &metav1.OwnerReference{Kind: kind, Name: name}
-			switch kind {
+		if conf.rootOwnerRetriever != nil {
+			tm, om := conf.rootOwnerRetriever(&v.TypeMeta, &v.ObjectMeta)
+
+			switch strings.ToLower(tm.Kind) {
 			case k8s.Deployment:
-				conf.pod.labels[k8s.ProxyDeploymentLabel] = name
+				conf.pod.labels[k8s.ProxyDeploymentLabel] = om.Name
 			case k8s.ReplicationController:
-				conf.pod.labels[k8s.ProxyReplicationControllerLabel] = name
+				conf.pod.labels[k8s.ProxyReplicationControllerLabel] = om.Name
 			case k8s.ReplicaSet:
-				conf.pod.labels[k8s.ProxyReplicaSetLabel] = name
+				conf.pod.labels[k8s.ProxyReplicaSetLabel] = om.Name
 			case k8s.Job:
-				conf.pod.labels[k8s.ProxyJobLabel] = name
+				conf.pod.labels[k8s.ProxyJobLabel] = om.Name
 			case k8s.DaemonSet:
-				conf.pod.labels[k8s.ProxyDaemonSetLabel] = name
+				conf.pod.labels[k8s.ProxyDaemonSetLabel] = om.Name
 			case k8s.StatefulSet:
-				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
+				conf.pod.labels[k8s.ProxyStatefulSetLabel] = om.Name
 			}
+
+			conf.pod.labels[k8s.ProxyRootParentLabel] = om.Name
+			conf.pod.labels[k8s.ProxyRootParentKindLabel] = tm.Kind
+			conf.pod.labels[k8s.ProxyRootParentGroupLabel] = tm.GroupVersionKind().Group
+
+			conf.GetValues().Proxy.Tracing.Labels[k8s.TracingServiceName] = om.Name + "-linkerd-proxy"
 		}
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		if conf.pod.meta.Annotations == nil {

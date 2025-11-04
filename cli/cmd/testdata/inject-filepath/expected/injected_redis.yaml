@@ -17,6 +17,9 @@ spec:
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: redis
         linkerd.io/workload-ns: ""
+        linkerd.io/proxy-root-parent: redis
+        linkerd.io/proxy-root-parent-group: apps
+        linkerd.io/proxy-root-parent-kind: Deployment
     spec:
       containers:
       - env:

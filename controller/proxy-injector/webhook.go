@@ -57,6 +57,7 @@ func Inject(linkerdNamespace string, overrider inject.ValueOverrider) webhook.Ha
 		}
 		resourceConfig := inject.NewResourceConfig(valuesConfig, inject.OriginWebhook, linkerdNamespace).
 			WithOwnerRetriever(ownerRetriever(ctx, api, request.Namespace)).
+			WithRootOwnerRetriever(rootOwnerRetriever(ctx, api, request.Namespace)).
 			WithNsAnnotations(ns.GetAnnotations()).
 			WithKind(request.Kind.Kind)
 
@@ -220,5 +221,12 @@ func ownerRetriever(ctx context.Context, api *k8s.MetadataAPI, ns string) inject
 	return func(p *v1.Pod) (string, string, error) {
 		p.SetNamespace(ns)
 		return api.GetOwnerKindAndName(ctx, p, true)
+	}
+}
+
+func rootOwnerRetriever(ctx context.Context, api *k8s.MetadataAPI, ns string) inject.RootOwnerRetrieverFunc {
+	return func(tm *metav1.TypeMeta, om *metav1.ObjectMeta) (*metav1.TypeMeta, *metav1.ObjectMeta) {
+		om.SetNamespace(ns)
+		return api.GetRootOwnerKindAndName(ctx, tm, om, true)
 	}
 }
