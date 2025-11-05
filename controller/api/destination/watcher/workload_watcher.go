@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
@@ -33,6 +34,7 @@ type (
 		metadataAPI          *k8s.MetadataAPI
 		publishers           map[IPPort]*workloadPublisher
 		metrics              metrics
+		subscriberCount      atomic.Int32
 		log                  *logging.Entry
 		enableEndpointSlices bool
 
@@ -50,6 +52,7 @@ type (
 		addr               Address
 		listeners          []WorkloadUpdateListener
 		metrics            metrics
+		subscriberCount    *atomic.Int32
 		log                *logging.Entry
 
 		mu sync.RWMutex
@@ -76,6 +79,7 @@ func NewWorkloadWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logg
 		metadataAPI:        metadataAPI,
 		publishers:         make(map[IPPort]*workloadPublisher),
 		metrics:            metrics,
+		subscriberCount:    atomic.Int32{},
 		log: log.WithFields(logging.Fields{
 			"component": "workload-watcher",
 		}),
@@ -160,11 +164,7 @@ func (ww *WorkloadWatcher) Unsubscribe(ip string, port Port, listener WorkloadUp
 }
 
 func (ww *WorkloadWatcher) updateSubscriberCount() {
-	totalSubscribers := 0
-	for _, wp := range ww.publishers {
-		totalSubscribers += len(wp.listeners)
-	}
-	ww.metrics.setSubscribers(totalSubscribers)
+	ww.metrics.setSubscribers(int(ww.subscriberCount.Load()))
 }
 
 // addPod is an event handler so it cannot block
@@ -482,7 +482,8 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 				IP:   ip,
 				Port: port,
 			},
-			metrics: ww.metrics,
+			metrics:         ww.metrics,
+			subscriberCount: &ww.subscriberCount,
 			log: ww.log.WithFields(logging.Fields{
 				"component": "workload-publisher",
 				"ip":        ip,
@@ -650,6 +651,7 @@ func (wp *workloadPublisher) subscribe(listener WorkloadUpdateListener) error {
 		return fmt.Errorf("failed to send initial update: %w", err)
 	}
 	wp.metrics.incUpdates()
+	wp.subscriberCount.Add(1)
 	return nil
 }
 
@@ -663,6 +665,7 @@ func (wp *workloadPublisher) unsubscribe(listener WorkloadUpdateListener) {
 			wp.listeners[i] = wp.listeners[n-1]
 			wp.listeners[n-1] = nil
 			wp.listeners = wp.listeners[:n-1]
+			wp.subscriberCount.Add(-1)
 			break
 		}
 	}
