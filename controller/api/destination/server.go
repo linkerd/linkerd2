@@ -156,7 +156,18 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 
 	log.Debugf("Get %s", dest.GetPath())
 
+	messages := make(chan *pb.Update, s.config.StreamQueueCapacity)
+
+	// This channel is only ever closed, so there are multiple readers.
 	streamEnd := make(chan struct{})
+	resetStream := func() {
+		select {
+		case <-streamEnd:
+		default:
+			close(streamEnd)
+		}
+	}
+
 	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
 	if err != nil {
@@ -190,12 +201,12 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		remoteDiscovery := svc.Annotations[labels.RemoteDiscoveryAnnotation]
 		localDiscovery := svc.Annotations[labels.LocalDiscoveryAnnotation]
 		log.Debugf("Federated service discovery, remote:[%s] local:[%s]", remoteDiscovery, localDiscovery)
-		err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, instanceID, stream, streamEnd)
+		err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, instanceID, messages, resetStream)
 		if err != nil {
 			log.Errorf("Failed to subscribe to federated service %q: %s", dest.GetPath(), err)
 			return err
 		}
-		defer s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, stream)
+		defer s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, messages)
 	} else if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
 		log.Debug("Remote discovery service detected")
 		// Remote discovery
@@ -222,16 +233,13 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			token.NodeName,
 			s.config.DefaultOpaquePorts,
 			s.metadataAPI,
-			stream,
-			streamEnd,
+			messages,
+			resetStream,
 			log,
-			s.config.StreamQueueCapacity,
 		)
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
 		}
-		translator.Start()
-		defer translator.Stop()
 
 		err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
 		if err != nil {
@@ -261,16 +269,13 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			token.NodeName,
 			s.config.DefaultOpaquePorts,
 			s.metadataAPI,
-			stream,
-			streamEnd,
+			messages,
+			resetStream,
 			log,
-			s.config.StreamQueueCapacity,
 		)
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
 		}
-		translator.Start()
-		defer translator.Stop()
 
 		err = s.endpoints.Subscribe(service, port, instanceID, translator)
 		if err != nil {
@@ -284,6 +289,21 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		}
 		defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
 	}
+
+	// Spawn a task to send updates. It may block on stream.Send.
+	go func() {
+		for {
+			select {
+			case update := <-messages:
+				if err := stream.Send(update); err != nil {
+					log.Errorf("Failed to send update: %s", err)
+					return
+				}
+			case <-streamEnd:
+				return
+			}
+		}
+	}()
 
 	select {
 	case <-s.shutdown:
