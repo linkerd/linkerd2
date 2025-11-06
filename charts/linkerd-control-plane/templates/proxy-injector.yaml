@@ -187,7 +187,7 @@ spec:
       - {{- include "partials.proxy.volumes.service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{if ((.Values.proxy.tracing).enable) -}}
+      {{if ((.Values.proxy.tracing).enabled) -}}
       - {{- include "partials.proxy.volumes.podinfo" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end }}
 ---
