@@ -86,12 +86,12 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		remoteDiscovery := svc.Annotations[labels.RemoteDiscoveryAnnotation]
 		localDiscovery := svc.Annotations[labels.LocalDiscoveryAnnotation]
 		log.Debugf("Federated service discovery, remote:[%s] local:[%s]", remoteDiscovery, localDiscovery)
-		err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, instanceID, stream, streamEnd)
+		err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, instanceID, queueStream, streamEnd)
 		if err != nil {
 			log.Errorf("Failed to subscribe to federated service %q: %s", dest.GetPath(), err)
 			return err
 		}
-		defer s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, stream)
+		defer s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, queueStream)
 	} else if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
 		log.Debug("Remote discovery service detected")
 		// Remote discovery
