@@ -1081,7 +1081,13 @@ func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
 			conf.pod.labels[k8s.ProxyRootParentKindLabel] = tm.Kind
 			conf.pod.labels[k8s.ProxyRootParentGroupLabel] = tm.GroupVersionKind().Group
 
-			conf.GetValues().Proxy.Tracing.Labels[k8s.TracingServiceName] = om.Name + "-linkerd-proxy"
+			if proxy := conf.GetValues().Proxy; proxy != nil {
+				if tracing := proxy.Tracing; tracing != nil {
+					if tracingLabels := tracing.Labels; tracingLabels != nil {
+						tracingLabels[k8s.TracingServiceName] = om.Name + "-linkerd-proxy"
+					}
+				}
+			}
 		}
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		if conf.pod.meta.Annotations == nil {
