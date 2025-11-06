@@ -320,7 +320,7 @@ lifecycle:
 volumeMounts:
 - mountPath: /var/run/linkerd/identity/end-entity
   name: linkerd-identity-end-entity
-{{- if .Values.proxy.tracing | default (dict) | dig "enable" false }}
+{{- if .Values.proxy.tracing | default (dict) | dig "enabled" false }}
 - mountPath: /var/run/linkerd/podinfo
   name: linkerd-podinfo
 {{- end }}
