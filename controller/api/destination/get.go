@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,6 +39,20 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	log.Debugf("Get %s", dest.GetPath())
 
 	streamEnd := make(chan struct{})
+	updateQueue := newDestinationUpdateQueue(s.config.StreamQueueCapacity, streamEnd, log)
+	queueStream := newQueueingGetServer(stream, updateQueue)
+	forwardErrCh := make(chan error, 1)
+	go func() {
+		forwardErrCh <- updateQueue.Forward(stream.Context(), stream)
+	}()
+	defer func() {
+		updateQueue.Close()
+		if forwardErrCh != nil {
+			if err := <-forwardErrCh; err != nil && !errors.Is(err, context.Canceled) {
+				log.Debugf("Get stream forwarder exited: %v", err)
+			}
+		}
+	}()
 	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
 	if err != nil {
@@ -103,7 +118,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			token.NodeName,
 			s.config.DefaultOpaquePorts,
 			s.metadataAPI,
-			stream,
+			queueStream,
 			streamEnd,
 			log,
 			s.config.StreamQueueCapacity,
@@ -142,7 +157,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			token.NodeName,
 			s.config.DefaultOpaquePorts,
 			s.metadataAPI,
-			stream,
+			queueStream,
 			streamEnd,
 			log,
 			s.config.StreamQueueCapacity,
