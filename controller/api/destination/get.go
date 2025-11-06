@@ -126,9 +126,6 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
 		}
-		translator.Start()
-		defer translator.Stop()
-
 		err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
 		if err != nil {
 			var ise watcher.InvalidService
@@ -165,9 +162,6 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
 		}
-		translator.Start()
-		defer translator.Stop()
-
 		err = s.endpoints.Subscribe(service, port, instanceID, translator)
 		if err != nil {
 			var ise watcher.InvalidService

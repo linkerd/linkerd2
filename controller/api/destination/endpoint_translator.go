@@ -1,9 +1,11 @@
 package destination
 
 import (
+	"errors"
 	"fmt"
 	"net/netip"
 	"reflect"
+	"sync"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -34,6 +36,7 @@ const (
 // into Destination.Get messages.
 type (
 	endpointTranslator struct {
+		mu                  sync.Mutex
 		controllerNS        string
 		identityTrustDomain string
 		nodeTopologyZone    string
@@ -55,21 +58,6 @@ type (
 		endStream          chan struct{}
 		log                *logging.Entry
 		overflowCounter    prometheus.Counter
-
-		updates chan interface{}
-		stop    chan struct{}
-	}
-
-	addUpdate struct {
-		set watcher.AddressSet
-	}
-
-	removeUpdate struct {
-		set watcher.AddressSet
-	}
-
-	noEndpointsUpdate struct {
-		exists bool
 	}
 )
 
@@ -101,6 +89,7 @@ func newEndpointTranslator(
 	log *logging.Entry,
 	queueCapacity int,
 ) (*endpointTranslator, error) {
+	_ = queueCapacity
 	log = log.WithFields(logging.Fields{
 		"component": "endpoint-translator",
 		"service":   service,
@@ -120,136 +109,69 @@ func newEndpointTranslator(
 	}
 
 	return &endpointTranslator{
-		controllerNS,
-		identityTrustDomain,
-		nodeTopologyZone,
-		srcNodeName,
-		defaultOpaquePorts,
-		forceOpaqueTransport,
-		enableH2Upgrade,
-		enableEndpointFiltering,
-		enableIPv6,
-		extEndpointZoneWeights,
-		meshedHTTP2ClientParams,
-
-		availableEndpoints,
-		filteredSnapshot,
-		stream,
-		endStream,
-		log,
-		counter,
-		make(chan interface{}, queueCapacity),
-		make(chan struct{}),
+		controllerNS:            controllerNS,
+		identityTrustDomain:     identityTrustDomain,
+		nodeTopologyZone:        nodeTopologyZone,
+		nodeName:                srcNodeName,
+		defaultOpaquePorts:      defaultOpaquePorts,
+		forceOpaqueTransport:    forceOpaqueTransport,
+		enableH2Upgrade:         enableH2Upgrade,
+		enableEndpointFiltering: enableEndpointFiltering,
+		enableIPv6:              enableIPv6,
+		extEndpointZoneWeights:  extEndpointZoneWeights,
+		meshedHTTP2ClientParams: meshedHTTP2ClientParams,
+		availableEndpoints:      availableEndpoints,
+		filteredSnapshot:        filteredSnapshot,
+		stream:                  stream,
+		endStream:               endStream,
+		log:                     log,
+		overflowCounter:         counter,
 	}, nil
 }
 
 func (et *endpointTranslator) Add(set watcher.AddressSet) {
-	et.enqueueUpdate(&addUpdate{set})
-}
+	et.mu.Lock()
+	defer et.mu.Unlock()
 
-func (et *endpointTranslator) Remove(set watcher.AddressSet) {
-	et.enqueueUpdate(&removeUpdate{set})
-}
-
-func (et *endpointTranslator) NoEndpoints(exists bool) {
-	et.enqueueUpdate(&noEndpointsUpdate{exists})
-}
-
-// Add, Remove, and NoEndpoints are called from a client-go informer callback
-// and therefore must not block. For each of these, we enqueue an update in
-// a channel so that it can be processed asyncronously. To ensure that enqueuing
-// does not block, we first check to see if there is capacity in the buffered
-// channel. If there is not, we drop the update and signal to the stream that
-// it has fallen too far behind and should be closed.
-func (et *endpointTranslator) enqueueUpdate(update interface{}) {
-	select {
-	case et.updates <- update:
-		// Update has been successfully enqueued.
-	default:
-		// We are unable to enqueue because the channel does not have capacity.
-		// The stream has fallen too far behind and should be closed.
-		et.overflowCounter.Inc()
-		select {
-		case <-et.endStream:
-			// The endStream channel has already been closed so no action is
-			// necessary.
-		default:
-			et.log.Error("endpoint update queue full; aborting stream")
-			close(et.endStream)
-		}
-	}
-}
-
-// Start initiates a goroutine which processes update events off of the
-// endpointTranslator's internal queue and sends to the grpc stream as
-// appropriate. The goroutine calls several non-thread-safe functions (including
-// Send) and therefore, Start must not be called more than once.
-func (et *endpointTranslator) Start() {
-	go func() {
-		for {
-			select {
-			case update, ok := <-et.updates:
-				if !ok {
-					return
-				}
-				et.processUpdate(update)
-			case <-et.stop:
-				return
-			}
-		}
-	}()
-}
-
-// Stop terminates the goroutine started by Start.
-func (et *endpointTranslator) Stop() {
-	close(et.stop)
-}
-
-// DrainAndStop closes the updates channel, causing the goroutine started by
-// Start to terminate after processing all remaining updates.
-func (et *endpointTranslator) DrainAndStop() {
-	close(et.updates)
-}
-
-func (et *endpointTranslator) processUpdate(update interface{}) {
-	switch update := update.(type) {
-	case *addUpdate:
-		et.add(update.set)
-	case *removeUpdate:
-		et.remove(update.set)
-	case *noEndpointsUpdate:
-		et.noEndpoints(update.exists)
-	}
-}
-
-func (et *endpointTranslator) add(set watcher.AddressSet) {
 	for id, address := range set.Addresses {
 		et.availableEndpoints.Addresses[id] = address
 	}
-
 	et.availableEndpoints.Labels = set.Labels
 	et.availableEndpoints.LocalTrafficPolicy = set.LocalTrafficPolicy
 
-	et.sendFilteredUpdate()
+	et.sendFilteredUpdateLocked()
 }
 
-func (et *endpointTranslator) remove(set watcher.AddressSet) {
+func (et *endpointTranslator) Remove(set watcher.AddressSet) {
+	et.mu.Lock()
+	defer et.mu.Unlock()
+
 	for id := range set.Addresses {
 		delete(et.availableEndpoints.Addresses, id)
 	}
 
-	et.sendFilteredUpdate()
+	et.sendFilteredUpdateLocked()
 }
 
-func (et *endpointTranslator) noEndpoints(exists bool) {
+func (et *endpointTranslator) NoEndpoints(exists bool) {
+	et.mu.Lock()
+	defer et.mu.Unlock()
+
 	et.log.Debugf("NoEndpoints(%+v)", exists)
 
 	et.availableEndpoints.Addresses = map[watcher.ID]watcher.Address{}
 
-	et.sendFilteredUpdate()
+	et.sendFilteredUpdateLocked()
 }
 
-func (et *endpointTranslator) sendFilteredUpdate() {
+func (et *endpointTranslator) Start() {}
+
+func (et *endpointTranslator) Stop() {}
+
+func (et *endpointTranslator) DrainAndStop() {}
+
+// sendFilteredUpdateLocked assumes the caller holds et.mu.
+func (et *endpointTranslator) sendFilteredUpdateLocked() {
 	filtered := et.filterAddresses()
 	filtered = et.selectAddressFamily(filtered)
 	diffAdd, diffRemove := et.diffEndpoints(filtered)
@@ -265,6 +187,7 @@ func (et *endpointTranslator) sendFilteredUpdate() {
 }
 
 func (et *endpointTranslator) selectAddressFamily(addresses watcher.AddressSet) watcher.AddressSet {
+	// et.mu must be held by the caller.
 	filtered := make(map[watcher.ID]watcher.Address)
 	for id, addr := range addresses.Addresses {
 		if id.IPFamily == corev1.IPv6Protocol && !et.enableIPv6 {
@@ -298,6 +221,7 @@ func (et *endpointTranslator) selectAddressFamily(addresses watcher.AddressSet) 
 // when service.spec.internalTrafficPolicy is set to local, Topology Aware
 // Hints are not used.
 func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
+	// et.mu must be held by the caller.
 	filtered := make(map[watcher.ID]watcher.Address)
 
 	// If endpoint filtering is disabled, return all available addresses.
@@ -381,6 +305,7 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 // the endpoints that match the topological zone, by adding new endpoints and
 // removing stale ones.
 func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watcher.AddressSet, watcher.AddressSet) {
+	// et.mu must be held by the caller.
 	add := make(map[watcher.ID]watcher.Address)
 	remove := make(map[watcher.ID]watcher.Address)
 
@@ -501,9 +426,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 	}}
 
 	et.log.Debugf("Sending destination add: %+v", add)
-	if err := et.stream.Send(add); err != nil {
-		et.log.Debugf("Failed to send address update: %s", err)
-	}
+	et.sendUpdate(add)
 }
 
 func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
@@ -524,9 +447,40 @@ func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 	}}
 
 	et.log.Debugf("Sending destination remove: %+v", remove)
-	if err := et.stream.Send(remove); err != nil {
-		et.log.Debugf("Failed to send address update: %s", err)
+	et.sendUpdate(remove)
+}
+
+func (et *endpointTranslator) sendUpdate(update *pb.Update) {
+	if update == nil {
+		return
 	}
+	if err := et.stream.Send(update); err != nil {
+		if errors.Is(err, errQueueFull) {
+			et.overflowCounter.Inc()
+			et.abortStreamOnOverflow()
+		}
+		if !errors.Is(err, errQueueClosed) {
+			et.log.Debugf("Failed to send address update: %s", err)
+		}
+	}
+}
+
+func (et *endpointTranslator) abortStreamOnOverflow() {
+	if et.endStream == nil {
+		return
+	}
+	select {
+	case <-et.endStream:
+		return
+	default:
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			et.log.Debug("endpoint translator endStream already closed")
+		}
+	}()
+	et.log.Error("endpoint update queue full; aborting stream")
+	close(et.endStream)
 }
 
 func toAddr(address watcher.Address) (*net.TcpAddress, error) {
