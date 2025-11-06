@@ -279,7 +279,15 @@ func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod
 // Currently, this is limited to Jobs (parented by CronJobs) and ReplicaSets (parented by
 // Deployments, StatefulSets, argo Rollouts, etc.). This list may change in the future, but
 // is sufficient for now.
-var indexedParents = map[string]APIResource{"Job": Job, "ReplicaSet": RS}
+var indexedParents = map[string]indexedParent{
+	"Job":        {Job, batchv1.SchemeGroupVersion.WithResource("jobs")},
+	"ReplicaSet": {RS, appsv1.SchemeGroupVersion.WithResource("replicasets")},
+}
+
+type indexedParent struct {
+	resource APIResource
+	gvr      schema.GroupVersionResource
+}
 
 // GetRootOwnerKindAndName returns the resource's owner's type and metadata, using owner
 // references from the Kubernetes API. Parent refs are recursively traversed to find the
@@ -302,10 +310,10 @@ func (api *MetadataAPI) GetRootOwnerKindAndName(ctx context.Context, tm *metav1.
 		log.Warnf("parent ref has no kind: %v", parentRef)
 		return tm, om
 	}
-	resource, ok := indexedParents[parentRef.Kind]
+	indexedResource, ok := indexedParents[parentRef.Kind]
 	if ok {
 		getFromInformer := func() (*metav1.TypeMeta, *metav1.ObjectMeta, error) {
-			parent, err := api.getByNamespace(resource, om.Namespace, parentRef.Name)
+			parent, err := api.getByNamespace(indexedResource.resource, om.Namespace, parentRef.Name)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -320,19 +328,20 @@ func (api *MetadataAPI) GetRootOwnerKindAndName(ctx context.Context, tm *metav1.
 		if err == nil {
 			return parentTm, parentOm
 		}
-		if retry {
-			log.Warnf("failed to retrieve %s from informer %s/%s, resyncing informer cache", parentRef.Kind, om.Namespace, parentRef.Name)
-			// The proxy injnector runs very soon after a resource is created,
-			// which leaves a small possibility that the informer cache hasn't
-			// picked up the new resource yet. If that is the case, we force an
-			// informer resync to pick up the new resource.
-			api.Sync(nil)
-			parentTm, parentOm, err := getFromInformer()
-			if err == nil {
-				return parentTm, parentOm
-			}
-		}
 		log.Warnf("failed to retrieve %s from informer %s/%s: %s", parentRef.Kind, om.Namespace, parentRef.Name, err)
+		if retry {
+			parentFromApi, err := api.client.
+				Resource(indexedResource.gvr).
+				Namespace(om.Namespace).
+				Get(ctx, parentRef.Name, metav1.GetOptions{})
+			if err == nil {
+				if parentFromApi.ObjectMeta.Namespace == "" {
+					parentFromApi.ObjectMeta.Namespace = om.Namespace
+				}
+				return api.GetRootOwnerKindAndName(ctx, &parentFromApi.TypeMeta, &parentFromApi.ObjectMeta, retry)
+			}
+			log.Warnf("failed to retrieve %s from direct API call %s/%s: %s", parentRef.Kind, om.Namespace, parentRef.Name, err)
+		}
 		return &parentType, &metav1.ObjectMeta{Name: parentRef.Name, Namespace: om.Namespace}
 	}
 
