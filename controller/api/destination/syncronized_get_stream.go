@@ -56,12 +56,6 @@ func (s *synchronizedGetStream) Send(update *pb.Update) error {
 	select {
 	case <-s.done:
 		return errStreamStopped
-	default:
-	}
-
-	select {
-	case <-s.done:
-		return errStreamStopped
 	case s.ch <- update:
 		return nil
 	}
