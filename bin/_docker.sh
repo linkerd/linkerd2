@@ -31,7 +31,6 @@ export SUPPORTED_ARCHS=${SUPPORTED_ARCHS:-linux/amd64,linux/arm64}
 # Splitting of DOCKER_IMAGES variable is desired.
 # shellcheck disable=SC2206
 export DOCKER_IMAGES=(${DOCKER_IMAGES:-
-    cli-bin
     controller
     metrics-api
     debug

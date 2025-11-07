@@ -2,9 +2,9 @@
 
 set -eu
 
-# Builds CLI binary for current platform only and outside docker to speed up things. Suitable for local development.
+# Builds CLI binary for current platform. Suitable for local development.
 # Note: This script is used by Brew when running `brew install linkerd`:
-# https://github.com/Homebrew/homebrew-core/pull/36957
+# https://github.com/Homebrew/homebrew-core/blob/main/Formula/l/linkerd.rb
 
 bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
