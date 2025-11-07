@@ -60,3 +60,10 @@ COPY --from=build-linux-arm64  /out/* /
 COPY --from=build-darwin       /out/* /
 COPY --from=build-darwin-arm64 /out/* /
 COPY --from=build-windows      /out/* /
+
+# NB: This image does not contain an `ENTRYPOINT` directive. The filesystem
+# of this image is used as a layer in other images in CI, and the CLI is
+# typically used by operators outside of a cluster.
+#
+# Running `docker build` for this image will likely fail with an error like:
+# "Error response from daemon: No command specified."
