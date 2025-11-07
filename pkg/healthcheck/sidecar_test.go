@@ -108,7 +108,7 @@ func TestHasExistingSidecars(t *testing.T) {
 			podSpec: &corev1.PodSpec{
 				InitContainers: []corev1.Container{
 					{
-						Image: "cr.l5d.io/linkerd/proxy-init:2.2.0",
+						Image: "cr.l5d.io/linkerd/proxy:1.0.0",
 					},
 				},
 			},

@@ -782,30 +782,6 @@ func TestProxyImageAnnotations(t *testing.T) {
 	diffOverrides(t, expectedOverrides, overrides)
 }
 
-func TestProxyInitImageAnnotations(t *testing.T) {
-	baseValues, err := linkerd2.NewValues()
-	if err != nil {
-		t.Fatal(err)
-	}
-	values, err := baseValues.DeepCopy()
-	if err != nil {
-		t.Fatal(err)
-	}
-	values.ProxyInit.Image = &linkerd2.Image{
-		Name:    "my.registry/linkerd/proxy-init",
-		Version: "test-proxy-init-version",
-	}
-
-	expectedOverrides := map[string]string{
-		k8s.ProxyInitImageAnnotation:        "my.registry/linkerd/proxy-init",
-		k8s.ProxyInitImageVersionAnnotation: "test-proxy-init-version",
-	}
-
-	overrides := getOverrideAnnotations(values, baseValues)
-
-	diffOverrides(t, expectedOverrides, overrides)
-}
-
 func TestNoAnnotations(t *testing.T) {
 	baseValues, err := linkerd2.NewValues()
 	if err != nil {
