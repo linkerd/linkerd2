@@ -20,7 +20,6 @@ import (
 type federatedServiceWatcher struct {
 	services       map[watcher.ServiceID]*federatedService
 	k8sAPI         *k8s.API
-	metadataAPI    *k8s.MetadataAPI
 	config         *Config
 	clusterStore   *watcher.ClusterStore
 	localEndpoints *watcher.EndpointsWatcher
@@ -45,7 +44,6 @@ type federatedService struct {
 	remoteDiscovery []remoteDiscoveryID
 	subscribers     []federatedServiceSubscriber
 
-	metadataAPI    *k8s.MetadataAPI
 	config         *Config
 	localEndpoints *watcher.EndpointsWatcher
 	clusterStore   *watcher.ClusterStore
@@ -57,20 +55,19 @@ type federatedService struct {
 // FederatedServiceSubscriber holds all the state for an individual subscriber
 // stream to a federated service.
 type federatedServiceSubscriber struct {
-	port       uint32
-	nodeName   string
-	instanceID string
+	port             uint32
+	nodeName         string
+	nodeTopologyZone string
+	instanceID       string
 
 	localTranslators  map[string]*endpointTranslator
 	remoteTranslators map[remoteDiscoveryID]*endpointTranslator
 
-	events chan<- endpointEvent
-	cancel func()
+	dispatcher *endpointStreamDispatcher
 }
 
 func newFederatedServiceWatcher(
 	k8sAPI *k8s.API,
-	metadataAPI *k8s.MetadataAPI,
 	config *Config,
 	clusterStore *watcher.ClusterStore,
 	localEndpoints *watcher.EndpointsWatcher,
@@ -79,7 +76,6 @@ func newFederatedServiceWatcher(
 	fsw := &federatedServiceWatcher{
 		services:       make(map[watcher.ServiceID]*federatedService),
 		k8sAPI:         k8sAPI,
-		metadataAPI:    metadataAPI,
 		config:         config,
 		clusterStore:   clusterStore,
 		localEndpoints: localEndpoints,
@@ -105,16 +101,16 @@ func (fsw *federatedServiceWatcher) Subscribe(
 	namespace string,
 	port uint32,
 	nodeName string,
+	nodeTopologyZone string,
 	instanceID string,
-	events chan<- endpointEvent,
-	cancel func(),
+	dispatcher *endpointStreamDispatcher,
 ) error {
 	id := watcher.ServiceID{Namespace: namespace, Name: service}
 	fsw.RLock()
 	if federatedService, ok := fsw.services[id]; ok {
 		fsw.RUnlock()
 		fsw.log.Debugf("Subscribing to federated service %s/%s", namespace, service)
-		federatedService.subscribe(port, nodeName, instanceID, events, cancel)
+		federatedService.subscribe(port, nodeName, nodeTopologyZone, instanceID, dispatcher)
 		return nil
 	} else {
 		fsw.RUnlock()
@@ -125,14 +121,14 @@ func (fsw *federatedServiceWatcher) Subscribe(
 func (fsw *federatedServiceWatcher) Unsubscribe(
 	service string,
 	namespace string,
-	events chan<- endpointEvent,
+	dispatcher *endpointStreamDispatcher,
 ) {
 	id := watcher.ServiceID{Namespace: namespace, Name: service}
 	fsw.RLock()
 	if federatedService, ok := fsw.services[id]; ok {
 		fsw.RUnlock()
 		fsw.log.Debugf("Unsubscribing from federated service %s/%s", namespace, service)
-		federatedService.unsubscribe(events)
+		federatedService.unsubscribe(dispatcher)
 	} else {
 		fsw.RUnlock()
 	}
@@ -213,7 +209,6 @@ func (fsw *federatedServiceWatcher) newFederatedService(service *corev1.Service)
 		remoteDiscovery: remoteDiscoveryIDs(service, fsw.log),
 		subscribers:     []federatedServiceSubscriber{},
 
-		metadataAPI:    fsw.metadataAPI,
 		config:         fsw.config,
 		localEndpoints: fsw.localEndpoints,
 		clusterStore:   fsw.clusterStore,
@@ -276,29 +271,26 @@ func (fs *federatedService) delete() {
 		for localDiscovery, translator := range subscriber.localTranslators {
 			fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID, translator)
 		}
-		if subscriber.cancel != nil {
-			subscriber.cancel()
-		}
 	}
 }
 
 func (fs *federatedService) subscribe(
 	port uint32,
 	nodeName string,
+	nodeTopologyZone string,
 	instanceID string,
-	events chan<- endpointEvent,
-	cancel func(),
+	dispatcher *endpointStreamDispatcher,
 ) {
 	fs.Lock()
 	defer fs.Unlock()
 
 	subscriber := federatedServiceSubscriber{
-		events:            events,
-		cancel:            cancel,
+		dispatcher:        dispatcher,
 		remoteTranslators: make(map[remoteDiscoveryID]*endpointTranslator, 0),
 		localTranslators:  make(map[string]*endpointTranslator, 0),
 		port:              port,
 		nodeName:          nodeName,
+		nodeTopologyZone:  nodeTopologyZone,
 		instanceID:        instanceID,
 	}
 	for _, id := range fs.remoteDiscovery {
@@ -311,13 +303,13 @@ func (fs *federatedService) subscribe(
 	fs.subscribers = append(fs.subscribers, subscriber)
 }
 
-func (fs *federatedService) unsubscribe(events chan<- endpointEvent) {
+func (fs *federatedService) unsubscribe(dispatcher *endpointStreamDispatcher) {
 	fs.Lock()
 	defer fs.Unlock()
 
 	subscribers := make([]federatedServiceSubscriber, 0)
 	for i, subscriber := range fs.subscribers {
-		if subscriber.events == events {
+		if subscriber.dispatcher == dispatcher {
 			for id := range subscriber.remoteTranslators {
 				fs.remoteDiscoveryUnsubscribe(&fs.subscribers[i], id)
 			}
@@ -341,23 +333,28 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 		return
 	}
 
-	translator, err := newEndpointTranslator(
-		fs.config.ControllerNS,
-		remoteConfig.TrustDomain,
-		fs.config.ForceOpaqueTransport,
-		fs.config.EnableH2Upgrade,
-		false, // Disable endpoint filtering for remote discovery.
-		fs.config.EnableIPv6,
-		fs.config.ExtEndpointZoneWeights,
-		fs.config.MeshedHttp2ClientParams,
-		fmt.Sprintf("%s.%s.svc.%s:%d", id.service, fs.namespace, remoteConfig.ClusterDomain, subscriber.port),
-		subscriber.nodeName,
-		fs.config.DefaultOpaquePorts,
-		fs.metadataAPI,
-		subscriber.events,
-		subscriber.cancel,
-		fs.log,
-	)
+	if subscriber.dispatcher == nil {
+		fs.log.Errorf("Dispatcher is nil for subscriber to remote discovery service %s", id.service)
+		return
+	}
+
+	serviceName := fmt.Sprintf("%s.%s.svc.%s:%d", id.service, fs.namespace, remoteConfig.ClusterDomain, subscriber.port)
+	cfg := endpointTranslatorConfig{
+		controllerNS:            fs.config.ControllerNS,
+		identityTrustDomain:     remoteConfig.TrustDomain,
+		nodeName:                subscriber.nodeName,
+		nodeTopologyZone:        subscriber.nodeTopologyZone,
+		defaultOpaquePorts:      fs.config.DefaultOpaquePorts,
+		forceOpaqueTransport:    fs.config.ForceOpaqueTransport,
+		enableH2Upgrade:         fs.config.EnableH2Upgrade,
+		enableEndpointFiltering: false,
+		enableIPv6:              fs.config.EnableIPv6,
+		extEndpointZoneWeights:  fs.config.ExtEndpointZoneWeights,
+		meshedHTTP2ClientParams: fs.config.MeshedHttp2ClientParams,
+		service:                 serviceName,
+	}
+
+	translator, err := subscriber.dispatcher.newTranslator(cfg, fs.log)
 	if err != nil {
 		fs.log.Errorf("Failed to create endpoint translator for remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
 		return
@@ -393,23 +390,27 @@ func (fs *federatedService) localDiscoverySubscribe(
 	subscriber *federatedServiceSubscriber,
 	localDiscovery string,
 ) {
-	translator, err := newEndpointTranslator(
-		fs.config.ControllerNS,
-		fs.config.IdentityTrustDomain,
-		fs.config.ForceOpaqueTransport,
-		fs.config.EnableH2Upgrade,
-		true,
-		fs.config.EnableIPv6,
-		fs.config.ExtEndpointZoneWeights,
-		fs.config.MeshedHttp2ClientParams,
-		localDiscovery,
-		subscriber.nodeName,
-		fs.config.DefaultOpaquePorts,
-		fs.metadataAPI,
-		subscriber.events,
-		subscriber.cancel,
-		fs.log,
-	)
+	if subscriber.dispatcher == nil {
+		fs.log.Errorf("Dispatcher is nil for subscriber to local discovery service %s", localDiscovery)
+		return
+	}
+
+	cfg := endpointTranslatorConfig{
+		controllerNS:            fs.config.ControllerNS,
+		identityTrustDomain:     fs.config.IdentityTrustDomain,
+		nodeName:                subscriber.nodeName,
+		nodeTopologyZone:        subscriber.nodeTopologyZone,
+		defaultOpaquePorts:      fs.config.DefaultOpaquePorts,
+		forceOpaqueTransport:    fs.config.ForceOpaqueTransport,
+		enableH2Upgrade:         fs.config.EnableH2Upgrade,
+		enableEndpointFiltering: true,
+		enableIPv6:              fs.config.EnableIPv6,
+		extEndpointZoneWeights:  fs.config.ExtEndpointZoneWeights,
+		meshedHTTP2ClientParams: fs.config.MeshedHttp2ClientParams,
+		service:                 localDiscovery,
+	}
+
+	translator, err := subscriber.dispatcher.newTranslator(cfg, fs.log)
 	if err != nil {
 		fs.log.Errorf("Failed to create endpoint translator for %s: %s", localDiscovery, err)
 		return

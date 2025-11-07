@@ -24,14 +24,15 @@ func TestFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	events := make(chan endpointEvent, DefaultStreamQueueCapacity)
-	startTestEventDispatcher(t, events, mockGetServer.updatesReceived)
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 	t.Cleanup(func() {
-		close(events)
+		dispatcher.close()
 	})
 
-	cancel := func() {}
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", events, cancel)
+	if err := fsw.Subscribe("bb-federated", "test", 8080, "node", "", "", dispatcher); err != nil {
+		t.Fatalf("subscribe failed: %s", err)
+	}
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -47,14 +48,15 @@ func TestRemoteJoinFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	events := make(chan endpointEvent, DefaultStreamQueueCapacity)
-	startTestEventDispatcher(t, events, mockGetServer.updatesReceived)
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 	t.Cleanup(func() {
-		close(events)
+		dispatcher.close()
 	})
 
-	cancel := func() {}
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", events, cancel)
+	if err := fsw.Subscribe("bb-federated", "test", 8080, "node", "", "", dispatcher); err != nil {
+		t.Fatalf("subscribe failed: %s", err)
+	}
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -81,14 +83,15 @@ func TestRemoteLeaveFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	events := make(chan endpointEvent, DefaultStreamQueueCapacity)
-	startTestEventDispatcher(t, events, mockGetServer.updatesReceived)
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 	t.Cleanup(func() {
-		close(events)
+		dispatcher.close()
 	})
 
-	cancel := func() {}
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", events, cancel)
+	if err := fsw.Subscribe("bb-federated", "test", 8080, "node", "", "", dispatcher); err != nil {
+		t.Fatalf("subscribe failed: %s", err)
+	}
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -115,14 +118,15 @@ func TestLocalLeaveFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	events := make(chan endpointEvent, DefaultStreamQueueCapacity)
-	startTestEventDispatcher(t, events, mockGetServer.updatesReceived)
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 	t.Cleanup(func() {
-		close(events)
+		dispatcher.close()
 	})
 
-	cancel := func() {}
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", events, cancel)
+	if err := fsw.Subscribe("bb-federated", "test", 8080, "node", "", "", dispatcher); err != nil {
+		t.Fatalf("subscribe failed: %s", err)
+	}
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -175,7 +179,7 @@ func mockFederatedServiceWatcher(t *testing.T) (*federatedServiceWatcher, error)
 	if err != nil {
 		return nil, fmt.Errorf("NewClusterStoreWithDecoder returned an error: %w", err)
 	}
-	fsw, err := newFederatedServiceWatcher(k8sAPI, metadataAPI, &Config{StreamQueueCapacity: DefaultStreamQueueCapacity}, clusterStore, localEndpoints, logging.WithField("test", t.Name()))
+	fsw, err := newFederatedServiceWatcher(k8sAPI, &Config{StreamQueueCapacity: DefaultStreamQueueCapacity}, clusterStore, localEndpoints, logging.WithField("test", t.Name()))
 	if err != nil {
 		return nil, fmt.Errorf("newFederatedServiceWatcher returned an error: %w", err)
 	}

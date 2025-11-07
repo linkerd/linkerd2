@@ -98,7 +98,7 @@ func NewServer(
 	if err != nil {
 		return nil, err
 	}
-	federatedServices, err := newFederatedServiceWatcher(k8sAPI, metadataAPI, &config, clusterStore, endpoints, log)
+	federatedServices, err := newFederatedServiceWatcher(k8sAPI, &config, clusterStore, endpoints, log)
 	if err != nil {
 		return nil, err
 	}

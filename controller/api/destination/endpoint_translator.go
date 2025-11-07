@@ -6,7 +6,6 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	logging "github.com/sirupsen/logrus"
@@ -41,6 +40,7 @@ type (
 		extEndpointZoneWeights  bool
 
 		meshedHTTP2ClientParams *pb.Http2ClientParams
+		service                 string
 	}
 
 	endpointTranslatorState struct {
@@ -50,11 +50,10 @@ type (
 	}
 
 	endpointTranslator struct {
-		cfg    endpointTranslatorConfig
-		state  endpointTranslatorState
-		log    *logging.Entry
-		events chan<- endpointEvent
-		cancel func()
+		cfg        endpointTranslatorConfig
+		state      endpointTranslatorState
+		log        *logging.Entry
+		dispatcher *endpointStreamDispatcher
 
 		overflowCounter prometheus.Counter
 	}
@@ -86,52 +85,24 @@ var updatesQueueOverflowCounter = promauto.NewCounterVec(
 )
 
 func newEndpointTranslator(
-	controllerNS string,
-	identityTrustDomain string,
-	forceOpaqueTransport,
-	enableH2Upgrade,
-	enableEndpointFiltering,
-	enableIPv6,
-	extEndpointZoneWeights bool,
-	meshedHTTP2ClientParams *pb.Http2ClientParams,
-	service string,
-	srcNodeName string,
-	defaultOpaquePorts map[uint32]struct{},
-	k8sAPI *k8s.MetadataAPI,
-	events chan<- endpointEvent,
-	cancel func(),
+	cfg endpointTranslatorConfig,
+	dispatcher *endpointStreamDispatcher,
 	log *logging.Entry,
 ) (*endpointTranslator, error) {
+	if dispatcher == nil {
+		return nil, fmt.Errorf("endpoint translator requires a dispatcher")
+	}
 	log = log.WithFields(logging.Fields{
 		"component": "endpoint-translator",
-		"service":   service,
+		"service":   cfg.service,
 	})
 
-	nodeTopologyZone, err := getNodeTopologyZone(k8sAPI, srcNodeName)
-	if err != nil {
-		log.Errorf("Failed to get node topology zone for node %s: %s", srcNodeName, err)
-	}
 	availableEndpoints := newEmptyAddressSet()
-
 	filteredSnapshot := newEmptyAddressSet()
 
-	counter, err := updatesQueueOverflowCounter.GetMetricWith(prometheus.Labels{"service": service})
+	counter, err := updatesQueueOverflowCounter.GetMetricWith(prometheus.Labels{"service": cfg.service})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create updates queue overflow counter: %w", err)
-	}
-
-	cfg := endpointTranslatorConfig{
-		controllerNS:            controllerNS,
-		identityTrustDomain:     identityTrustDomain,
-		nodeName:                srcNodeName,
-		nodeTopologyZone:        nodeTopologyZone,
-		defaultOpaquePorts:      defaultOpaquePorts,
-		forceOpaqueTransport:    forceOpaqueTransport,
-		enableH2Upgrade:         enableH2Upgrade,
-		enableEndpointFiltering: enableEndpointFiltering,
-		enableIPv6:              enableIPv6,
-		extEndpointZoneWeights:  extEndpointZoneWeights,
-		meshedHTTP2ClientParams: meshedHTTP2ClientParams,
 	}
 
 	return &endpointTranslator{
@@ -141,8 +112,7 @@ func newEndpointTranslator(
 			filteredSnapshot:   filteredSnapshot,
 		},
 		log:             log,
-		events:          events,
-		cancel:          cancel,
+		dispatcher:      dispatcher,
 		overflowCounter: counter,
 	}, nil
 }
@@ -228,28 +198,11 @@ func (et *endpointTranslator) buildFilteredUpdatesLocked() []*pb.Update {
 	return updates
 }
 
-func (et *endpointTranslator) handleEvent(evt endpointEvent) []*pb.Update {
-	switch evt.typ {
-	case endpointEventAdd:
-		return et.processAdd(evt.set)
-	case endpointEventRemove:
-		return et.processRemove(evt.set)
-	case endpointEventNoEndpoints:
-		return et.processNoEndpoints(evt.exists)
-	default:
-		return nil
-	}
-}
-
 func (et *endpointTranslator) enqueueEvent(evt endpointEvent) {
-	select {
-	case et.events <- evt:
-	default:
-		et.overflowCounter.Inc()
-		if et.cancel != nil {
-			et.cancel()
-		}
+	if et.dispatcher == nil {
+		return
 	}
+	et.dispatcher.enqueue(evt, et.overflowCounter)
 }
 
 func copyAddressSet(set watcher.AddressSet) watcher.AddressSet {

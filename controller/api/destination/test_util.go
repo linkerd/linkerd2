@@ -1062,7 +1062,7 @@ spec:
 		t.Fatalf("can't create cluster store: %s", err)
 	}
 
-	federatedServices, err := newFederatedServiceWatcher(k8sAPI, metadataAPI, &Config{StreamQueueCapacity: DefaultStreamQueueCapacity}, clusterStore, endpoints, log)
+	federatedServices, err := newFederatedServiceWatcher(k8sAPI, &Config{StreamQueueCapacity: DefaultStreamQueueCapacity}, clusterStore, endpoints, log)
 	if err != nil {
 		t.Fatalf("can't create federated service watcher: %s", err)
 	}
@@ -1170,43 +1170,55 @@ metadata:
 	}
 	metadataAPI.Sync(nil)
 
+	nodeZone, err := getNodeTopologyZone(metadataAPI, "test-123")
+	if err != nil {
+		t.Fatalf("Failed to get node zone: %s", err)
+	}
+
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	events := make(chan endpointEvent, DefaultStreamQueueCapacity)
-	translator, err := newEndpointTranslator(
-		"linkerd",
-		"trust.domain",
-		forceOpaqueTransport,
-		true,  // enableH2Upgrade
-		true,  // enableEndpointFiltering
-		true,  // enableIPv6
-		false, // extEndpointZoneWeights
-		nil,   // meshedHttp2ClientParams
-		"service-name.service-ns",
-		"test-123",
-		map[uint32]struct{}{},
-		metadataAPI,
-		events,
-		nil,
-		logging.WithField("test", t.Name()),
-	)
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	cfg := endpointTranslatorConfig{
+		controllerNS:            "linkerd",
+		identityTrustDomain:     "trust.domain",
+		nodeName:                "test-123",
+		nodeTopologyZone:        nodeZone,
+		defaultOpaquePorts:      map[uint32]struct{}{},
+		forceOpaqueTransport:    forceOpaqueTransport,
+		enableH2Upgrade:         true,
+		enableEndpointFiltering: true,
+		enableIPv6:              true,
+		extEndpointZoneWeights:  false,
+		meshedHTTP2ClientParams: nil,
+		service:                 "service-name.service-ns",
+	}
+	translator, err := dispatcher.newTranslator(cfg, logging.WithField("test", t.Name()))
 	if err != nil {
 		t.Fatalf("failed to create endpoint translator: %s", err)
 	}
-	startTestEventDispatcher(t, events, mockGetServer.updatesReceived)
+	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 	t.Cleanup(func() {
-		close(events)
+		dispatcher.close()
 	})
 	return mockGetServer, translator
 }
 
-func startTestEventDispatcher(t *testing.T, events chan endpointEvent, updates chan<- *pb.Update) {
+func startTestEventDispatcher(t *testing.T, dispatcher *endpointStreamDispatcher, updates chan<- *pb.Update) {
 	t.Helper()
 	go func() {
-		for evt := range events {
+		for evt := range dispatcher.channel() {
 			if evt.translator == nil {
 				continue
 			}
-			for _, update := range evt.translator.handleEvent(evt) {
+			var msgs []*pb.Update
+			switch evt.typ {
+			case endpointEventAdd:
+				msgs = evt.translator.processAdd(evt.set)
+			case endpointEventRemove:
+				msgs = evt.translator.processRemove(evt.set)
+			case endpointEventNoEndpoints:
+				msgs = evt.translator.processNoEndpoints(evt.exists)
+			}
+			for _, update := range msgs {
 				updates <- update
 			}
 		}

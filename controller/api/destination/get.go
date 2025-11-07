@@ -66,9 +66,10 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		return status.Errorf(codes.Internal, "Failed to get service %s", dest.GetPath())
 	}
 
-	// The event channel allows watchers to enqueue endpoint events for this stream.
-	events := make(chan endpointEvent, s.config.StreamQueueCapacity)
-	defer close(events)
+	nodeTopologyZone, err := getNodeTopologyZone(s.metadataAPI, token.NodeName)
+	if err != nil {
+		log.Errorf("Failed to get node topology zone for node %s: %s", token.NodeName, err)
+	}
 
 	// We pass a reset handle to the translators so that they can abort the
 	// stream if the update queue is over capacity.
@@ -78,19 +79,28 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		resetOnce.Do(func() { close(resetCh) })
 	}
 
+	dispatcher := newEndpointStreamDispatcher(s.config.StreamQueueCapacity, reset)
+	defer dispatcher.close()
+
 	// Send updates on a dedicated task so that Send may block. This task
 	// processes queued endpoint events, builds protobuf updates, and forwards
 	// them to the client.
 	go func() {
-		for {
-			evt, ok := <-events
-			if !ok {
-				return
-			}
+		for evt := range dispatcher.channel() {
 			if evt.translator == nil {
 				continue
 			}
-			updates := evt.translator.handleEvent(evt)
+
+			var updates []*pb.Update
+			switch evt.typ {
+			case endpointEventAdd:
+				updates = evt.translator.processAdd(evt.set)
+			case endpointEventRemove:
+				updates = evt.translator.processRemove(evt.set)
+			case endpointEventNoEndpoints:
+				updates = evt.translator.processNoEndpoints(evt.exists)
+			}
+
 			for _, update := range updates {
 				if err := stream.Send(update); err != nil {
 					log.Debugf("Failed to send update for %s: %s", dest.GetPath(), err)
@@ -105,12 +115,12 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		remoteDiscovery := svc.Annotations[labels.RemoteDiscoveryAnnotation]
 		localDiscovery := svc.Annotations[labels.LocalDiscoveryAnnotation]
 		log.Debugf("Federated service discovery, remote:[%s] local:[%s]", remoteDiscovery, localDiscovery)
-		err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, instanceID, events, reset)
+		err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, nodeTopologyZone, instanceID, dispatcher)
 		if err != nil {
 			log.Errorf("Failed to subscribe to federated service %q: %s", dest.GetPath(), err)
 			return err
 		}
-		defer s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, events)
+		defer s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, dispatcher)
 	} else if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
 		log.Debug("Remote discovery service detected")
 		remoteSvc, found := svc.Labels[labels.RemoteServiceLabel]
@@ -125,23 +135,22 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			return status.Errorf(codes.NotFound, "Remote cluster not found: %s", cluster)
 		}
 
-		translator, err := newEndpointTranslator(
-			s.config.ControllerNS,
-			remoteConfig.TrustDomain,
-			s.config.ForceOpaqueTransport,
-			s.config.EnableH2Upgrade,
-			false, // Disable endpoint filtering for remote discovery.
-			s.config.EnableIPv6,
-			s.config.ExtEndpointZoneWeights,
-			s.config.MeshedHttp2ClientParams,
-			fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port),
-			token.NodeName,
-			s.config.DefaultOpaquePorts,
-			s.metadataAPI,
-			events,
-			reset,
-			log,
-		)
+		remoteService := fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port)
+		translatorCfg := endpointTranslatorConfig{
+			controllerNS:            s.config.ControllerNS,
+			identityTrustDomain:     remoteConfig.TrustDomain,
+			nodeName:                token.NodeName,
+			nodeTopologyZone:        nodeTopologyZone,
+			defaultOpaquePorts:      s.config.DefaultOpaquePorts,
+			forceOpaqueTransport:    s.config.ForceOpaqueTransport,
+			enableH2Upgrade:         s.config.EnableH2Upgrade,
+			enableEndpointFiltering: false, // remote discovery always disabled.
+			enableIPv6:              s.config.EnableIPv6,
+			extEndpointZoneWeights:  s.config.ExtEndpointZoneWeights,
+			meshedHTTP2ClientParams: s.config.MeshedHttp2ClientParams,
+			service:                 remoteService,
+		}
+		translator, err := dispatcher.newTranslator(translatorCfg, log)
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
 		}
@@ -158,23 +167,21 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		}
 	} else {
 		log.Debug("Local discovery service detected")
-		translator, err := newEndpointTranslator(
-			s.config.ControllerNS,
-			s.config.IdentityTrustDomain,
-			s.config.ForceOpaqueTransport,
-			s.config.EnableH2Upgrade,
-			true,
-			s.config.EnableIPv6,
-			s.config.ExtEndpointZoneWeights,
-			s.config.MeshedHttp2ClientParams,
-			dest.GetPath(),
-			token.NodeName,
-			s.config.DefaultOpaquePorts,
-			s.metadataAPI,
-			events,
-			reset,
-			log,
-		)
+		localCfg := endpointTranslatorConfig{
+			controllerNS:            s.config.ControllerNS,
+			identityTrustDomain:     s.config.IdentityTrustDomain,
+			nodeName:                token.NodeName,
+			nodeTopologyZone:        nodeTopologyZone,
+			defaultOpaquePorts:      s.config.DefaultOpaquePorts,
+			forceOpaqueTransport:    s.config.ForceOpaqueTransport,
+			enableH2Upgrade:         s.config.EnableH2Upgrade,
+			enableEndpointFiltering: true,
+			enableIPv6:              s.config.EnableIPv6,
+			extEndpointZoneWeights:  s.config.ExtEndpointZoneWeights,
+			meshedHTTP2ClientParams: s.config.MeshedHttp2ClientParams,
+			service:                 dest.GetPath(),
+		}
+		translator, err := dispatcher.newTranslator(localCfg, log)
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
 		}
