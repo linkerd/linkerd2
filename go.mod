@@ -20,7 +20,7 @@ require (
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/linkerd/linkerd2-proxy-api v0.17.0
+	github.com/linkerd/linkerd2-proxy-api v0.18.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-runewidth v0.0.19
 	github.com/nsf/termbox-go v1.1.1
