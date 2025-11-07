@@ -77,6 +77,7 @@ const (
 	endpointEventAdd endpointEventType = iota
 	endpointEventRemove
 	endpointEventNoEndpoints
+	endpointEventClose
 )
 
 var updatesQueueOverflowCounter = promauto.NewCounterVec(
@@ -153,7 +154,7 @@ func (et *endpointTranslator) processAdd(set watcher.AddressSet) []*pb.Update {
 	et.state.availableEndpoints.Labels = set.Labels
 	et.state.availableEndpoints.LocalTrafficPolicy = set.LocalTrafficPolicy
 
-	return et.buildFilteredUpdatesLocked()
+	return et.buildFilteredUpdates()
 }
 
 func (et *endpointTranslator) processRemove(set watcher.AddressSet) []*pb.Update {
@@ -164,7 +165,7 @@ func (et *endpointTranslator) processRemove(set watcher.AddressSet) []*pb.Update
 		delete(et.state.availableEndpoints.Addresses, id)
 	}
 
-	return et.buildFilteredUpdatesLocked()
+	return et.buildFilteredUpdates()
 }
 
 func (et *endpointTranslator) processNoEndpoints(exists bool) []*pb.Update {
@@ -175,7 +176,7 @@ func (et *endpointTranslator) processNoEndpoints(exists bool) []*pb.Update {
 
 	et.state.availableEndpoints.Addresses = map[watcher.ID]watcher.Address{}
 
-	return et.buildFilteredUpdatesLocked()
+	return et.buildFilteredUpdates()
 }
 
 func (et *endpointTranslator) handleEvent(evt endpointEvent) []*pb.Update {
@@ -191,7 +192,7 @@ func (et *endpointTranslator) handleEvent(evt endpointEvent) []*pb.Update {
 	}
 }
 
-func (et *endpointTranslator) buildFilteredUpdatesLocked() []*pb.Update {
+func (et *endpointTranslator) buildFilteredUpdates() []*pb.Update {
 	filtered := filterAddresses(&et.cfg, &et.state, et.log)
 	filtered = selectAddressFamily(&et.cfg, filtered)
 	diffAdd, diffRemove := diffEndpoints(&et.state, filtered)
@@ -222,7 +223,10 @@ func (et *endpointTranslator) enqueueEvent(evt endpointEvent) {
 }
 
 func (et *endpointTranslator) Close() {
-	et.closed.Store(true)
+	if !et.closed.Swap(true) {
+		// Ensure dispatcher drops the handle after pending events drain.
+		et.dispatcher.enqueue(endpointEvent{handle: et.id, typ: endpointEventClose}, nil)
+	}
 }
 
 func copyAddressSet(set watcher.AddressSet) watcher.AddressSet {
