@@ -1056,7 +1056,7 @@ func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 
 	t.Run("Disabled", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.extEndpointZoneWeights = false
+		translator.cfg.extEndpointZoneWeights = false
 
 		translator.Add(mkAddressSetForServices(addrA, addrB))
 
@@ -1073,7 +1073,7 @@ func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 
 	t.Run("Applies weights", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.extEndpointZoneWeights = true
+		translator.cfg.extEndpointZoneWeights = true
 
 		translator.Add(mkAddressSetForServices(addrA, addrB))
 

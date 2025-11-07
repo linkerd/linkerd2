@@ -24,9 +24,14 @@ func TestFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+	events := make(chan endpointEvent, DefaultStreamQueueCapacity)
+	startTestEventDispatcher(t, events, mockGetServer.updatesReceived)
+	t.Cleanup(func() {
+		close(events)
+	})
 
 	cancel := func() {}
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer.updatesReceived, cancel)
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", events, cancel)
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -42,9 +47,14 @@ func TestRemoteJoinFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+	events := make(chan endpointEvent, DefaultStreamQueueCapacity)
+	startTestEventDispatcher(t, events, mockGetServer.updatesReceived)
+	t.Cleanup(func() {
+		close(events)
+	})
 
 	cancel := func() {}
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer.updatesReceived, cancel)
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", events, cancel)
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -71,9 +81,14 @@ func TestRemoteLeaveFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+	events := make(chan endpointEvent, DefaultStreamQueueCapacity)
+	startTestEventDispatcher(t, events, mockGetServer.updatesReceived)
+	t.Cleanup(func() {
+		close(events)
+	})
 
 	cancel := func() {}
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer.updatesReceived, cancel)
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", events, cancel)
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)
@@ -100,9 +115,14 @@ func TestLocalLeaveFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+	events := make(chan endpointEvent, DefaultStreamQueueCapacity)
+	startTestEventDispatcher(t, events, mockGetServer.updatesReceived)
+	t.Cleanup(func() {
+		close(events)
+	})
 
 	cancel := func() {}
-	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer.updatesReceived, cancel)
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", events, cancel)
 
 	updates := []*pb.Update{}
 	updates = append(updates, <-mockGetServer.updatesReceived)

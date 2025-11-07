@@ -1171,6 +1171,7 @@ metadata:
 	metadataAPI.Sync(nil)
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+	events := make(chan endpointEvent, DefaultStreamQueueCapacity)
 	translator, err := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
@@ -1184,12 +1185,30 @@ metadata:
 		"test-123",
 		map[uint32]struct{}{},
 		metadataAPI,
-		mockGetServer.updatesReceived,
+		events,
 		nil,
 		logging.WithField("test", t.Name()),
 	)
 	if err != nil {
 		t.Fatalf("failed to create endpoint translator: %s", err)
 	}
+	startTestEventDispatcher(t, events, mockGetServer.updatesReceived)
+	t.Cleanup(func() {
+		close(events)
+	})
 	return mockGetServer, translator
+}
+
+func startTestEventDispatcher(t *testing.T, events chan endpointEvent, updates chan<- *pb.Update) {
+	t.Helper()
+	go func() {
+		for evt := range events {
+			if evt.translator == nil {
+				continue
+			}
+			for _, update := range evt.translator.handleEvent(evt) {
+				updates <- update
+			}
+		}
+	}()
 }

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
@@ -65,8 +64,8 @@ type federatedServiceSubscriber struct {
 	localTranslators  map[string]*endpointTranslator
 	remoteTranslators map[remoteDiscoveryID]*endpointTranslator
 
-	updates chan<- *pb.Update
-	cancel  func()
+	events chan<- endpointEvent
+	cancel func()
 }
 
 func newFederatedServiceWatcher(
@@ -107,7 +106,7 @@ func (fsw *federatedServiceWatcher) Subscribe(
 	port uint32,
 	nodeName string,
 	instanceID string,
-	updates chan<- *pb.Update,
+	events chan<- endpointEvent,
 	cancel func(),
 ) error {
 	id := watcher.ServiceID{Namespace: namespace, Name: service}
@@ -115,7 +114,7 @@ func (fsw *federatedServiceWatcher) Subscribe(
 	if federatedService, ok := fsw.services[id]; ok {
 		fsw.RUnlock()
 		fsw.log.Debugf("Subscribing to federated service %s/%s", namespace, service)
-		federatedService.subscribe(port, nodeName, instanceID, updates, cancel)
+		federatedService.subscribe(port, nodeName, instanceID, events, cancel)
 		return nil
 	} else {
 		fsw.RUnlock()
@@ -126,14 +125,14 @@ func (fsw *federatedServiceWatcher) Subscribe(
 func (fsw *federatedServiceWatcher) Unsubscribe(
 	service string,
 	namespace string,
-	updates chan<- *pb.Update,
+	events chan<- endpointEvent,
 ) {
 	id := watcher.ServiceID{Namespace: namespace, Name: service}
 	fsw.RLock()
 	if federatedService, ok := fsw.services[id]; ok {
 		fsw.RUnlock()
 		fsw.log.Debugf("Unsubscribing from federated service %s/%s", namespace, service)
-		federatedService.unsubscribe(updates)
+		federatedService.unsubscribe(events)
 	} else {
 		fsw.RUnlock()
 	}
@@ -287,14 +286,14 @@ func (fs *federatedService) subscribe(
 	port uint32,
 	nodeName string,
 	instanceID string,
-	updates chan<- *pb.Update,
+	events chan<- endpointEvent,
 	cancel func(),
 ) {
 	fs.Lock()
 	defer fs.Unlock()
 
 	subscriber := federatedServiceSubscriber{
-		updates:           updates,
+		events:            events,
 		cancel:            cancel,
 		remoteTranslators: make(map[remoteDiscoveryID]*endpointTranslator, 0),
 		localTranslators:  make(map[string]*endpointTranslator, 0),
@@ -312,13 +311,13 @@ func (fs *federatedService) subscribe(
 	fs.subscribers = append(fs.subscribers, subscriber)
 }
 
-func (fs *federatedService) unsubscribe(updates chan<- *pb.Update) {
+func (fs *federatedService) unsubscribe(events chan<- endpointEvent) {
 	fs.Lock()
 	defer fs.Unlock()
 
 	subscribers := make([]federatedServiceSubscriber, 0)
 	for i, subscriber := range fs.subscribers {
-		if subscriber.updates == updates {
+		if subscriber.events == events {
 			for id := range subscriber.remoteTranslators {
 				fs.remoteDiscoveryUnsubscribe(&fs.subscribers[i], id)
 			}
@@ -355,7 +354,7 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 		subscriber.nodeName,
 		fs.config.DefaultOpaquePorts,
 		fs.metadataAPI,
-		subscriber.updates,
+		subscriber.events,
 		subscriber.cancel,
 		fs.log,
 	)
@@ -407,7 +406,7 @@ func (fs *federatedService) localDiscoverySubscribe(
 		subscriber.nodeName,
 		fs.config.DefaultOpaquePorts,
 		fs.metadataAPI,
-		subscriber.updates,
+		subscriber.events,
 		subscriber.cancel,
 		fs.log,
 	)

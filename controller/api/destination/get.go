@@ -38,19 +38,6 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 
 	log.Debugf("Get %s", dest.GetPath())
 
-	// The update channel allows watchers (via translators) to send updates to
-	// the response stream.
-	updates := make(chan *pb.Update, s.config.StreamQueueCapacity)
-	defer close(updates)
-
-	// We pass a reset handle to the translators so that they can abort the
-	// stream if the update queue is over capacity.
-	resetCh := make(chan struct{})
-	var resetOnce sync.Once
-	reset := func() {
-		resetOnce.Do(func() { close(resetCh) })
-	}
-
 	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
 	if err != nil {
@@ -79,18 +66,36 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		return status.Errorf(codes.Internal, "Failed to get service %s", dest.GetPath())
 	}
 
-	// Send updates on a dedicated task so that Send may block. This task is
-	// started before transformers so that we can immediately start processing
-	// updates.
+	// The event channel allows watchers to enqueue endpoint events for this stream.
+	events := make(chan endpointEvent, s.config.StreamQueueCapacity)
+	defer close(events)
+
+	// We pass a reset handle to the translators so that they can abort the
+	// stream if the update queue is over capacity.
+	resetCh := make(chan struct{})
+	var resetOnce sync.Once
+	reset := func() {
+		resetOnce.Do(func() { close(resetCh) })
+	}
+
+	// Send updates on a dedicated task so that Send may block. This task
+	// processes queued endpoint events, builds protobuf updates, and forwards
+	// them to the client.
 	go func() {
 		for {
-			update, ok := <-updates
+			evt, ok := <-events
 			if !ok {
 				return
 			}
-			if err := stream.Send(update); err != nil {
-				log.Debugf("Failed to send update for %s: %s", dest.GetPath(), err)
-				return
+			if evt.translator == nil {
+				continue
+			}
+			updates := evt.translator.handleEvent(evt)
+			for _, update := range updates {
+				if err := stream.Send(update); err != nil {
+					log.Debugf("Failed to send update for %s: %s", dest.GetPath(), err)
+					return
+				}
 			}
 		}
 	}()
@@ -100,25 +105,26 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		remoteDiscovery := svc.Annotations[labels.RemoteDiscoveryAnnotation]
 		localDiscovery := svc.Annotations[labels.LocalDiscoveryAnnotation]
 		log.Debugf("Federated service discovery, remote:[%s] local:[%s]", remoteDiscovery, localDiscovery)
-		err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, instanceID, updates, reset)
+		err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, instanceID, events, reset)
 		if err != nil {
 			log.Errorf("Failed to subscribe to federated service %q: %s", dest.GetPath(), err)
 			return err
 		}
-		defer s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, updates)
+		defer s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, events)
 	} else if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
 		log.Debug("Remote discovery service detected")
-		// Remote discovery
 		remoteSvc, found := svc.Labels[labels.RemoteServiceLabel]
 		if !found {
 			log.Debugf("Remote discovery service missing remote service name %s", service)
 			return status.Errorf(codes.FailedPrecondition, "Remote discovery service missing remote service name %s", dest.GetPath())
 		}
+
 		remoteWatcher, remoteConfig, found := s.clusterStore.Get(cluster)
 		if !found {
 			log.Errorf("Failed to get remote cluster %s", cluster)
 			return status.Errorf(codes.NotFound, "Remote cluster not found: %s", cluster)
 		}
+
 		translator, err := newEndpointTranslator(
 			s.config.ControllerNS,
 			remoteConfig.TrustDomain,
@@ -132,13 +138,14 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			token.NodeName,
 			s.config.DefaultOpaquePorts,
 			s.metadataAPI,
-			updates,
+			events,
 			reset,
 			log,
 		)
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
 		}
+
 		err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
 		if err != nil {
 			var ise watcher.InvalidService
@@ -153,7 +160,6 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 
 	} else {
 		log.Debug("Local discovery service detected")
-		// Local discovery
 		translator, err := newEndpointTranslator(
 			s.config.ControllerNS,
 			s.config.IdentityTrustDomain,
@@ -167,13 +173,14 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			token.NodeName,
 			s.config.DefaultOpaquePorts,
 			s.metadataAPI,
-			updates,
+			events,
 			reset,
 			log,
 		)
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
 		}
+
 		err = s.endpoints.Subscribe(service, port, instanceID, translator)
 		if err != nil {
 			var ise watcher.InvalidService
@@ -187,6 +194,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
 	}
 
+	// Wait for stream teardown.
 	select {
 	case <-s.shutdown: // The server is shutting down.
 
@@ -196,7 +204,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 
 	case <-resetCh:
 		// Our update queue is over capacity and the stream has been reset.
-		log.Errorf("Get %s stream reset", dest.GetPath())
+		log.Warnf("Get %s stream reset", dest.GetPath())
 	}
 
 	return nil
