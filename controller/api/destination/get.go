@@ -156,8 +156,6 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			log.Errorf("Failed to subscribe to remote discovery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
 			return err
 		}
-		defer remoteWatcher.Unsubscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
-
 	} else {
 		log.Debug("Local discovery service detected")
 		translator, err := newEndpointTranslator(
@@ -191,7 +189,6 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
 			return err
 		}
-		defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
 	}
 
 	// Wait for stream teardown.
