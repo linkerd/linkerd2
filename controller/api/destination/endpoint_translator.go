@@ -3,6 +3,7 @@ package destination
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -26,6 +27,8 @@ const (
 // endpointTranslator satisfies EndpointUpdateListener and translates updates
 // into Destination.Get messages.
 type (
+	endpointHandleID uint64
+
 	endpointTranslatorConfig struct {
 		controllerNS        string
 		identityTrustDomain string
@@ -50,21 +53,23 @@ type (
 	}
 
 	endpointTranslator struct {
+		id         endpointHandleID
 		cfg        endpointTranslatorConfig
 		state      endpointTranslatorState
 		log        *logging.Entry
 		dispatcher *endpointStreamDispatcher
 
 		overflowCounter prometheus.Counter
+		closed          atomic.Bool
 	}
 
 	endpointEventType int
 
 	endpointEvent struct {
-		translator *endpointTranslator
-		typ        endpointEventType
-		set        watcher.AddressSet
-		exists     bool
+		handle endpointHandleID
+		typ    endpointEventType
+		set    watcher.AddressSet
+		exists bool
 	}
 )
 
@@ -119,25 +124,22 @@ func newEndpointTranslator(
 
 func (et *endpointTranslator) Add(set watcher.AddressSet) {
 	et.enqueueEvent(endpointEvent{
-		translator: et,
-		typ:        endpointEventAdd,
-		set:        copyAddressSet(set),
+		typ: endpointEventAdd,
+		set: copyAddressSet(set),
 	})
 }
 
 func (et *endpointTranslator) Remove(set watcher.AddressSet) {
 	et.enqueueEvent(endpointEvent{
-		translator: et,
-		typ:        endpointEventRemove,
-		set:        copyAddressSet(set),
+		typ: endpointEventRemove,
+		set: copyAddressSet(set),
 	})
 }
 
 func (et *endpointTranslator) NoEndpoints(exists bool) {
 	et.enqueueEvent(endpointEvent{
-		translator: et,
-		typ:        endpointEventNoEndpoints,
-		exists:     exists,
+		typ:    endpointEventNoEndpoints,
+		exists: exists,
 	})
 }
 
@@ -176,6 +178,19 @@ func (et *endpointTranslator) processNoEndpoints(exists bool) []*pb.Update {
 	return et.buildFilteredUpdatesLocked()
 }
 
+func (et *endpointTranslator) handleEvent(evt endpointEvent) []*pb.Update {
+	switch evt.typ {
+	case endpointEventAdd:
+		return et.processAdd(evt.set)
+	case endpointEventRemove:
+		return et.processRemove(evt.set)
+	case endpointEventNoEndpoints:
+		return et.processNoEndpoints(evt.exists)
+	default:
+		return nil
+	}
+}
+
 func (et *endpointTranslator) buildFilteredUpdatesLocked() []*pb.Update {
 	filtered := filterAddresses(&et.cfg, &et.state, et.log)
 	filtered = selectAddressFamily(&et.cfg, filtered)
@@ -199,10 +214,15 @@ func (et *endpointTranslator) buildFilteredUpdatesLocked() []*pb.Update {
 }
 
 func (et *endpointTranslator) enqueueEvent(evt endpointEvent) {
-	if et.dispatcher == nil {
+	if et.dispatcher == nil || et.closed.Load() {
 		return
 	}
+	evt.handle = et.id
 	et.dispatcher.enqueue(evt, et.overflowCounter)
+}
+
+func (et *endpointTranslator) Close() {
+	et.closed.Store(true)
 }
 
 func copyAddressSet(set watcher.AddressSet) watcher.AddressSet {

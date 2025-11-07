@@ -86,27 +86,10 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	// processes queued endpoint events, builds protobuf updates, and forwards
 	// them to the client.
 	go func() {
-		for evt := range dispatcher.channel() {
-			if evt.translator == nil {
-				continue
-			}
-
-			var updates []*pb.Update
-			switch evt.typ {
-			case endpointEventAdd:
-				updates = evt.translator.processAdd(evt.set)
-			case endpointEventRemove:
-				updates = evt.translator.processRemove(evt.set)
-			case endpointEventNoEndpoints:
-				updates = evt.translator.processNoEndpoints(evt.exists)
-			}
-
-			for _, update := range updates {
-				if err := stream.Send(update); err != nil {
-					log.Debugf("Failed to send update for %s: %s", dest.GetPath(), err)
-					return
-				}
-			}
+		if err := dispatcher.process(func(update *pb.Update) error {
+			return stream.Send(update)
+		}); err != nil {
+			log.Debugf("Failed to send update for %s: %s", dest.GetPath(), err)
 		}
 	}()
 
@@ -155,16 +138,20 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
 		}
 
-		err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
-		if err != nil {
+		if err := remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator); err != nil {
 			var ise watcher.InvalidService
 			if errors.As(err, &ise) {
 				log.Debugf("Invalid remote discovery service %s", dest.GetPath())
 				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 			}
 			log.Errorf("Failed to subscribe to remote discovery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
+			translator.Close()
 			return err
 		}
+		defer func() {
+			remoteWatcher.Unsubscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
+			translator.Close()
+		}()
 	} else {
 		log.Debug("Local discovery service detected")
 		localCfg := endpointTranslatorConfig{
@@ -186,16 +173,20 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
 		}
 
-		err = s.endpoints.Subscribe(service, port, instanceID, translator)
-		if err != nil {
+		if err := s.endpoints.Subscribe(service, port, instanceID, translator); err != nil {
 			var ise watcher.InvalidService
 			if errors.As(err, &ise) {
 				log.Debugf("Invalid service %s", dest.GetPath())
 				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 			}
 			log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
+			translator.Close()
 			return err
 		}
+		defer func() {
+			s.endpoints.Unsubscribe(service, port, instanceID, translator)
+			translator.Close()
+		}()
 	}
 
 	// Wait for stream teardown.

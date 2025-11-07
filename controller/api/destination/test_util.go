@@ -1131,6 +1131,11 @@ type mockDestinationGetServer struct {
 	updatesReceived chan *pb.Update
 }
 
+func (m *mockDestinationGetServer) Send(update *pb.Update) error {
+	m.updatesReceived <- update
+	return nil
+}
+
 type mockDestinationGetProfileServer struct {
 	util.MockServerStream
 	profilesReceived chan *pb.DestinationProfile
@@ -1197,6 +1202,7 @@ metadata:
 	}
 	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 	t.Cleanup(func() {
+		translator.Close()
 		dispatcher.close()
 	})
 	return mockGetServer, translator
@@ -1205,22 +1211,9 @@ metadata:
 func startTestEventDispatcher(t *testing.T, dispatcher *endpointStreamDispatcher, updates chan<- *pb.Update) {
 	t.Helper()
 	go func() {
-		for evt := range dispatcher.channel() {
-			if evt.translator == nil {
-				continue
-			}
-			var msgs []*pb.Update
-			switch evt.typ {
-			case endpointEventAdd:
-				msgs = evt.translator.processAdd(evt.set)
-			case endpointEventRemove:
-				msgs = evt.translator.processRemove(evt.set)
-			case endpointEventNoEndpoints:
-				msgs = evt.translator.processNoEndpoints(evt.exists)
-			}
-			for _, update := range msgs {
-				updates <- update
-			}
-		}
+		_ = dispatcher.process(func(update *pb.Update) error {
+			updates <- update
+			return nil
+		})
 	}()
 }
