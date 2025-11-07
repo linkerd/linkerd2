@@ -1,7 +1,6 @@
 package destination
 
 import (
-	"errors"
 	"fmt"
 	"net/netip"
 	"reflect"
@@ -54,8 +53,8 @@ type (
 
 		availableEndpoints watcher.AddressSet
 		filteredSnapshot   watcher.AddressSet
-		stream             pb.Destination_GetServer
-		endStream          chan struct{}
+		updates            chan<- *pb.Update
+		cancel             func()
 		log                *logging.Entry
 		overflowCounter    prometheus.Counter
 	}
@@ -84,12 +83,10 @@ func newEndpointTranslator(
 	srcNodeName string,
 	defaultOpaquePorts map[uint32]struct{},
 	k8sAPI *k8s.MetadataAPI,
-	stream pb.Destination_GetServer,
-	endStream chan struct{},
+	updates chan<- *pb.Update,
+	cancel func(),
 	log *logging.Entry,
-	queueCapacity int,
 ) (*endpointTranslator, error) {
-	_ = queueCapacity
 	log = log.WithFields(logging.Fields{
 		"component": "endpoint-translator",
 		"service":   service,
@@ -122,8 +119,8 @@ func newEndpointTranslator(
 		meshedHTTP2ClientParams: meshedHTTP2ClientParams,
 		availableEndpoints:      availableEndpoints,
 		filteredSnapshot:        filteredSnapshot,
-		stream:                  stream,
-		endStream:               endStream,
+		updates:                 updates,
+		cancel:                  cancel,
 		log:                     log,
 		overflowCounter:         counter,
 	}, nil
@@ -163,12 +160,6 @@ func (et *endpointTranslator) NoEndpoints(exists bool) {
 
 	et.sendFilteredUpdateLocked()
 }
-
-func (et *endpointTranslator) Start() {}
-
-func (et *endpointTranslator) Stop() {}
-
-func (et *endpointTranslator) DrainAndStop() {}
 
 // sendFilteredUpdateLocked assumes the caller holds et.mu.
 func (et *endpointTranslator) sendFilteredUpdateLocked() {
@@ -454,33 +445,18 @@ func (et *endpointTranslator) sendUpdate(update *pb.Update) {
 	if update == nil {
 		return
 	}
-	if err := et.stream.Send(update); err != nil {
-		if errors.Is(err, errQueueFull) {
-			et.overflowCounter.Inc()
-			et.abortStreamOnOverflow()
-		}
-		if !errors.Is(err, errQueueClosed) {
-			et.log.Debugf("Failed to send address update: %s", err)
-		}
+	select {
+	case et.updates <- update:
+	default:
+		et.overflowCounter.Inc()
+		et.abortStreamOnOverflow()
 	}
 }
 
 func (et *endpointTranslator) abortStreamOnOverflow() {
-	if et.endStream == nil {
-		return
+	if et.cancel != nil {
+		et.cancel()
 	}
-	select {
-	case <-et.endStream:
-		return
-	default:
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			et.log.Debug("endpoint translator endStream already closed")
-		}
-	}()
-	et.log.Error("endpoint update queue full; aborting stream")
-	close(et.endStream)
 }
 
 func toAddr(address watcher.Address) (*net.TcpAddress, error) {

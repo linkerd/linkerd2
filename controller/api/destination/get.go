@@ -1,13 +1,13 @@
 package destination
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -38,21 +38,19 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 
 	log.Debugf("Get %s", dest.GetPath())
 
-	streamEnd := make(chan struct{})
-	updateQueue := newDestinationUpdateQueue(s.config.StreamQueueCapacity, streamEnd, log)
-	queueStream := newQueueingGetServer(stream, updateQueue)
-	forwardErrCh := make(chan error, 1)
-	go func() {
-		forwardErrCh <- updateQueue.Forward(stream.Context(), stream)
-	}()
-	defer func() {
-		updateQueue.Close()
-		if forwardErrCh != nil {
-			if err := <-forwardErrCh; err != nil && !errors.Is(err, context.Canceled) {
-				log.Debugf("Get stream forwarder exited: %v", err)
-			}
-		}
-	}()
+	// The update channel allows watchers (via translators) to send updates to
+	// the response stream.
+	updates := make(chan *pb.Update, s.config.StreamQueueCapacity)
+	defer close(updates)
+
+	// We pass a reset handle to the translators so that they can abort the
+	// stream if the update queue is over capacity.
+	resetCh := make(chan struct{})
+	var resetOnce sync.Once
+	reset := func() {
+		resetOnce.Do(func() { close(resetCh) })
+	}
+
 	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
 	if err != nil {
@@ -81,17 +79,33 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		return status.Errorf(codes.Internal, "Failed to get service %s", dest.GetPath())
 	}
 
+	// Send updates on a dedicated task so that Send may block. This task is
+	// started before transformers so that we can immediately start processing
+	// updates.
+	go func() {
+		for {
+			update, ok := <-updates
+			if !ok {
+				return
+			}
+			if err := stream.Send(update); err != nil {
+				log.Debugf("Failed to send update for %s: %s", dest.GetPath(), err)
+				return
+			}
+		}
+	}()
+
 	if isFederatedService(svc) {
 		// Federated service
 		remoteDiscovery := svc.Annotations[labels.RemoteDiscoveryAnnotation]
 		localDiscovery := svc.Annotations[labels.LocalDiscoveryAnnotation]
 		log.Debugf("Federated service discovery, remote:[%s] local:[%s]", remoteDiscovery, localDiscovery)
-		err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, instanceID, queueStream, streamEnd)
+		err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, instanceID, updates, reset)
 		if err != nil {
 			log.Errorf("Failed to subscribe to federated service %q: %s", dest.GetPath(), err)
 			return err
 		}
-		defer s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, queueStream)
+		defer s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, updates)
 	} else if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
 		log.Debug("Remote discovery service detected")
 		// Remote discovery
@@ -118,10 +132,9 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			token.NodeName,
 			s.config.DefaultOpaquePorts,
 			s.metadataAPI,
-			queueStream,
-			streamEnd,
+			updates,
+			reset,
 			log,
-			s.config.StreamQueueCapacity,
 		)
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
@@ -154,10 +167,9 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			token.NodeName,
 			s.config.DefaultOpaquePorts,
 			s.metadataAPI,
-			queueStream,
-			streamEnd,
+			updates,
+			reset,
 			log,
-			s.config.StreamQueueCapacity,
 		)
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
@@ -176,11 +188,15 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	}
 
 	select {
-	case <-s.shutdown:
+	case <-s.shutdown: // The server is shutting down.
+
 	case <-stream.Context().Done():
+		// The client has terminated the stream.
 		log.Debugf("Get %s cancelled", dest.GetPath())
-	case <-streamEnd:
-		log.Errorf("Get %s stream aborted", dest.GetPath())
+
+	case <-resetCh:
+		// Our update queue is over capacity and the stream has been reset.
+		log.Errorf("Get %s stream reset", dest.GetPath())
 	}
 
 	return nil

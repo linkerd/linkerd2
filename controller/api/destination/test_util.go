@@ -1131,11 +1131,6 @@ type mockDestinationGetServer struct {
 	updatesReceived chan *pb.Update
 }
 
-func (m *mockDestinationGetServer) Send(update *pb.Update) error {
-	m.updatesReceived <- update
-	return nil
-}
-
 type mockDestinationGetProfileServer struct {
 	util.MockServerStream
 	profilesReceived chan *pb.DestinationProfile
@@ -1189,10 +1184,9 @@ metadata:
 		"test-123",
 		map[uint32]struct{}{},
 		metadataAPI,
-		mockGetServer,
+		mockGetServer.updatesReceived,
 		nil,
 		logging.WithField("test", t.Name()),
-		DefaultStreamQueueCapacity,
 	)
 	if err != nil {
 		t.Fatalf("failed to create endpoint translator: %s", err)
