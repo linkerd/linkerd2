@@ -50,11 +50,7 @@ multiple-versions = "deny"
 # Wildcard dependencies are used for all workspace-local crates.
 wildcards = "allow"
 highlight = "all"
-skip = [
-    # https://github.com/hawkw/matchers/pull/4
-    { name = "regex-automata", version = "0.1" },
-    { name = "regex-syntax", version = "0.6" },
-]
+skip = []
 skip-tree = [
     # `serde_json` and `h2` depend on diverged versions of `indexmap` (2.0.x and
     # 1.9.x, respectively)
@@ -63,10 +59,6 @@ skip-tree = [
     { name = "thiserror", version = "1" },
     # getrandom v0.3 is still making its way through the ecosystem
     { name = "getrandom", version = "0.2" },
-    # zerocopy v0.8 is still making its way through the ecosystem
-    { name = "zerocopy", version = "0.7" },
-    # tonic 0.13 still uses socket2 0.5
-    { name = "socket2", version = "0.5" },
 ]
 
 [sources]
