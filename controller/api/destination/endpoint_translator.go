@@ -2,7 +2,6 @@ package destination
 
 import (
 	"fmt"
-	"sync"
 	"sync/atomic"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
@@ -46,16 +45,10 @@ type (
 		service                 string
 	}
 
-	endpointTranslatorState struct {
-		mu                 sync.Mutex
-		availableEndpoints watcher.AddressSet
-		filteredSnapshot   watcher.AddressSet
-	}
-
 	endpointTranslator struct {
 		id         endpointHandleID
 		cfg        endpointTranslatorConfig
-		state      endpointTranslatorState
+		pipeline   *translatorPipeline
 		log        *logging.Entry
 		dispatcher *endpointStreamDispatcher
 
@@ -103,24 +96,20 @@ func newEndpointTranslator(
 		"service":   cfg.service,
 	})
 
-	availableEndpoints := newEmptyAddressSet()
-	filteredSnapshot := newEmptyAddressSet()
-
 	counter, err := updatesQueueOverflowCounter.GetMetricWith(prometheus.Labels{"service": cfg.service})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create updates queue overflow counter: %w", err)
 	}
 
-	return &endpointTranslator{
-		cfg: cfg,
-		state: endpointTranslatorState{
-			availableEndpoints: availableEndpoints,
-			filteredSnapshot:   filteredSnapshot,
-		},
+	translator := &endpointTranslator{
+		cfg:             cfg,
 		log:             log,
 		dispatcher:      dispatcher,
 		overflowCounter: counter,
-	}, nil
+	}
+
+	translator.pipeline = newTranslatorPipeline(&translator.cfg, translator.log)
+	return translator, nil
 }
 
 func (et *endpointTranslator) Add(set watcher.AddressSet) {
@@ -144,74 +133,17 @@ func (et *endpointTranslator) NoEndpoints(exists bool) {
 	})
 }
 
-func (et *endpointTranslator) processAdd(set watcher.AddressSet) []*pb.Update {
-	et.state.mu.Lock()
-	defer et.state.mu.Unlock()
-
-	for id, address := range set.Addresses {
-		et.state.availableEndpoints.Addresses[id] = address
-	}
-	et.state.availableEndpoints.Labels = set.Labels
-	et.state.availableEndpoints.LocalTrafficPolicy = set.LocalTrafficPolicy
-
-	return et.buildFilteredUpdates()
-}
-
-func (et *endpointTranslator) processRemove(set watcher.AddressSet) []*pb.Update {
-	et.state.mu.Lock()
-	defer et.state.mu.Unlock()
-
-	for id := range set.Addresses {
-		delete(et.state.availableEndpoints.Addresses, id)
-	}
-
-	return et.buildFilteredUpdates()
-}
-
-func (et *endpointTranslator) processNoEndpoints(exists bool) []*pb.Update {
-	et.state.mu.Lock()
-	defer et.state.mu.Unlock()
-
-	et.log.Debugf("NoEndpoints(%+v)", exists)
-
-	et.state.availableEndpoints.Addresses = map[watcher.ID]watcher.Address{}
-
-	return et.buildFilteredUpdates()
-}
-
 func (et *endpointTranslator) handleEvent(evt endpointEvent) []*pb.Update {
 	switch evt.typ {
 	case endpointEventAdd:
-		return et.processAdd(evt.set)
+		return et.pipeline.OnAdd(evt.set)
 	case endpointEventRemove:
-		return et.processRemove(evt.set)
+		return et.pipeline.OnRemove(evt.set)
 	case endpointEventNoEndpoints:
-		return et.processNoEndpoints(evt.exists)
+		return et.pipeline.OnNoEndpoints(evt.exists)
 	default:
 		return nil
 	}
-}
-
-func (et *endpointTranslator) buildFilteredUpdates() []*pb.Update {
-	filtered := filterAddresses(&et.cfg, &et.state, et.log)
-	filtered = selectAddressFamily(&et.cfg, filtered)
-	diffAdd, diffRemove := diffEndpoints(&et.state, filtered)
-
-	updates := make([]*pb.Update, 0, 2)
-
-	if len(diffAdd.Addresses) > 0 {
-		if add := buildClientAdd(et.log, &et.cfg, diffAdd); add != nil {
-			updates = append(updates, add)
-		}
-	}
-	if len(diffRemove.Addresses) > 0 {
-		if remove := buildClientRemove(et.log, diffRemove); remove != nil {
-			updates = append(updates, remove)
-		}
-	}
-
-	et.state.filteredSnapshot = filtered
-	return updates
 }
 
 func (et *endpointTranslator) enqueueEvent(evt endpointEvent) {
@@ -241,8 +173,9 @@ func copyAddressSet(set watcher.AddressSet) watcher.AddressSet {
 	}
 
 	return watcher.AddressSet{
-		Addresses:          addresses,
-		Labels:             labels,
-		LocalTrafficPolicy: set.LocalTrafficPolicy,
+		Addresses:                 addresses,
+		Labels:                    labels,
+		LocalTrafficPolicy:        set.LocalTrafficPolicy,
+		SupportsTopologyFiltering: set.SupportsTopologyFiltering,
 	}
 }

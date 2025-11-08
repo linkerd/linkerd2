@@ -29,9 +29,10 @@ func selectAddressFamily(cfg *endpointTranslatorConfig, addresses watcher.Addres
 	}
 
 	return watcher.AddressSet{
-		Addresses:          filtered,
-		Labels:             addresses.Labels,
-		LocalTrafficPolicy: addresses.LocalTrafficPolicy,
+		Addresses:                 filtered,
+		Labels:                    addresses.Labels,
+		LocalTrafficPolicy:        addresses.LocalTrafficPolicy,
+		SupportsTopologyFiltering: addresses.SupportsTopologyFiltering,
 	}
 }
 
@@ -41,18 +42,20 @@ func selectAddressFamily(cfg *endpointTranslatorConfig, addresses watcher.Addres
 // by its Hints field and can be different than its actual Topology zone.
 // when service.spec.internalTrafficPolicy is set to local, Topology Aware
 // Hints are not used.
-func filterAddresses(cfg *endpointTranslatorConfig, state *endpointTranslatorState, log *logging.Entry) watcher.AddressSet {
+func filterAddresses(cfg *endpointTranslatorConfig, available *watcher.AddressSet, log *logging.Entry) watcher.AddressSet {
 	filtered := make(map[watcher.ID]watcher.Address)
-	available := state.availableEndpoints
 
-	// If endpoint filtering is disabled, return all available addresses.
-	if !cfg.enableEndpointFiltering {
+	// If endpoint filtering is disabled globally or unsupported by the data
+	// source, return all available addresses.
+	if !cfg.enableEndpointFiltering || !available.SupportsTopologyFiltering {
 		for k, v := range available.Addresses {
 			filtered[k] = v
 		}
 		return watcher.AddressSet{
-			Addresses: filtered,
-			Labels:    available.Labels,
+			Addresses:                 filtered,
+			Labels:                    available.Labels,
+			LocalTrafficPolicy:        available.LocalTrafficPolicy,
+			SupportsTopologyFiltering: available.SupportsTopologyFiltering,
 		}
 	}
 
@@ -67,9 +70,10 @@ func filterAddresses(cfg *endpointTranslatorConfig, state *endpointTranslatorSta
 		}
 		log.Debugf("Filtered from %d to %d addresses", len(available.Addresses), len(filtered))
 		return watcher.AddressSet{
-			Addresses:          filtered,
-			Labels:             available.Labels,
-			LocalTrafficPolicy: available.LocalTrafficPolicy,
+			Addresses:                 filtered,
+			Labels:                    available.Labels,
+			LocalTrafficPolicy:        available.LocalTrafficPolicy,
+			SupportsTopologyFiltering: available.SupportsTopologyFiltering,
 		}
 	}
 	// If any address does not have a hint, then all hints are ignored and all
@@ -82,9 +86,10 @@ func filterAddresses(cfg *endpointTranslatorConfig, state *endpointTranslatorSta
 			}
 			log.Debugf("Hints not available on endpointslice. Zone Filtering disabled. Falling back to routing to all pods")
 			return watcher.AddressSet{
-				Addresses:          filtered,
-				Labels:             available.Labels,
-				LocalTrafficPolicy: available.LocalTrafficPolicy,
+				Addresses:                 filtered,
+				Labels:                    available.Labels,
+				LocalTrafficPolicy:        available.LocalTrafficPolicy,
+				SupportsTopologyFiltering: available.SupportsTopologyFiltering,
 			}
 		}
 	}
@@ -102,9 +107,10 @@ func filterAddresses(cfg *endpointTranslatorConfig, state *endpointTranslatorSta
 	if len(filtered) > 0 {
 		log.Debugf("Filtered from %d to %d addresses", len(available.Addresses), len(filtered))
 		return watcher.AddressSet{
-			Addresses:          filtered,
-			Labels:             available.Labels,
-			LocalTrafficPolicy: available.LocalTrafficPolicy,
+			Addresses:                 filtered,
+			Labels:                    available.Labels,
+			LocalTrafficPolicy:        available.LocalTrafficPolicy,
+			SupportsTopologyFiltering: available.SupportsTopologyFiltering,
 		}
 	}
 
@@ -114,21 +120,22 @@ func filterAddresses(cfg *endpointTranslatorConfig, state *endpointTranslatorSta
 		filtered[k] = v
 	}
 	return watcher.AddressSet{
-		Addresses:          filtered,
-		Labels:             available.Labels,
-		LocalTrafficPolicy: available.LocalTrafficPolicy,
+		Addresses:                 filtered,
+		Labels:                    available.Labels,
+		LocalTrafficPolicy:        available.LocalTrafficPolicy,
+		SupportsTopologyFiltering: available.SupportsTopologyFiltering,
 	}
 }
 
 // diffEndpoints calculates the difference between the filtered set of
 // endpoints in the current (Add/Remove) operation and the snapshot of
 // previously filtered endpoints.
-func diffEndpoints(state *endpointTranslatorState, filtered watcher.AddressSet) (watcher.AddressSet, watcher.AddressSet) {
+func diffEndpoints(previous watcher.AddressSet, filtered watcher.AddressSet) (watcher.AddressSet, watcher.AddressSet) {
 	add := make(map[watcher.ID]watcher.Address)
 	remove := make(map[watcher.ID]watcher.Address)
 
 	for id, new := range filtered.Addresses {
-		old, ok := state.filteredSnapshot.Addresses[id]
+		old, ok := previous.Addresses[id]
 		if !ok {
 			add[id] = new
 		} else if !reflect.DeepEqual(old, new) {
@@ -136,18 +143,22 @@ func diffEndpoints(state *endpointTranslatorState, filtered watcher.AddressSet) 
 		}
 	}
 
-	for id, address := range state.filteredSnapshot.Addresses {
+	for id, address := range previous.Addresses {
 		if _, ok := filtered.Addresses[id]; !ok {
 			remove[id] = address
 		}
 	}
 
 	return watcher.AddressSet{
-			Addresses: add,
-			Labels:    filtered.Labels,
+			Addresses:                 add,
+			Labels:                    filtered.Labels,
+			LocalTrafficPolicy:        filtered.LocalTrafficPolicy,
+			SupportsTopologyFiltering: filtered.SupportsTopologyFiltering,
 		},
 		watcher.AddressSet{
-			Addresses: remove,
-			Labels:    filtered.Labels,
+			Addresses:                 remove,
+			Labels:                    filtered.Labels,
+			LocalTrafficPolicy:        filtered.LocalTrafficPolicy,
+			SupportsTopologyFiltering: filtered.SupportsTopologyFiltering,
 		}
 }

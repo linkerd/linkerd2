@@ -67,9 +67,10 @@ type (
 	// id.IPFamily refers to the ES AddressType (see newPodRefAddress).
 	// 3) A reference to an ExternalWorkload: id.Name refers to the EW's name.
 	AddressSet struct {
-		Addresses          map[ID]Address
-		Labels             map[string]string
-		LocalTrafficPolicy bool
+		Addresses                 map[ID]Address
+		Labels                    map[string]string
+		LocalTrafficPolicy        bool
+		SupportsTopologyFiltering bool
 	}
 
 	portAndHostname struct {
@@ -89,6 +90,7 @@ type (
 		cluster              string
 		log                  *logging.Entry
 		enableEndpointSlices bool
+		supportsTopology     bool
 		sync.RWMutex         // This mutex protects modification of the map itself.
 
 		informerHandlers
@@ -122,6 +124,7 @@ type (
 		localTrafficPolicy   bool
 		cluster              string
 		ports                map[portAndHostname]*portPublisher
+		supportsTopology     bool
 		// All access to the servicePublisher and its portPublishers is explicitly synchronized by
 		// this mutex.
 		sync.Mutex
@@ -146,6 +149,7 @@ type (
 		listeners            []EndpointUpdateListener
 		metrics              endpointsMetrics
 		localTrafficPolicy   bool
+		supportsTopology     bool
 	}
 
 	// EndpointUpdateListener is the interface that subscribers must implement.
@@ -175,9 +179,10 @@ func (addr AddressSet) shallowCopy() AddressSet {
 	}
 
 	return AddressSet{
-		Addresses:          addresses,
-		Labels:             labels,
-		LocalTrafficPolicy: addr.LocalTrafficPolicy,
+		Addresses:                 addresses,
+		Labels:                    labels,
+		LocalTrafficPolicy:        addr.LocalTrafficPolicy,
+		SupportsTopologyFiltering: addr.SupportsTopologyFiltering,
 	}
 }
 
@@ -191,6 +196,7 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 		metadataAPI:          metadataAPI,
 		enableEndpointSlices: enableEndpointSlices,
 		cluster:              cluster,
+		supportsTopology:     cluster == "local",
 		log: log.WithFields(logging.Fields{
 			"component": "endpoints-watcher",
 		}),
@@ -519,6 +525,7 @@ func (ew *EndpointsWatcher) getOrNewServicePublisher(id ServiceID) *servicePubli
 			cluster:              ew.cluster,
 			ports:                make(map[portAndHostname]*portPublisher),
 			enableEndpointSlices: ew.enableEndpointSlices,
+			supportsTopology:     ew.supportsTopology,
 		}
 		ew.publishers[id] = sp
 	}
@@ -727,7 +734,9 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) (*po
 		metrics:              metrics,
 		enableEndpointSlices: sp.enableEndpointSlices,
 		localTrafficPolicy:   sp.localTrafficPolicy,
+		supportsTopology:     sp.supportsTopology,
 	}
+	port.addresses.SupportsTopologyFiltering = port.supportsTopology
 
 	if port.enableEndpointSlices {
 		matchLabels := map[string]string{discovery.LabelServiceName: sp.id.Name}
@@ -829,9 +838,10 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
 	updatedAddressSet := AddressSet{
-		Addresses:          make(map[ID]Address),
-		Labels:             pp.addresses.Labels,
-		LocalTrafficPolicy: pp.localTrafficPolicy,
+		Addresses:                 make(map[ID]Address),
+		Labels:                    pp.addresses.Labels,
+		LocalTrafficPolicy:        pp.localTrafficPolicy,
+		SupportsTopologyFiltering: pp.supportsTopology,
 	}
 
 	for id, address := range pp.addresses.Addresses {
@@ -904,9 +914,10 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 	resolvedPort := pp.resolveESTargetPort(es.Ports)
 	if resolvedPort == undefinedEndpointPort {
 		return AddressSet{
-			Labels:             metricLabels(es),
-			Addresses:          make(map[ID]Address),
-			LocalTrafficPolicy: pp.localTrafficPolicy,
+			Labels:                    metricLabels(es),
+			Addresses:                 make(map[ID]Address),
+			LocalTrafficPolicy:        pp.localTrafficPolicy,
+			SupportsTopologyFiltering: pp.supportsTopology,
 		}
 	}
 
@@ -1003,9 +1014,10 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 	}
 	return AddressSet{
-		Addresses:          addresses,
-		Labels:             metricLabels(es),
-		LocalTrafficPolicy: pp.localTrafficPolicy,
+		Addresses:                 addresses,
+		Labels:                    metricLabels(es),
+		LocalTrafficPolicy:        pp.localTrafficPolicy,
+		SupportsTopologyFiltering: pp.supportsTopology,
 	}
 }
 
@@ -1111,8 +1123,10 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 		}
 	}
 	return AddressSet{
-		Addresses: addresses,
-		Labels:    metricLabels(endpoints),
+		Addresses:                 addresses,
+		Labels:                    metricLabels(endpoints),
+		LocalTrafficPolicy:        pp.localTrafficPolicy,
+		SupportsTopologyFiltering: pp.supportsTopology,
 	}
 }
 
@@ -1240,7 +1254,10 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 
 		endpointSlices, err := pp.k8sAPI.ES().Lister().EndpointSlices(pp.id.Namespace).List(selector)
 		if err == nil {
-			pp.addresses = AddressSet{}
+			pp.addresses = AddressSet{
+				LocalTrafficPolicy:        pp.localTrafficPolicy,
+				SupportsTopologyFiltering: pp.supportsTopology,
+			}
 			for _, slice := range endpointSlices {
 				pp.addEndpointSlice(slice)
 			}
@@ -1279,7 +1296,10 @@ func (pp *portPublisher) deleteEndpointSlice(es *discovery.EndpointSlice) {
 
 func (pp *portPublisher) noEndpoints(exists bool) {
 	pp.exists = exists
-	pp.addresses = AddressSet{}
+	pp.addresses = AddressSet{
+		LocalTrafficPolicy:        pp.localTrafficPolicy,
+		SupportsTopologyFiltering: pp.supportsTopology,
+	}
 	for _, listener := range pp.listeners {
 		listener.NoEndpoints(exists)
 	}
@@ -1487,12 +1507,15 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 		}
 	}
 	add = AddressSet{
-		Addresses:          addAddresses,
-		Labels:             newAddresses.Labels,
-		LocalTrafficPolicy: newAddresses.LocalTrafficPolicy,
+		Addresses:                 addAddresses,
+		Labels:                    newAddresses.Labels,
+		LocalTrafficPolicy:        newAddresses.LocalTrafficPolicy,
+		SupportsTopologyFiltering: newAddresses.SupportsTopologyFiltering,
 	}
 	remove = AddressSet{
-		Addresses: removeAddresses,
+		Addresses:                 removeAddresses,
+		LocalTrafficPolicy:        newAddresses.LocalTrafficPolicy,
+		SupportsTopologyFiltering: newAddresses.SupportsTopologyFiltering,
 	}
 	return add, remove
 }

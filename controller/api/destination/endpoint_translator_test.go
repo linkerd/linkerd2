@@ -1114,9 +1114,10 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 		addressSet.LocalTrafficPolicy = true
 		translator.Add(addressSet)
 		set := watcher.AddressSet{
-			Addresses:          make(map[watcher.ServiceID]watcher.Address),
-			Labels:             map[string]string{"service": "service-name", "namespace": "service-ns"},
-			LocalTrafficPolicy: false,
+			Addresses:                 make(map[watcher.ServiceID]watcher.Address),
+			Labels:                    map[string]string{"service": "service-name", "namespace": "service-ns"},
+			LocalTrafficPolicy:        false,
+			SupportsTopologyFiltering: true,
 		}
 		translator.Remove(set)
 
@@ -1184,8 +1185,9 @@ func TestGetInboundPort(t *testing.T) {
 
 func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.ServiceID]watcher.Address),
-		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
+		Addresses:                 make(map[watcher.ServiceID]watcher.Address),
+		Labels:                    map[string]string{"service": "service-name", "namespace": "service-ns"},
+		SupportsTopologyFiltering: true,
 	}
 	for _, a := range gatewayAddresses {
 		a := a // pin
@@ -1205,8 +1207,9 @@ func mkAddressSetForPods(t *testing.T, podAddresses ...watcher.Address) watcher.
 	t.Helper()
 
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.PodID]watcher.Address),
-		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
+		Addresses:                 make(map[watcher.PodID]watcher.Address),
+		Labels:                    map[string]string{"service": "service-name", "namespace": "service-ns"},
+		SupportsTopologyFiltering: true,
 	}
 	for _, p := range podAddresses {
 		// The IP family is set on the PodID used to index the
@@ -1232,8 +1235,9 @@ func mkAddressSetForPods(t *testing.T, podAddresses ...watcher.Address) watcher.
 
 func mkAddressSetForExternalWorkloads(ewAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.PodID]watcher.Address),
-		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
+		Addresses:                 make(map[watcher.PodID]watcher.Address),
+		Labels:                    map[string]string{"service": "service-name", "namespace": "service-ns"},
+		SupportsTopologyFiltering: true,
 	}
 	for _, ew := range ewAddresses {
 		id := watcher.ExternalWorkloadID{Name: ew.ExternalWorkload.Name, Namespace: ew.ExternalWorkload.Namespace}
