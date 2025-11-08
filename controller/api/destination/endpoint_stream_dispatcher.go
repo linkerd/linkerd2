@@ -1,11 +1,13 @@
 package destination
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 )
@@ -13,20 +15,22 @@ import (
 // endpointStreamDispatcher owns the bounded per-stream queue that brokers
 // watcher events to the Destination.Get send loop.
 type endpointStreamDispatcher struct {
-	events chan endpointEvent
-	reset  func()
+	updates chan *pb.Update
+	reset   func()
 
-	mu      sync.RWMutex
-	handles map[endpointHandleID]*endpointTranslator
-	nextID  endpointHandleID
-	closed  atomic.Bool
+	mu     sync.Mutex
+	views  map[*snapshotView]struct{}
+	closed atomic.Bool
 }
 
 func newEndpointStreamDispatcher(capacity int, reset func()) *endpointStreamDispatcher {
+	if capacity <= 0 {
+		capacity = 1
+	}
 	return &endpointStreamDispatcher{
-		events:  make(chan endpointEvent, capacity),
+		updates: make(chan *pb.Update, capacity),
 		reset:   reset,
-		handles: make(map[endpointHandleID]*endpointTranslator),
+		views:   make(map[*snapshotView]struct{}),
 	}
 }
 
@@ -34,43 +38,43 @@ func (d *endpointStreamDispatcher) close() {
 	if d.closed.Swap(true) {
 		return
 	}
+
 	d.mu.Lock()
-	d.handles = nil
+	views := make([]*snapshotView, 0, len(d.views))
+	for view := range d.views {
+		views = append(views, view)
+	}
+	d.views = nil
 	d.mu.Unlock()
-	close(d.events)
+
+	for _, view := range views {
+		view.close()
+	}
+
+	close(d.updates)
 }
 
-// process drains events, invoking the provided send function for each translated
-// update. Returning a non-nil error stops processing and propagates the error to
-// the caller.
+// process drains updates, invoking the provided send function for each update.
+// Returning a non-nil error stops processing and propagates the error to the
+// caller.
 func (d *endpointStreamDispatcher) process(send func(*pb.Update) error) error {
-	for evt := range d.events {
-		if evt.handle == 0 {
+	for update := range d.updates {
+		if update == nil {
 			continue
 		}
-		if evt.typ == endpointEventClose {
-			d.unregisterTranslator(evt.handle)
-			continue
-		}
-		translator := d.getTranslator(evt.handle)
-		if translator == nil {
-			continue
-		}
-		for _, update := range translator.handleEvent(evt) {
-			if err := send(update); err != nil {
-				return err
-			}
+		if err := send(update); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func (d *endpointStreamDispatcher) enqueue(evt endpointEvent, overflow prometheus.Counter) {
-	if d.closed.Load() {
+func (d *endpointStreamDispatcher) enqueue(update *pb.Update, overflow prometheus.Counter) {
+	if d.closed.Load() || update == nil {
 		return
 	}
 	select {
-	case d.events <- evt:
+	case d.updates <- update:
 	default:
 		if overflow != nil {
 			overflow.Inc()
@@ -81,35 +85,33 @@ func (d *endpointStreamDispatcher) enqueue(evt endpointEvent, overflow prometheu
 	}
 }
 
-func (d *endpointStreamDispatcher) newTranslator(cfg endpointTranslatorConfig, log *logging.Entry) (*endpointTranslator, error) {
+func (d *endpointStreamDispatcher) newSnapshotView(
+	ctx context.Context,
+	topic watcher.SnapshotTopic,
+	cfg endpointTranslatorConfig,
+	log *logging.Entry,
+) (*snapshotView, error) {
 	if d.closed.Load() {
 		return nil, fmt.Errorf("dispatcher closed")
 	}
-	translator, err := newEndpointTranslator(cfg, d, log)
+	view, err := newSnapshotView(ctx, topic, d, cfg, log)
 	if err != nil {
 		return nil, err
 	}
 
 	d.mu.Lock()
-	defer d.mu.Unlock()
 	if d.closed.Load() {
+		d.mu.Unlock()
+		view.close()
 		return nil, fmt.Errorf("dispatcher closed")
 	}
-
-	d.nextID++
-	translator.id = d.nextID
-	d.handles[translator.id] = translator
-	return translator, nil
+	d.views[view] = struct{}{}
+	d.mu.Unlock()
+	return view, nil
 }
 
-func (d *endpointStreamDispatcher) getTranslator(id endpointHandleID) *endpointTranslator {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-	return d.handles[id]
-}
-
-func (d *endpointStreamDispatcher) unregisterTranslator(id endpointHandleID) {
+func (d *endpointStreamDispatcher) unregisterView(view *snapshotView) {
 	d.mu.Lock()
-	delete(d.handles, id)
+	delete(d.views, view)
 	d.mu.Unlock()
 }

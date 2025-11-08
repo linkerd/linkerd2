@@ -511,7 +511,7 @@ var (
 
 var snapshotVersionCounter uint64
 
-func sendSnapshot(translator *endpointTranslator, set watcher.AddressSet) {
+func sendSnapshot(translator *snapshotViewHarness, set watcher.AddressSet) {
 	version := atomic.AddUint64(&snapshotVersionCounter, 1)
 	translator.Update(watcher.AddressSnapshot{
 		Version: version,

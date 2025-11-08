@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -60,8 +61,8 @@ type federatedServiceSubscriber struct {
 	nodeTopologyZone string
 	instanceID       string
 
-	localTranslators  map[string]*endpointTranslator
-	remoteTranslators map[remoteDiscoveryID]*endpointTranslator
+	localViews  map[string]*snapshotView
+	remoteViews map[remoteDiscoveryID]*snapshotView
 
 	dispatcher *endpointStreamDispatcher
 }
@@ -260,20 +261,15 @@ func (fs *federatedService) delete() {
 	defer fs.Unlock()
 
 	for _, subscriber := range fs.subscribers {
-		for id, translator := range subscriber.remoteTranslators {
-			remoteWatcher, _, found := fs.clusterStore.Get(id.cluster)
-			if !found {
-				fs.log.Errorf("Failed to get remote cluster %s", id.cluster)
-				continue
-			}
-			remoteWatcher.Unsubscribe(id.service, subscriber.port, subscriber.instanceID, translator)
-			translator.Close()
-			delete(subscriber.remoteTranslators, id)
+		for id, view := range subscriber.remoteViews {
+			fs.log.Debugf("Closing remote discovery view %s in cluster %s", id.service, id.cluster)
+			view.Close()
+			delete(subscriber.remoteViews, id)
 		}
-		for localDiscovery, translator := range subscriber.localTranslators {
-			fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID, translator)
-			translator.Close()
-			delete(subscriber.localTranslators, localDiscovery)
+		for localDiscovery, view := range subscriber.localViews {
+			fs.log.Debugf("Closing local discovery view %s", localDiscovery)
+			view.Close()
+			delete(subscriber.localViews, localDiscovery)
 		}
 	}
 }
@@ -289,13 +285,13 @@ func (fs *federatedService) subscribe(
 	defer fs.Unlock()
 
 	subscriber := federatedServiceSubscriber{
-		dispatcher:        dispatcher,
-		remoteTranslators: make(map[remoteDiscoveryID]*endpointTranslator, 0),
-		localTranslators:  make(map[string]*endpointTranslator, 0),
-		port:              port,
-		nodeName:          nodeName,
-		nodeTopologyZone:  nodeTopologyZone,
-		instanceID:        instanceID,
+		dispatcher:       dispatcher,
+		remoteViews:      make(map[remoteDiscoveryID]*snapshotView, 0),
+		localViews:       make(map[string]*snapshotView, 0),
+		port:             port,
+		nodeName:         nodeName,
+		nodeTopologyZone: nodeTopologyZone,
+		instanceID:       instanceID,
 	}
 	for _, id := range fs.remoteDiscovery {
 		fs.remoteDiscoverySubscribe(&subscriber, id)
@@ -314,10 +310,10 @@ func (fs *federatedService) unsubscribe(dispatcher *endpointStreamDispatcher) {
 	subscribers := make([]federatedServiceSubscriber, 0)
 	for i, subscriber := range fs.subscribers {
 		if subscriber.dispatcher == dispatcher {
-			for id := range subscriber.remoteTranslators {
+			for id := range subscriber.remoteViews {
 				fs.remoteDiscoveryUnsubscribe(&fs.subscribers[i], id)
 			}
-			for localDiscovery := range subscriber.localTranslators {
+			for localDiscovery := range subscriber.localViews {
 				fs.localDiscoveryUnsubscribe(&fs.subscribers[i], localDiscovery)
 			}
 		} else {
@@ -358,37 +354,34 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 		service:                 serviceName,
 	}
 
-	translator, err := subscriber.dispatcher.newTranslator(cfg, fs.log)
+	topic, err := remoteWatcher.Topic(watcher.ServiceID{Namespace: id.service.Namespace, Name: id.service.Name}, subscriber.port, subscriber.instanceID)
 	if err != nil {
-		fs.log.Errorf("Failed to create endpoint translator for remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
+		fs.log.Errorf("Failed to resolve topic for remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
+		return
+	}
+
+	view, err := subscriber.dispatcher.newSnapshotView(context.Background(), topic, cfg, fs.log)
+	if err != nil {
+		fs.log.Errorf("Failed to create snapshot view for remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
 		return
 	}
 
 	fs.log.Debugf("Subscribing to remote discovery service %s in cluster %s", id.service, id.cluster)
-	if err := remoteWatcher.Subscribe(watcher.ServiceID{Namespace: id.service.Namespace, Name: id.service.Name}, subscriber.port, subscriber.instanceID, translator); err != nil {
-		translator.Close()
-		fs.log.Errorf("Failed to subscribe to remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
-		return
-	}
-	subscriber.remoteTranslators[id] = translator
+	subscriber.remoteViews[id] = view
 }
 
 func (fs *federatedService) remoteDiscoveryUnsubscribe(
 	subscriber *federatedServiceSubscriber,
 	id remoteDiscoveryID,
 ) {
-	remoteWatcher, _, found := fs.clusterStore.Get(id.cluster)
-	if !found {
-		fs.log.Errorf("Failed to get remote cluster %s", id.cluster)
+	view, ok := subscriber.remoteViews[id]
+	if !ok {
 		return
 	}
-
-	translator := subscriber.remoteTranslators[id]
 	fs.log.Debugf("Unsubscribing from remote discovery service %s in cluster %s", id.service, id.cluster)
-	remoteWatcher.Unsubscribe(id.service, subscriber.port, subscriber.instanceID, translator)
-	translator.NoEndpoints(true)
-	delete(subscriber.remoteTranslators, id)
-	translator.Close()
+	view.NoEndpoints(true)
+	delete(subscriber.remoteViews, id)
+	view.Close()
 }
 
 func (fs *federatedService) localDiscoverySubscribe(
@@ -415,33 +408,34 @@ func (fs *federatedService) localDiscoverySubscribe(
 		service:                 localDiscovery,
 	}
 
-	translator, err := subscriber.dispatcher.newTranslator(cfg, fs.log)
+	topic, err := fs.localEndpoints.Topic(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID)
 	if err != nil {
-		fs.log.Errorf("Failed to create endpoint translator for %s: %s", localDiscovery, err)
+		fs.log.Errorf("Failed to resolve topic for %s: %s", localDiscovery, err)
+		return
+	}
+
+	view, err := subscriber.dispatcher.newSnapshotView(context.Background(), topic, cfg, fs.log)
+	if err != nil {
+		fs.log.Errorf("Failed to create snapshot view for %s: %s", localDiscovery, err)
 		return
 	}
 
 	fs.log.Debugf("Subscribing to local discovery service %s", localDiscovery)
-	if err := fs.localEndpoints.Subscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID, translator); err != nil {
-		translator.Close()
-		fs.log.Errorf("Failed to subscribe to %s: %s", localDiscovery, err)
-		return
-	}
-	subscriber.localTranslators[localDiscovery] = translator
+	subscriber.localViews[localDiscovery] = view
 }
 
 func (fs *federatedService) localDiscoveryUnsubscribe(
 	subscriber *federatedServiceSubscriber,
 	localDiscovery string,
 ) {
-	translator, found := subscriber.localTranslators[localDiscovery]
-	if found {
-		fs.log.Debugf("Unsubscribing to local discovery service %s", localDiscovery)
-		fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID, translator)
-		translator.NoEndpoints(true)
-		delete(subscriber.localTranslators, localDiscovery)
-		translator.Close()
+	view, found := subscriber.localViews[localDiscovery]
+	if !found {
+		return
 	}
+	fs.log.Debugf("Unsubscribing to local discovery service %s", localDiscovery)
+	view.NoEndpoints(true)
+	delete(subscriber.localViews, localDiscovery)
+	view.Close()
 }
 
 func remoteDiscoveryIDs(service *corev1.Service, log *logging.Entry) []remoteDiscoveryID {

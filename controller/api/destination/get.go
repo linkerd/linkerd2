@@ -65,13 +65,17 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		log.Debugf("Failed to get service %s: %v", service, err)
 		return status.Errorf(codes.Internal, "Failed to get service %s", dest.GetPath())
 	}
+	if svc != nil && svc.Spec.Type == corev1.ServiceTypeExternalName {
+		log.Debugf("ExternalName service %s not supported", dest.GetPath())
+		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+	}
 
 	nodeTopologyZone, err := getNodeTopologyZone(s.metadataAPI, token.NodeName)
 	if err != nil {
 		log.Errorf("Failed to get node topology zone for node %s: %s", token.NodeName, err)
 	}
 
-	// We pass a reset handle to the translators so that they can abort the
+	// We pass a reset handle to the snapshot views so that they can abort the
 	// stream if the update queue is over capacity.
 	resetCh := make(chan struct{})
 	var resetOnce sync.Once
@@ -92,6 +96,8 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			log.Debugf("Failed to send update for %s: %s", dest.GetPath(), err)
 		}
 	}()
+
+	streamCtx := stream.Context()
 
 	if isFederatedService(svc) {
 		// Federated service
@@ -119,7 +125,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		}
 
 		remoteService := fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port)
-		translatorCfg := endpointTranslatorConfig{
+		viewCfg := endpointTranslatorConfig{
 			controllerNS:            s.config.ControllerNS,
 			identityTrustDomain:     remoteConfig.TrustDomain,
 			nodeName:                token.NodeName,
@@ -133,25 +139,22 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			meshedHTTP2ClientParams: s.config.MeshedHttp2ClientParams,
 			service:                 remoteService,
 		}
-		translator, err := dispatcher.newTranslator(translatorCfg, log)
+		topic, err := remoteWatcher.Topic(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID)
 		if err != nil {
-			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
-		}
-
-		if err := remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator); err != nil {
 			var ise watcher.InvalidService
 			if errors.As(err, &ise) {
 				log.Debugf("Invalid remote discovery service %s", dest.GetPath())
 				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 			}
-			log.Errorf("Failed to subscribe to remote discovery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
-			translator.Close()
+			log.Errorf("Failed to resolve topic for remote discovery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
 			return err
 		}
-		defer func() {
-			remoteWatcher.Unsubscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
-			translator.Close()
-		}()
+		view, err := dispatcher.newSnapshotView(streamCtx, topic, viewCfg, log)
+		if err != nil {
+			log.Errorf("Failed to create snapshot view for remote discovery service %q: %s", dest.GetPath(), err)
+			return status.Errorf(codes.Internal, "Failed to create endpoint view: %s", err)
+		}
+		defer view.Close()
 	} else {
 		log.Debug("Local discovery service detected")
 		localCfg := endpointTranslatorConfig{
@@ -168,25 +171,22 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			meshedHTTP2ClientParams: s.config.MeshedHttp2ClientParams,
 			service:                 dest.GetPath(),
 		}
-		translator, err := dispatcher.newTranslator(localCfg, log)
+		topic, err := s.endpoints.Topic(service, port, instanceID)
 		if err != nil {
-			return status.Errorf(codes.Internal, "Failed to create endpoint translator: %s", err)
-		}
-
-		if err := s.endpoints.Subscribe(service, port, instanceID, translator); err != nil {
 			var ise watcher.InvalidService
 			if errors.As(err, &ise) {
 				log.Debugf("Invalid service %s", dest.GetPath())
 				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 			}
-			log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
-			translator.Close()
-			return err
+			log.Errorf("Failed to resolve topic for %s: %s", dest.GetPath(), err)
+			return status.Errorf(codes.Internal, "Failed to resolve topic for %s", dest.GetPath())
 		}
-		defer func() {
-			s.endpoints.Unsubscribe(service, port, instanceID, translator)
-			translator.Close()
-		}()
+		view, err := dispatcher.newSnapshotView(streamCtx, topic, localCfg, log)
+		if err != nil {
+			log.Errorf("Failed to create snapshot view for %s: %s", dest.GetPath(), err)
+			return status.Errorf(codes.Internal, "Failed to create endpoint view: %s", err)
+		}
+		defer view.Close()
 	}
 
 	// Wait for stream teardown.

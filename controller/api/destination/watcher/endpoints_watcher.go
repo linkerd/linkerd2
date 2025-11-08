@@ -326,6 +326,17 @@ func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string
 
 // Topic returns the SnapshotTopic for the given service/port/hostname tuple.
 func (ew *EndpointsWatcher) Topic(id ServiceID, port Port, hostname string) (SnapshotTopic, error) {
+	svc, _ := ew.k8sAPI.Svc().Lister().Services(id.Namespace).Get(id.Name)
+	if svc != nil && svc.Spec.Type == corev1.ServiceTypeExternalName {
+		return nil, invalidService(id.String())
+	}
+
+	if hostname == "" {
+		ew.log.Debugf("Resolving topic for endpoint [%s:%d]", id, port)
+	} else {
+		ew.log.Debugf("Resolving topic for endpoint [%s.%s:%d]", hostname, id, port)
+	}
+
 	sp := ew.getOrNewServicePublisher(id)
 	return sp.getTopic(port, hostname)
 }

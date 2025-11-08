@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -1146,12 +1147,117 @@ func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) e
 	return nil
 }
 
-func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointTranslator) {
+type snapshotViewHarness struct {
+	topic *mockSnapshotTopic
+	view  *snapshotView
+	cfg   *endpointTranslatorConfig
+}
+
+func (h *snapshotViewHarness) Update(snapshot watcher.AddressSnapshot) {
+	h.topic.publishSnapshot(snapshot)
+}
+
+func (h *snapshotViewHarness) NoEndpoints(exists bool) {
+	h.topic.publishNoEndpoints(exists)
+}
+
+type mockSnapshotTopic struct {
+	mu              sync.Mutex
+	subscribers     map[chan watcher.SnapshotEvent]struct{}
+	lastSnapshot    watcher.AddressSnapshot
+	hasSnapshot     bool
+	lastNoEndpoints bool
+	hasNoEndpoints  bool
+}
+
+func newMockSnapshotTopic() *mockSnapshotTopic {
+	return &mockSnapshotTopic{
+		subscribers: make(map[chan watcher.SnapshotEvent]struct{}),
+	}
+}
+
+func (t *mockSnapshotTopic) Subscribe(ctx context.Context, buffer int) (<-chan watcher.SnapshotEvent, error) {
+	if buffer <= 0 {
+		buffer = 1
+	}
+	ch := make(chan watcher.SnapshotEvent, buffer)
+
+	t.mu.Lock()
+	t.subscribers[ch] = struct{}{}
+	snapshot, hasSnapshot := t.lastSnapshot, t.hasSnapshot
+	noEndpoints, hasNo := t.lastNoEndpoints, t.hasNoEndpoints
+	t.mu.Unlock()
+
+	if hasSnapshot {
+		snapCopy := snapshot
+		ch <- watcher.SnapshotEvent{Snapshot: &snapCopy}
+	} else if hasNo {
+		noCopy := noEndpoints
+		ch <- watcher.SnapshotEvent{NoEndpoints: &noCopy}
+	}
+
+	go func() {
+		<-ctx.Done()
+		t.mu.Lock()
+		if _, ok := t.subscribers[ch]; ok {
+			delete(t.subscribers, ch)
+			close(ch)
+		}
+		t.mu.Unlock()
+	}()
+
+	return ch, nil
+}
+
+func (t *mockSnapshotTopic) Latest() (watcher.AddressSnapshot, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !t.hasSnapshot {
+		return watcher.AddressSnapshot{}, false
+	}
+	return t.lastSnapshot, true
+}
+
+func (t *mockSnapshotTopic) publishSnapshot(snapshot watcher.AddressSnapshot) {
+	t.mu.Lock()
+	t.lastSnapshot = snapshot
+	t.hasSnapshot = true
+	t.hasNoEndpoints = false
+	subs := make([]chan watcher.SnapshotEvent, 0, len(t.subscribers))
+	for sub := range t.subscribers {
+		subs = append(subs, sub)
+	}
+	t.mu.Unlock()
+
+	for _, sub := range subs {
+		snapCopy := snapshot
+		sub <- watcher.SnapshotEvent{Snapshot: &snapCopy}
+	}
+}
+
+func (t *mockSnapshotTopic) publishNoEndpoints(exists bool) {
+	t.mu.Lock()
+	t.hasSnapshot = false
+	t.hasNoEndpoints = true
+	t.lastNoEndpoints = exists
+	subs := make([]chan watcher.SnapshotEvent, 0, len(t.subscribers))
+	for sub := range t.subscribers {
+		subs = append(subs, sub)
+	}
+	t.mu.Unlock()
+
+	for _, sub := range subs {
+		existsCopy := exists
+		sub <- watcher.SnapshotEvent{NoEndpoints: &existsCopy}
+	}
+}
+
+func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *snapshotViewHarness) {
 	t.Helper()
 	return makeEndpointTranslatorWithOpaqueTransport(t, false)
 }
 
-func makeEndpointTranslatorWithOpaqueTransport(t *testing.T, forceOpaqueTransport bool) (*mockDestinationGetServer, *endpointTranslator) {
+func makeEndpointTranslatorWithOpaqueTransport(t *testing.T, forceOpaqueTransport bool) (*mockDestinationGetServer, *snapshotViewHarness) {
 	t.Helper()
 	node := `apiVersion: v1
 kind: Node
@@ -1182,6 +1288,7 @@ metadata:
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
 	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	topic := newMockSnapshotTopic()
 	cfg := endpointTranslatorConfig{
 		controllerNS:            "linkerd",
 		identityTrustDomain:     "trust.domain",
@@ -1196,22 +1303,27 @@ metadata:
 		meshedHTTP2ClientParams: nil,
 		service:                 "service-name.service-ns",
 	}
-	translator, err := dispatcher.newTranslator(cfg, logging.WithField("test", t.Name()))
+	view, err := dispatcher.newSnapshotView(context.Background(), topic, cfg, logging.WithField("test", t.Name()))
 	if err != nil {
-		t.Fatalf("failed to create endpoint translator: %s", err)
+		t.Fatalf("failed to create snapshot view: %s", err)
 	}
 	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 	t.Cleanup(func() {
-		translator.Close()
+		view.Close()
 		dispatcher.close()
 	})
-	return mockGetServer, translator
+	return mockGetServer, &snapshotViewHarness{
+		topic: topic,
+		view:  view,
+		cfg:   &view.cfg,
+	}
 }
 
 func startTestEventDispatcher(t *testing.T, dispatcher *endpointStreamDispatcher, updates chan<- *pb.Update) {
 	t.Helper()
 	go func() {
 		_ = dispatcher.process(func(update *pb.Update) error {
+			logging.WithField("test", t.Name()).Info("dispatcher send")
 			updates <- update
 			return nil
 		})
