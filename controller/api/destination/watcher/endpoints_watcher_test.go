@@ -223,6 +223,43 @@ func (s *snapshotCaptureListener) Update(snapshot AddressSnapshot) {
 
 func (s *snapshotCaptureListener) NoEndpoints(exists bool) {}
 
+// subscribeListener is a test helper that subscribes to a topic and forwards
+// events to a listener that implements Update/NoEndpoints. Returns a cancel
+// function that should be called to stop the subscription.
+func subscribeListener(ctx context.Context, topic EndpointTopic, listener interface {
+	Update(AddressSnapshot)
+	NoEndpoints(bool)
+}) (context.CancelFunc, error) {
+	subCtx, cancel := context.WithCancel(ctx)
+	events, err := topic.Subscribe(subCtx, 10)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
+	go func() {
+		for {
+			select {
+			case <-subCtx.Done():
+				return
+			case event, ok := <-events:
+				if !ok {
+					return
+				}
+				if event.Snapshot != nil {
+					listener.Update(*event.Snapshot)
+				} else if event.NoEndpoints != nil {
+					listener.NoEndpoints(*event.NoEndpoints)
+				}
+			}
+		}
+	}()
+
+	// Wait to ensure the goroutine has started and initial events are processed
+	time.Sleep(200 * time.Millisecond)
+	return cancel, nil
+}
+
 func TestEndpointsWatcher(t *testing.T) {
 	for _, tt := range []struct {
 		serviceType                      string
@@ -758,12 +795,21 @@ status:
 
 			listener := newBufferingEndpointListener()
 
-			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			topic, err := watcher.Topic(tt.id, tt.port, tt.hostname)
 			if tt.expectedError && err == nil {
 				t.Fatal("Expected error but was ok")
 			}
 			if !tt.expectedError && err != nil {
 				t.Fatalf("Expected no error, got [%s]", err)
+			}
+
+			// Subscribe the listener to the topic
+			if !tt.expectedError {
+				cancel, err := subscribeListener(context.Background(), topic, listener)
+				if err != nil {
+					t.Fatalf("Failed to subscribe: %s", err)
+				}
+				defer cancel()
 			}
 
 			listener.ExpectAdded(tt.expectedAddresses, t)
@@ -784,7 +830,7 @@ status:
 func TestPortPublisherSnapshotImmutability(t *testing.T) {
 	listener := &snapshotCaptureListener{}
 	pp := &portPublisher{
-		listeners: []EndpointUpdateListener{listener},
+		topic: newEndpointTopic(),
 		addresses: AddressSet{
 			Addresses: map[ID]Address{
 				ServiceID{Name: "svc-1", Namespace: "ns"}: {
@@ -797,7 +843,16 @@ func TestPortPublisherSnapshotImmutability(t *testing.T) {
 		},
 	}
 
+	// Subscribe to the topic to receive events
+	cancel, err := subscribeListener(context.Background(), pp.topic, listener)
+	if err != nil {
+		t.Fatalf("Failed to subscribe: %s", err)
+	}
+	defer cancel()
+
 	pp.notifySnapshotLocked()
+	time.Sleep(50 * time.Millisecond) // Give time for event delivery
+
 	if len(listener.snapshots) != 1 {
 		t.Fatalf("expected 1 snapshot, got %d", len(listener.snapshots))
 	}
@@ -816,8 +871,15 @@ func TestPortPublisherSnapshotImmutability(t *testing.T) {
 func TestPortPublisherSnapshotVersionMonotonic(t *testing.T) {
 	listener := &snapshotCaptureListener{}
 	pp := &portPublisher{
-		listeners: []EndpointUpdateListener{listener},
+		topic: newEndpointTopic(),
 	}
+
+	// Subscribe to the topic to receive events
+	cancel, err := subscribeListener(context.Background(), pp.topic, listener)
+	if err != nil {
+		t.Fatalf("Failed to subscribe: %s", err)
+	}
+	defer cancel()
 
 	pp.addresses = AddressSet{
 		Addresses: map[ID]Address{
@@ -825,6 +887,7 @@ func TestPortPublisherSnapshotVersionMonotonic(t *testing.T) {
 		},
 	}
 	pp.notifySnapshotLocked()
+	time.Sleep(50 * time.Millisecond) // Give time for event delivery
 
 	pp.addresses = AddressSet{
 		Addresses: map[ID]Address{
@@ -832,6 +895,7 @@ func TestPortPublisherSnapshotVersionMonotonic(t *testing.T) {
 		},
 	}
 	pp.notifySnapshotLocked()
+	time.Sleep(50 * time.Millisecond) // Give time for event delivery
 
 	if len(listener.snapshots) != 2 {
 		t.Fatalf("expected 2 snapshots, got %d", len(listener.snapshots))
@@ -1479,7 +1543,12 @@ status:
 
 			listener := newBufferingEndpointListener()
 
-			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			topic, err := watcher.Topic(tt.id, tt.port, tt.hostname)
+			if err == nil {
+				cancel, _ := subscribeListener(context.Background(), topic, listener)
+				defer cancel()
+				time.Sleep(50 * time.Millisecond)
+			}
 			if tt.expectedError && err == nil {
 				t.Fatal("Expected error but was ok")
 			}
@@ -1891,7 +1960,12 @@ status:
 
 			listener := newBufferingEndpointListener()
 
-			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			topic, err := watcher.Topic(tt.id, tt.port, tt.hostname)
+			if err == nil {
+				cancel, _ := subscribeListener(context.Background(), topic, listener)
+				defer cancel()
+				time.Sleep(50 * time.Millisecond)
+			}
 			if tt.expectedError && err == nil {
 				t.Fatal("Expected error but was ok")
 			}
@@ -2021,7 +2095,12 @@ status:
 
 			listener := newBufferingEndpointListener()
 
-			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			topic, err := watcher.Topic(tt.id, tt.port, tt.hostname)
+			if err == nil {
+				cancel, _ := subscribeListener(context.Background(), topic, listener)
+				defer cancel()
+				time.Sleep(50 * time.Millisecond)
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2195,7 +2274,12 @@ status:
 
 			listener := newBufferingEndpointListener()
 
-			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			topic, err := watcher.Topic(tt.id, tt.port, tt.hostname)
+			if err == nil {
+				cancel, _ := subscribeListener(context.Background(), topic, listener)
+				defer cancel()
+				time.Sleep(50 * time.Millisecond)
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2365,7 +2449,12 @@ status:
 
 			listener := newBufferingEndpointListener()
 
-			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			topic, err := watcher.Topic(tt.id, tt.port, tt.hostname)
+			if err == nil {
+				cancel, _ := subscribeListener(context.Background(), topic, listener)
+				defer cancel()
+				time.Sleep(50 * time.Millisecond)
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2602,7 +2691,12 @@ subsets:
 
 			listener := newBufferingEndpointListener()
 
-			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			topic, err := watcher.Topic(tt.id, tt.port, tt.hostname)
+			if err == nil {
+				cancel, _ := subscribeListener(context.Background(), topic, listener)
+				defer cancel()
+				time.Sleep(50 * time.Millisecond)
+			}
 
 			if err != nil {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
@@ -2771,7 +2865,12 @@ subsets:
 
 			listener := newBufferingEndpointListener()
 
-			err = watcher.Subscribe(tt.id, tt.port, "", listener)
+			topic, err := watcher.Topic(tt.id, tt.port, "")
+			if err == nil {
+				cancel, _ := subscribeListener(context.Background(), topic, listener)
+				defer cancel()
+				time.Sleep(50 * time.Millisecond)
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2903,7 +3002,12 @@ status:
 
 			listener := newBufferingEndpointListenerWithResVersion()
 
-			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			topic, err := watcher.Topic(tt.id, tt.port, tt.hostname)
+			if err == nil {
+				cancel, _ := subscribeListener(context.Background(), topic, listener)
+				defer cancel()
+				time.Sleep(50 * time.Millisecond)
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -3005,7 +3109,12 @@ status:
 
 	listener := newBufferingEndpointListener()
 
-	err = watcher.Subscribe(ServiceID{Name: "name1", Namespace: "ns"}, 8989, "", listener)
+	topic, err := watcher.Topic(ServiceID{Name: "name1", Namespace: "ns"}, 8989, "")
+	if err == nil {
+		cancel, _ := subscribeListener(context.Background(), topic, listener)
+		defer cancel()
+		time.Sleep(50 * time.Millisecond)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3168,7 +3277,12 @@ status:
 
 	listener := newBufferingEndpointListener()
 
-	err = watcher.Subscribe(ServiceID{Name: "name1", Namespace: "ns"}, 8989, "", listener)
+	topic, err := watcher.Topic(ServiceID{Name: "name1", Namespace: "ns"}, 8989, "")
+	if err == nil {
+		cancel, _ := subscribeListener(context.Background(), topic, listener)
+		defer cancel()
+		time.Sleep(50 * time.Millisecond)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3355,7 +3469,12 @@ status:
 
 	listener := newBufferingEndpointListener()
 
-	err = watcher.Subscribe(ServiceID{Name: "name1", Namespace: "ns"}, 8989, "", listener)
+	topic, err := watcher.Topic(ServiceID{Name: "name1", Namespace: "ns"}, 8989, "")
+	if err == nil {
+		cancel, _ := subscribeListener(context.Background(), topic, listener)
+		defer cancel()
+		time.Sleep(50 * time.Millisecond)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3475,7 +3594,12 @@ status:
 
 	listener := newBufferingEndpointListener()
 
-	err = watcher.Subscribe(ServiceID{Name: "name1", Namespace: "ns"}, 8989, "", listener)
+	topic, err := watcher.Topic(ServiceID{Name: "name1", Namespace: "ns"}, 8989, "")
+	if err == nil {
+		cancel, _ := subscribeListener(context.Background(), topic, listener)
+		defer cancel()
+		time.Sleep(50 * time.Millisecond)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3595,7 +3719,12 @@ status:
 
 	listener := newBufferingEndpointListener()
 
-	err = watcher.Subscribe(ServiceID{Name: "name1", Namespace: "ns"}, 8989, "", listener)
+	topic, err := watcher.Topic(ServiceID{Name: "name1", Namespace: "ns"}, 8989, "")
+	if err == nil {
+		cancel, _ := subscribeListener(context.Background(), topic, listener)
+		defer cancel()
+		time.Sleep(50 * time.Millisecond)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -130,9 +130,8 @@ type (
 	}
 
 	// portPublisher represents a service along with a port and optionally a
-	// hostname.  Multiple listeners may be subscribed to a portPublisher.
-	// portPublisher maintains the current state of the address set and
-	// publishes diffs to all listeners when updates come from either the
+	// hostname. portPublisher maintains the current state of the address set and
+	// publishes updates via a topic when updates come from either the
 	// endpoints API or the service API.
 	portPublisher struct {
 		id                   ServiceID
@@ -145,19 +144,12 @@ type (
 		enableEndpointSlices bool
 		exists               bool
 		addresses            AddressSet
-		listeners            []EndpointUpdateListener
 		topic                *endpointTopic
 		metrics              endpointsMetrics
 		localTrafficPolicy   bool
 		supportsTopology     bool
 		snapshotVersion      uint64
 		currentSnapshot      AddressSnapshot
-	}
-
-	// EndpointUpdateListener is the interface that subscribers must implement.
-	EndpointUpdateListener interface {
-		Update(snapshot AddressSnapshot)
-		NoEndpoints(exists bool)
 	}
 )
 
@@ -174,21 +166,11 @@ func (pp *portPublisher) notifySnapshotLocked() {
 	if pp.topic != nil {
 		pp.topic.publishSnapshot(pp.currentSnapshot)
 	}
-
-	if len(pp.listeners) == 0 {
-		return
-	}
-	for _, listener := range pp.listeners {
-		listener.Update(pp.currentSnapshot)
-	}
 }
 
 func (pp *portPublisher) notifyNoEndpoints(exists bool) {
 	if pp.topic != nil {
 		pp.topic.publishNoEndpoints(exists)
-	}
-	for _, listener := range pp.listeners {
-		listener.NoEndpoints(exists)
 	}
 }
 
@@ -277,42 +259,6 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 ////////////////////////
 /// EndpointsWatcher ///
 ////////////////////////
-
-// Subscribe to an authority.
-// The provided listener will be updated each time the address set for the
-// given authority is changed.
-func (ew *EndpointsWatcher) Subscribe(id ServiceID, port Port, hostname string, listener EndpointUpdateListener) error {
-	svc, _ := ew.k8sAPI.Svc().Lister().Services(id.Namespace).Get(id.Name)
-	if svc != nil && svc.Spec.Type == corev1.ServiceTypeExternalName {
-		return invalidService(id.String())
-	}
-
-	if hostname == "" {
-		ew.log.Debugf("Establishing watch on endpoint [%s:%d]", id, port)
-	} else {
-		ew.log.Debugf("Establishing watch on endpoint [%s.%s:%d]", hostname, id, port)
-	}
-
-	sp := ew.getOrNewServicePublisher(id)
-
-	return sp.subscribe(port, hostname, listener)
-}
-
-// Unsubscribe removes a listener from the subscribers list for this authority.
-func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string, listener EndpointUpdateListener) {
-	if hostname == "" {
-		ew.log.Debugf("Stopping watch on endpoint [%s:%d]", id, port)
-	} else {
-		ew.log.Debugf("Stopping watch on endpoint [%s.%s:%d]", hostname, id, port)
-	}
-
-	sp, ok := ew.getServicePublisher(id)
-	if !ok {
-		ew.log.Errorf("Cannot unsubscribe from unknown service [%s:%d]", id, port)
-		return
-	}
-	sp.unsubscribe(port, hostname, listener)
-}
 
 // Topic returns the EndpointTopic for the given service/port/hostname tuple.
 func (ew *EndpointsWatcher) Topic(id ServiceID, port Port, hostname string) (EndpointTopic, error) {
@@ -710,18 +656,6 @@ func (sp *servicePublisher) updateService(newService *corev1.Service) {
 
 }
 
-func (sp *servicePublisher) subscribe(srcPort Port, hostname string, listener EndpointUpdateListener) error {
-	sp.Lock()
-	defer sp.Unlock()
-
-	port, err := sp.getOrCreatePortPublisherLocked(srcPort, hostname)
-	if err != nil {
-		return err
-	}
-	port.subscribe(listener)
-	return nil
-}
-
 func (sp *servicePublisher) getOrCreatePortPublisher(srcPort Port, hostname string) (*portPublisher, error) {
 	sp.Lock()
 	defer sp.Unlock()
@@ -743,24 +677,6 @@ func (sp *servicePublisher) getOrCreatePortPublisherLocked(srcPort Port, hostnam
 		sp.ports[key] = port
 	}
 	return port, nil
-}
-
-func (sp *servicePublisher) unsubscribe(srcPort Port, hostname string, listener EndpointUpdateListener) {
-	sp.Lock()
-	defer sp.Unlock()
-
-	key := portAndHostname{
-		port:     srcPort,
-		hostname: hostname,
-	}
-	port, ok := sp.ports[key]
-	if ok {
-		port.unsubscribe(listener)
-		if len(port.listeners) == 0 {
-			endpointsVecs.unregister(sp.metricsLabels(srcPort, hostname))
-			delete(sp.ports, key)
-		}
-	}
 }
 
 func (sp *servicePublisher) getTopic(srcPort Port, hostname string) (EndpointTopic, error) {
@@ -792,7 +708,6 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) (*po
 		return nil, err
 	}
 	port := &portPublisher{
-		listeners:            []EndpointUpdateListener{},
 		targetPort:           targetPort,
 		srcPort:              srcPort,
 		hostname:             hostname,
@@ -829,6 +744,11 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) (*po
 		if err == nil {
 			port.updateEndpoints(endpoints)
 		}
+	}
+
+	// If we still have no addresses after initialization, publish the initial no-endpoints state
+	if len(port.addresses.Addresses) == 0 {
+		port.notifyNoEndpoints(exists)
 	}
 
 	return port, nil
@@ -1358,37 +1278,6 @@ func (pp *portPublisher) noEndpoints(exists bool) {
 	pp.metrics.setPods(0)
 }
 
-func (pp *portPublisher) subscribe(listener EndpointUpdateListener) {
-	if pp.exists {
-		if len(pp.addresses.Addresses) > 0 {
-			if pp.currentSnapshot.Set.Addresses == nil {
-				pp.notifySnapshotLocked()
-			}
-			listener.Update(pp.currentSnapshot)
-		} else {
-			listener.NoEndpoints(true)
-		}
-	} else {
-		listener.NoEndpoints(false)
-	}
-	pp.listeners = append(pp.listeners, listener)
-
-	pp.metrics.setSubscribers(len(pp.listeners))
-}
-
-func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
-	for i, e := range pp.listeners {
-		if e == listener {
-			n := len(pp.listeners)
-			pp.listeners[i] = pp.listeners[n-1]
-			pp.listeners[n-1] = nil
-			pp.listeners = pp.listeners[:n-1]
-			break
-		}
-	}
-
-	pp.metrics.setSubscribers(len(pp.listeners))
-}
 func (pp *portPublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 	updated := false
 	for id, address := range pp.addresses.Addresses {
