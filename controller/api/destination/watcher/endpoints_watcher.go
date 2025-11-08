@@ -774,6 +774,8 @@ func (sp *servicePublisher) unsubscribe(srcPort Port, hostname string, listener 
 }
 
 func (sp *servicePublisher) getTopic(srcPort Port, hostname string) (SnapshotTopic, error) {
+	sp.Lock()
+	defer sp.Unlock()
 	port, err := sp.getOrCreatePortPublisherLocked(srcPort, hostname)
 	if err != nil {
 		return nil, err

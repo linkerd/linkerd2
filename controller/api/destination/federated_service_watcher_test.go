@@ -154,6 +154,51 @@ func TestLocalLeaveFederatedService(t *testing.T) {
 	assertUpdatesContains(t, updates, "bb-west-1", "172.17.0.1:8080")
 }
 
+func TestFederatedServiceDeleteSendsRemovals(t *testing.T) {
+	fsw, err := mockFederatedServiceWatcher(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
+	t.Cleanup(func() {
+		dispatcher.close()
+	})
+
+	if err := fsw.Subscribe("bb-federated", "test", 8080, "node", "", "", dispatcher); err != nil {
+		t.Fatalf("subscribe failed: %s", err)
+	}
+
+	waitUpdate := func() *pb.Update {
+		t.Helper()
+		select {
+		case update := <-mockGetServer.updatesReceived:
+			return update
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out waiting for update")
+			return nil
+		}
+	}
+
+	updates := []*pb.Update{}
+	updates = append(updates, waitUpdate())
+	updates = append(updates, waitUpdate())
+
+	federatedSvc, err := fsw.k8sAPI.Svc().Lister().Services("test").Get("bb-federated")
+	if err != nil {
+		t.Fatalf("error getting federated service: %s", err)
+	}
+	fsw.deleteService(federatedSvc)
+
+	updates = append(updates, waitUpdate())
+	updates = append(updates, waitUpdate())
+
+	assertUpdatesRemoves(t, updates, "172.17.0.1:8080")
+	assertUpdatesRemoves(t, updates, "172.17.1.1:8080")
+}
+
 func mockFederatedServiceWatcher(t *testing.T) (*federatedServiceWatcher, error) {
 	k8sAPI, err := k8s.NewFakeAPI(westConfigs...)
 	if err != nil {

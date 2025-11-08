@@ -260,18 +260,17 @@ func (fs *federatedService) delete() {
 	fs.Lock()
 	defer fs.Unlock()
 
-	for _, subscriber := range fs.subscribers {
-		for id, view := range subscriber.remoteViews {
-			fs.log.Debugf("Closing remote discovery view %s in cluster %s", id.service, id.cluster)
-			view.Close()
-			delete(subscriber.remoteViews, id)
+	for i := range fs.subscribers {
+		subscriber := &fs.subscribers[i]
+		for id := range subscriber.remoteViews {
+			fs.remoteDiscoveryUnsubscribe(subscriber, id)
 		}
-		for localDiscovery, view := range subscriber.localViews {
-			fs.log.Debugf("Closing local discovery view %s", localDiscovery)
-			view.Close()
-			delete(subscriber.localViews, localDiscovery)
+		for localDiscovery := range subscriber.localViews {
+			fs.localDiscoveryUnsubscribe(subscriber, localDiscovery)
 		}
 	}
+
+	fs.subscribers = nil
 }
 
 func (fs *federatedService) subscribe(
