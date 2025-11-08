@@ -40,13 +40,13 @@ func TestSnapshotViewSharedTopicFiltering(t *testing.T) {
 	cfgB.nodeTopologyZone = "west-1b"
 	cfgB.enableEndpointFiltering = false
 
-	viewA, err := dispatcherA.newSnapshotView(context.Background(), topic, cfgA, logging.WithField("test", t.Name()+"-a"))
+	viewA, err := dispatcherA.newSnapshotView(context.Background(), topic, &cfgA, logging.WithField("test", t.Name()+"-a"))
 	if err != nil {
 		t.Fatalf("failed to create snapshot view A: %s", err)
 	}
 	defer viewA.Close()
 
-	viewB, err := dispatcherB.newSnapshotView(context.Background(), topic, cfgB, logging.WithField("test", t.Name()+"-b"))
+	viewB, err := dispatcherB.newSnapshotView(context.Background(), topic, &cfgB, logging.WithField("test", t.Name()+"-b"))
 	if err != nil {
 		t.Fatalf("failed to create snapshot view B: %s", err)
 	}

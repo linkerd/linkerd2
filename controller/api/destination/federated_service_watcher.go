@@ -359,7 +359,7 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 		return
 	}
 
-	view, err := subscriber.dispatcher.newSnapshotView(context.Background(), topic, cfg, fs.log)
+	view, err := subscriber.dispatcher.newSnapshotView(context.Background(), topic, &cfg, fs.log)
 	if err != nil {
 		fs.log.Errorf("Failed to create snapshot view for remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
 		return
@@ -413,7 +413,7 @@ func (fs *federatedService) localDiscoverySubscribe(
 		return
 	}
 
-	view, err := subscriber.dispatcher.newSnapshotView(context.Background(), topic, cfg, fs.log)
+	view, err := subscriber.dispatcher.newSnapshotView(context.Background(), topic, &cfg, fs.log)
 	if err != nil {
 		fs.log.Errorf("Failed to create snapshot view for %s: %s", localDiscovery, err)
 		return

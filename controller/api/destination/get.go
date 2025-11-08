@@ -149,7 +149,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			log.Errorf("Failed to resolve topic for remote discovery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
 			return err
 		}
-		view, err := dispatcher.newSnapshotView(streamCtx, topic, viewCfg, log)
+		view, err := dispatcher.newSnapshotView(streamCtx, topic, &viewCfg, log)
 		if err != nil {
 			log.Errorf("Failed to create snapshot view for remote discovery service %q: %s", dest.GetPath(), err)
 			return status.Errorf(codes.Internal, "Failed to create endpoint view: %s", err)
@@ -181,7 +181,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			log.Errorf("Failed to resolve topic for %s: %s", dest.GetPath(), err)
 			return status.Errorf(codes.Internal, "Failed to resolve topic for %s", dest.GetPath())
 		}
-		view, err := dispatcher.newSnapshotView(streamCtx, topic, localCfg, log)
+		view, err := dispatcher.newSnapshotView(streamCtx, topic, &localCfg, log)
 		if err != nil {
 			log.Errorf("Failed to create snapshot view for %s: %s", dest.GetPath(), err)
 			return status.Errorf(codes.Internal, "Failed to create endpoint view: %s", err)

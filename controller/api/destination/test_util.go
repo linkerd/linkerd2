@@ -1303,7 +1303,7 @@ metadata:
 		meshedHTTP2ClientParams: nil,
 		service:                 "service-name.service-ns",
 	}
-	view, err := dispatcher.newSnapshotView(context.Background(), topic, cfg, logging.WithField("test", t.Name()))
+	view, err := dispatcher.newSnapshotView(context.Background(), topic, &cfg, logging.WithField("test", t.Name()))
 	if err != nil {
 		t.Fatalf("failed to create snapshot view: %s", err)
 	}
@@ -1315,7 +1315,7 @@ metadata:
 	return mockGetServer, &snapshotViewHarness{
 		topic: topic,
 		view:  view,
-		cfg:   &view.cfg,
+		cfg:   view.cfg,
 	}
 }
 

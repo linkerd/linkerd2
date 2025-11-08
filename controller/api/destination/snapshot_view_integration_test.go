@@ -24,7 +24,7 @@ func TestSnapshotViewWithWatcher(t *testing.T) {
 	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
 	defer dispatcher.close()
 
-	view, err := dispatcher.newSnapshotView(context.Background(), topic, endpointTranslatorConfig{
+	view, err := dispatcher.newSnapshotView(context.Background(), topic, &endpointTranslatorConfig{
 		controllerNS:            "linkerd",
 		identityTrustDomain:     "trust.domain",
 		nodeName:                "node",

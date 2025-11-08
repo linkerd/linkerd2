@@ -118,10 +118,14 @@ func (t *snapshotTopic) publishNoEndpoints(exists bool) {
 }
 
 func (t *snapshotTopic) removeSubscriber(sub *topicSubscriber) {
+	// We intentionally do NOT close the events channel here. Closing can race
+	// with publishers that have already captured the subscribers slice, leading
+	// to a send-on-closed-channel panic or data race. The subscriber's context
+	// cancellation ensures the consumer stops reading. By removing the
+	// subscriber from the map under the lock, future publishes will not enqueue
+	// more events. Any in-flight publish may still send one final event which
+	// will be dropped by the consumer; this is acceptable and avoids blocking.
 	t.mu.Lock()
-	if _, ok := t.subscribers[sub]; ok {
-		delete(t.subscribers, sub)
-		close(sub.events)
-	}
+	delete(t.subscribers, sub)
 	t.mu.Unlock()
 }

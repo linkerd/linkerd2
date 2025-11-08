@@ -13,12 +13,12 @@ import (
 )
 
 type snapshotView struct {
-	cfg             endpointTranslatorConfig
+	cfg             *endpointTranslatorConfig
 	log             *logging.Entry
 	dispatcher      *endpointStreamDispatcher
 	overflowCounter prometheus.Counter
 
-	// Pipeline state (merged from translatorPipeline)
+	// Per-view state
 	mu               sync.Mutex
 	available        watcher.AddressSet
 	filteredSnapshot watcher.AddressSet
@@ -35,7 +35,7 @@ func newSnapshotView(
 	ctx context.Context,
 	topic watcher.SnapshotTopic,
 	dispatcher *endpointStreamDispatcher,
-	cfg endpointTranslatorConfig,
+	cfg *endpointTranslatorConfig,
 	log *logging.Entry,
 ) (*snapshotView, error) {
 	if dispatcher == nil {
@@ -68,7 +68,10 @@ func newSnapshotView(
 	}
 
 	subCtx, cancel := context.WithCancel(ctx)
-	events, err := topic.Subscribe(subCtx, 1)
+	// Buffer size increased from 1 to 10 to reduce blocking when multiple events
+	// arrive faster than a view can process them. This mitigates head-of-line
+	// blocking in high-subscriber scenarios while keeping memory overhead low.
+	events, err := topic.Subscribe(subCtx, 10)
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to subscribe to snapshot topic: %w", err)
@@ -98,7 +101,7 @@ func (sv *snapshotView) run(events <-chan watcher.SnapshotEvent) {
 }
 
 func (sv *snapshotView) handleEvent(evt watcher.SnapshotEvent) {
-	sv.log.Infof("received event (snapshot=%v noEndpoints=%v)", evt.Snapshot != nil, evt.NoEndpoints != nil)
+	sv.log.Debugf("received event (snapshot=%v noEndpoints=%v)", evt.Snapshot != nil, evt.NoEndpoints != nil)
 	var updates []*pb.Update
 	switch {
 	case evt.Snapshot != nil:
@@ -116,8 +119,7 @@ func (sv *snapshotView) onSnapshot(set watcher.AddressSet, version uint64) []*pb
 	sv.mu.Lock()
 	defer sv.mu.Unlock()
 
-	// Store a shallow copy so downstream filters can treat the snapshot as
-	// immutable while we retain the caller's map for future comparisons.
+	// Record the latest snapshot and version for filtering and diffing.
 	sv.available = set
 	sv.snapshotVersion = version
 
@@ -135,14 +137,14 @@ func (sv *snapshotView) onNoEndpoints(exists bool) []*pb.Update {
 }
 
 func (sv *snapshotView) buildFilteredUpdatesLocked() []*pb.Update {
-	filtered := filterAddresses(&sv.cfg, &sv.available, sv.log)
-	filtered = selectAddressFamily(&sv.cfg, filtered)
+	filtered := filterAddresses(sv.cfg, &sv.available, sv.log)
+	filtered = selectAddressFamily(sv.cfg, filtered)
 	diffAdd, diffRemove := diffEndpoints(sv.filteredSnapshot, filtered)
 
 	updates := make([]*pb.Update, 0, 2)
 
 	if len(diffAdd.Addresses) > 0 {
-		if add := buildClientAdd(sv.log, &sv.cfg, diffAdd); add != nil {
+		if add := buildClientAdd(sv.log, sv.cfg, diffAdd); add != nil {
 			updates = append(updates, add)
 		}
 	}
@@ -157,7 +159,7 @@ func (sv *snapshotView) buildFilteredUpdatesLocked() []*pb.Update {
 }
 
 func (sv *snapshotView) emitUpdates(updates []*pb.Update) {
-	sv.log.Infof("emitting %d updates", len(updates))
+	sv.log.Debugf("emitting %d updates", len(updates))
 	for _, update := range updates {
 		sv.dispatcher.enqueue(update, sv.overflowCounter)
 	}

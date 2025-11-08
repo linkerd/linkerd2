@@ -88,7 +88,7 @@ func (d *endpointStreamDispatcher) enqueue(update *pb.Update, overflow prometheu
 func (d *endpointStreamDispatcher) newSnapshotView(
 	ctx context.Context,
 	topic watcher.SnapshotTopic,
-	cfg endpointTranslatorConfig,
+	cfg *endpointTranslatorConfig,
 	log *logging.Entry,
 ) (*snapshotView, error) {
 	if d.closed.Load() {
