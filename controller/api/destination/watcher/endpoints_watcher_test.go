@@ -193,6 +193,14 @@ func (bel *bufferingEndpointListenerWithResVersion) ExpectRemoved(expected []str
 	testCompare(t, expected, bel.removed)
 }
 
+func (bel *bufferingEndpointListenerWithResVersion) ProcessEvent(ev EndpointEvent) {
+	if ev.Snapshot != nil {
+		bel.Update(*ev.Snapshot)
+	} else if ev.NoEndpoints != nil {
+		bel.NoEndpoints(*ev.NoEndpoints)
+	}
+}
+
 func (bel *bufferingEndpointListenerWithResVersion) Update(snapshot AddressSnapshot) {
 	bel.Lock()
 	defer bel.Unlock()
@@ -230,11 +238,11 @@ type snapshotCaptureListener struct {
 	snapshots []AddressSnapshot
 }
 
-func (s *snapshotCaptureListener) Update(snapshot AddressSnapshot) {
-	s.snapshots = append(s.snapshots, snapshot)
+func (s *snapshotCaptureListener) ProcessEvent(ev EndpointEvent) {
+	if ev.Snapshot != nil {
+		s.snapshots = append(s.snapshots, *ev.Snapshot)
+	}
 }
-
-func (s *snapshotCaptureListener) NoEndpoints(exists bool) {}
 
 // subscribeListener is a test helper that subscribes to a topic and forwards
 // events to a listener that implements Update/NoEndpoints. Returns a cancel

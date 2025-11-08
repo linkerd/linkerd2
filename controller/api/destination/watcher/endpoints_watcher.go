@@ -656,12 +656,6 @@ func (sp *servicePublisher) updateService(newService *corev1.Service) {
 
 }
 
-func (sp *servicePublisher) getOrCreatePortPublisher(srcPort Port, hostname string) (*portPublisher, error) {
-	sp.Lock()
-	defer sp.Unlock()
-	return sp.getOrCreatePortPublisherLocked(srcPort, hostname)
-}
-
 func (sp *servicePublisher) getOrCreatePortPublisherLocked(srcPort Port, hostname string) (*portPublisher, error) {
 	key := portAndHostname{
 		port:     srcPort,
