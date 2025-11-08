@@ -41,9 +41,15 @@ import (
 //   - snapshotVersion: monotonic version number for deduplication
 //
 // Thread Safety:
-//   - sv.mu protects filtering and diff state
-//   - run() goroutine is the only writer to the notification loop
-//   - enqueue() to dispatcher may block (part of backpressure design)
+//   - sv.mu protects filtering and diff state from concurrent access
+//   - Two goroutines can modify state concurrently:
+//     1. run() goroutine: processes topic notifications
+//     2. External caller: invokes NoEndpoints() (e.g., federated service watcher)
+//   - The mutex ensures atomic updates when federated services are reconfigured
+//     and need to send a final Remove before closing a view while the stream
+//     remains active with other views
+//   - Without the mutex, filtered state could be corrupted during concurrent
+//     updates from topic notifications and explicit NoEndpoints() calls
 type endpointView struct {
 	cfg             *endpointTranslatorConfig
 	log             *logging.Entry
@@ -234,6 +240,17 @@ func (sv *endpointView) emitUpdates(updates []*pb.Update) {
 	}
 }
 
+// NoEndpoints sends a Remove update for all currently filtered endpoints.
+// This is called externally (e.g., by federatedServiceWatcher) when a view
+// needs to be torn down while the stream remains active with other views.
+//
+// Example: A federated service changes from backend-a to backend-b. The view
+// for backend-a must send Remove for its endpoints before closing, so the
+// client doesn't retain stale endpoint state while the view for backend-b
+// provides new endpoints on the same stream.
+//
+// Thread-safety: This method acquires sv.mu to safely update state concurrently
+// with the run() goroutine processing topic notifications.
 func (sv *endpointView) NoEndpoints(exists bool) {
 	if sv == nil || sv.closed.Load() {
 		return
