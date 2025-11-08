@@ -12,8 +12,8 @@ import (
 func TestSnapshotViewSharedTopicFiltering(t *testing.T) {
 	topic := newMockSnapshotTopic()
 
-	dispatcherA := newEndpointStreamDispatcher(10, 0, nil)
-	dispatcherB := newEndpointStreamDispatcher(10, 0, nil)
+	dispatcherA := newEndpointStreamDispatcher(0, nil)
+	dispatcherB := newEndpointStreamDispatcher(0, nil)
 	t.Cleanup(func() {
 		dispatcherA.close()
 		dispatcherB.close()

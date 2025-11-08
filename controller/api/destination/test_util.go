@@ -1063,7 +1063,7 @@ spec:
 		t.Fatalf("can't create cluster store: %s", err)
 	}
 
-	federatedServices, err := newFederatedServiceWatcher(k8sAPI, &Config{StreamQueueCapacity: DefaultStreamQueueCapacity}, clusterStore, endpoints, log)
+	federatedServices, err := newFederatedServiceWatcher(k8sAPI, &Config{}, clusterStore, endpoints, log)
 	if err != nil {
 		t.Fatalf("can't create federated service watcher: %s", err)
 	}
@@ -1083,7 +1083,6 @@ spec:
 			ClusterDomain:       "mycluster.local",
 			IdentityTrustDomain: "trust.domain",
 			DefaultOpaquePorts:  defaultOpaquePorts,
-			StreamQueueCapacity: DefaultStreamQueueCapacity,
 		},
 		workloads,
 		endpoints,
@@ -1286,7 +1285,7 @@ metadata:
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
+	dispatcher := newEndpointStreamDispatcher(0, nil)
 	topic := newMockSnapshotTopic()
 	cfg := endpointTranslatorConfig{
 		controllerNS:            "linkerd",

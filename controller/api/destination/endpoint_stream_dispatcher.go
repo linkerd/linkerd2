@@ -13,8 +13,21 @@ import (
 	logging "github.com/sirupsen/logrus"
 )
 
-// endpointStreamDispatcher owns the bounded per-stream queue that brokers
-// watcher events to the Destination.Get send loop.
+// endpointStreamDispatcher coordinates updates from multiple endpoint views
+// to a single gRPC stream. It uses an unbuffered channel with timeout-based
+// backpressure to detect stuck or slow Send operations.
+//
+// Architecture:
+//   - Multiple endpointViews may enqueue updates concurrently
+//   - Single process() goroutine drains updates and calls gRPC Send
+//   - Unbuffered channel ensures enqueue blocks until Send completes
+//   - Timeout on enqueue detects stuck Send and triggers stream reset
+//
+// Backpressure semantics:
+//   - Each enqueue waits up to sendTimeout for the Send to complete
+//   - If Send is healthy, enqueue succeeds immediately (fast path)
+//   - If Send is stuck/slow, enqueue times out and resets the stream
+//   - This provides fast-fail behavior regardless of update rate
 type endpointStreamDispatcher struct {
 	updates     chan *pb.Update
 	reset       func()
@@ -25,15 +38,12 @@ type endpointStreamDispatcher struct {
 	closed atomic.Bool
 }
 
-func newEndpointStreamDispatcher(capacity int, sendTimeout time.Duration, reset func()) *endpointStreamDispatcher {
-	if capacity <= 0 {
-		capacity = 1
-	}
+func newEndpointStreamDispatcher(sendTimeout time.Duration, reset func()) *endpointStreamDispatcher {
 	if sendTimeout <= 0 {
 		sendTimeout = DefaultStreamSendTimeout
 	}
 	return &endpointStreamDispatcher{
-		updates:     make(chan *pb.Update, capacity),
+		updates:     make(chan *pb.Update), // Unbuffered for immediate backpressure
 		sendTimeout: sendTimeout,
 		reset:       reset,
 		views:       make(map[*endpointView]struct{}),
@@ -75,28 +85,35 @@ func (d *endpointStreamDispatcher) process(send func(*pb.Update) error) error {
 	return nil
 }
 
+// enqueue sends an update to the dispatcher's process goroutine with timeout.
+// This method blocks until either:
+//  1. The update is received by the process goroutine (Send completed), OR
+//  2. The sendTimeout expires (Send is stuck/slow)
+//
+// If the timeout expires, the stream is reset via the reset callback and the
+// overflow counter is incremented. The update is dropped.
+//
+// This blocking behavior is intentional and internal to the dispatcher - it
+// provides backpressure to the calling view, preventing unbounded accumulation
+// of stale updates when the client is slow or unresponsive.
 func (d *endpointStreamDispatcher) enqueue(update *pb.Update, overflow prometheus.Counter) {
 	if d.closed.Load() || update == nil {
 		return
 	}
 
-	// First try non-blocking send
-	select {
-	case d.updates <- update:
-		return
-	default:
-	}
-
-	// Queue is full - try with timeout before resetting stream
 	timer := time.NewTimer(d.sendTimeout)
 	defer timer.Stop()
 
 	select {
 	case d.updates <- update:
-		// Successfully enqueued within timeout
+		// Update successfully handed off to process goroutine.
+		// This means the previous Send (if any) has completed and the
+		// process goroutine is ready to Send this update.
 		return
 	case <-timer.C:
-		// Timeout exceeded - queue is persistently full, reset stream
+		// Timeout exceeded - the process goroutine is blocked in Send,
+		// indicating the client is stuck or very slow. Reset the stream
+		// to allow the client to reconnect and get fresh state.
 		if overflow != nil {
 			overflow.Inc()
 		}

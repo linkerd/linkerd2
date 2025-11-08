@@ -11,13 +11,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-// DefaultStreamQueueCapacity defines the default maximum number of pending
-// updates buffered per stream before the stream is closed.
-const DefaultStreamQueueCapacity = 100
-
-// DefaultStreamSendTimeout defines the maximum time allowed to enqueue an
-// update to the dispatcher. If exceeded, the stream is reset.
+// DefaultStreamSendTimeout defines the maximum time allowed to send an update
+// to a client. If exceeded, the stream is reset. This applies to each individual
+// update and provides fast-fail behavior when clients are stuck or very slow.
 const DefaultStreamSendTimeout = 5 * time.Second
+
+// DefaultProfileQueueCapacity defines the default buffer size for profile
+// update queues. Profile updates are less frequent than endpoint updates and
+// use a different code path (GetProfile vs Get).
+const DefaultProfileQueueCapacity = 100
 
 type (
 	Config struct {
@@ -35,8 +37,7 @@ type (
 
 		DefaultOpaquePorts map[uint32]struct{}
 
-		StreamQueueCapacity int
-		StreamSendTimeout   time.Duration
+		StreamSendTimeout time.Duration
 	}
 
 	server struct {

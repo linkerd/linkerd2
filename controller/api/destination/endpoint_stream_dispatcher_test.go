@@ -12,7 +12,7 @@ import (
 )
 
 func TestEndpointStreamDispatcherRegistersViews(t *testing.T) {
-	dispatcher := newEndpointStreamDispatcher(1, 0, nil)
+	dispatcher := newEndpointStreamDispatcher(0, nil)
 	topic := newMockSnapshotTopic()
 	cfg := endpointTranslatorConfig{
 		controllerNS:            "linkerd",
@@ -62,7 +62,7 @@ func TestEndpointStreamDispatcherQueueOverflowResets(t *testing.T) {
 	// Use a very short send timeout (50ms) for testing
 	sendTimeout := 50 * time.Millisecond
 
-	dispatcher := newEndpointStreamDispatcher(1, sendTimeout, func() {
+	dispatcher := newEndpointStreamDispatcher(sendTimeout, func() {
 		t.Log("Reset function called")
 		resetCalled = true
 		select {
@@ -100,17 +100,19 @@ func TestEndpointStreamDispatcherQueueOverflowResets(t *testing.T) {
 	set := mkAddressSetForServices(remoteGateway1)
 	set2 := mkAddressSetForServices(remoteGateway2) // Different set
 
-	// Publish snapshot to trigger view to enqueue an update
-	// This will fill the dispatcher queue (capacity 1)
+	// Publish snapshot to trigger view to enqueue an update.
+	// With unbuffered channel, the first update will be received by process
+	// goroutine, but process will block in Send (which is blocked on sendBlocked).
 	t.Log("Publishing first snapshot")
 	topic.publishSnapshot(watcher.AddressSnapshot{Version: 1, Set: set})
 
-	// Give view time to process notification and fill the queue
+	// Give view time to process notification and attempt enqueue
 	time.Sleep(50 * time.Millisecond)
-	t.Log("Queue should be full now, Send is blocked")
+	t.Log("First update should be blocking in Send")
 
-	// Publish another snapshot with DIFFERENT data - view will try to enqueue but queue is full
-	// and Send is blocked, so it should timeout and call reset()
+	// Publish another snapshot with DIFFERENT data - view will process this
+	// notification and try to enqueue, but the process goroutine is still
+	// blocked in Send, so enqueue will timeout and call reset()
 	t.Log("Publishing second snapshot (different data) to trigger timeout")
 	topic.publishSnapshot(watcher.AddressSnapshot{Version: 2, Set: set2})
 

@@ -132,7 +132,7 @@ func (s *server) subscribeToServiceProfile(
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator, err := newProfileTranslatorWithCapacity(service, stream, log, fqn, port, streamEnd, s.config.StreamQueueCapacity)
+	translator, err := newProfileTranslatorWithCapacity(service, stream, log, fqn, port, streamEnd, DefaultProfileQueueCapacity)
 	if err != nil {
 		return status.Errorf(codes.Internal, "Failed to create profile translator: %s", err)
 	}
@@ -281,7 +281,7 @@ func (s *server) subscribeToEndpointProfile(
 		stream,
 		streamEnd,
 		log,
-		s.config.StreamQueueCapacity,
+		DefaultProfileQueueCapacity,
 	)
 	translator.Start()
 	defer translator.Stop()

@@ -47,7 +47,6 @@ func Main(args []string) {
 	// This will default to true. It can be overridden with experimental CLI
 	// flags. Currently not exposed as a configuration value through Helm.
 	exportControllerQueueMetrics := cmd.Bool("export-queue-metrics", true, "Exports queue metrics for the external workload controller")
-	streamQueueCapacity := cmd.Int("stream-queue-capacity", destination.DefaultStreamQueueCapacity, "Maximum number of updates buffered per stream before the stream is closed")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
@@ -66,10 +65,6 @@ func Main(args []string) {
 		"HTTP/2 client parameters for meshed connections in JSON format")
 
 	flags.ConfigureAndParse(cmd, args)
-
-	if *streamQueueCapacity <= 0 {
-		log.Fatalf("--stream-queue-capacity must be greater than 0")
-	}
 
 	if *enableIPv6 && !*enableEndpointSlices {
 		log.Fatal("If --enable-ipv6=true then --enable-endpoint-slices needs to be true")
@@ -195,7 +190,6 @@ func Main(args []string) {
 		EnableIPv6:              *enableIPv6,
 		ExtEndpointZoneWeights:  *extEndpointZoneWeights,
 		MeshedHttp2ClientParams: meshedHTTP2ClientParams,
-		StreamQueueCapacity:     *streamQueueCapacity,
 		StreamSendTimeout:       destination.DefaultStreamSendTimeout,
 	}
 	server, err := destination.NewServer(

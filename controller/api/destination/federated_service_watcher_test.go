@@ -25,7 +25,7 @@ func TestFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
+	dispatcher := newEndpointStreamDispatcher(0, nil)
 	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -52,7 +52,7 @@ func TestRemoteJoinFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
+	dispatcher := newEndpointStreamDispatcher(0, nil)
 	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -90,7 +90,7 @@ func TestRemoteLeaveFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
+	dispatcher := newEndpointStreamDispatcher(0, nil)
 	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -128,7 +128,7 @@ func TestLocalLeaveFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
+	dispatcher := newEndpointStreamDispatcher(0, nil)
 	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -174,7 +174,7 @@ func TestFederatedServiceDeleteSendsRemovals(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
+	dispatcher := newEndpointStreamDispatcher(0, nil)
 	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -240,7 +240,7 @@ func mockFederatedServiceWatcher(t *testing.T) (*federatedServiceWatcher, error)
 	if err != nil {
 		return nil, fmt.Errorf("NewClusterStoreWithDecoder returned an error: %w", err)
 	}
-	fsw, err := newFederatedServiceWatcher(k8sAPI, &Config{StreamQueueCapacity: DefaultStreamQueueCapacity}, clusterStore, localEndpoints, logging.WithField("test", t.Name()))
+	fsw, err := newFederatedServiceWatcher(k8sAPI, &Config{}, clusterStore, localEndpoints, logging.WithField("test", t.Name()))
 	if err != nil {
 		return nil, fmt.Errorf("newFederatedServiceWatcher returned an error: %w", err)
 	}

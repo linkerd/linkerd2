@@ -47,7 +47,7 @@ var profileUpdatesQueueOverflowCounter = promauto.NewCounterVec(
 )
 
 func newProfileTranslator(serviceID watcher.ServiceID, stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endStream chan struct{}) (*profileTranslator, error) {
-	return newProfileTranslatorWithCapacity(serviceID, stream, log, fqn, port, endStream, DefaultStreamQueueCapacity)
+	return newProfileTranslatorWithCapacity(serviceID, stream, log, fqn, port, endStream, DefaultProfileQueueCapacity)
 }
 
 func newProfileTranslatorWithCapacity(serviceID watcher.ServiceID, stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endStream chan struct{}, queueCapacity int) (*profileTranslator, error) {

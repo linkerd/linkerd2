@@ -71,7 +71,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	}
 
 	ctx, reset := context.WithCancel(ctx)
-	dispatcher := newEndpointStreamDispatcher(s.config.StreamQueueCapacity, s.config.StreamSendTimeout, reset)
+	dispatcher := newEndpointStreamDispatcher(s.config.StreamSendTimeout, reset)
 	defer dispatcher.close()
 
 	// Send updates on a dedicated task so that Send may block. This task
