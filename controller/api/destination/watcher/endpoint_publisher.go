@@ -6,38 +6,60 @@ import (
 	"sync"
 )
 
-// AddressSnapshot represents an immutable view of the most recent
-// AddressSet as published by a portPublisher. The Version field
-// monotonically increases with each update allowing downstream consumers
-// to detect duplicate notifications without retaining their own copy of
-// the snapshot.
-type AddressSnapshot struct {
-	Version uint64
-	Set     AddressSet
-}
-
-// EndpointTopic is a declarative stream of address snapshots for a specific
-// service/port combination. Subscribers receive notification-only signals and
-// must call Latest() to retrieve the current state. This allows natural
-// coalescing: if a subscriber falls behind, it processes only the latest state
-// when ready, skipping intermediate snapshots.
+// AddressSnapshot represents an immutable view of the most recent AddressSet
+// as published by a portPublisher. The snapshot combines an endpoint set with
+// a monotonically-increasing version number.
 //
-// Note: This interface is defined in the watcher package (producer side) but
-// will be consumed by the destination package. This is a temporary state during
-// refactoring; the interface will eventually move to the destination package
-// following Go idioms (interfaces belong to consumers).
-type EndpointTopic interface {
-	// Subscribe returns a notification-only channel. When the channel receives
-	// a signal, the subscriber should call Latest() to get current state.
-	// The notification channel has size 1 to enable automatic coalescing.
-	Subscribe(ctx context.Context) (<-chan struct{}, error)
+// The Version field serves two purposes:
+//  1. Allows subscribers to detect duplicate notifications without comparing
+//     the full AddressSet.
+//  2. Enables efficient change detection when diffing successive snapshots.
+//
+// Snapshots are immutable once created; the Set field should not be modified
+// after construction. This immutability allows safe sharing across multiple
+// subscribers without requiring defensive copies or additional locking.
+//
+// The snapshot is typically created by the Kubernetes endpoints watcher and
+// published to an EndpointTopic, which fans it out to multiple subscribers.
+type AddressSnapshot struct {
+	// Version is a monotonically-increasing counter that increments with each
+	// snapshot publish. Subscribers can compare versions to detect whether
+	// they've already processed a snapshot.
+	Version uint64
 
-	// Latest returns the current snapshot and whether endpoints exist.
-	// Returns (snapshot, true) if endpoints are available.
-	// Returns (empty, false) if no endpoints or service doesn't exist.
-	Latest() (AddressSnapshot, bool)
+	// Set contains the actual endpoint addresses for this service:port.
+	// This is an immutable snapshot; modifying it would affect all subscribers.
+	Set AddressSet
 }
 
+// endpointTopic implements the destination.EndpointTopic interface, providing
+// a fan-out notification mechanism for endpoint snapshot updates.
+//
+// This implementation is the producer side of the endpoint discovery pub/sub
+// system. It is created and owned by portPublisher, which receives endpoint
+// updates from Kubernetes informers and publishes them to all active
+// subscribers.
+//
+// Architecture:
+//   - One endpointTopic per service:port[:hostname] combination
+//   - Maintains a single "latest" snapshot that all subscribers can pull
+//   - Notification-only channels (size 1) enable automatic coalescing
+//   - Subscribers are tracked in a map and cleaned up when contexts cancel
+//
+// Publishing:
+//   - publishSnapshot() and publishNoEndpoints() update the latest state
+//   - All registered subscribers receive a notification (non-blocking)
+//   - Publications are serialized by the topic's mutex
+//
+// Subscription:
+//   - Each Subscribe() call creates a new endpointSubscriber
+//   - Subscriber gets its own size-1 notification channel
+//   - Context cancellation triggers automatic cleanup
+//
+// Memory characteristics:
+//   - One AddressSnapshot (shared, immutable) per topic
+//   - One endpointSubscriber (channel + map entry) per active subscription
+//   - Size-1 channels use minimal memory compared to buffered event queues
 type endpointTopic struct {
 	mu              sync.RWMutex
 	subscribers     map[*endpointSubscriber]struct{}
@@ -47,16 +69,36 @@ type endpointTopic struct {
 	hasNoEndpoints  bool
 }
 
+// endpointSubscriber represents a single subscription to an endpointTopic.
+// Each subscriber gets its own notification channel, enabling independent
+// flow control and preventing slow subscribers from blocking others.
+//
+// The notify channel has size 1 to enable automatic coalescing: if multiple
+// publishes occur while the subscriber is busy, they collapse into a single
+// pending notification. The subscriber then pulls the latest state when ready.
 type endpointSubscriber struct {
 	notify chan struct{} // Size 1, notification-only
 }
 
+// newEndpointTopic creates a new endpointTopic for a service:port combination.
+// The topic starts with no snapshot and no subscribers. It will be populated
+// when the portPublisher receives its first endpoint update from Kubernetes.
 func newEndpointTopic() *endpointTopic {
 	return &endpointTopic{
 		subscribers: make(map[*endpointSubscriber]struct{}),
 	}
 }
 
+// Subscribe registers a new subscriber and returns its notification channel.
+// Implements destination.EndpointTopic.Subscribe().
+//
+// If the topic already has a snapshot when Subscribe() is called, an initial
+// notification is sent immediately (best-effort) so the subscriber can pull
+// the current state without waiting for the next update.
+//
+// The subscription remains active until the provided context is canceled, at
+// which point the subscriber is automatically removed and its notification
+// channel is closed.
 func (t *endpointTopic) Subscribe(ctx context.Context) (<-chan struct{}, error) {
 	sub := &endpointSubscriber{
 		notify: make(chan struct{}, 1), // Size 1 for automatic coalescing
@@ -83,6 +125,16 @@ func (t *endpointTopic) Subscribe(ctx context.Context) (<-chan struct{}, error) 
 	return sub.notify, nil
 }
 
+// Latest returns the current snapshot and whether a snapshot exists.
+// Implements destination.EndpointTopic.Latest().
+//
+// This method is read-only and uses RLock for efficiency, allowing concurrent
+// Latest() calls from multiple subscribers without blocking each other or
+// blocking publishes (which use Lock).
+//
+// Returns:
+//   - (snapshot, true) if endpoints have been published
+//   - (empty, false) if no snapshot exists yet or service has no endpoints
 func (t *endpointTopic) Latest() (AddressSnapshot, bool) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
@@ -92,6 +144,15 @@ func (t *endpointTopic) Latest() (AddressSnapshot, bool) {
 	return t.lastSnapshot, true
 }
 
+// publishSnapshot updates the topic's snapshot and notifies all subscribers.
+// Called by portPublisher when Kubernetes endpoints are updated.
+//
+// The snapshot parameter should be immutable; modifying it after passing to
+// publishSnapshot would violate the snapshot contract and could cause data
+// races in subscribers.
+//
+// Notifications are sent non-blocking (size-1 channels auto-coalesce), so this
+// method will not block even if some subscribers are slow to process.
 func (t *endpointTopic) publishSnapshot(snapshot AddressSnapshot) {
 	t.mu.Lock()
 	t.lastSnapshot = snapshot
@@ -115,6 +176,16 @@ func (t *endpointTopic) publishSnapshot(snapshot AddressSnapshot) {
 	}
 }
 
+// publishNoEndpoints indicates that the service has no endpoints (either the
+// service doesn't exist, or it has no ready pods). Subscribers will receive
+// a notification and Latest() will return (empty, false).
+//
+// The exists parameter indicates whether the service itself exists:
+//   - true: service exists but has no endpoints
+//   - false: service does not exist
+//
+// This distinction is preserved for potential future use but currently both
+// cases result in Latest() returning false.
 func (t *endpointTopic) publishNoEndpoints(exists bool) {
 	t.mu.Lock()
 	t.hasSnapshot = false
@@ -136,6 +207,12 @@ func (t *endpointTopic) publishNoEndpoints(exists bool) {
 	}
 }
 
+// removeSubscriber unregisters a subscriber and closes its notification channel.
+// Called when a subscription's context is canceled.
+//
+// After this call, the subscriber will no longer receive notifications and its
+// notification channel will be closed, signaling to the subscriber's receive
+// loop that the subscription has ended.
 func (t *endpointTopic) removeSubscriber(sub *endpointSubscriber) {
 	// We intentionally do NOT close the events channel here. Closing can race
 	// with publishers that have already captured the subscribers slice, leading

@@ -38,8 +38,9 @@ func newBufferingEndpointListener() *bufferingEndpointListener {
 	}
 }
 
-// ProcessEvent handles state pulled from a topic after notification
-func (bel *bufferingEndpointListener) ProcessEvent(topic EndpointTopic) {
+// ProcessEvent handles state pulled from a topic after notification.
+// Receives the concrete endpointTopic type directly.
+func (bel *bufferingEndpointListener) ProcessEvent(topic *endpointTopic) {
 	snapshot, hasSnapshot := topic.Latest()
 	if hasSnapshot {
 		bel.update(snapshot)
@@ -194,7 +195,9 @@ func (bel *bufferingEndpointListenerWithResVersion) ExpectRemoved(expected []str
 	testCompare(t, expected, bel.removed)
 }
 
-func (bel *bufferingEndpointListenerWithResVersion) ProcessEvent(topic EndpointTopic) {
+// ProcessEvent handles state pulled from a topic after notification.
+// Receives the concrete endpointTopic type directly.
+func (bel *bufferingEndpointListenerWithResVersion) ProcessEvent(topic *endpointTopic) {
 	snapshot, hasSnapshot := topic.Latest()
 	if hasSnapshot {
 		bel.Update(snapshot)
@@ -240,7 +243,9 @@ type snapshotCaptureListener struct {
 	snapshots []AddressSnapshot
 }
 
-func (s *snapshotCaptureListener) ProcessEvent(topic EndpointTopic) {
+// ProcessEvent captures snapshots from the topic.
+// Receives the concrete endpointTopic type directly.
+func (s *snapshotCaptureListener) ProcessEvent(topic *endpointTopic) {
 	snapshot, hasSnapshot := topic.Latest()
 	if hasSnapshot {
 		s.snapshots = append(s.snapshots, snapshot)
@@ -248,10 +253,10 @@ func (s *snapshotCaptureListener) ProcessEvent(topic EndpointTopic) {
 }
 
 // subscribeListener is a test helper that subscribes to a topic and forwards
-// events to a listener that implements Update/NoEndpoints. Returns a cancel
+// events to a listener that implements ProcessEvent. Returns a cancel
 // function that should be called to stop the subscription.
-func subscribeListener(ctx context.Context, topic EndpointTopic, listener interface {
-	ProcessEvent(EndpointTopic)
+func subscribeListener(ctx context.Context, topic *endpointTopic, listener interface {
+	ProcessEvent(*endpointTopic)
 }) (context.CancelFunc, error) {
 	subCtx, cancel := context.WithCancel(ctx)
 	notify, err := topic.Subscribe(subCtx)

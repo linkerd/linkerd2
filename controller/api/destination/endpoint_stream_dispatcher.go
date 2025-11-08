@@ -8,7 +8,6 @@ import (
 	"time"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 )
@@ -123,9 +122,17 @@ func (d *endpointStreamDispatcher) enqueue(update *pb.Update, overflow prometheu
 	}
 }
 
+// newEndpointView creates a new view subscribed to the given topic and
+// registers it with this dispatcher.
+//
+// The view will filter snapshots according to cfg and enqueue updates to this
+// dispatcher's process goroutine. The dispatcher tracks all registered views
+// and ensures they're cleaned up when the dispatcher closes.
+//
+// Returns an error if the dispatcher is already closed or if view creation fails.
 func (d *endpointStreamDispatcher) newEndpointView(
 	ctx context.Context,
-	topic watcher.EndpointTopic,
+	topic EndpointTopic,
 	cfg *endpointTranslatorConfig,
 	log *logging.Entry,
 ) (*endpointView, error) {
@@ -148,6 +155,8 @@ func (d *endpointStreamDispatcher) newEndpointView(
 	return view, nil
 }
 
+// unregisterView removes a view from the dispatcher's tracking map.
+// Called by views when they close (either explicitly or via context cancellation).
 func (d *endpointStreamDispatcher) unregisterView(view *endpointView) {
 	d.mu.Lock()
 	delete(d.views, view)

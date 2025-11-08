@@ -12,6 +12,38 @@ import (
 	logging "github.com/sirupsen/logrus"
 )
 
+// endpointView represents per-RPC stream state and filtering logic.
+//
+// Each gRPC Destination.Get stream has one or more endpointViews (multiple for
+// federated services). A view subscribes to an EndpointTopic, filters incoming
+// snapshots based on node affinity and address family, diffs successive
+// snapshots, and translates changes into proxy-api Update messages.
+//
+// Views are isolated: each has its own subscription, filtering state, and diff
+// state. This eliminates cross-stream contention that was present in the
+// previous callback-based architecture.
+//
+// Lifecycle:
+//   - Created by endpointStreamDispatcher.newEndpointView()
+//   - Runs in its own goroutine (run method)
+//   - Automatically unregisters from dispatcher when closed or context canceled
+//   - Closed explicitly via Close() or implicitly via context cancellation
+//
+// Filtering:
+//   - Node affinity: if enableEndpointFiltering is true, only endpoints on the
+//     same node as the proxy are included (for topology-aware routing)
+//   - Address family: prefers IPv6 or IPv4 based on enableIPv6 setting
+//   - Opaque ports: marks endpoints with opaque protocol based on annotations
+//
+// State Management:
+//   - available: raw snapshot from topic (before filtering)
+//   - filteredSnapshot: post-filter snapshot (for diffing)
+//   - snapshotVersion: monotonic version number for deduplication
+//
+// Thread Safety:
+//   - sv.mu protects filtering and diff state
+//   - run() goroutine is the only writer to the notification loop
+//   - enqueue() to dispatcher may block (part of backpressure design)
 type endpointView struct {
 	cfg             *endpointTranslatorConfig
 	log             *logging.Entry
@@ -31,9 +63,22 @@ type endpointView struct {
 	closed atomic.Bool
 }
 
+// newEndpointView creates and starts a new endpoint view subscribed to the
+// given topic. The view will filter and translate snapshots into Updates that
+// are enqueued to the dispatcher.
+//
+// Parameters:
+//   - ctx: controls view lifecycle; cancellation triggers cleanup
+//   - topic: source of endpoint snapshots (typically from EndpointsWatcher)
+//   - dispatcher: target for filtered/diffed updates
+//   - cfg: filtering and translation configuration
+//   - log: structured logger for this view
+//
+// The view starts its processing goroutine before returning. Caller should
+// defer view.Close() to ensure cleanup.
 func newEndpointView(
 	ctx context.Context,
-	topic watcher.EndpointTopic,
+	topic EndpointTopic,
 	dispatcher *endpointStreamDispatcher,
 	cfg *endpointTranslatorConfig,
 	log *logging.Entry,
@@ -84,7 +129,18 @@ func newEndpointView(
 	return view, nil
 }
 
-func (sv *endpointView) run(topic watcher.EndpointTopic, notify <-chan struct{}) {
+// run is the main processing loop for the endpoint view.
+// It receives notifications from the topic, pulls the latest snapshot,
+// filters it, diffs it against the previous state, and enqueues updates
+// to the dispatcher.
+//
+// This method runs in its own goroutine and exits when:
+//   - The view's context is canceled, OR
+//   - The notification channel is closed (topic shutdown)
+//
+// Cleanup (dispatcher unregistration) happens in a defer to ensure it
+// occurs regardless of exit path.
+func (sv *endpointView) run(topic EndpointTopic, notify <-chan struct{}) {
 	defer sv.wg.Done()
 	// Ensure we unregister this view from the dispatcher regardless of how the
 	// goroutine exits (Close or parent context cancellation). This allows
@@ -107,7 +163,11 @@ func (sv *endpointView) run(topic watcher.EndpointTopic, notify <-chan struct{})
 	}
 }
 
-func (sv *endpointView) handleLatest(topic watcher.EndpointTopic) {
+// handleLatest pulls the current snapshot from the topic, applies filtering
+// and diffing, and enqueues resulting updates to the dispatcher.
+//
+// Called from the run() loop each time a notification is received.
+func (sv *endpointView) handleLatest(topic EndpointTopic) {
 	// Pull the latest state from the topic
 	snapshot, hasSnapshot := topic.Latest()
 

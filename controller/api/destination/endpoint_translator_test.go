@@ -524,14 +524,13 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
 		sendSnapshot(translator, mkAddressSetForServices(remoteGateway1, remoteGateway2))
-		sendSnapshot(translator, mkAddressSetForServices(remoteGateway1))
-
-		expectedNumUpdates := 2
 		<-mockGetServer.updatesReceived // Add
+
+		sendSnapshot(translator, mkAddressSetForServices(remoteGateway1))
 		<-mockGetServer.updatesReceived // Remove
 
 		if len(mockGetServer.updatesReceived) != 0 {
-			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
+			t.Fatalf("Expecting [2] updates, got [%d].", 2+len(mockGetServer.updatesReceived))
 		}
 	})
 
@@ -539,16 +538,16 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
 		sendSnapshot(translator, mkAddressSetForServices(remoteGateway1))
-		sendSnapshot(translator, mkAddressSetForServices())
-		sendSnapshot(translator, mkAddressSetForServices(remoteGateway1))
-
-		expectedNumUpdates := 3
 		<-mockGetServer.updatesReceived // Add
+
+		sendSnapshot(translator, mkAddressSetForServices())
 		<-mockGetServer.updatesReceived // Remove
+
+		sendSnapshot(translator, mkAddressSetForServices(remoteGateway1))
 		<-mockGetServer.updatesReceived // Add
 
 		if len(mockGetServer.updatesReceived) != 0 {
-			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
+			t.Fatalf("Expecting [3] updates, got [%d].", 3+len(mockGetServer.updatesReceived))
 		}
 	})
 
@@ -648,14 +647,13 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
 		sendSnapshot(translator, mkAddressSetForPods(t, pod1, pod2))
-		sendSnapshot(translator, mkAddressSetForPods(t, pod1))
-
-		expectedNumUpdates := 2
 		<-mockGetServer.updatesReceived // Add
+
+		sendSnapshot(translator, mkAddressSetForPods(t, pod1))
 		<-mockGetServer.updatesReceived // Remove
 
 		if len(mockGetServer.updatesReceived) != 0 {
-			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
+			t.Fatalf("Expecting [2] updates, got [%d].", 2+len(mockGetServer.updatesReceived))
 		}
 	})
 
@@ -663,8 +661,6 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
 		sendSnapshot(translator, mkAddressSetForServices(pod1, pod2, pod3))
-		sendSnapshot(translator, mkAddressSetForServices(pod1, pod2))
-
 		addressesAdded := (<-mockGetServer.updatesReceived).GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
 		expectedNumberOfAdded := 3
@@ -672,6 +668,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 			t.Fatalf("Expecting [%d] addresses to be added, got [%d]: %v", expectedNumberOfAdded, actualNumberOfAdded, addressesAdded)
 		}
 
+		sendSnapshot(translator, mkAddressSetForServices(pod1, pod2))
 		addressesRemoved := (<-mockGetServer.updatesReceived).GetRemove().Addrs
 		actualNumberOfRemoved := len(addressesRemoved)
 		expectedNumberOfRemoved := 1
@@ -866,14 +863,13 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
 		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ew1, ew2))
-		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ew1))
-
-		expectedNumUpdates := 2
 		<-mockGetServer.updatesReceived // Add
+
+		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ew1))
 		<-mockGetServer.updatesReceived // Remove
 
 		if len(mockGetServer.updatesReceived) != 0 {
-			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
+			t.Fatalf("Expecting [2] updates, got [%d].", 2+len(mockGetServer.updatesReceived))
 		}
 	})
 
@@ -881,8 +877,6 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
 		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ew1, ew2, ew3))
-		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ew1, ew2))
-
 		addressesAdded := (<-mockGetServer.updatesReceived).GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
 		expectedNumberOfAdded := 3
@@ -890,6 +884,7 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 			t.Fatalf("Expecting [%d] addresses to be added, got [%d]: %v", expectedNumberOfAdded, actualNumberOfAdded, addressesAdded)
 		}
 
+		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ew1, ew2))
 		addressesRemoved := (<-mockGetServer.updatesReceived).GetRemove().Addrs
 		actualNumberOfRemoved := len(addressesRemoved)
 		expectedNumberOfRemoved := 1
@@ -1037,16 +1032,15 @@ func TestEndpointTranslatorTopologyAwareFilter(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
 		sendSnapshot(translator, mkAddressSetForServices(west1aAddress, west1bAddress))
+		<-mockGetServer.updatesReceived // Add
+
 		sendSnapshot(translator, mkAddressSetForServices(west1aAddress))
 
 		// Only the address meant for west-1a should be added, which means
 		// that when we try to remove the address meant for west-1b there
 		// should be no remove update.
-		expectedNumUpdates := 1
-		<-mockGetServer.updatesReceived // Add
-
 		if len(mockGetServer.updatesReceived) != 0 {
-			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
+			t.Fatalf("Expecting [1] update total, got [%d].", 1+len(mockGetServer.updatesReceived))
 		}
 	})
 }
@@ -1106,6 +1100,7 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 		addressSet := mkAddressSetForServices(AddressOnTest123Node, AddressNotOnTest123Node)
 		addressSet.LocalTrafficPolicy = true
 		sendSnapshot(translator, addressSet)
+		<-mockGetServer.updatesReceived // Add
 
 		updatedSet := mkAddressSetForServices(AddressOnTest123Node)
 		updatedSet.LocalTrafficPolicy = true
@@ -1114,11 +1109,8 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 		// Only the address meant for AddressOnTest123Node should be added, which means
 		// that when we try to remove the address meant for AddressNotOnTest123Node there
 		// should be no remove update.
-		expectedNumUpdates := 1
-		<-mockGetServer.updatesReceived // Add
-
 		if len(mockGetServer.updatesReceived) != 0 {
-			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
+			t.Fatalf("Expecting [1] update total, got [%d].", 1+len(mockGetServer.updatesReceived))
 		}
 	})
 
@@ -1127,6 +1119,8 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 		addressSet := mkAddressSetForServices(AddressOnTest123Node, AddressNotOnTest123Node)
 		addressSet.LocalTrafficPolicy = true
 		sendSnapshot(translator, addressSet)
+		<-mockGetServer.updatesReceived // Add
+
 		set := watcher.AddressSet{
 			Addresses:          make(map[watcher.ServiceID]watcher.Address),
 			Labels:             map[string]string{"service": "service-name", "namespace": "service-ns"},
@@ -1134,15 +1128,12 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 			Cluster:            "local",
 		}
 		sendSnapshot(translator, set)
+		<-mockGetServer.updatesReceived // Remove
 
 		// Only the address meant for AddressOnTest123Node should be added.
 		// Removing it should emit a remove update.
-		expectedNumUpdates := 2
-		<-mockGetServer.updatesReceived // Add
-		<-mockGetServer.updatesReceived // Remove
-
 		if len(mockGetServer.updatesReceived) != 0 {
-			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
+			t.Fatalf("Expecting [2] updates total, got [%d].", 2+len(mockGetServer.updatesReceived))
 		}
 	})
 }

@@ -260,8 +260,22 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 /// EndpointsWatcher ///
 ////////////////////////
 
-// Topic returns the EndpointTopic for the given service/port/hostname tuple.
-func (ew *EndpointsWatcher) Topic(id ServiceID, port Port, hostname string) (EndpointTopic, error) {
+// Topic returns the endpointTopic for the given service/port/hostname tuple.
+// The returned concrete type implements destination.EndpointTopic interface.
+//
+// This method is the bridge between the Kubernetes watcher (producer) and
+// the gRPC streaming layer (consumer). Callers in the destination package
+// receive the return value as destination.EndpointTopic interface.
+//
+// Parameters:
+//   - id: service namespace and name
+//   - port: target port number
+//   - hostname: optional hostname for StatefulSet pod targeting (empty for regular services)
+//
+// Returns an error if:
+//   - The service is of type ExternalName (not supported)
+//   - The port cannot be resolved (invalid port specification)
+func (ew *EndpointsWatcher) Topic(id ServiceID, port Port, hostname string) (*endpointTopic, error) {
 	svc, _ := ew.k8sAPI.Svc().Lister().Services(id.Namespace).Get(id.Name)
 	if svc != nil && svc.Spec.Type == corev1.ServiceTypeExternalName {
 		return nil, invalidService(id.String())
@@ -673,7 +687,9 @@ func (sp *servicePublisher) getOrCreatePortPublisherLocked(srcPort Port, hostnam
 	return port, nil
 }
 
-func (sp *servicePublisher) getTopic(srcPort Port, hostname string) (EndpointTopic, error) {
+// getTopic returns the endpointTopic for a specific port on this service.
+// The returned concrete type implements destination.EndpointTopic interface.
+func (sp *servicePublisher) getTopic(srcPort Port, hostname string) (*endpointTopic, error) {
 	sp.Lock()
 	defer sp.Unlock()
 	port, err := sp.getOrCreatePortPublisherLocked(srcPort, hostname)
@@ -1352,8 +1368,9 @@ func (pp *portPublisher) isAddressSelected(address Address, server *v1beta3.Serv
 	return false
 }
 
-// Topic exposes the endpoint topic for this port publisher.
-func (pp *portPublisher) Topic() EndpointTopic {
+// Topic exposes the endpointTopic for this port publisher.
+// The returned concrete type implements destination.EndpointTopic interface.
+func (pp *portPublisher) Topic() *endpointTopic {
 	return pp.topic
 }
 
