@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -71,6 +70,16 @@ type (
 		Labels                    map[string]string
 		LocalTrafficPolicy        bool
 		SupportsTopologyFiltering bool
+	}
+
+	// AddressSnapshot represents an immutable view of the most recent
+	// AddressSet as published by a portPublisher. The Version field
+	// monotonically increases with each update allowing downstream consumers
+	// to detect duplicate notifications without retaining their own copy of
+	// the snapshot.
+	AddressSnapshot struct {
+		Version uint64
+		Set     AddressSet
 	}
 
 	portAndHostname struct {
@@ -150,12 +159,13 @@ type (
 		metrics              endpointsMetrics
 		localTrafficPolicy   bool
 		supportsTopology     bool
+		snapshotVersion      uint64
+		currentSnapshot      AddressSnapshot
 	}
 
 	// EndpointUpdateListener is the interface that subscribers must implement.
 	EndpointUpdateListener interface {
-		Add(set AddressSet)
-		Remove(set AddressSet)
+		Update(snapshot AddressSnapshot)
 		NoEndpoints(exists bool)
 	}
 )
@@ -163,6 +173,27 @@ type (
 var endpointsVecs = newEndpointsMetricsVecs()
 
 var undefinedEndpointPort = Port(0)
+
+func (pp *portPublisher) notifySnapshotLocked() {
+	pp.snapshotVersion++
+	pp.currentSnapshot = AddressSnapshot{
+		Version: pp.snapshotVersion,
+		Set:     pp.addresses.shallowCopy(),
+	}
+
+	if len(pp.listeners) == 0 {
+		return
+	}
+	for _, listener := range pp.listeners {
+		listener.Update(pp.currentSnapshot)
+	}
+}
+
+func (pp *portPublisher) notifyNoEndpoints(exists bool) {
+	for _, listener := range pp.listeners {
+		listener.NoEndpoints(exists)
+	}
+}
 
 // shallowCopy returns a shallow copy of addr, in the sense that the Pod and
 // ExternalWorkload fields of the Addresses map values still point to the
@@ -787,26 +818,17 @@ func (sp *servicePublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 
 func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	newAddressSet := pp.endpointsToAddresses(endpoints)
-	if len(newAddressSet.Addresses) == 0 {
-		for _, listener := range pp.listeners {
-			listener.NoEndpoints(true)
-		}
-	} else {
-		add, remove := diffAddresses(pp.addresses, newAddressSet)
-		for _, listener := range pp.listeners {
-			if len(remove.Addresses) > 0 {
-				listener.Remove(remove)
-			}
-			if len(add.Addresses) > 0 {
-				listener.Add(add)
-			}
-		}
-	}
 	pp.addresses = newAddressSet
 	pp.exists = true
 	pp.metrics.incUpdates()
 	pp.metrics.setPods(len(pp.addresses.Addresses))
 	pp.metrics.setExists(true)
+
+	if len(pp.addresses.Addresses) == 0 {
+		pp.notifyNoEndpoints(true)
+	} else {
+		pp.notifySnapshotLocked()
+	}
 }
 
 func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
@@ -814,13 +836,6 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 	for id, addr := range pp.addresses.Addresses {
 		if _, ok := newAddressSet.Addresses[id]; !ok {
 			newAddressSet.Addresses[id] = addr
-		}
-	}
-
-	add, _ := diffAddresses(pp.addresses, newAddressSet)
-	if len(add.Addresses) > 0 {
-		for _, listener := range pp.listeners {
-			listener.Add(add)
 		}
 	}
 
@@ -834,6 +849,12 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 	pp.metrics.incUpdates()
 	pp.metrics.setPods(len(pp.addresses.Addresses))
 	pp.metrics.setExists(true)
+
+	if len(pp.addresses.Addresses) == 0 {
+		pp.notifyNoEndpoints(true)
+	} else {
+		pp.notifySnapshotLocked()
+	}
 }
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
@@ -857,21 +878,17 @@ func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, 
 		updatedAddressSet.Addresses[id] = address
 	}
 
-	add, remove := diffAddresses(pp.addresses, updatedAddressSet)
-	for _, listener := range pp.listeners {
-		if len(remove.Addresses) > 0 {
-			listener.Remove(remove)
-		}
-		if len(add.Addresses) > 0 {
-			listener.Add(add)
-		}
-	}
-
 	pp.addresses = updatedAddressSet
 	pp.exists = true
 	pp.metrics.incUpdates()
 	pp.metrics.setPods(len(pp.addresses.Addresses))
 	pp.metrics.setExists(true)
+
+	if len(pp.addresses.Addresses) == 0 {
+		pp.notifyNoEndpoints(true)
+	} else {
+		pp.notifySnapshotLocked()
+	}
 }
 
 func metricLabels(resource interface{}) map[string]string {
@@ -1240,9 +1257,7 @@ func (pp *portPublisher) resolveTargetPort(subset corev1.EndpointSubset) Port {
 func (pp *portPublisher) updateLocalTrafficPolicy(localTrafficPolicy bool) {
 	pp.localTrafficPolicy = localTrafficPolicy
 	pp.addresses.LocalTrafficPolicy = localTrafficPolicy
-	for _, listener := range pp.listeners {
-		listener.Add(pp.addresses.shallowCopy())
-	}
+	pp.notifySnapshotLocked()
 }
 
 func (pp *portPublisher) updatePort(targetPort namedPort) {
@@ -1280,10 +1295,6 @@ func (pp *portPublisher) deleteEndpointSlice(es *discovery.EndpointSlice) {
 		delete(pp.addresses.Addresses, id)
 	}
 
-	for _, listener := range pp.listeners {
-		listener.Remove(addrSet)
-	}
-
 	if len(pp.addresses.Addresses) == 0 {
 		pp.noEndpoints(false)
 	} else {
@@ -1291,6 +1302,7 @@ func (pp *portPublisher) deleteEndpointSlice(es *discovery.EndpointSlice) {
 		pp.metrics.incUpdates()
 		pp.metrics.setPods(len(pp.addresses.Addresses))
 		pp.metrics.setExists(true)
+		pp.notifySnapshotLocked()
 	}
 }
 
@@ -1300,9 +1312,7 @@ func (pp *portPublisher) noEndpoints(exists bool) {
 		LocalTrafficPolicy:        pp.localTrafficPolicy,
 		SupportsTopologyFiltering: pp.supportsTopology,
 	}
-	for _, listener := range pp.listeners {
-		listener.NoEndpoints(exists)
-	}
+	pp.notifyNoEndpoints(exists)
 
 	pp.metrics.incUpdates()
 	pp.metrics.setExists(exists)
@@ -1312,7 +1322,10 @@ func (pp *portPublisher) noEndpoints(exists bool) {
 func (pp *portPublisher) subscribe(listener EndpointUpdateListener) {
 	if pp.exists {
 		if len(pp.addresses.Addresses) > 0 {
-			listener.Add(pp.addresses.shallowCopy())
+			if pp.currentSnapshot.Set.Addresses == nil {
+				pp.notifySnapshotLocked()
+			}
+			listener.Update(pp.currentSnapshot)
 		} else {
 			listener.NoEndpoints(true)
 		}
@@ -1354,9 +1367,7 @@ func (pp *portPublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 		}
 	}
 	if updated {
-		for _, listener := range pp.listeners {
-			listener.Add(pp.addresses.shallowCopy())
-		}
+		pp.notifySnapshotLocked()
 		pp.metrics.incUpdates()
 	}
 }
@@ -1445,79 +1456,6 @@ func getTargetPort(service *corev1.Service, port Port) namedPort {
 	}
 
 	return targetPort
-}
-
-func addressChanged(oldAddress Address, newAddress Address) bool {
-
-	if oldAddress.Identity != newAddress.Identity {
-		// in this case the identity could have changed; this can happen when for
-		// example a mirrored service is reassigned to a new gateway with a different
-		// identity and the service mirroring controller picks that and updates the
-		// identity
-		return true
-	}
-
-	// If the zone hints have changed, then the address has changed
-	if len(newAddress.ForZones) != len(oldAddress.ForZones) {
-		return true
-	}
-
-	// Sort the zone information so that we can compare them accurately
-	// We can't use `sort.StringSlice` because these are arrays of structs and not just strings
-	sort.Slice(oldAddress.ForZones, func(i, j int) bool {
-		return oldAddress.ForZones[i].Name < (oldAddress.ForZones[j].Name)
-	})
-	sort.Slice(newAddress.ForZones, func(i, j int) bool {
-		return newAddress.ForZones[i].Name < (newAddress.ForZones[j].Name)
-	})
-
-	// Both old and new addresses have the same number of zones, so we can just compare them directly
-	for k := range oldAddress.ForZones {
-		if oldAddress.ForZones[k].Name != newAddress.ForZones[k].Name {
-			return true
-		}
-	}
-
-	if oldAddress.Pod != nil && newAddress.Pod != nil {
-		// if these addresses are owned by pods we can check the resource versions
-		return oldAddress.Pod.ResourceVersion != newAddress.Pod.ResourceVersion
-	}
-	return false
-}
-
-func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSet) {
-	// TODO: this detects pods which have been added or removed, but does not
-	// detect addresses which have been modified.  A modified address should trigger
-	// an add of the new version.
-	addAddresses := make(map[ID]Address)
-	removeAddresses := make(map[ID]Address)
-	for id, newAddress := range newAddresses.Addresses {
-		if oldAddress, ok := oldAddresses.Addresses[id]; ok {
-			if addressChanged(oldAddress, newAddress) {
-				addAddresses[id] = newAddress
-			}
-		} else {
-			// this is a new address, we need to add it
-			addAddresses[id] = newAddress
-		}
-	}
-	for id, address := range oldAddresses.Addresses {
-		if _, ok := newAddresses.Addresses[id]; !ok {
-			removeAddresses[id] = address
-		}
-	}
-	add = AddressSet{
-		Addresses:                 addAddresses,
-		Labels:                    newAddresses.Labels,
-		LocalTrafficPolicy:        newAddresses.LocalTrafficPolicy,
-		SupportsTopologyFiltering: newAddresses.SupportsTopologyFiltering,
-	}
-	remove = AddressSet{
-		Addresses:                 removeAddresses,
-		LocalTrafficPolicy:        newAddresses.LocalTrafficPolicy,
-		SupportsTopologyFiltering: newAddresses.SupportsTopologyFiltering,
-	}
-	return add, remove
 }
 
 func getEndpointSliceServiceID(es *discovery.EndpointSlice) (ServiceID, error) {

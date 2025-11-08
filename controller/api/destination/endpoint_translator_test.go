@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -508,12 +509,22 @@ var (
 	}
 )
 
+var snapshotVersionCounter uint64
+
+func sendSnapshot(translator *endpointTranslator, set watcher.AddressSet) {
+	version := atomic.AddUint64(&snapshotVersionCounter, 1)
+	translator.Update(watcher.AddressSnapshot{
+		Version: version,
+		Set:     set,
+	})
+}
+
 func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGateway1, remoteGateway2))
-		translator.Remove(mkAddressSetForServices(remoteGateway2))
+		sendSnapshot(translator, mkAddressSetForServices(remoteGateway1, remoteGateway2))
+		sendSnapshot(translator, mkAddressSetForServices(remoteGateway1))
 
 		expectedNumUpdates := 2
 		<-mockGetServer.updatesReceived // Add
@@ -527,9 +538,9 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 	t.Run("Recovers after emptying address et", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGateway1))
-		translator.Remove(mkAddressSetForServices(remoteGateway1))
-		translator.Add(mkAddressSetForServices(remoteGateway1))
+		sendSnapshot(translator, mkAddressSetForServices(remoteGateway1))
+		sendSnapshot(translator, mkAddressSetForServices())
+		sendSnapshot(translator, mkAddressSetForServices(remoteGateway1))
 
 		expectedNumUpdates := 3
 		<-mockGetServer.updatesReceived // Add
@@ -554,7 +565,7 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGateway2))
+		sendSnapshot(translator, mkAddressSetForServices(remoteGateway2))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -589,7 +600,7 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGatewayAuthOverride))
+		sendSnapshot(translator, mkAddressSetForServices(remoteGatewayAuthOverride))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -615,7 +626,7 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 	t.Run("Does not send TlsIdentity when not present", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGateway1))
+		sendSnapshot(translator, mkAddressSetForServices(remoteGateway1))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -636,8 +647,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(t, pod1, pod2))
-		translator.Remove(mkAddressSetForPods(t, pod2))
+		sendSnapshot(translator, mkAddressSetForPods(t, pod1, pod2))
+		sendSnapshot(translator, mkAddressSetForPods(t, pod1))
 
 		expectedNumUpdates := 2
 		<-mockGetServer.updatesReceived // Add
@@ -651,8 +662,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(pod1, pod2, pod3))
-		translator.Remove(mkAddressSetForServices(pod3))
+		sendSnapshot(translator, mkAddressSetForServices(pod1, pod2, pod3))
+		sendSnapshot(translator, mkAddressSetForServices(pod1, pod2))
 
 		addressesAdded := (<-mockGetServer.updatesReceived).GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
@@ -688,7 +699,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslatorWithOpaqueTransport(t, true)
 
-		translator.Add(mkAddressSetForPods(t, pod1, pod2, pod3))
+		sendSnapshot(translator, mkAddressSetForPods(t, pod1, pod2, pod3))
 
 		addressesAdded := (<-mockGetServer.updatesReceived).GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
@@ -714,7 +725,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslatorWithOpaqueTransport(t, true)
 
-		translator.Add(mkAddressSetForPods(t, podAdmin, podControl))
+		sendSnapshot(translator, mkAddressSetForPods(t, podAdmin, podControl))
 
 		addressesAdded := (<-mockGetServer.updatesReceived).GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
@@ -734,7 +745,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends metric labels with added addresses", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(t, pod1))
+		sendSnapshot(translator, mkAddressSetForPods(t, pod1))
 
 		update := <-mockGetServer.updatesReceived
 
@@ -765,7 +776,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(t, pod1))
+		sendSnapshot(translator, mkAddressSetForPods(t, pod1))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -790,7 +801,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(podOpaque))
+		sendSnapshot(translator, mkAddressSetForServices(podOpaque))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -806,7 +817,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends IPv6 only when pod has both IPv4 and IPv6", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(t, pod1, pod1IPv6))
+		sendSnapshot(translator, mkAddressSetForPods(t, pod1, pod1IPv6))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -834,7 +845,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 			{Name: "west-1b"},
 		}
 
-		translator.Add(mkAddressSetForPods(t, pod1West1a, pod1IPv6West1b))
+		sendSnapshot(translator, mkAddressSetForPods(t, pod1West1a, pod1IPv6West1b))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -854,8 +865,8 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForExternalWorkloads(ew1, ew2))
-		translator.Remove(mkAddressSetForExternalWorkloads(ew2))
+		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ew1, ew2))
+		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ew1))
 
 		expectedNumUpdates := 2
 		<-mockGetServer.updatesReceived // Add
@@ -869,8 +880,8 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForExternalWorkloads(ew1, ew2, ew3))
-		translator.Remove(mkAddressSetForExternalWorkloads(ew3))
+		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ew1, ew2, ew3))
+		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ew1, ew2))
 
 		addressesAdded := (<-mockGetServer.updatesReceived).GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
@@ -897,7 +908,7 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 	t.Run("Sends metric labels with added addresses", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForExternalWorkloads(ew1))
+		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ew1))
 
 		update := <-mockGetServer.updatesReceived
 
@@ -933,7 +944,7 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForExternalWorkloads(ew1))
+		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ew1))
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
@@ -957,7 +968,7 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForExternalWorkloads(ewOpaque))
+		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ewOpaque))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -982,7 +993,7 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslatorWithOpaqueTransport(t, true)
 
-		translator.Add(mkAddressSetForExternalWorkloads(ewNoProxyPort))
+		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ewNoProxyPort))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -1007,7 +1018,7 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslatorWithOpaqueTransport(t, true)
 
-		translator.Add(mkAddressSetForExternalWorkloads(ewOverrideProxyPort))
+		sendSnapshot(translator, mkAddressSetForExternalWorkloads(ewOverrideProxyPort))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -1025,8 +1036,8 @@ func TestEndpointTranslatorTopologyAwareFilter(t *testing.T) {
 	t.Run("Sends one update for add and none for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(west1aAddress, west1bAddress))
-		translator.Remove(mkAddressSetForServices(west1bAddress))
+		sendSnapshot(translator, mkAddressSetForServices(west1aAddress, west1bAddress))
+		sendSnapshot(translator, mkAddressSetForServices(west1aAddress))
 
 		// Only the address meant for west-1a should be added, which means
 		// that when we try to remove the address meant for west-1b there
@@ -1058,7 +1069,7 @@ func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 		translator.cfg.extEndpointZoneWeights = false
 
-		translator.Add(mkAddressSetForServices(addrA, addrB))
+		sendSnapshot(translator, mkAddressSetForServices(addrA, addrB))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 2 {
@@ -1075,7 +1086,7 @@ func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 		translator.cfg.extEndpointZoneWeights = true
 
-		translator.Add(mkAddressSetForServices(addrA, addrB))
+		sendSnapshot(translator, mkAddressSetForServices(addrA, addrB))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 2 {
@@ -1094,8 +1105,11 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 		addressSet := mkAddressSetForServices(AddressOnTest123Node, AddressNotOnTest123Node)
 		addressSet.LocalTrafficPolicy = true
-		translator.Add(addressSet)
-		translator.Remove(mkAddressSetForServices(AddressNotOnTest123Node))
+		sendSnapshot(translator, addressSet)
+
+		updatedSet := mkAddressSetForServices(AddressOnTest123Node)
+		updatedSet.LocalTrafficPolicy = true
+		sendSnapshot(translator, updatedSet)
 
 		// Only the address meant for AddressOnTest123Node should be added, which means
 		// that when we try to remove the address meant for AddressNotOnTest123Node there
@@ -1112,20 +1126,20 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 		addressSet := mkAddressSetForServices(AddressOnTest123Node, AddressNotOnTest123Node)
 		addressSet.LocalTrafficPolicy = true
-		translator.Add(addressSet)
+		sendSnapshot(translator, addressSet)
 		set := watcher.AddressSet{
 			Addresses:                 make(map[watcher.ServiceID]watcher.Address),
 			Labels:                    map[string]string{"service": "service-name", "namespace": "service-ns"},
-			LocalTrafficPolicy:        false,
+			LocalTrafficPolicy:        true,
 			SupportsTopologyFiltering: true,
 		}
-		translator.Remove(set)
+		sendSnapshot(translator, set)
 
 		// Only the address meant for AddressOnTest123Node should be added.
-		// The remove with no addresses should not change the LocalTrafficPolicy
-		// and should be a noop that does not send an update.
-		expectedNumUpdates := 1
+		// Removing it should emit a remove update.
+		expectedNumUpdates := 2
 		<-mockGetServer.updatesReceived // Add
+		<-mockGetServer.updatesReceived // Remove
 
 		if len(mockGetServer.updatesReceived) != 0 {
 			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
@@ -1142,8 +1156,8 @@ func TestConcurrency(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			translator.Add(mkAddressSetForServices(west1aAddress, west1bAddress))
-			translator.Remove(mkAddressSetForServices(west1bAddress))
+			sendSnapshot(translator, mkAddressSetForServices(west1aAddress, west1bAddress))
+			sendSnapshot(translator, mkAddressSetForServices(west1aAddress))
 		}()
 	}
 

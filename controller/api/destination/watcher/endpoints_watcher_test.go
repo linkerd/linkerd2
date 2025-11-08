@@ -25,6 +25,7 @@ type bufferingEndpointListener struct {
 	localTrafficPolicy bool
 	noEndpointsCalled  bool
 	noEndpointsExist   bool
+	state              map[ID]Address
 	sync.Mutex
 }
 
@@ -32,6 +33,7 @@ func newBufferingEndpointListener() *bufferingEndpointListener {
 	return &bufferingEndpointListener{
 		added:   []string{},
 		removed: []string{},
+		state:   make(map[ID]Address),
 		Mutex:   sync.Mutex{},
 	}
 }
@@ -45,6 +47,38 @@ func addressString(address Address) string {
 		addressString = fmt.Sprintf("%s/%s", addressString, address.AuthorityOverride)
 	}
 	return addressString
+}
+
+func addressChanged(oldAddress, newAddress Address) bool {
+	if oldAddress.Identity != newAddress.Identity {
+		return true
+	}
+
+	if oldAddress.AuthorityOverride != newAddress.AuthorityOverride {
+		return true
+	}
+
+	if len(newAddress.ForZones) != len(oldAddress.ForZones) {
+		return true
+	}
+
+	sort.Slice(oldAddress.ForZones, func(i, j int) bool {
+		return oldAddress.ForZones[i].Name < oldAddress.ForZones[j].Name
+	})
+	sort.Slice(newAddress.ForZones, func(i, j int) bool {
+		return newAddress.ForZones[i].Name < newAddress.ForZones[j].Name
+	})
+
+	for i := range oldAddress.ForZones {
+		if oldAddress.ForZones[i].Name != newAddress.ForZones[i].Name {
+			return true
+		}
+	}
+
+	if oldAddress.Pod != nil && newAddress.Pod != nil {
+		return oldAddress.Pod.ResourceVersion != newAddress.Pod.ResourceVersion
+	}
+	return false
 }
 
 func (bel *bufferingEndpointListener) ExpectAdded(expected []string, t *testing.T) {
@@ -75,22 +109,33 @@ func (bel *bufferingEndpointListener) endpointsDoNotExist() bool {
 	return bel.noEndpointsExist
 }
 
-func (bel *bufferingEndpointListener) Add(set AddressSet) {
+func (bel *bufferingEndpointListener) Update(snapshot AddressSnapshot) {
 	bel.Lock()
 	defer bel.Unlock()
-	for _, address := range set.Addresses {
-		bel.added = append(bel.added, addressString(address))
-	}
-	bel.localTrafficPolicy = set.LocalTrafficPolicy
-}
 
-func (bel *bufferingEndpointListener) Remove(set AddressSet) {
-	bel.Lock()
-	defer bel.Unlock()
-	for _, address := range set.Addresses {
-		bel.removed = append(bel.removed, addressString(address))
+	set := snapshot.Set
+	for id, address := range set.Addresses {
+		if prev, ok := bel.state[id]; ok {
+			if addressChanged(prev, address) {
+				bel.added = append(bel.added, addressString(address))
+			}
+		} else {
+			bel.added = append(bel.added, addressString(address))
+		}
+	}
+
+	for id, address := range bel.state {
+		if _, ok := set.Addresses[id]; !ok {
+			bel.removed = append(bel.removed, addressString(address))
+		}
+	}
+
+	bel.state = make(map[ID]Address, len(set.Addresses))
+	for id, address := range set.Addresses {
+		bel.state[id] = address
 	}
 	bel.localTrafficPolicy = set.LocalTrafficPolicy
+	bel.noEndpointsCalled = false
 }
 
 func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
@@ -98,11 +143,13 @@ func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
 	defer bel.Unlock()
 	bel.noEndpointsCalled = true
 	bel.noEndpointsExist = exists
+	bel.state = make(map[ID]Address)
 }
 
 type bufferingEndpointListenerWithResVersion struct {
 	added   []string
 	removed []string
+	state   map[ID]Address
 	sync.Mutex
 }
 
@@ -110,6 +157,7 @@ func newBufferingEndpointListenerWithResVersion() *bufferingEndpointListenerWith
 	return &bufferingEndpointListenerWithResVersion{
 		added:   []string{},
 		removed: []string{},
+		state:   make(map[ID]Address),
 		Mutex:   sync.Mutex{},
 	}
 }
@@ -132,23 +180,38 @@ func (bel *bufferingEndpointListenerWithResVersion) ExpectRemoved(expected []str
 	testCompare(t, expected, bel.removed)
 }
 
-func (bel *bufferingEndpointListenerWithResVersion) Add(set AddressSet) {
+func (bel *bufferingEndpointListenerWithResVersion) Update(snapshot AddressSnapshot) {
 	bel.Lock()
 	defer bel.Unlock()
-	for _, address := range set.Addresses {
-		bel.added = append(bel.added, addressStringWithResVersion(address))
+
+	set := snapshot.Set
+	for id, address := range set.Addresses {
+		if prev, ok := bel.state[id]; ok {
+			if addressChanged(prev, address) {
+				bel.added = append(bel.added, addressStringWithResVersion(address))
+			}
+		} else {
+			bel.added = append(bel.added, addressStringWithResVersion(address))
+		}
+	}
+
+	for id, address := range bel.state {
+		if _, ok := set.Addresses[id]; !ok {
+			bel.removed = append(bel.removed, addressStringWithResVersion(address))
+		}
+	}
+
+	bel.state = make(map[ID]Address, len(set.Addresses))
+	for id, address := range set.Addresses {
+		bel.state[id] = address
 	}
 }
 
-func (bel *bufferingEndpointListenerWithResVersion) Remove(set AddressSet) {
+func (bel *bufferingEndpointListenerWithResVersion) NoEndpoints(exists bool) {
 	bel.Lock()
 	defer bel.Unlock()
-	for _, address := range set.Addresses {
-		bel.removed = append(bel.removed, addressStringWithResVersion(address))
-	}
+	bel.state = make(map[ID]Address)
 }
-
-func (bel *bufferingEndpointListenerWithResVersion) NoEndpoints(exists bool) {}
 
 func TestEndpointsWatcher(t *testing.T) {
 	for _, tt := range []struct {

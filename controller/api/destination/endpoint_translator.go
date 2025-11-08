@@ -59,16 +59,16 @@ type (
 	endpointEventType int
 
 	endpointEvent struct {
-		handle endpointHandleID
-		typ    endpointEventType
-		set    watcher.AddressSet
-		exists bool
+		handle  endpointHandleID
+		typ     endpointEventType
+		set     watcher.AddressSet
+		version uint64
+		exists  bool
 	}
 )
 
 const (
-	endpointEventAdd endpointEventType = iota
-	endpointEventRemove
+	endpointEventSnapshot endpointEventType = iota
 	endpointEventNoEndpoints
 	endpointEventClose
 )
@@ -112,17 +112,11 @@ func newEndpointTranslator(
 	return translator, nil
 }
 
-func (et *endpointTranslator) Add(set watcher.AddressSet) {
+func (et *endpointTranslator) Update(snapshot watcher.AddressSnapshot) {
 	et.enqueueEvent(endpointEvent{
-		typ: endpointEventAdd,
-		set: copyAddressSet(set),
-	})
-}
-
-func (et *endpointTranslator) Remove(set watcher.AddressSet) {
-	et.enqueueEvent(endpointEvent{
-		typ: endpointEventRemove,
-		set: copyAddressSet(set),
+		typ:     endpointEventSnapshot,
+		set:     snapshot.Set,
+		version: snapshot.Version,
 	})
 }
 
@@ -135,10 +129,8 @@ func (et *endpointTranslator) NoEndpoints(exists bool) {
 
 func (et *endpointTranslator) handleEvent(evt endpointEvent) []*pb.Update {
 	switch evt.typ {
-	case endpointEventAdd:
-		return et.pipeline.OnAdd(evt.set)
-	case endpointEventRemove:
-		return et.pipeline.OnRemove(evt.set)
+	case endpointEventSnapshot:
+		return et.pipeline.OnSnapshot(evt.set, evt.version)
 	case endpointEventNoEndpoints:
 		return et.pipeline.OnNoEndpoints(evt.exists)
 	default:
@@ -158,24 +150,5 @@ func (et *endpointTranslator) Close() {
 	if !et.closed.Swap(true) {
 		// Ensure dispatcher drops the handle after pending events drain.
 		et.dispatcher.enqueue(endpointEvent{handle: et.id, typ: endpointEventClose}, nil)
-	}
-}
-
-func copyAddressSet(set watcher.AddressSet) watcher.AddressSet {
-	addresses := make(map[watcher.ID]watcher.Address, len(set.Addresses))
-	for id, addr := range set.Addresses {
-		addresses[id] = addr
-	}
-
-	labels := make(map[string]string, len(set.Labels))
-	for k, v := range set.Labels {
-		labels[k] = v
-	}
-
-	return watcher.AddressSet{
-		Addresses:                 addresses,
-		Labels:                    labels,
-		LocalTrafficPolicy:        set.LocalTrafficPolicy,
-		SupportsTopologyFiltering: set.SupportsTopologyFiltering,
 	}
 }

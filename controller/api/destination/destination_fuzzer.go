@@ -25,8 +25,8 @@ func FuzzAdd(data []byte) int {
 	}
 	t := &testing.T{}
 	_, translator := makeEndpointTranslator(t)
-	translator.Add(set)
-	translator.Remove(set)
+	translator.Update(watcher.AddressSnapshot{Version: 1, Set: set})
+	translator.NoEndpoints(true)
 	return 1
 }
 
