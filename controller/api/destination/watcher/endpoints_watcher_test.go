@@ -792,8 +792,8 @@ func TestPortPublisherSnapshotImmutability(t *testing.T) {
 					Port: 8080,
 				},
 			},
-			Labels:                    map[string]string{"service": "svc-1"},
-			SupportsTopologyFiltering: true,
+			Labels:             map[string]string{"service": "svc-1"},
+			LocalTrafficPolicy: false,
 		},
 	}
 
@@ -847,7 +847,7 @@ func TestSnapshotTopicInitialDelivery(t *testing.T) {
 	defer cancel()
 
 	pp := &portPublisher{
-		topic: newSnapshotTopic(),
+		topic: newEndpointTopic(),
 		addresses: AddressSet{
 			Addresses: map[ID]Address{
 				ServiceID{Name: "svc-1", Namespace: "ns"}: {IP: "10.0.0.1", Port: 8080},

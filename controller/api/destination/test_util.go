@@ -1147,23 +1147,23 @@ func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) e
 	return nil
 }
 
-type snapshotViewHarness struct {
+type endpointViewHarness struct {
 	topic *mockSnapshotTopic
-	view  *snapshotView
+	view  *endpointView
 	cfg   *endpointTranslatorConfig
 }
 
-func (h *snapshotViewHarness) Update(snapshot watcher.AddressSnapshot) {
+func (h *endpointViewHarness) Update(snapshot watcher.AddressSnapshot) {
 	h.topic.publishSnapshot(snapshot)
 }
 
-func (h *snapshotViewHarness) NoEndpoints(exists bool) {
+func (h *endpointViewHarness) NoEndpoints(exists bool) {
 	h.topic.publishNoEndpoints(exists)
 }
 
 type mockSnapshotTopic struct {
 	mu              sync.Mutex
-	subscribers     map[chan watcher.SnapshotEvent]struct{}
+	subscribers     map[chan watcher.EndpointEvent]struct{}
 	lastSnapshot    watcher.AddressSnapshot
 	hasSnapshot     bool
 	lastNoEndpoints bool
@@ -1172,15 +1172,15 @@ type mockSnapshotTopic struct {
 
 func newMockSnapshotTopic() *mockSnapshotTopic {
 	return &mockSnapshotTopic{
-		subscribers: make(map[chan watcher.SnapshotEvent]struct{}),
+		subscribers: make(map[chan watcher.EndpointEvent]struct{}),
 	}
 }
 
-func (t *mockSnapshotTopic) Subscribe(ctx context.Context, buffer int) (<-chan watcher.SnapshotEvent, error) {
+func (t *mockSnapshotTopic) Subscribe(ctx context.Context, buffer int) (<-chan watcher.EndpointEvent, error) {
 	if buffer <= 0 {
 		buffer = 1
 	}
-	ch := make(chan watcher.SnapshotEvent, buffer)
+	ch := make(chan watcher.EndpointEvent, buffer)
 
 	t.mu.Lock()
 	t.subscribers[ch] = struct{}{}
@@ -1190,10 +1190,10 @@ func (t *mockSnapshotTopic) Subscribe(ctx context.Context, buffer int) (<-chan w
 
 	if hasSnapshot {
 		snapCopy := snapshot
-		ch <- watcher.SnapshotEvent{Snapshot: &snapCopy}
+		ch <- watcher.EndpointEvent{Snapshot: &snapCopy}
 	} else if hasNo {
 		noCopy := noEndpoints
-		ch <- watcher.SnapshotEvent{NoEndpoints: &noCopy}
+		ch <- watcher.EndpointEvent{NoEndpoints: &noCopy}
 	}
 
 	go func() {
@@ -1223,7 +1223,7 @@ func (t *mockSnapshotTopic) publishSnapshot(snapshot watcher.AddressSnapshot) {
 	t.lastSnapshot = snapshot
 	t.hasSnapshot = true
 	t.hasNoEndpoints = false
-	subs := make([]chan watcher.SnapshotEvent, 0, len(t.subscribers))
+	subs := make([]chan watcher.EndpointEvent, 0, len(t.subscribers))
 	for sub := range t.subscribers {
 		subs = append(subs, sub)
 	}
@@ -1231,7 +1231,7 @@ func (t *mockSnapshotTopic) publishSnapshot(snapshot watcher.AddressSnapshot) {
 
 	for _, sub := range subs {
 		snapCopy := snapshot
-		sub <- watcher.SnapshotEvent{Snapshot: &snapCopy}
+		sub <- watcher.EndpointEvent{Snapshot: &snapCopy}
 	}
 }
 
@@ -1240,7 +1240,7 @@ func (t *mockSnapshotTopic) publishNoEndpoints(exists bool) {
 	t.hasSnapshot = false
 	t.hasNoEndpoints = true
 	t.lastNoEndpoints = exists
-	subs := make([]chan watcher.SnapshotEvent, 0, len(t.subscribers))
+	subs := make([]chan watcher.EndpointEvent, 0, len(t.subscribers))
 	for sub := range t.subscribers {
 		subs = append(subs, sub)
 	}
@@ -1248,16 +1248,16 @@ func (t *mockSnapshotTopic) publishNoEndpoints(exists bool) {
 
 	for _, sub := range subs {
 		existsCopy := exists
-		sub <- watcher.SnapshotEvent{NoEndpoints: &existsCopy}
+		sub <- watcher.EndpointEvent{NoEndpoints: &existsCopy}
 	}
 }
 
-func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *snapshotViewHarness) {
+func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointViewHarness) {
 	t.Helper()
 	return makeEndpointTranslatorWithOpaqueTransport(t, false)
 }
 
-func makeEndpointTranslatorWithOpaqueTransport(t *testing.T, forceOpaqueTransport bool) (*mockDestinationGetServer, *snapshotViewHarness) {
+func makeEndpointTranslatorWithOpaqueTransport(t *testing.T, forceOpaqueTransport bool) (*mockDestinationGetServer, *endpointViewHarness) {
 	t.Helper()
 	node := `apiVersion: v1
 kind: Node
@@ -1303,7 +1303,7 @@ metadata:
 		meshedHTTP2ClientParams: nil,
 		service:                 "service-name.service-ns",
 	}
-	view, err := dispatcher.newSnapshotView(context.Background(), topic, &cfg, logging.WithField("test", t.Name()))
+	view, err := dispatcher.newEndpointView(context.Background(), topic, &cfg, logging.WithField("test", t.Name()))
 	if err != nil {
 		t.Fatalf("failed to create snapshot view: %s", err)
 	}
@@ -1312,7 +1312,7 @@ metadata:
 		view.Close()
 		dispatcher.close()
 	})
-	return mockGetServer, &snapshotViewHarness{
+	return mockGetServer, &endpointViewHarness{
 		topic: topic,
 		view:  view,
 		cfg:   view.cfg,

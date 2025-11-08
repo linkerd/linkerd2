@@ -19,7 +19,7 @@ type endpointStreamDispatcher struct {
 	reset   func()
 
 	mu     sync.Mutex
-	views  map[*snapshotView]struct{}
+	views  map[*endpointView]struct{}
 	closed atomic.Bool
 }
 
@@ -30,7 +30,7 @@ func newEndpointStreamDispatcher(capacity int, reset func()) *endpointStreamDisp
 	return &endpointStreamDispatcher{
 		updates: make(chan *pb.Update, capacity),
 		reset:   reset,
-		views:   make(map[*snapshotView]struct{}),
+		views:   make(map[*endpointView]struct{}),
 	}
 }
 
@@ -40,7 +40,7 @@ func (d *endpointStreamDispatcher) close() {
 	}
 
 	d.mu.Lock()
-	views := make([]*snapshotView, 0, len(d.views))
+	views := make([]*endpointView, 0, len(d.views))
 	for view := range d.views {
 		views = append(views, view)
 	}
@@ -85,16 +85,16 @@ func (d *endpointStreamDispatcher) enqueue(update *pb.Update, overflow prometheu
 	}
 }
 
-func (d *endpointStreamDispatcher) newSnapshotView(
+func (d *endpointStreamDispatcher) newEndpointView(
 	ctx context.Context,
-	topic watcher.SnapshotTopic,
+	topic watcher.EndpointTopic,
 	cfg *endpointTranslatorConfig,
 	log *logging.Entry,
-) (*snapshotView, error) {
+) (*endpointView, error) {
 	if d.closed.Load() {
 		return nil, fmt.Errorf("dispatcher closed")
 	}
-	view, err := newSnapshotView(ctx, topic, d, cfg, log)
+	view, err := newEndpointView(ctx, topic, d, cfg, log)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (d *endpointStreamDispatcher) newSnapshotView(
 	return view, nil
 }
 
-func (d *endpointStreamDispatcher) unregisterView(view *snapshotView) {
+func (d *endpointStreamDispatcher) unregisterView(view *endpointView) {
 	d.mu.Lock()
 	delete(d.views, view)
 	d.mu.Unlock()

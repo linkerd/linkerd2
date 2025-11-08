@@ -72,16 +72,6 @@ type (
 		Cluster            string
 	}
 
-	// AddressSnapshot represents an immutable view of the most recent
-	// AddressSet as published by a portPublisher. The Version field
-	// monotonically increases with each update allowing downstream consumers
-	// to detect duplicate notifications without retaining their own copy of
-	// the snapshot.
-	AddressSnapshot struct {
-		Version uint64
-		Set     AddressSet
-	}
-
 	portAndHostname struct {
 		port     Port
 		hostname string
@@ -156,7 +146,7 @@ type (
 		exists               bool
 		addresses            AddressSet
 		listeners            []EndpointUpdateListener
-		topic                *snapshotTopic
+		topic                *endpointTopic
 		metrics              endpointsMetrics
 		localTrafficPolicy   bool
 		supportsTopology     bool
@@ -324,8 +314,8 @@ func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string
 	sp.unsubscribe(port, hostname, listener)
 }
 
-// Topic returns the SnapshotTopic for the given service/port/hostname tuple.
-func (ew *EndpointsWatcher) Topic(id ServiceID, port Port, hostname string) (SnapshotTopic, error) {
+// Topic returns the EndpointTopic for the given service/port/hostname tuple.
+func (ew *EndpointsWatcher) Topic(id ServiceID, port Port, hostname string) (EndpointTopic, error) {
 	svc, _ := ew.k8sAPI.Svc().Lister().Services(id.Namespace).Get(id.Name)
 	if svc != nil && svc.Spec.Type == corev1.ServiceTypeExternalName {
 		return nil, invalidService(id.String())
@@ -773,7 +763,7 @@ func (sp *servicePublisher) unsubscribe(srcPort Port, hostname string, listener 
 	}
 }
 
-func (sp *servicePublisher) getTopic(srcPort Port, hostname string) (SnapshotTopic, error) {
+func (sp *servicePublisher) getTopic(srcPort Port, hostname string) (EndpointTopic, error) {
 	sp.Lock()
 	defer sp.Unlock()
 	port, err := sp.getOrCreatePortPublisherLocked(srcPort, hostname)
@@ -814,7 +804,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) (*po
 		enableEndpointSlices: sp.enableEndpointSlices,
 		localTrafficPolicy:   sp.localTrafficPolicy,
 		supportsTopology:     sp.supportsTopology,
-		topic:                newSnapshotTopic(),
+		topic:                newEndpointTopic(),
 	}
 	port.addresses.Cluster = sp.cluster
 
@@ -1479,8 +1469,8 @@ func (pp *portPublisher) isAddressSelected(address Address, server *v1beta3.Serv
 	return false
 }
 
-// Topic exposes the snapshot topic for this port publisher.
-func (pp *portPublisher) Topic() SnapshotTopic {
+// Topic exposes the endpoint topic for this port publisher.
+func (pp *portPublisher) Topic() EndpointTopic {
 	return pp.topic
 }
 

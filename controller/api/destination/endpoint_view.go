@@ -12,7 +12,7 @@ import (
 	logging "github.com/sirupsen/logrus"
 )
 
-type snapshotView struct {
+type endpointView struct {
 	cfg             *endpointTranslatorConfig
 	log             *logging.Entry
 	dispatcher      *endpointStreamDispatcher
@@ -31,25 +31,25 @@ type snapshotView struct {
 	closed atomic.Bool
 }
 
-func newSnapshotView(
+func newEndpointView(
 	ctx context.Context,
-	topic watcher.SnapshotTopic,
+	topic watcher.EndpointTopic,
 	dispatcher *endpointStreamDispatcher,
 	cfg *endpointTranslatorConfig,
 	log *logging.Entry,
-) (*snapshotView, error) {
+) (*endpointView, error) {
 	if dispatcher == nil {
-		return nil, fmt.Errorf("snapshot view requires a dispatcher")
+		return nil, fmt.Errorf("endpoint view requires a dispatcher")
 	}
 	if topic == nil {
-		return nil, fmt.Errorf("snapshot view requires a snapshot topic")
+		return nil, fmt.Errorf("endpoint view requires an endpoint topic")
 	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
 	log = log.WithFields(logging.Fields{
-		"component": "snapshot-view",
+		"component": "endpoint-view",
 		"service":   cfg.service,
 	})
 
@@ -58,7 +58,7 @@ func newSnapshotView(
 		return nil, fmt.Errorf("failed to create updates queue overflow counter: %w", err)
 	}
 
-	view := &snapshotView{
+	view := &endpointView{
 		cfg:              cfg,
 		log:              log,
 		dispatcher:       dispatcher,
@@ -74,7 +74,7 @@ func newSnapshotView(
 	events, err := topic.Subscribe(subCtx, 10)
 	if err != nil {
 		cancel()
-		return nil, fmt.Errorf("failed to subscribe to snapshot topic: %w", err)
+		return nil, fmt.Errorf("failed to subscribe to endpoint topic: %w", err)
 	}
 
 	view.ctx = subCtx
@@ -85,7 +85,7 @@ func newSnapshotView(
 	return view, nil
 }
 
-func (sv *snapshotView) run(events <-chan watcher.SnapshotEvent) {
+func (sv *endpointView) run(events <-chan watcher.EndpointEvent) {
 	defer sv.wg.Done()
 	for {
 		select {
@@ -100,7 +100,7 @@ func (sv *snapshotView) run(events <-chan watcher.SnapshotEvent) {
 	}
 }
 
-func (sv *snapshotView) handleEvent(evt watcher.SnapshotEvent) {
+func (sv *endpointView) handleEvent(evt watcher.EndpointEvent) {
 	sv.log.Debugf("received event (snapshot=%v noEndpoints=%v)", evt.Snapshot != nil, evt.NoEndpoints != nil)
 	var updates []*pb.Update
 	switch {
@@ -115,7 +115,7 @@ func (sv *snapshotView) handleEvent(evt watcher.SnapshotEvent) {
 	sv.emitUpdates(updates)
 }
 
-func (sv *snapshotView) onSnapshot(set watcher.AddressSet, version uint64) []*pb.Update {
+func (sv *endpointView) onSnapshot(set watcher.AddressSet, version uint64) []*pb.Update {
 	sv.mu.Lock()
 	defer sv.mu.Unlock()
 
@@ -126,7 +126,7 @@ func (sv *snapshotView) onSnapshot(set watcher.AddressSet, version uint64) []*pb
 	return sv.buildFilteredUpdatesLocked()
 }
 
-func (sv *snapshotView) onNoEndpoints(exists bool) []*pb.Update {
+func (sv *endpointView) onNoEndpoints(exists bool) []*pb.Update {
 	sv.mu.Lock()
 	defer sv.mu.Unlock()
 
@@ -136,7 +136,7 @@ func (sv *snapshotView) onNoEndpoints(exists bool) []*pb.Update {
 	return sv.buildFilteredUpdatesLocked()
 }
 
-func (sv *snapshotView) buildFilteredUpdatesLocked() []*pb.Update {
+func (sv *endpointView) buildFilteredUpdatesLocked() []*pb.Update {
 	filtered := filterAddresses(sv.cfg, &sv.available, sv.log)
 	filtered = selectAddressFamily(sv.cfg, filtered)
 	diffAdd, diffRemove := diffEndpoints(sv.filteredSnapshot, filtered)
@@ -158,14 +158,14 @@ func (sv *snapshotView) buildFilteredUpdatesLocked() []*pb.Update {
 	return updates
 }
 
-func (sv *snapshotView) emitUpdates(updates []*pb.Update) {
+func (sv *endpointView) emitUpdates(updates []*pb.Update) {
 	sv.log.Debugf("emitting %d updates", len(updates))
 	for _, update := range updates {
 		sv.dispatcher.enqueue(update, sv.overflowCounter)
 	}
 }
 
-func (sv *snapshotView) NoEndpoints(exists bool) {
+func (sv *endpointView) NoEndpoints(exists bool) {
 	if sv == nil || sv.closed.Load() {
 		return
 	}
@@ -173,11 +173,11 @@ func (sv *snapshotView) NoEndpoints(exists bool) {
 	sv.emitUpdates(updates)
 }
 
-func (sv *snapshotView) Close() {
+func (sv *endpointView) Close() {
 	sv.close()
 }
 
-func (sv *snapshotView) close() {
+func (sv *endpointView) close() {
 	if sv == nil || !sv.closed.CompareAndSwap(false, true) {
 		return
 	}

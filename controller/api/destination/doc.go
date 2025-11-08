@@ -2,13 +2,13 @@
 // snapshot-based pub/sub architecture. It replaces the prior callback model
 // with three composable layers optimized for high subscriber counts:
 //
-//  1. SnapshotTopic: a fan-out publisher that holds the latest immutable
+//  1. EndpointTopic: a fan-out publisher that holds the latest immutable
 //     endpoint snapshot (AddressSnapshot). Watchers publish snapshots here.
 //     Each subscriber receives events on its own channel. A topic may carry
 //     endpoints for a single service:port or, in federated mode, per-cluster
 //     variants.
 //
-//  2. snapshotView: per-RPC stream state & filtering. A view subscribes to a
+//  2. endpointView: per-RPC stream state & filtering. A view subscribes to a
 //     topic, diffs successive snapshots, applies filtering (identity, hints,
 //     address family, opaque ports), and translates endpoint set changes into
 //     proxy-api Update messages. Views are isolated; locks do not span across
@@ -24,12 +24,12 @@
 //
 // Event Flow:
 //
-//	Kubernetes watcher -> AddressSnapshot publish -> SnapshotTopic -> snapshotView
+//	Kubernetes watcher -> AddressSnapshot publish -> EndpointTopic -> endpointView
 //	-> filtered diff -> Updates enqueued -> dispatcher.process -> gRPC stream.
 //
 // Concurrency & Safety Contracts:
-//   - SnapshotTopic owns its internal mutex; publishes are serialized.
-//   - snapshotView protects per-stream filtering & diff state with sv.mu.
+//   - EndpointTopic owns its internal mutex; publishes are serialized.
+//   - endpointView protects per-stream filtering & diff state with sv.mu.
 //   - endpointStreamDispatcher guards its view registry & queue with a mutex.
 //   - No locks cross layer boundaries; communication occurs via channels.
 //

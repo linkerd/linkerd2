@@ -6,47 +6,62 @@ import (
 	"sync"
 )
 
-// SnapshotEvent represents a change notification published on a SnapshotTopic.
+// AddressSnapshot represents an immutable view of the most recent
+// AddressSet as published by a portPublisher. The Version field
+// monotonically increases with each update allowing downstream consumers
+// to detect duplicate notifications without retaining their own copy of
+// the snapshot.
+type AddressSnapshot struct {
+	Version uint64
+	Set     AddressSet
+}
+
+// EndpointEvent represents a change notification published on an EndpointTopic.
 // Exactly one of Snapshot or NoEndpoints will be non-nil.
-type SnapshotEvent struct {
+type EndpointEvent struct {
 	Snapshot    *AddressSnapshot
 	NoEndpoints *bool
 }
 
-// SnapshotTopic is a declarative stream of address snapshots for a specific
+// EndpointTopic is a declarative stream of address snapshots for a specific
 // service/port combination. Subscribers receive immutable snapshots and may
 // safely skip intermediate versions if they fall behind.
-type SnapshotTopic interface {
-	Subscribe(ctx context.Context, buffer int) (<-chan SnapshotEvent, error)
+//
+// Note: This interface is defined in the watcher package (producer side) but
+// will be consumed by the destination package. This is a temporary state during
+// refactoring; the interface will eventually move to the destination package
+// following Go idioms (interfaces belong to consumers).
+type EndpointTopic interface {
+	Subscribe(ctx context.Context, buffer int) (<-chan EndpointEvent, error)
 	Latest() (AddressSnapshot, bool)
 }
 
-type snapshotTopic struct {
+type endpointTopic struct {
 	mu              sync.RWMutex
-	subscribers     map[*topicSubscriber]struct{}
+	subscribers     map[*endpointSubscriber]struct{}
 	lastSnapshot    AddressSnapshot
 	hasSnapshot     bool
 	lastNoEndpoints bool
 	hasNoEndpoints  bool
 }
 
-type topicSubscriber struct {
-	events chan SnapshotEvent
+type endpointSubscriber struct {
+	events chan EndpointEvent
 }
 
-func newSnapshotTopic() *snapshotTopic {
-	return &snapshotTopic{
-		subscribers: make(map[*topicSubscriber]struct{}),
+func newEndpointTopic() *endpointTopic {
+	return &endpointTopic{
+		subscribers: make(map[*endpointSubscriber]struct{}),
 	}
 }
 
-func (t *snapshotTopic) Subscribe(ctx context.Context, buffer int) (<-chan SnapshotEvent, error) {
+func (t *endpointTopic) Subscribe(ctx context.Context, buffer int) (<-chan EndpointEvent, error) {
 	if buffer <= 0 {
 		buffer = 1
 	}
 
-	sub := &topicSubscriber{
-		events: make(chan SnapshotEvent, buffer),
+	sub := &endpointSubscriber{
+		events: make(chan EndpointEvent, buffer),
 	}
 
 	t.mu.Lock()
@@ -58,10 +73,10 @@ func (t *snapshotTopic) Subscribe(ctx context.Context, buffer int) (<-chan Snaps
 	if hasSnapshot {
 		// Deliver the latest snapshot immediately.
 		snapCopy := snapshot
-		sub.events <- SnapshotEvent{Snapshot: &snapCopy}
+		sub.events <- EndpointEvent{Snapshot: &snapCopy}
 	} else if hasNoEndpoints {
 		noCopy := noEndpoints
-		sub.events <- SnapshotEvent{NoEndpoints: &noCopy}
+		sub.events <- EndpointEvent{NoEndpoints: &noCopy}
 	}
 
 	go func() {
@@ -72,7 +87,7 @@ func (t *snapshotTopic) Subscribe(ctx context.Context, buffer int) (<-chan Snaps
 	return sub.events, nil
 }
 
-func (t *snapshotTopic) Latest() (AddressSnapshot, bool) {
+func (t *endpointTopic) Latest() (AddressSnapshot, bool) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	if !t.hasSnapshot {
@@ -81,13 +96,13 @@ func (t *snapshotTopic) Latest() (AddressSnapshot, bool) {
 	return t.lastSnapshot, true
 }
 
-func (t *snapshotTopic) publishSnapshot(snapshot AddressSnapshot) {
+func (t *endpointTopic) publishSnapshot(snapshot AddressSnapshot) {
 	t.mu.Lock()
 	t.lastSnapshot = snapshot
 	t.hasSnapshot = true
 	t.hasNoEndpoints = false
 
-	subs := make([]*topicSubscriber, 0, len(t.subscribers))
+	subs := make([]*endpointSubscriber, 0, len(t.subscribers))
 	for sub := range t.subscribers {
 		subs = append(subs, sub)
 	}
@@ -95,17 +110,17 @@ func (t *snapshotTopic) publishSnapshot(snapshot AddressSnapshot) {
 
 	for _, sub := range subs {
 		snapCopy := snapshot
-		sub.events <- SnapshotEvent{Snapshot: &snapCopy}
+		sub.events <- EndpointEvent{Snapshot: &snapCopy}
 	}
 }
 
-func (t *snapshotTopic) publishNoEndpoints(exists bool) {
+func (t *endpointTopic) publishNoEndpoints(exists bool) {
 	t.mu.Lock()
 	t.hasSnapshot = false
 	t.hasNoEndpoints = true
 	t.lastNoEndpoints = exists
 
-	subs := make([]*topicSubscriber, 0, len(t.subscribers))
+	subs := make([]*endpointSubscriber, 0, len(t.subscribers))
 	for sub := range t.subscribers {
 		subs = append(subs, sub)
 	}
@@ -113,11 +128,11 @@ func (t *snapshotTopic) publishNoEndpoints(exists bool) {
 
 	for _, sub := range subs {
 		existsCopy := exists
-		sub.events <- SnapshotEvent{NoEndpoints: &existsCopy}
+		sub.events <- EndpointEvent{NoEndpoints: &existsCopy}
 	}
 }
 
-func (t *snapshotTopic) removeSubscriber(sub *topicSubscriber) {
+func (t *endpointTopic) removeSubscriber(sub *endpointSubscriber) {
 	// We intentionally do NOT close the events channel here. Closing can race
 	// with publishers that have already captured the subscribers slice, leading
 	// to a send-on-closed-channel panic or data race. The subscriber's context

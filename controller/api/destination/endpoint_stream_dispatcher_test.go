@@ -23,7 +23,7 @@ func TestEndpointStreamDispatcherRegistersViews(t *testing.T) {
 		service:                 "svc.ns",
 	}
 
-	view, err := dispatcher.newSnapshotView(context.Background(), topic, &cfg, logging.WithField("test", t.Name()))
+	view, err := dispatcher.newEndpointView(context.Background(), topic, &cfg, logging.WithField("test", t.Name()))
 	if err != nil {
 		t.Fatalf("failed to create snapshot view: %s", err)
 	}
@@ -74,7 +74,7 @@ func TestEndpointStreamDispatcherQueueOverflowResets(t *testing.T) {
 		enableIPv6:              false,
 		service:                 "svc.ns",
 	}
-	view, err := dispatcher.newSnapshotView(context.Background(), topic, &cfg, logging.WithField("test", t.Name()))
+	view, err := dispatcher.newEndpointView(context.Background(), topic, &cfg, logging.WithField("test", t.Name()))
 	if err != nil {
 		t.Fatalf("failed to create snapshot view: %s", err)
 	}

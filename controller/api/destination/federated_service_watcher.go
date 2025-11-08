@@ -61,8 +61,8 @@ type federatedServiceSubscriber struct {
 	nodeTopologyZone string
 	instanceID       string
 
-	localViews  map[string]*snapshotView
-	remoteViews map[remoteDiscoveryID]*snapshotView
+	localViews  map[string]*endpointView
+	remoteViews map[remoteDiscoveryID]*endpointView
 
 	dispatcher *endpointStreamDispatcher
 }
@@ -285,8 +285,8 @@ func (fs *federatedService) subscribe(
 
 	subscriber := federatedServiceSubscriber{
 		dispatcher:       dispatcher,
-		remoteViews:      make(map[remoteDiscoveryID]*snapshotView, 0),
-		localViews:       make(map[string]*snapshotView, 0),
+		remoteViews:      make(map[remoteDiscoveryID]*endpointView, 0),
+		localViews:       make(map[string]*endpointView, 0),
 		port:             port,
 		nodeName:         nodeName,
 		nodeTopologyZone: nodeTopologyZone,
@@ -359,9 +359,9 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 		return
 	}
 
-	view, err := subscriber.dispatcher.newSnapshotView(context.Background(), topic, &cfg, fs.log)
+	view, err := subscriber.dispatcher.newEndpointView(context.Background(), topic, &cfg, fs.log)
 	if err != nil {
-		fs.log.Errorf("Failed to create snapshot view for remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
+		fs.log.Errorf("Failed to create endpoint view for remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
 		return
 	}
 
@@ -413,9 +413,9 @@ func (fs *federatedService) localDiscoverySubscribe(
 		return
 	}
 
-	view, err := subscriber.dispatcher.newSnapshotView(context.Background(), topic, &cfg, fs.log)
+	view, err := subscriber.dispatcher.newEndpointView(context.Background(), topic, &cfg, fs.log)
 	if err != nil {
-		fs.log.Errorf("Failed to create snapshot view for %s: %s", localDiscovery, err)
+		fs.log.Errorf("Failed to create endpoint view for %s: %s", localDiscovery, err)
 		return
 	}
 
