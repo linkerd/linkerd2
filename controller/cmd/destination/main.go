@@ -196,6 +196,7 @@ func Main(args []string) {
 		ExtEndpointZoneWeights:  *extEndpointZoneWeights,
 		MeshedHttp2ClientParams: meshedHTTP2ClientParams,
 		StreamQueueCapacity:     *streamQueueCapacity,
+		StreamSendTimeout:       destination.DefaultStreamSendTimeout,
 	}
 	server, err := destination.NewServer(
 		*addr,

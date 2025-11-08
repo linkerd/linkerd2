@@ -1163,7 +1163,7 @@ func (h *endpointViewHarness) NoEndpoints(exists bool) {
 
 type mockSnapshotTopic struct {
 	mu              sync.Mutex
-	subscribers     map[chan watcher.EndpointEvent]struct{}
+	subscribers     map[chan struct{}]struct{}
 	lastSnapshot    watcher.AddressSnapshot
 	hasSnapshot     bool
 	lastNoEndpoints bool
@@ -1172,28 +1172,23 @@ type mockSnapshotTopic struct {
 
 func newMockSnapshotTopic() *mockSnapshotTopic {
 	return &mockSnapshotTopic{
-		subscribers: make(map[chan watcher.EndpointEvent]struct{}),
+		subscribers: make(map[chan struct{}]struct{}),
 	}
 }
 
-func (t *mockSnapshotTopic) Subscribe(ctx context.Context, buffer int) (<-chan watcher.EndpointEvent, error) {
-	if buffer <= 0 {
-		buffer = 1
-	}
-	ch := make(chan watcher.EndpointEvent, buffer)
+func (t *mockSnapshotTopic) Subscribe(ctx context.Context) (<-chan struct{}, error) {
+	ch := make(chan struct{}, 1)
 
 	t.mu.Lock()
 	t.subscribers[ch] = struct{}{}
-	snapshot, hasSnapshot := t.lastSnapshot, t.hasSnapshot
-	noEndpoints, hasNo := t.lastNoEndpoints, t.hasNoEndpoints
+	hasUpdate := t.hasSnapshot || t.hasNoEndpoints
 	t.mu.Unlock()
 
-	if hasSnapshot {
-		snapCopy := snapshot
-		ch <- watcher.EndpointEvent{Snapshot: &snapCopy}
-	} else if hasNo {
-		noCopy := noEndpoints
-		ch <- watcher.EndpointEvent{NoEndpoints: &noCopy}
+	if hasUpdate {
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
 	}
 
 	go func() {
@@ -1223,15 +1218,17 @@ func (t *mockSnapshotTopic) publishSnapshot(snapshot watcher.AddressSnapshot) {
 	t.lastSnapshot = snapshot
 	t.hasSnapshot = true
 	t.hasNoEndpoints = false
-	subs := make([]chan watcher.EndpointEvent, 0, len(t.subscribers))
+	subs := make([]chan struct{}, 0, len(t.subscribers))
 	for sub := range t.subscribers {
 		subs = append(subs, sub)
 	}
 	t.mu.Unlock()
 
 	for _, sub := range subs {
-		snapCopy := snapshot
-		sub <- watcher.EndpointEvent{Snapshot: &snapCopy}
+		select {
+		case sub <- struct{}{}:
+		default:
+		}
 	}
 }
 
@@ -1240,15 +1237,17 @@ func (t *mockSnapshotTopic) publishNoEndpoints(exists bool) {
 	t.hasSnapshot = false
 	t.hasNoEndpoints = true
 	t.lastNoEndpoints = exists
-	subs := make([]chan watcher.EndpointEvent, 0, len(t.subscribers))
+	subs := make([]chan struct{}, 0, len(t.subscribers))
 	for sub := range t.subscribers {
 		subs = append(subs, sub)
 	}
 	t.mu.Unlock()
 
 	for _, sub := range subs {
-		existsCopy := exists
-		sub <- watcher.EndpointEvent{NoEndpoints: &existsCopy}
+		select {
+		case sub <- struct{}{}:
+		default:
+		}
 	}
 }
 
@@ -1287,7 +1286,7 @@ metadata:
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
 	topic := newMockSnapshotTopic()
 	cfg := endpointTranslatorConfig{
 		controllerNS:            "linkerd",

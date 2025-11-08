@@ -20,15 +20,17 @@ func TestTopicLocalDebug(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	events, err := topic.Subscribe(ctx, 1)
+	notify, err := topic.Subscribe(ctx)
 	if err != nil {
 		t.Fatalf("subscribe: %v", err)
 	}
 	select {
-	case evt := <-events:
-		if evt.Snapshot == nil {
-			t.Fatalf("expected snapshot, got %+v", evt)
+	case <-notify:
+		snapshot, hasSnapshot := topic.Latest()
+		if !hasSnapshot {
+			t.Fatalf("expected snapshot, got none")
 		}
+		t.Logf("Received snapshot with version %d", snapshot.Version)
 	case <-ctx.Done():
 		t.Fatalf("timeout waiting for snapshot")
 	}

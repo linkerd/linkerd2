@@ -68,10 +68,9 @@ func newEndpointView(
 	}
 
 	subCtx, cancel := context.WithCancel(ctx)
-	// Buffer size increased from 1 to 10 to reduce blocking when multiple events
-	// arrive faster than a view can process them. This mitigates head-of-line
-	// blocking in high-subscriber scenarios while keeping memory overhead low.
-	events, err := topic.Subscribe(subCtx, 10)
+	// Subscribe with notification-only channel - view will pull latest state
+	// on each notification, naturally coalescing intermediate updates.
+	notify, err := topic.Subscribe(subCtx)
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to subscribe to endpoint topic: %w", err)
@@ -80,36 +79,46 @@ func newEndpointView(
 	view.ctx = subCtx
 	view.cancel = cancel
 	view.wg.Add(1)
-	go view.run(events)
+	go view.run(topic, notify)
 
 	return view, nil
 }
 
-func (sv *endpointView) run(events <-chan watcher.EndpointEvent) {
+func (sv *endpointView) run(topic watcher.EndpointTopic, notify <-chan struct{}) {
 	defer sv.wg.Done()
+	// Ensure we unregister this view from the dispatcher regardless of how the
+	// goroutine exits (Close or parent context cancellation). This allows
+	// context-based cleanup without requiring explicit Close().
+	defer func() {
+		if sv.dispatcher != nil {
+			sv.dispatcher.unregisterView(sv)
+		}
+	}()
 	for {
 		select {
 		case <-sv.ctx.Done():
 			return
-		case evt, ok := <-events:
+		case _, ok := <-notify:
 			if !ok {
 				return
 			}
-			sv.handleEvent(evt)
+			sv.handleLatest(topic)
 		}
 	}
 }
 
-func (sv *endpointView) handleEvent(evt watcher.EndpointEvent) {
-	sv.log.Debugf("received event (snapshot=%v noEndpoints=%v)", evt.Snapshot != nil, evt.NoEndpoints != nil)
+func (sv *endpointView) handleLatest(topic watcher.EndpointTopic) {
+	// Pull the latest state from the topic
+	snapshot, hasSnapshot := topic.Latest()
+
+	sv.log.Debugf("pulled latest state (hasSnapshot=%v, version=%d)", hasSnapshot, snapshot.Version)
 	var updates []*pb.Update
-	switch {
-	case evt.Snapshot != nil:
-		updates = sv.onSnapshot(evt.Snapshot.Set, evt.Snapshot.Version)
-	case evt.NoEndpoints != nil:
-		updates = sv.onNoEndpoints(*evt.NoEndpoints)
-	default:
-		return
+
+	if hasSnapshot {
+		updates = sv.onSnapshot(snapshot.Set, snapshot.Version)
+	} else {
+		// No snapshot means service doesn't exist or has no endpoints
+		updates = sv.onNoEndpoints(true)
 	}
 
 	sv.emitUpdates(updates)
@@ -185,7 +194,4 @@ func (sv *endpointView) close() {
 		sv.cancel()
 	}
 	sv.wg.Wait()
-	if sv.dispatcher != nil {
-		sv.dispatcher.unregisterView(sv)
-	}
 }

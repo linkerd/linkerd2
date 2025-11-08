@@ -1,42 +1,36 @@
 package destination
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
-	logging "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) error {
-	log := s.log
-
-	client, _ := peer.FromContext(stream.Context())
-	if client != nil {
-		log = log.WithField("remote", client.Addr)
-	}
+	ctx := stream.Context()
+	log := s.log.WithField("method", "Get")
 
 	var token contextToken
 	if dest.GetContextToken() != "" {
 		log.Debugf("Dest token: %q", dest.GetContextToken())
 		token = s.parseContextToken(dest.GetContextToken())
-		log = log.WithFields(logging.Fields{"context-pod": token.Pod, "context-ns": token.Ns})
+		log = log.
+			WithField("context-pod", token.Pod).
+			WithField("context-ns", token.Ns)
 	}
-
-	log.Debugf("Get %s", dest.GetPath())
 
 	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
@@ -55,6 +49,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		log.Debugf("Invalid service %s", dest.GetPath())
 		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 	}
+	log = log.WithField("service", host).WithField("port", port)
 
 	svc, err := s.k8sAPI.Svc().Lister().Services(service.Namespace).Get(service.Name)
 	if err != nil {
@@ -75,36 +70,24 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		log.Errorf("Failed to get node topology zone for node %s: %s", token.NodeName, err)
 	}
 
-	// We pass a reset handle to the snapshot views so that they can abort the
-	// stream if the update queue is over capacity.
-	resetCh := make(chan struct{})
-	var resetOnce sync.Once
-	reset := func() {
-		resetOnce.Do(func() { close(resetCh) })
-	}
-
-	dispatcher := newEndpointStreamDispatcher(s.config.StreamQueueCapacity, reset)
+	ctx, reset := context.WithCancel(ctx)
+	dispatcher := newEndpointStreamDispatcher(s.config.StreamQueueCapacity, s.config.StreamSendTimeout, reset)
 	defer dispatcher.close()
 
 	// Send updates on a dedicated task so that Send may block. This task
 	// processes queued endpoint events, builds protobuf updates, and forwards
 	// them to the client.
 	go func() {
-		if err := dispatcher.process(func(update *pb.Update) error {
-			return stream.Send(update)
-		}); err != nil {
+		if err := dispatcher.process(stream.Send); err != nil {
 			log.Debugf("Failed to send update for %s: %s", dest.GetPath(), err)
 		}
 	}()
 
-	streamCtx := stream.Context()
-
 	if isFederatedService(svc) {
-		// Federated service
 		remoteDiscovery := svc.Annotations[labels.RemoteDiscoveryAnnotation]
 		localDiscovery := svc.Annotations[labels.LocalDiscoveryAnnotation]
 		log.Debugf("Federated service discovery, remote:[%s] local:[%s]", remoteDiscovery, localDiscovery)
-		err := s.federatedServices.Subscribe(streamCtx, svc.Name, svc.Namespace, port, token.NodeName, nodeTopologyZone, instanceID, dispatcher)
+		err := s.federatedServices.Subscribe(ctx, svc.Name, svc.Namespace, port, token.NodeName, nodeTopologyZone, instanceID, dispatcher)
 		if err != nil {
 			log.Errorf("Failed to subscribe to federated service %q: %s", dest.GetPath(), err)
 			return err
@@ -130,8 +113,9 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			token.NodeName,
 			nodeTopologyZone,
 			remoteService,
-			false, // remote discovery always disabled
+			false, // endpoint filtering is disabled remotely
 		)
+
 		topic, err := remoteWatcher.Topic(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID)
 		if err != nil {
 			var ise watcher.InvalidService
@@ -142,7 +126,8 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			log.Errorf("Failed to resolve topic for remote discovery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
 			return err
 		}
-		view, err := dispatcher.newEndpointView(streamCtx, topic, viewCfg, log)
+
+		view, err := dispatcher.newEndpointView(ctx, topic, viewCfg, log)
 		if err != nil {
 			log.Errorf("Failed to create endpoint view for remote discovery service %q: %s", dest.GetPath(), err)
 			return status.Errorf(codes.Internal, "Failed to create endpoint view: %s", err)
@@ -156,8 +141,9 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			token.NodeName,
 			nodeTopologyZone,
 			dest.GetPath(),
-			true, // local discovery always enabled
+			true, // endpoint filtering is enabled locally
 		)
+
 		topic, err := s.endpoints.Topic(service, port, instanceID)
 		if err != nil {
 			var ise watcher.InvalidService
@@ -168,7 +154,8 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			log.Errorf("Failed to resolve topic for %s: %s", dest.GetPath(), err)
 			return status.Errorf(codes.Internal, "Failed to resolve topic for %s", dest.GetPath())
 		}
-		view, err := dispatcher.newEndpointView(streamCtx, topic, localCfg, log)
+
+		view, err := dispatcher.newEndpointView(ctx, topic, localCfg, log)
 		if err != nil {
 			log.Errorf("Failed to create endpoint view for %s: %s", dest.GetPath(), err)
 			return status.Errorf(codes.Internal, "Failed to create endpoint view: %s", err)
@@ -176,19 +163,11 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		defer view.Close()
 	}
 
-	// Wait for stream teardown.
 	select {
-	case <-s.shutdown: // The server is shutting down.
-
-	case <-stream.Context().Done():
-		// The client has terminated the stream.
-		log.Debugf("Get %s cancelled", dest.GetPath())
-
-	case <-resetCh:
-		// Our update queue is over capacity and the stream has been reset.
-		log.Warnf("Get %s stream reset", dest.GetPath())
+	case <-s.shutdown:
+	case <-ctx.Done():
+		log.Debugf("Reset")
 	}
-
 	return nil
 }
 

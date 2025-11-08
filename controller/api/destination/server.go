@@ -1,6 +1,8 @@
 package destination
 
 import (
+	"time"
+
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -12,6 +14,10 @@ import (
 // DefaultStreamQueueCapacity defines the default maximum number of pending
 // updates buffered per stream before the stream is closed.
 const DefaultStreamQueueCapacity = 100
+
+// DefaultStreamSendTimeout defines the maximum time allowed to enqueue an
+// update to the dispatcher. If exceeded, the stream is reset.
+const DefaultStreamSendTimeout = 5 * time.Second
 
 type (
 	Config struct {
@@ -30,6 +36,7 @@ type (
 		DefaultOpaquePorts map[uint32]struct{}
 
 		StreamQueueCapacity int
+		StreamSendTimeout   time.Duration
 	}
 
 	server struct {

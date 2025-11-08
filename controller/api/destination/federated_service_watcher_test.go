@@ -25,7 +25,7 @@ func TestFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
 	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -52,7 +52,7 @@ func TestRemoteJoinFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
 	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -90,7 +90,7 @@ func TestRemoteLeaveFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
 	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -128,7 +128,7 @@ func TestLocalLeaveFederatedService(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
 	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -174,7 +174,7 @@ func TestFederatedServiceDeleteSendsRemovals(t *testing.T) {
 	}
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
 	startTestEventDispatcher(t, dispatcher, mockGetServer.updatesReceived)
 
 	ctx, cancel := context.WithCancel(context.Background())

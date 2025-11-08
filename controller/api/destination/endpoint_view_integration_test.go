@@ -21,7 +21,7 @@ func TestSnapshotViewWithWatcher(t *testing.T) {
 		t.Fatalf("topic: %v", err)
 	}
 
-	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, nil)
+	dispatcher := newEndpointStreamDispatcher(DefaultStreamQueueCapacity, 0, nil)
 	defer dispatcher.close()
 
 	view, err := dispatcher.newEndpointView(context.Background(), topic, &endpointTranslatorConfig{

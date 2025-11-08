@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -15,22 +16,27 @@ import (
 // endpointStreamDispatcher owns the bounded per-stream queue that brokers
 // watcher events to the Destination.Get send loop.
 type endpointStreamDispatcher struct {
-	updates chan *pb.Update
-	reset   func()
+	updates     chan *pb.Update
+	reset       func()
+	sendTimeout time.Duration
 
 	mu     sync.Mutex
 	views  map[*endpointView]struct{}
 	closed atomic.Bool
 }
 
-func newEndpointStreamDispatcher(capacity int, reset func()) *endpointStreamDispatcher {
+func newEndpointStreamDispatcher(capacity int, sendTimeout time.Duration, reset func()) *endpointStreamDispatcher {
 	if capacity <= 0 {
 		capacity = 1
 	}
+	if sendTimeout <= 0 {
+		sendTimeout = DefaultStreamSendTimeout
+	}
 	return &endpointStreamDispatcher{
-		updates: make(chan *pb.Update, capacity),
-		reset:   reset,
-		views:   make(map[*endpointView]struct{}),
+		updates:     make(chan *pb.Update, capacity),
+		sendTimeout: sendTimeout,
+		reset:       reset,
+		views:       make(map[*endpointView]struct{}),
 	}
 }
 
@@ -73,9 +79,24 @@ func (d *endpointStreamDispatcher) enqueue(update *pb.Update, overflow prometheu
 	if d.closed.Load() || update == nil {
 		return
 	}
+
+	// First try non-blocking send
 	select {
 	case d.updates <- update:
+		return
 	default:
+	}
+
+	// Queue is full - try with timeout before resetting stream
+	timer := time.NewTimer(d.sendTimeout)
+	defer timer.Stop()
+
+	select {
+	case d.updates <- update:
+		// Successfully enqueued within timeout
+		return
+	case <-timer.C:
+		// Timeout exceeded - queue is persistently full, reset stream
 		if overflow != nil {
 			overflow.Inc()
 		}

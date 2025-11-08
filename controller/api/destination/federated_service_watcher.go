@@ -117,33 +117,14 @@ func (fsw *federatedServiceWatcher) Subscribe(
 	}
 
 	fsw.log.Debugf("Subscribing to federated service %s/%s", namespace, service)
-	cancel := federatedService.subscribe(port, nodeName, nodeTopologyZone, instanceID, dispatcher)
+	unsubscribe := federatedService.subscribe(port, nodeName, nodeTopologyZone, instanceID, dispatcher)
 
-	// Clean up when context is done
 	go func() {
 		<-ctx.Done()
-		cancel()
-		fsw.log.Debugf("Context done, cleaning up subscription to federated service %s/%s", namespace, service)
+		unsubscribe()
 	}()
 
 	return nil
-}
-
-// Deprecated: Use Subscribe with context instead
-func (fsw *federatedServiceWatcher) Unsubscribe(
-	service string,
-	namespace string,
-	dispatcher *endpointStreamDispatcher,
-) {
-	id := watcher.ServiceID{Namespace: namespace, Name: service}
-	fsw.RLock()
-	if federatedService, ok := fsw.services[id]; ok {
-		fsw.RUnlock()
-		fsw.log.Debugf("Unsubscribing from federated service %s/%s", namespace, service)
-		federatedService.unsubscribe(dispatcher)
-	} else {
-		fsw.RUnlock()
-	}
 }
 
 func (fsw *federatedServiceWatcher) addService(obj interface{}) {

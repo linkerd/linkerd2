@@ -38,12 +38,13 @@ func newBufferingEndpointListener() *bufferingEndpointListener {
 	}
 }
 
-// ProcessEvent handles an EndpointEvent from a topic subscription
-func (bel *bufferingEndpointListener) ProcessEvent(event EndpointEvent) {
-	if event.Snapshot != nil {
-		bel.update(*event.Snapshot)
-	} else if event.NoEndpoints != nil {
-		bel.noEndpoints(*event.NoEndpoints)
+// ProcessEvent handles state pulled from a topic after notification
+func (bel *bufferingEndpointListener) ProcessEvent(topic EndpointTopic) {
+	snapshot, hasSnapshot := topic.Latest()
+	if hasSnapshot {
+		bel.update(snapshot)
+	} else {
+		bel.noEndpoints(true)
 	}
 }
 
@@ -193,11 +194,12 @@ func (bel *bufferingEndpointListenerWithResVersion) ExpectRemoved(expected []str
 	testCompare(t, expected, bel.removed)
 }
 
-func (bel *bufferingEndpointListenerWithResVersion) ProcessEvent(ev EndpointEvent) {
-	if ev.Snapshot != nil {
-		bel.Update(*ev.Snapshot)
-	} else if ev.NoEndpoints != nil {
-		bel.NoEndpoints(*ev.NoEndpoints)
+func (bel *bufferingEndpointListenerWithResVersion) ProcessEvent(topic EndpointTopic) {
+	snapshot, hasSnapshot := topic.Latest()
+	if hasSnapshot {
+		bel.Update(snapshot)
+	} else {
+		bel.NoEndpoints(true)
 	}
 }
 
@@ -238,9 +240,10 @@ type snapshotCaptureListener struct {
 	snapshots []AddressSnapshot
 }
 
-func (s *snapshotCaptureListener) ProcessEvent(ev EndpointEvent) {
-	if ev.Snapshot != nil {
-		s.snapshots = append(s.snapshots, *ev.Snapshot)
+func (s *snapshotCaptureListener) ProcessEvent(topic EndpointTopic) {
+	snapshot, hasSnapshot := topic.Latest()
+	if hasSnapshot {
+		s.snapshots = append(s.snapshots, snapshot)
 	}
 }
 
@@ -248,18 +251,18 @@ func (s *snapshotCaptureListener) ProcessEvent(ev EndpointEvent) {
 // events to a listener that implements Update/NoEndpoints. Returns a cancel
 // function that should be called to stop the subscription.
 func subscribeListener(ctx context.Context, topic EndpointTopic, listener interface {
-	ProcessEvent(EndpointEvent)
+	ProcessEvent(EndpointTopic)
 }) (context.CancelFunc, error) {
 	subCtx, cancel := context.WithCancel(ctx)
-	events, err := topic.Subscribe(subCtx, 10)
+	notify, err := topic.Subscribe(subCtx)
 	if err != nil {
 		cancel()
 		return nil, err
 	}
 
 	go func() {
-		for ev := range events {
-			listener.ProcessEvent(ev)
+		for range notify {
+			listener.ProcessEvent(topic)
 		}
 	}()
 
@@ -928,17 +931,18 @@ func TestSnapshotTopicInitialDelivery(t *testing.T) {
 	}
 	pp.notifySnapshotLocked()
 
-	events, err := pp.topic.Subscribe(ctx, 1)
+	notify, err := pp.topic.Subscribe(ctx)
 	if err != nil {
 		t.Fatalf("Subscribe returned error: %v", err)
 	}
 
 	select {
-	case evt := <-events:
-		if evt.Snapshot == nil {
-			t.Fatalf("expected snapshot event")
+	case <-notify:
+		snapshot, hasSnapshot := pp.topic.Latest()
+		if !hasSnapshot {
+			t.Fatalf("expected snapshot to be available")
 		}
-		if len(evt.Snapshot.Set.Addresses) != 1 {
+		if len(snapshot.Set.Addresses) != 1 {
 			t.Fatalf("expected snapshot addresses to be delivered")
 		}
 	case <-time.After(time.Second):
