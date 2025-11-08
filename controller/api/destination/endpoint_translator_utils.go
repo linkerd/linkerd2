@@ -211,9 +211,9 @@ func getNodeTopologyZone(k8sAPI *k8s.MetadataAPI, srcNode string) (string, error
 
 func newEmptyAddressSet() watcher.AddressSet {
 	return watcher.AddressSet{
-		Addresses:                 make(map[watcher.ID]watcher.Address),
-		Labels:                    make(map[string]string),
-		SupportsTopologyFiltering: false,
+		Addresses: make(map[watcher.ID]watcher.Address),
+		Labels:    make(map[string]string),
+		Cluster:   "",
 	}
 }
 

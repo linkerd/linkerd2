@@ -66,10 +66,10 @@ type (
 	// id.IPFamily refers to the ES AddressType (see newPodRefAddress).
 	// 3) A reference to an ExternalWorkload: id.Name refers to the EW's name.
 	AddressSet struct {
-		Addresses                 map[ID]Address
-		Labels                    map[string]string
-		LocalTrafficPolicy        bool
-		SupportsTopologyFiltering bool
+		Addresses          map[ID]Address
+		Labels             map[string]string
+		LocalTrafficPolicy bool
+		Cluster            string
 	}
 
 	// AddressSnapshot represents an immutable view of the most recent
@@ -217,10 +217,10 @@ func (addr AddressSet) shallowCopy() AddressSet {
 	}
 
 	return AddressSet{
-		Addresses:                 addresses,
-		Labels:                    labels,
-		LocalTrafficPolicy:        addr.LocalTrafficPolicy,
-		SupportsTopologyFiltering: addr.SupportsTopologyFiltering,
+		Addresses:          addresses,
+		Labels:             labels,
+		LocalTrafficPolicy: addr.LocalTrafficPolicy,
+		Cluster:            addr.Cluster,
 	}
 }
 
@@ -816,7 +816,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) (*po
 		supportsTopology:     sp.supportsTopology,
 		topic:                newSnapshotTopic(),
 	}
-	port.addresses.SupportsTopologyFiltering = port.supportsTopology
+	port.addresses.Cluster = sp.cluster
 
 	if port.enableEndpointSlices {
 		matchLabels := map[string]string{discovery.LabelServiceName: sp.id.Name}
@@ -908,10 +908,10 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
 	updatedAddressSet := AddressSet{
-		Addresses:                 make(map[ID]Address),
-		Labels:                    pp.addresses.Labels,
-		LocalTrafficPolicy:        pp.localTrafficPolicy,
-		SupportsTopologyFiltering: pp.supportsTopology,
+		Addresses:          make(map[ID]Address),
+		Labels:             pp.addresses.Labels,
+		LocalTrafficPolicy: pp.localTrafficPolicy,
+		Cluster:            pp.addresses.Cluster,
 	}
 
 	for id, address := range pp.addresses.Addresses {
@@ -980,10 +980,10 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 	resolvedPort := pp.resolveESTargetPort(es.Ports)
 	if resolvedPort == undefinedEndpointPort {
 		return AddressSet{
-			Labels:                    metricLabels(es),
-			Addresses:                 make(map[ID]Address),
-			LocalTrafficPolicy:        pp.localTrafficPolicy,
-			SupportsTopologyFiltering: pp.supportsTopology,
+			Labels:             metricLabels(es),
+			Addresses:          make(map[ID]Address),
+			LocalTrafficPolicy: pp.localTrafficPolicy,
+			Cluster:            pp.addresses.Cluster,
 		}
 	}
 
@@ -1080,10 +1080,10 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 	}
 	return AddressSet{
-		Addresses:                 addresses,
-		Labels:                    metricLabels(es),
-		LocalTrafficPolicy:        pp.localTrafficPolicy,
-		SupportsTopologyFiltering: pp.supportsTopology,
+		Addresses:          addresses,
+		Labels:             metricLabels(es),
+		LocalTrafficPolicy: pp.localTrafficPolicy,
+		Cluster:            pp.addresses.Cluster,
 	}
 }
 
@@ -1189,10 +1189,10 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 		}
 	}
 	return AddressSet{
-		Addresses:                 addresses,
-		Labels:                    metricLabels(endpoints),
-		LocalTrafficPolicy:        pp.localTrafficPolicy,
-		SupportsTopologyFiltering: pp.supportsTopology,
+		Addresses:          addresses,
+		Labels:             metricLabels(endpoints),
+		LocalTrafficPolicy: pp.localTrafficPolicy,
+		Cluster:            pp.addresses.Cluster,
 	}
 }
 
@@ -1319,8 +1319,8 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 		endpointSlices, err := pp.k8sAPI.ES().Lister().EndpointSlices(pp.id.Namespace).List(selector)
 		if err == nil {
 			pp.addresses = AddressSet{
-				LocalTrafficPolicy:        pp.localTrafficPolicy,
-				SupportsTopologyFiltering: pp.supportsTopology,
+				LocalTrafficPolicy: pp.localTrafficPolicy,
+				Cluster:            pp.addresses.Cluster,
 			}
 			for _, slice := range endpointSlices {
 				pp.addEndpointSlice(slice)
@@ -1358,8 +1358,8 @@ func (pp *portPublisher) deleteEndpointSlice(es *discovery.EndpointSlice) {
 func (pp *portPublisher) noEndpoints(exists bool) {
 	pp.exists = exists
 	pp.addresses = AddressSet{
-		LocalTrafficPolicy:        pp.localTrafficPolicy,
-		SupportsTopologyFiltering: pp.supportsTopology,
+		LocalTrafficPolicy: pp.localTrafficPolicy,
+		Cluster:            pp.addresses.Cluster,
 	}
 	pp.notifyNoEndpoints(exists)
 

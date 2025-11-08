@@ -29,10 +29,10 @@ func selectAddressFamily(cfg *endpointTranslatorConfig, addresses watcher.Addres
 	}
 
 	return watcher.AddressSet{
-		Addresses:                 filtered,
-		Labels:                    addresses.Labels,
-		LocalTrafficPolicy:        addresses.LocalTrafficPolicy,
-		SupportsTopologyFiltering: addresses.SupportsTopologyFiltering,
+		Addresses:          filtered,
+		Labels:             addresses.Labels,
+		LocalTrafficPolicy: addresses.LocalTrafficPolicy,
+		Cluster:            addresses.Cluster,
 	}
 }
 
@@ -47,15 +47,15 @@ func filterAddresses(cfg *endpointTranslatorConfig, available *watcher.AddressSe
 
 	// If endpoint filtering is disabled globally or unsupported by the data
 	// source, return all available addresses.
-	if !cfg.enableEndpointFiltering || !available.SupportsTopologyFiltering {
+	if !cfg.enableEndpointFiltering || available.Cluster != "local" {
 		for k, v := range available.Addresses {
 			filtered[k] = v
 		}
 		return watcher.AddressSet{
-			Addresses:                 filtered,
-			Labels:                    available.Labels,
-			LocalTrafficPolicy:        available.LocalTrafficPolicy,
-			SupportsTopologyFiltering: available.SupportsTopologyFiltering,
+			Addresses:          filtered,
+			Labels:             available.Labels,
+			LocalTrafficPolicy: available.LocalTrafficPolicy,
+			Cluster:            available.Cluster,
 		}
 	}
 
@@ -70,10 +70,10 @@ func filterAddresses(cfg *endpointTranslatorConfig, available *watcher.AddressSe
 		}
 		log.Debugf("Filtered from %d to %d addresses", len(available.Addresses), len(filtered))
 		return watcher.AddressSet{
-			Addresses:                 filtered,
-			Labels:                    available.Labels,
-			LocalTrafficPolicy:        available.LocalTrafficPolicy,
-			SupportsTopologyFiltering: available.SupportsTopologyFiltering,
+			Addresses:          filtered,
+			Labels:             available.Labels,
+			LocalTrafficPolicy: available.LocalTrafficPolicy,
+			Cluster:            available.Cluster,
 		}
 	}
 	// If any address does not have a hint, then all hints are ignored and all
@@ -86,10 +86,10 @@ func filterAddresses(cfg *endpointTranslatorConfig, available *watcher.AddressSe
 			}
 			log.Debugf("Hints not available on endpointslice. Zone Filtering disabled. Falling back to routing to all pods")
 			return watcher.AddressSet{
-				Addresses:                 filtered,
-				Labels:                    available.Labels,
-				LocalTrafficPolicy:        available.LocalTrafficPolicy,
-				SupportsTopologyFiltering: available.SupportsTopologyFiltering,
+				Addresses:          filtered,
+				Labels:             available.Labels,
+				LocalTrafficPolicy: available.LocalTrafficPolicy,
+				Cluster:            available.Cluster,
 			}
 		}
 	}
@@ -107,10 +107,10 @@ func filterAddresses(cfg *endpointTranslatorConfig, available *watcher.AddressSe
 	if len(filtered) > 0 {
 		log.Debugf("Filtered from %d to %d addresses", len(available.Addresses), len(filtered))
 		return watcher.AddressSet{
-			Addresses:                 filtered,
-			Labels:                    available.Labels,
-			LocalTrafficPolicy:        available.LocalTrafficPolicy,
-			SupportsTopologyFiltering: available.SupportsTopologyFiltering,
+			Addresses:          filtered,
+			Labels:             available.Labels,
+			LocalTrafficPolicy: available.LocalTrafficPolicy,
+			Cluster:            available.Cluster,
 		}
 	}
 
@@ -120,10 +120,10 @@ func filterAddresses(cfg *endpointTranslatorConfig, available *watcher.AddressSe
 		filtered[k] = v
 	}
 	return watcher.AddressSet{
-		Addresses:                 filtered,
-		Labels:                    available.Labels,
-		LocalTrafficPolicy:        available.LocalTrafficPolicy,
-		SupportsTopologyFiltering: available.SupportsTopologyFiltering,
+		Addresses:          filtered,
+		Labels:             available.Labels,
+		LocalTrafficPolicy: available.LocalTrafficPolicy,
+		Cluster:            available.Cluster,
 	}
 }
 
@@ -150,15 +150,15 @@ func diffEndpoints(previous watcher.AddressSet, filtered watcher.AddressSet) (wa
 	}
 
 	return watcher.AddressSet{
-			Addresses:                 add,
-			Labels:                    filtered.Labels,
-			LocalTrafficPolicy:        filtered.LocalTrafficPolicy,
-			SupportsTopologyFiltering: filtered.SupportsTopologyFiltering,
+			Addresses:          add,
+			Labels:             filtered.Labels,
+			LocalTrafficPolicy: filtered.LocalTrafficPolicy,
+			Cluster:            filtered.Cluster,
 		},
 		watcher.AddressSet{
-			Addresses:                 remove,
-			Labels:                    filtered.Labels,
-			LocalTrafficPolicy:        filtered.LocalTrafficPolicy,
-			SupportsTopologyFiltering: filtered.SupportsTopologyFiltering,
+			Addresses:          remove,
+			Labels:             filtered.Labels,
+			LocalTrafficPolicy: filtered.LocalTrafficPolicy,
+			Cluster:            filtered.Cluster,
 		}
 }
