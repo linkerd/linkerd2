@@ -38,6 +38,15 @@ func newBufferingEndpointListener() *bufferingEndpointListener {
 	}
 }
 
+// ProcessEvent handles an EndpointEvent from a topic subscription
+func (bel *bufferingEndpointListener) ProcessEvent(event EndpointEvent) {
+	if event.Snapshot != nil {
+		bel.update(*event.Snapshot)
+	} else if event.NoEndpoints != nil {
+		bel.noEndpoints(*event.NoEndpoints)
+	}
+}
+
 func addressString(address Address) string {
 	addressString := fmt.Sprintf("%s:%d", address.IP, address.Port)
 	if address.Identity != "" {
@@ -109,7 +118,7 @@ func (bel *bufferingEndpointListener) endpointsDoNotExist() bool {
 	return bel.noEndpointsExist
 }
 
-func (bel *bufferingEndpointListener) Update(snapshot AddressSnapshot) {
+func (bel *bufferingEndpointListener) update(snapshot AddressSnapshot) {
 	bel.Lock()
 	defer bel.Unlock()
 
@@ -138,11 +147,15 @@ func (bel *bufferingEndpointListener) Update(snapshot AddressSnapshot) {
 	bel.noEndpointsCalled = false
 }
 
-func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
+func (bel *bufferingEndpointListener) noEndpoints(exists bool) {
 	bel.Lock()
 	defer bel.Unlock()
 	bel.noEndpointsCalled = true
 	bel.noEndpointsExist = exists
+	// Track all existing addresses as removed before clearing state
+	for _, address := range bel.state {
+		bel.removed = append(bel.removed, addressString(address))
+	}
 	bel.state = make(map[ID]Address)
 }
 
@@ -227,8 +240,7 @@ func (s *snapshotCaptureListener) NoEndpoints(exists bool) {}
 // events to a listener that implements Update/NoEndpoints. Returns a cancel
 // function that should be called to stop the subscription.
 func subscribeListener(ctx context.Context, topic EndpointTopic, listener interface {
-	Update(AddressSnapshot)
-	NoEndpoints(bool)
+	ProcessEvent(EndpointEvent)
 }) (context.CancelFunc, error) {
 	subCtx, cancel := context.WithCancel(ctx)
 	events, err := topic.Subscribe(subCtx, 10)
@@ -238,20 +250,8 @@ func subscribeListener(ctx context.Context, topic EndpointTopic, listener interf
 	}
 
 	go func() {
-		for {
-			select {
-			case <-subCtx.Done():
-				return
-			case event, ok := <-events:
-				if !ok {
-					return
-				}
-				if event.Snapshot != nil {
-					listener.Update(*event.Snapshot)
-				} else if event.NoEndpoints != nil {
-					listener.NoEndpoints(*event.NoEndpoints)
-				}
-			}
+		for ev := range events {
+			listener.ProcessEvent(ev)
 		}
 	}()
 
@@ -2285,6 +2285,7 @@ status:
 			}
 
 			watcher.deleteEndpointSlice(tt.objectToDelete)
+			time.Sleep(100 * time.Millisecond) // Wait for deletion event to propagate through topic
 
 			if listener.endpointsAreNotCalled() != tt.noEndpointsCalled {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
@@ -2460,6 +2461,7 @@ status:
 			}
 
 			watcher.deleteEndpointSlice(tt.objectToDelete)
+			time.Sleep(100 * time.Millisecond) // Wait for deletion event to propagate through topic
 
 			if listener.endpointsAreNotCalled() != tt.noEndpointsCalled {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
@@ -2878,6 +2880,7 @@ subsets:
 			k8sAPI.Sync(nil)
 
 			watcher.addEndpoints(tt.newEndpoints)
+			time.Sleep(100 * time.Millisecond) // Wait for add event to propagate through topic
 
 			listener.ExpectAdded(tt.expectedAddresses, t)
 		})
@@ -3019,6 +3022,7 @@ status:
 			k8sAPI.Sync(nil)
 
 			watcher.addEndpoints(endpoints)
+			time.Sleep(100 * time.Millisecond) // Wait for event to propagate through topic
 			listener.ExpectAdded(tt.expectedAddresses, t)
 		})
 	}
@@ -3162,6 +3166,7 @@ status:
 	}
 
 	watcher.updateEndpointSlice(ES, emptyES)
+	time.Sleep(200 * time.Millisecond) // Wait for update event to propagate through topic
 
 	// Ensure the watcher emits a remove event.
 

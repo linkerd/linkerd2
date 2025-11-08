@@ -98,6 +98,7 @@ func newFederatedServiceWatcher(
 }
 
 func (fsw *federatedServiceWatcher) Subscribe(
+	ctx context.Context,
 	service string,
 	namespace string,
 	port uint32,
@@ -108,17 +109,27 @@ func (fsw *federatedServiceWatcher) Subscribe(
 ) error {
 	id := watcher.ServiceID{Namespace: namespace, Name: service}
 	fsw.RLock()
-	if federatedService, ok := fsw.services[id]; ok {
-		fsw.RUnlock()
-		fsw.log.Debugf("Subscribing to federated service %s/%s", namespace, service)
-		federatedService.subscribe(port, nodeName, nodeTopologyZone, instanceID, dispatcher)
-		return nil
-	} else {
-		fsw.RUnlock()
+	federatedService, ok := fsw.services[id]
+	fsw.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("service %s/%s is not a federated service", namespace, service)
 	}
-	return fmt.Errorf("service %s/%s is not a federated service", namespace, service)
+
+	fsw.log.Debugf("Subscribing to federated service %s/%s", namespace, service)
+	cancel := federatedService.subscribe(port, nodeName, nodeTopologyZone, instanceID, dispatcher)
+
+	// Clean up when context is done
+	go func() {
+		<-ctx.Done()
+		cancel()
+		fsw.log.Debugf("Context done, cleaning up subscription to federated service %s/%s", namespace, service)
+	}()
+
+	return nil
 }
 
+// Deprecated: Use Subscribe with context instead
 func (fsw *federatedServiceWatcher) Unsubscribe(
 	service string,
 	namespace string,
@@ -279,7 +290,7 @@ func (fs *federatedService) subscribe(
 	nodeTopologyZone string,
 	instanceID string,
 	dispatcher *endpointStreamDispatcher,
-) {
+) func() {
 	fs.Lock()
 	defer fs.Unlock()
 
@@ -300,6 +311,11 @@ func (fs *federatedService) subscribe(
 	}
 
 	fs.subscribers = append(fs.subscribers, subscriber)
+
+	// Return cancel function
+	return func() {
+		fs.unsubscribe(dispatcher)
+	}
 }
 
 func (fs *federatedService) unsubscribe(dispatcher *endpointStreamDispatcher) {
@@ -338,20 +354,14 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 	}
 
 	serviceName := fmt.Sprintf("%s.%s.svc.%s:%d", id.service, fs.namespace, remoteConfig.ClusterDomain, subscriber.port)
-	cfg := endpointTranslatorConfig{
-		controllerNS:            fs.config.ControllerNS,
-		identityTrustDomain:     remoteConfig.TrustDomain,
-		nodeName:                subscriber.nodeName,
-		nodeTopologyZone:        subscriber.nodeTopologyZone,
-		defaultOpaquePorts:      fs.config.DefaultOpaquePorts,
-		forceOpaqueTransport:    fs.config.ForceOpaqueTransport,
-		enableH2Upgrade:         fs.config.EnableH2Upgrade,
-		enableEndpointFiltering: false,
-		enableIPv6:              fs.config.EnableIPv6,
-		extEndpointZoneWeights:  fs.config.ExtEndpointZoneWeights,
-		meshedHTTP2ClientParams: fs.config.MeshedHttp2ClientParams,
-		service:                 serviceName,
-	}
+	cfg := newEndpointTranslatorConfig(
+		fs.config,
+		remoteConfig.TrustDomain,
+		subscriber.nodeName,
+		subscriber.nodeTopologyZone,
+		serviceName,
+		false, // remote discovery always disabled
+	)
 
 	topic, err := remoteWatcher.Topic(watcher.ServiceID{Namespace: id.service.Namespace, Name: id.service.Name}, subscriber.port, subscriber.instanceID)
 	if err != nil {
@@ -359,7 +369,7 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 		return
 	}
 
-	view, err := subscriber.dispatcher.newEndpointView(context.Background(), topic, &cfg, fs.log)
+	view, err := subscriber.dispatcher.newEndpointView(context.Background(), topic, cfg, fs.log)
 	if err != nil {
 		fs.log.Errorf("Failed to create endpoint view for remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
 		return
@@ -392,20 +402,14 @@ func (fs *federatedService) localDiscoverySubscribe(
 		return
 	}
 
-	cfg := endpointTranslatorConfig{
-		controllerNS:            fs.config.ControllerNS,
-		identityTrustDomain:     fs.config.IdentityTrustDomain,
-		nodeName:                subscriber.nodeName,
-		nodeTopologyZone:        subscriber.nodeTopologyZone,
-		defaultOpaquePorts:      fs.config.DefaultOpaquePorts,
-		forceOpaqueTransport:    fs.config.ForceOpaqueTransport,
-		enableH2Upgrade:         fs.config.EnableH2Upgrade,
-		enableEndpointFiltering: true,
-		enableIPv6:              fs.config.EnableIPv6,
-		extEndpointZoneWeights:  fs.config.ExtEndpointZoneWeights,
-		meshedHTTP2ClientParams: fs.config.MeshedHttp2ClientParams,
-		service:                 localDiscovery,
-	}
+	cfg := newEndpointTranslatorConfig(
+		fs.config,
+		fs.config.IdentityTrustDomain,
+		subscriber.nodeName,
+		subscriber.nodeTopologyZone,
+		localDiscovery,
+		true, // local discovery always enabled
+	)
 
 	topic, err := fs.localEndpoints.Topic(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID)
 	if err != nil {
@@ -413,7 +417,7 @@ func (fs *federatedService) localDiscoverySubscribe(
 		return
 	}
 
-	view, err := subscriber.dispatcher.newEndpointView(context.Background(), topic, &cfg, fs.log)
+	view, err := subscriber.dispatcher.newEndpointView(context.Background(), topic, cfg, fs.log)
 	if err != nil {
 		fs.log.Errorf("Failed to create endpoint view for %s: %s", localDiscovery, err)
 		return

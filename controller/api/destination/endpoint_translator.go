@@ -35,6 +35,33 @@ type endpointTranslatorConfig struct {
 	service                 string
 }
 
+// newEndpointTranslatorConfig creates an endpointTranslatorConfig from common
+// server config and subscription parameters, reducing boilerplate when creating
+// endpoint views.
+func newEndpointTranslatorConfig(
+	cfg *Config,
+	identityTrustDomain string,
+	nodeName string,
+	nodeTopologyZone string,
+	service string,
+	enableEndpointFiltering bool,
+) *endpointTranslatorConfig {
+	return &endpointTranslatorConfig{
+		controllerNS:            cfg.ControllerNS,
+		identityTrustDomain:     identityTrustDomain,
+		nodeName:                nodeName,
+		nodeTopologyZone:        nodeTopologyZone,
+		defaultOpaquePorts:      cfg.DefaultOpaquePorts,
+		forceOpaqueTransport:    cfg.ForceOpaqueTransport,
+		enableH2Upgrade:         cfg.EnableH2Upgrade,
+		enableEndpointFiltering: enableEndpointFiltering,
+		enableIPv6:              cfg.EnableIPv6,
+		extEndpointZoneWeights:  cfg.ExtEndpointZoneWeights,
+		meshedHTTP2ClientParams: cfg.MeshedHttp2ClientParams,
+		service:                 service,
+	}
+}
+
 var updatesQueueOverflowCounter = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "endpoint_updates_queue_overflow",
