@@ -156,6 +156,7 @@ type (
 		exists               bool
 		addresses            AddressSet
 		listeners            []EndpointUpdateListener
+		topic                *snapshotTopic
 		metrics              endpointsMetrics
 		localTrafficPolicy   bool
 		supportsTopology     bool
@@ -180,6 +181,9 @@ func (pp *portPublisher) notifySnapshotLocked() {
 		Version: pp.snapshotVersion,
 		Set:     pp.addresses.shallowCopy(),
 	}
+	if pp.topic != nil {
+		pp.topic.publishSnapshot(pp.currentSnapshot)
+	}
 
 	if len(pp.listeners) == 0 {
 		return
@@ -190,6 +194,9 @@ func (pp *portPublisher) notifySnapshotLocked() {
 }
 
 func (pp *portPublisher) notifyNoEndpoints(exists bool) {
+	if pp.topic != nil {
+		pp.topic.publishNoEndpoints(exists)
+	}
 	for _, listener := range pp.listeners {
 		listener.NoEndpoints(exists)
 	}
@@ -315,6 +322,12 @@ func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string
 		return
 	}
 	sp.unsubscribe(port, hostname, listener)
+}
+
+// Topic returns the SnapshotTopic for the given service/port/hostname tuple.
+func (ew *EndpointsWatcher) Topic(id ServiceID, port Port, hostname string) (SnapshotTopic, error) {
+	sp := ew.getOrNewServicePublisher(id)
+	return sp.getTopic(port, hostname)
 }
 
 // removeHandlers will de-register any event handlers used by the
@@ -700,6 +713,21 @@ func (sp *servicePublisher) subscribe(srcPort Port, hostname string, listener En
 	sp.Lock()
 	defer sp.Unlock()
 
+	port, err := sp.getOrCreatePortPublisherLocked(srcPort, hostname)
+	if err != nil {
+		return err
+	}
+	port.subscribe(listener)
+	return nil
+}
+
+func (sp *servicePublisher) getOrCreatePortPublisher(srcPort Port, hostname string) (*portPublisher, error) {
+	sp.Lock()
+	defer sp.Unlock()
+	return sp.getOrCreatePortPublisherLocked(srcPort, hostname)
+}
+
+func (sp *servicePublisher) getOrCreatePortPublisherLocked(srcPort Port, hostname string) (*portPublisher, error) {
 	key := portAndHostname{
 		port:     srcPort,
 		hostname: hostname,
@@ -709,12 +737,11 @@ func (sp *servicePublisher) subscribe(srcPort Port, hostname string, listener En
 		var err error
 		port, err = sp.newPortPublisher(srcPort, hostname)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		sp.ports[key] = port
 	}
-	port.subscribe(listener)
-	return nil
+	return port, nil
 }
 
 func (sp *servicePublisher) unsubscribe(srcPort Port, hostname string, listener EndpointUpdateListener) {
@@ -733,6 +760,14 @@ func (sp *servicePublisher) unsubscribe(srcPort Port, hostname string, listener 
 			delete(sp.ports, key)
 		}
 	}
+}
+
+func (sp *servicePublisher) getTopic(srcPort Port, hostname string) (SnapshotTopic, error) {
+	port, err := sp.getOrCreatePortPublisherLocked(srcPort, hostname)
+	if err != nil {
+		return nil, err
+	}
+	return port.Topic(), nil
 }
 
 func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) (*portPublisher, error) {
@@ -766,6 +801,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) (*po
 		enableEndpointSlices: sp.enableEndpointSlices,
 		localTrafficPolicy:   sp.localTrafficPolicy,
 		supportsTopology:     sp.supportsTopology,
+		topic:                newSnapshotTopic(),
 	}
 	port.addresses.SupportsTopologyFiltering = port.supportsTopology
 
@@ -1428,6 +1464,11 @@ func (pp *portPublisher) isAddressSelected(address Address, server *v1beta3.Serv
 		}
 	}
 	return false
+}
+
+// Topic exposes the snapshot topic for this port publisher.
+func (pp *portPublisher) Topic() SnapshotTopic {
+	return pp.topic
 }
 
 ////////////

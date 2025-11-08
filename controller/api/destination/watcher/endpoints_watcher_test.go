@@ -213,6 +213,16 @@ func (bel *bufferingEndpointListenerWithResVersion) NoEndpoints(exists bool) {
 	bel.state = make(map[ID]Address)
 }
 
+type snapshotCaptureListener struct {
+	snapshots []AddressSnapshot
+}
+
+func (s *snapshotCaptureListener) Update(snapshot AddressSnapshot) {
+	s.snapshots = append(s.snapshots, snapshot)
+}
+
+func (s *snapshotCaptureListener) NoEndpoints(exists bool) {}
+
 func TestEndpointsWatcher(t *testing.T) {
 	for _, tt := range []struct {
 		serviceType                      string
@@ -768,6 +778,99 @@ status:
 					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
 			}
 		})
+	}
+}
+
+func TestPortPublisherSnapshotImmutability(t *testing.T) {
+	listener := &snapshotCaptureListener{}
+	pp := &portPublisher{
+		listeners: []EndpointUpdateListener{listener},
+		addresses: AddressSet{
+			Addresses: map[ID]Address{
+				ServiceID{Name: "svc-1", Namespace: "ns"}: {
+					IP:   "10.0.0.1",
+					Port: 8080,
+				},
+			},
+			Labels:                    map[string]string{"service": "svc-1"},
+			SupportsTopologyFiltering: true,
+		},
+	}
+
+	pp.notifySnapshotLocked()
+	if len(listener.snapshots) != 1 {
+		t.Fatalf("expected 1 snapshot, got %d", len(listener.snapshots))
+	}
+
+	if pp.currentSnapshot.Version == 0 {
+		t.Fatalf("expected version to be incremented")
+	}
+
+	// Simulate a misbehaving subscriber mutating the snapshot maps.
+	delete(listener.snapshots[0].Set.Addresses, ServiceID{Name: "svc-1", Namespace: "ns"})
+	if len(pp.addresses.Addresses) != 1 {
+		t.Fatalf("mutating snapshot should not alter publisher state")
+	}
+}
+
+func TestPortPublisherSnapshotVersionMonotonic(t *testing.T) {
+	listener := &snapshotCaptureListener{}
+	pp := &portPublisher{
+		listeners: []EndpointUpdateListener{listener},
+	}
+
+	pp.addresses = AddressSet{
+		Addresses: map[ID]Address{
+			ServiceID{Name: "svc-1", Namespace: "ns"}: {IP: "10.0.0.1", Port: 8080},
+		},
+	}
+	pp.notifySnapshotLocked()
+
+	pp.addresses = AddressSet{
+		Addresses: map[ID]Address{
+			ServiceID{Name: "svc-1", Namespace: "ns"}: {IP: "10.0.0.2", Port: 8080},
+		},
+	}
+	pp.notifySnapshotLocked()
+
+	if len(listener.snapshots) != 2 {
+		t.Fatalf("expected 2 snapshots, got %d", len(listener.snapshots))
+	}
+	if listener.snapshots[0].Version >= listener.snapshots[1].Version {
+		t.Fatalf("expected snapshot versions to be monotonic increasing, got %d then %d",
+			listener.snapshots[0].Version, listener.snapshots[1].Version)
+	}
+}
+
+func TestSnapshotTopicInitialDelivery(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	pp := &portPublisher{
+		topic: newSnapshotTopic(),
+		addresses: AddressSet{
+			Addresses: map[ID]Address{
+				ServiceID{Name: "svc-1", Namespace: "ns"}: {IP: "10.0.0.1", Port: 8080},
+			},
+		},
+	}
+	pp.notifySnapshotLocked()
+
+	events, err := pp.topic.Subscribe(ctx, 1)
+	if err != nil {
+		t.Fatalf("Subscribe returned error: %v", err)
+	}
+
+	select {
+	case evt := <-events:
+		if evt.Snapshot == nil {
+			t.Fatalf("expected snapshot event")
+		}
+		if len(evt.Snapshot.Set.Addresses) != 1 {
+			t.Fatalf("expected snapshot addresses to be delivered")
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for snapshot event")
 	}
 }
 
