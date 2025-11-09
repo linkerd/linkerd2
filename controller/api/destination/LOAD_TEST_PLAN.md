@@ -102,15 +102,25 @@ multi-cluster scenarios.
    destination controller in the source cluster uses the multicluster extension
    to read remote cluster metadata and present a unified view to clients.
 
-3. **Target cluster has no Linkerd**: For federated tests, the target cluster
-   only runs plain Kubernetes resources. The churn controller runs there to
-   manipulate workloads.
+3. **Single-cluster multicluster testing**: Services can be configured with
+   multicluster annotations (`mirror.linkerd.io/exported: "true"`) to exercise
+   the federated resolution path without requiring a second cluster. This
+   simplifies initial testing while still validating multicluster code paths.
 
-4. **Single binary, multiple subcommands**: Both churn and client controllers
+4. **Target cluster has no Linkerd** (two-cluster mode): For full federated
+   tests with separate clusters, the target cluster only runs plain Kubernetes
+   resources. The churn controller runs there to manipulate workloads.
+
+5. **Single binary, multiple subcommands**: Both churn and client controllers
    are subcommands of a single `dst-load-controller` binary for easier
    versioning and packaging.
 
-5. **Controllers are workload executors, not cluster managers**: Following the
+6. **Helm chart creates static resources, controller scales dynamically**: The
+   Helm chart creates all Services and Deployments with appropriate labels and
+   annotations. The churn controller's job is simplified to only patching
+   `spec.replicas` on existing Deployments, simulating autoscaler behavior.
+
+7. **Controllers are workload executors, not cluster managers**: Following the
    pattern of tools like k6, the controllers assume clusters already exist and
    are properly configured. They focus solely on executing their specific
    workload (generating churn or client load).
@@ -656,28 +666,48 @@ federated multicluster mode.
 
 #### Week 2: Federated Multicluster
 
-5. **Day 1-2: Multicluster setup**
-   - Create `hack/k3d-multicluster.sh` script (reference only)
-   - Two k3d clusters with flat networking
-   - Install Linkerd + multicluster in source cluster
-   - Link source → target cluster
-   - Document manual setup steps
+**STRATEGY UPDATE:** We can exercise the federated multicluster resolution path
+in a **single cluster** by configuring services with multicluster annotations.
+This eliminates the need for two-cluster setup initially while still testing
+the critical code paths.
 
-6. **Day 3: Helm chart MVP**
-   - Basic chart structure (`charts/dst-load-test/`)
-   - Deploy churn controller as Pod
-   - Deploy client controller as Deployment
-   - Simple values.yaml (no fancy templating)
-   - RBAC for namespace-scoped permissions
+**Single-Cluster Multicluster Mode:**
 
-7. **Day 4: Federated test execution**
-   - Deploy churn in target cluster (via Helm)
-   - Deploy client in source cluster (via Helm)
-   - Run Scenario 1 (stable) for 30 minutes
-   - Run Scenario 2 (oscillate) for 3 cycles
-   - Collect metrics, validate cross-cluster discovery
+- Services created with `mirror.linkerd.io/exported: "true"` label
+- Optional gateway annotations to simulate cross-cluster traffic
+- Destination controller follows federated resolution path
+- Tests multicluster logic without operational complexity
 
-8. **Day 5: Documentation + wrap-up**
+**Two-Cluster Mode (Future):**
+
+- Separate source/target clusters with flat networking
+- Actual Link CRD and ServiceMirror resources
+- Full end-to-end multicluster validation
+
+5. **Day 1-2: Single-cluster multicluster testing**
+   - Update Helm chart to support multicluster annotations (values.yaml)
+   - Configure services with `mirror.linkerd.io/exported: "true"`
+   - Add optional gateway/traffic-split annotations
+   - Deploy and validate federated resolution path is exercised
+   - Document which code paths are covered vs. two-cluster mode
+
+6. **Day 3: Helm chart refinement**
+   - Simplify churn controller to only scale existing Deployments
+   - Helm chart creates all Services/Deployments statically
+   - Churn controller becomes pure autoscaler simulator
+   - RBAC for namespace-scoped permissions (deployments.patch only)
+
+7. **Day 4: Multicluster test execution**
+   - Run Scenario 1 (stable) with multicluster annotations
+   - Run Scenario 2 (oscillate) with endpoint churn
+   - Validate destination controller uses federated resolution
+   - Collect metrics, compare to single-cluster baseline
+
+8. **Day 5: Documentation + two-cluster setup (optional)**
+   - Document single-cluster multicluster approach
+   - Create `hack/k3d-multicluster.sh` for two-cluster setup (reference)
+   - If time: validate actual two-cluster deployment
+   - Otherwise: defer to Phase 2
    - README with quick start
    - Document expected metrics
    - Known issues / limitations
