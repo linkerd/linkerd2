@@ -10,6 +10,7 @@ metadata:
     app.kubernetes.io/instance: {{ $.Release.Name }}
     app.kubernetes.io/component: test-service
     app: {{ $.Values.testServices.namePrefix }}-{{ $i }}
+    dst-load.l5d.io/role: target
     {{- if $.Values.multicluster.enabled }}
     mirror.linkerd.io/exported: "true"
     {{- end }}

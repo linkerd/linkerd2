@@ -2,6 +2,11 @@
 
 use std::time::Duration;
 
+use k8s_openapi::api::core::v1::Service;
+use kube::{
+    api::{Api, ListParams},
+    Client,
+};
 use linkerd2_proxy_api::destination as dst_api;
 use prometheus_client::{
     encoding::EncodeLabelSet,
@@ -63,27 +68,61 @@ impl ClientMetrics {
 }
 
 pub struct ClientController {
+    pub client: Client,
     pub destination_addr: String,
+    pub namespace: String,
+    pub context_token: String,
     pub metrics: ClientMetrics,
 }
 
 impl ClientController {
-    pub fn new(destination_addr: String, metrics: ClientMetrics) -> Self {
+    pub fn new(
+        client: Client,
+        destination_addr: String,
+        namespace: String,
+        context_token: String,
+        metrics: ClientMetrics,
+    ) -> Self {
         Self {
+            client,
             destination_addr,
+            namespace,
+            context_token,
             metrics,
         }
     }
 
-    /// Run Get requests for the specified target services
+    /// Discover services by label selector and create watchers
     pub async fn run_get_requests(
         &self,
-        target_services: Vec<String>,
+        service_label_selector: String,
+        watchers_per_service: u32,
     ) -> Result<(), Box<dyn std::error::Error>> {
         info!(
             destination_addr = %self.destination_addr,
-            targets = ?target_services,
+            namespace = %self.namespace,
+            label_selector = %service_label_selector,
+            watchers_per_service,
             "Starting Get requests"
+        );
+
+        // Discover services via Kubernetes API
+        let services: Api<Service> = Api::namespaced(self.client.clone(), &self.namespace);
+        let lp = ListParams::default().labels(&service_label_selector);
+        
+        let service_list = services.list(&lp).await?;
+        
+        if service_list.items.is_empty() {
+            return Err(format!(
+                "No services found with label selector: {}",
+                service_label_selector
+            )
+            .into());
+        }
+
+        info!(
+            service_count = service_list.items.len(),
+            "Discovered services"
         );
 
         // Connect to destination service
@@ -93,17 +132,62 @@ impl ClientController {
 
         info!("Connected to destination service");
 
-        // Spawn a task for each target service
+        // Spawn watchers for each service
         let mut tasks = Vec::new();
-        for target in target_services {
-            let channel = channel.clone();
-            let metrics = self.metrics.clone();
-            let task = tokio::spawn(async move {
-                if let Err(e) = subscribe_to_destination(channel, target.clone(), metrics).await {
-                    error!(target = %target, error = ?e, "Get stream failed");
-                }
-            });
-            tasks.push(task);
+        for svc in service_list.items {
+            let svc_name = svc.metadata.name.as_ref().ok_or("Service missing name")?;
+            
+            // Get the service port (assume first port)
+            let port = svc
+                .spec
+                .as_ref()
+                .and_then(|spec| spec.ports.as_ref())
+                .and_then(|ports| ports.first())
+                .map(|p| p.port)
+                .ok_or("Service missing port")?;
+
+            // Build the destination path (authority)
+            let target = format!(
+                "{}.{}.svc.cluster.local:{}",
+                svc_name, self.namespace, port
+            );
+
+            info!(
+                service = %svc_name,
+                target = %target,
+                watchers = watchers_per_service,
+                "Creating watchers for service"
+            );
+
+            // Spawn multiple watchers for this service
+            for watcher_id in 0..watchers_per_service {
+                let channel = channel.clone();
+                let target = target.clone();
+                let context_token = self.context_token.clone();
+                let metrics = self.metrics.clone();
+                let svc_name = svc_name.clone();
+
+                let task = tokio::spawn(async move {
+                    if let Err(e) = subscribe_to_destination(
+                        channel,
+                        target.clone(),
+                        context_token,
+                        metrics,
+                        watcher_id,
+                    )
+                    .await
+                    {
+                        error!(
+                            service = %svc_name,
+                            target = %target,
+                            watcher_id,
+                            error = ?e,
+                            "Get stream failed"
+                        );
+                    }
+                });
+                tasks.push(task);
+            }
         }
 
         // Wait for all tasks (they should run forever)
@@ -115,7 +199,8 @@ impl ClientController {
     /// Run GetProfile requests for the specified target services
     pub async fn run_get_profile_requests(
         &self,
-        _target_services: Vec<String>,
+        _service_label_selector: String,
+        _watchers_per_service: u32,
     ) -> Result<(), Box<dyn std::error::Error>> {
         warn!("GetProfile not yet implemented");
         // TODO: Implement GetProfile streams
@@ -127,11 +212,17 @@ impl ClientController {
 async fn subscribe_to_destination(
     channel: Channel,
     target: String,
+    context_token: String,
     metrics: ClientMetrics,
+    watcher_id: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut client = dst_api::destination_client::DestinationClient::new(channel);
 
-    info!(target = %target, "Subscribing to destination");
+    info!(
+        target = %target,
+        watcher_id,
+        "Subscribing to destination"
+    );
 
     let labels = ClientLabels {
         target: target.clone(),
@@ -139,37 +230,50 @@ async fn subscribe_to_destination(
     };
 
     loop {
-        // Create Get request
+        // Create Get request with context token
         let request = tonic::Request::new(dst_api::GetDestination {
             scheme: "k8s".to_string(),
             path: target.clone(),
-            context_token: String::new(),
+            context_token: context_token.clone(),
         });
 
         // Track active stream
-        metrics.streams_active.get_or_create(&labels).set(1);
+        metrics.streams_active.get_or_create(&labels).inc();
 
         // Subscribe to stream
         match client.get(request).await {
             Ok(response) => {
                 let mut stream = response.into_inner();
-                info!(target = %target, "Stream established");
+                info!(
+                    target = %target,
+                    watcher_id,
+                    "Stream established"
+                );
 
                 // Process updates
                 while let Ok(Some(update)) = stream.message().await {
-                    handle_update(&target, update, &metrics, &labels);
+                    handle_update(&target, update, &metrics, &labels, watcher_id);
                 }
 
-                warn!(target = %target, "Stream ended, reconnecting...");
+                warn!(
+                    target = %target,
+                    watcher_id,
+                    "Stream ended, reconnecting..."
+                );
             }
             Err(e) => {
-                error!(target = %target, error = ?e, "Failed to establish stream");
+                error!(
+                    target = %target,
+                    watcher_id,
+                    error = ?e,
+                    "Failed to establish stream"
+                );
                 metrics.stream_errors.get_or_create(&labels).inc();
             }
         }
 
         // Stream closed, mark as inactive
-        metrics.streams_active.get_or_create(&labels).set(0);
+        metrics.streams_active.get_or_create(&labels).dec();
 
         // Wait before reconnecting
         sleep(Duration::from_secs(5)).await;
@@ -177,7 +281,13 @@ async fn subscribe_to_destination(
 }
 
 /// Handle a destination update
-fn handle_update(target: &str, update: dst_api::Update, metrics: &ClientMetrics, labels: &ClientLabels) {
+fn handle_update(
+    target: &str,
+    update: dst_api::Update,
+    metrics: &ClientMetrics,
+    labels: &ClientLabels,
+    watcher_id: u32,
+) {
     metrics.updates_received.get_or_create(labels).inc();
 
     match update.update {
@@ -185,6 +295,7 @@ fn handle_update(target: &str, update: dst_api::Update, metrics: &ClientMetrics,
             let endpoint_count = add.addrs.len();
             info!(
                 target = %target,
+                watcher_id,
                 endpoints = endpoint_count,
                 "Received Add update"
             );
@@ -196,6 +307,7 @@ fn handle_update(target: &str, update: dst_api::Update, metrics: &ClientMetrics,
         Some(dst_api::update::Update::Remove(remove)) => {
             info!(
                 target = %target,
+                watcher_id,
                 removed = remove.addrs.len(),
                 "Received Remove update"
             );
@@ -203,13 +315,18 @@ fn handle_update(target: &str, update: dst_api::Update, metrics: &ClientMetrics,
         Some(dst_api::update::Update::NoEndpoints(no_endpoints)) => {
             info!(
                 target = %target,
+                watcher_id,
                 exists = no_endpoints.exists,
                 "Received NoEndpoints update"
             );
             metrics.endpoints_current.get_or_create(labels).set(0);
         }
         None => {
-            warn!(target = %target, "Received update with no data");
+            warn!(
+                target = %target,
+                watcher_id,
+                "Received update with no data"
+            );
         }
     }
 }

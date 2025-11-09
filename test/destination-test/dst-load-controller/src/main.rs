@@ -44,23 +44,35 @@ enum Commands {
         namespace: String,
     },
 
-    /// Client controller: Creates gRPC clients and subscribes to Destination service (runs in source cluster)
+    /// Client controller: Creates gRPC clients and subscribes to Destination service
     Client {
-        /// Destination service address (e.g., "linkerd-dst.linkerd:8086")
+        /// Destination service address (e.g., "linkerd-destination.linkerd:8086")
         #[arg(long)]
         destination_addr: String,
 
-        /// Number of concurrent gRPC Get requests
-        #[arg(long, default_value = "0")]
-        get_requests: u32,
-
-        /// Number of concurrent gRPC GetProfile requests
-        #[arg(long, default_value = "0")]
-        get_profile_requests: u32,
-
-        /// Target Service addresses to subscribe to (format: "svc.namespace.svc.cluster.local:port")
+        /// Label selector to discover target services (e.g., "app.kubernetes.io/component=test-service")
         #[arg(long)]
-        target_services: Vec<String>,
+        service_label_selector: String,
+
+        /// Number of concurrent watchers per service
+        #[arg(long, default_value = "1")]
+        watchers_per_service: u32,
+
+        /// Namespace where services exist
+        #[arg(long, default_value = "default")]
+        namespace: String,
+
+        /// Pod name (for context token, typically from downward API)
+        #[arg(long, env = "POD_NAME")]
+        pod_name: Option<String>,
+
+        /// Pod namespace (for context token, typically from downward API)
+        #[arg(long, env = "POD_NAMESPACE")]
+        pod_namespace: Option<String>,
+
+        /// Node name (for context token, typically from downward API)
+        #[arg(long, env = "NODE_NAME")]
+        node_name: Option<String>,
 
         /// Prometheus metrics port
         #[arg(long, default_value = "8080")]
@@ -140,59 +152,87 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         Commands::Client {
             destination_addr,
-            get_requests,
-            get_profile_requests,
-            target_services,
+            service_label_selector,
+            watchers_per_service,
+            namespace,
+            pod_name,
+            pod_namespace,
+            node_name,
             metrics_port,
         } => {
             tracing::info!(
                 destination_addr,
-                get_requests,
-                get_profile_requests,
-                ?target_services,
+                service_label_selector,
+                watchers_per_service,
+                namespace,
+                ?pod_name,
+                ?pod_namespace,
+                ?node_name,
                 metrics_port,
                 "Starting client controller"
             );
 
-            if target_services.is_empty() {
-                return Err("At least one target service must be specified".into());
+            if watchers_per_service == 0 {
+                return Err("--watchers-per-service must be > 0".into());
             }
 
-            if get_requests == 0 && get_profile_requests == 0 {
-                return Err("At least one of --get-requests or --get-profile-requests must be > 0".into());
-            }
+            // Build context token (mimics linkerd proxy injector)
+            let context_token = build_context_token(
+                pod_name.as_deref(),
+                pod_namespace.as_deref(),
+                node_name.as_deref(),
+            )?;
+
+            tracing::info!(context_token, "Built context token");
+
+            // Create Kubernetes client
+            let client = kube::Client::try_default().await?;
 
             // Set up metrics
             let mut registry = prometheus_client::registry::Registry::default();
             let metrics = client::ClientMetrics::new(&mut registry);
 
             // Create client controller
-            let controller = client::ClientController::new(destination_addr, metrics);
+            let controller = client::ClientController::new(
+                client,
+                destination_addr,
+                namespace,
+                context_token,
+                metrics,
+            );
 
             // TODO: Start metrics server on metrics_port
 
-            // Run Get requests if requested
-            if get_requests > 0 {
-                // Replicate target services to match requested concurrency
-                let mut targets = Vec::new();
-                for _ in 0..get_requests {
-                    targets.extend(target_services.clone());
-                }
-                
-                controller.run_get_requests(targets).await?;
-            }
-
-            // Run GetProfile requests if requested
-            if get_profile_requests > 0 {
-                let mut targets = Vec::new();
-                for _ in 0..get_profile_requests {
-                    targets.extend(target_services.clone());
-                }
-                
-                controller.run_get_profile_requests(targets).await?;
-            }
+            // Run Get requests
+            controller
+                .run_get_requests(service_label_selector, watchers_per_service)
+                .await?;
         }
     }
 
     Ok(())
+}
+
+/// Build a context token for destination service requests
+/// Format matches what linkerd proxy-injector does: {"ns":"namespace","nodeName":"node","pod":"podname"}
+fn build_context_token(
+    pod_name: Option<&str>,
+    pod_namespace: Option<&str>,
+    node_name: Option<&str>,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let mut token = serde_json::json!({});
+
+    if let Some(ns) = pod_namespace {
+        token["ns"] = serde_json::json!(ns);
+    }
+
+    if let Some(pod) = pod_name {
+        token["pod"] = serde_json::json!(pod);
+    }
+
+    if let Some(node) = node_name {
+        token["nodeName"] = serde_json::json!(node);
+    }
+
+    Ok(token.to_string())
 }
