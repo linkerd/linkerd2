@@ -16,13 +16,18 @@ metadata:
     app.kubernetes.io/name: {{ include "dst-load-test.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 rules:
-  # Allow creating/deleting/patching Services and Deployments
-  - apiGroups: [""]
-    resources: ["services"]
-    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  # Allow listing and getting Deployments (to find matching pattern)
   - apiGroups: ["apps"]
     resources: ["deployments"]
-    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+    verbs: ["get", "list", "watch"]
+  # Allow patching Deployments (to update spec.replicas)
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["patch"]
+  # Allow reading Services (for validation/metrics)
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch"]
   # Allow reading Pods (for metrics)
   - apiGroups: [""]
     resources: ["pods"]

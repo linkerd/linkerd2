@@ -1,0 +1,63 @@
+{{- range $i := until (int .Values.testServices.count) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $.Values.testServices.namePrefix }}-{{ $i }}
+  namespace: {{ $.Values.testNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "dst-load-test.name" $ }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: test-service
+    app: {{ $.Values.testServices.namePrefix }}-{{ $i }}
+    {{- if $.Values.multicluster.enabled }}
+    mirror.linkerd.io/exported: "true"
+    {{- end }}
+  {{- if $.Values.multicluster.annotations }}
+  annotations:
+    {{- toYaml $.Values.multicluster.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $.Values.testServices.port }}
+      targetPort: {{ $.Values.testServices.port }}
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ $.Values.testServices.namePrefix }}-{{ $i }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $.Values.testServices.namePrefix }}-{{ $i }}
+  namespace: {{ $.Values.testNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "dst-load-test.name" $ }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: test-service
+    app: {{ $.Values.testServices.namePrefix }}-{{ $i }}
+spec:
+  replicas: {{ $.Values.testServices.initialReplicas }}
+  selector:
+    matchLabels:
+      app: {{ $.Values.testServices.namePrefix }}-{{ $i }}
+  template:
+    metadata:
+      labels:
+        app: {{ $.Values.testServices.namePrefix }}-{{ $i }}
+        kwok.x-k8s.io/node: kwok-node
+    spec:
+      nodeSelector:
+        type: kwok
+      tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: app
+          image: fake-image:latest
+          ports:
+            - containerPort: {{ $.Values.testServices.port }}
+              protocol: TCP
+{{- end }}

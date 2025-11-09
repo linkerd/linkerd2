@@ -22,22 +22,41 @@ rbac:
 # Namespace where test services will be created
 testNamespace: dst-test
 
+# Test services configuration (created by Helm chart)
+testServices:
+  # Number of services to create
+  count: 10
+  
+  # Service name prefix (will create {namePrefix}-0, {namePrefix}-1, etc.)
+  namePrefix: test-svc
+  
+  # Initial replica count for each Deployment
+  initialReplicas: 100
+  
+  # Service port
+  port: 8080
+
+# Multicluster configuration (optional)
+multicluster:
+  # Enable multicluster annotations on services
+  enabled: false
+  
+  # Additional annotations for multicluster services
+  # Example: config.linkerd.io/enable-gateway: "true"
+  annotations: {}
+
 # Churn controller configuration
 churn:
   enabled: true
   
-  # Stable services configuration
-  stable:
-    services: 10
-    endpoints: 100
+  # Deployment name pattern to scale (supports wildcards)
+  deploymentPattern: "test-svc-*"
   
-  # Oscillate services configuration  
-  oscillate:
-    services: 5
-    minEndpoints: 10
-    maxEndpoints: 200
-    holdDuration: "30s"
-    jitterPercent: 10
+  # Oscillation configuration
+  minReplicas: 10
+  maxReplicas: 200
+  holdDuration: "30s"
+  jitterPercent: 10
   
   # Metrics server port
   metricsPort: 8080

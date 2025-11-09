@@ -20,15 +20,11 @@ spec:
       args:
         - churn
         - --namespace={{ .Values.testNamespace }}
-        - --stable-services={{ .Values.churn.stable.services }}
-        - --stable-endpoints={{ .Values.churn.stable.endpoints }}
-        {{- if gt (int .Values.churn.oscillate.services) 0 }}
-        - --oscillate-services={{ .Values.churn.oscillate.services }}
-        - --oscillate-min-endpoints={{ .Values.churn.oscillate.minEndpoints }}
-        - --oscillate-max-endpoints={{ .Values.churn.oscillate.maxEndpoints }}
-        - --oscillate-hold-duration={{ .Values.churn.oscillate.holdDuration }}
-        - --oscillate-jitter-percent={{ .Values.churn.oscillate.jitterPercent }}
-        {{- end }}
+        - --deployment-pattern={{ .Values.churn.deploymentPattern }}
+        - --min-replicas={{ .Values.churn.minReplicas }}
+        - --max-replicas={{ .Values.churn.maxReplicas }}
+        - --hold-duration={{ .Values.churn.holdDuration }}
+        - --jitter-percent={{ .Values.churn.jitterPercent }}
         - --metrics-port={{ .Values.churn.metricsPort }}
       ports:
         - name: metrics
