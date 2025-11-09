@@ -1,0 +1,92 @@
+# Helmfile for destination load testing infrastructure
+#
+# Prerequisites:
+# 1. k3d cluster created (e.g., k3d-test)
+# 2. LINKERD_CA_DIR set with generated certificates:
+#    - ca.crt (trust anchor)
+#    - issuer.crt (issuer certificate)
+#    - issuer.key (issuer private key)
+# 3. Run: hack/gen-certs.sh to generate these files
+#
+# Usage:
+#   # Setup cluster
+#   LINKERD_CA_DIR=/tmp/linkerd-ca helmfile sync
+#
+#   # Or with monitoring
+#   LINKERD_CA_DIR=/tmp/linkerd-ca helmfile --state-values-set monitoring.enabled=true sync
+
+environments:
+  default:
+    values:
+      - monitoring:
+          enabled: false
+
+---
+
+helmDefaults:
+  wait: true
+  timeout: 300
+  createNamespace: true
+  atomic: true
+
+repositories:
+  - name: linkerd-edge
+    url: https://helm.linkerd.io/edge
+  - name: kwok
+    url: https://kwok.sigs.k8s.io/charts/
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+
+releases:
+  #############################################################################
+  # KWOK - Fake pods/nodes for load testing
+  #############################################################################
+  - name: kwok
+    namespace: kwok-system
+    chart: kwok/kwok
+    # Latest release (0.2.0 = app v0.7.0)
+
+  #############################################################################
+  # Linkerd CRDs
+  #############################################################################
+  - name: linkerd-crds
+    namespace: linkerd
+    chart: linkerd-edge/linkerd-crds
+    # Latest edge release
+
+  #############################################################################
+  # Linkerd Control Plane
+  #############################################################################
+  - name: linkerd-control-plane
+    namespace: linkerd
+    chart: linkerd-edge/linkerd-control-plane
+    # Latest edge release
+    needs:
+      - linkerd-crds
+    set:
+      - name: identityTrustDomain
+        value: cluster.local
+      - name: controllerLogLevel
+        value: debug
+      - name: controllerLogFormat
+        value: json
+      - name: identity.issuer.scheme
+        value: linkerd.io/tls
+      - name: identityTrustAnchorsPEM
+        value: {{ readFile (printf "%s/ca.crt" (env "LINKERD_CA_DIR" | default "/tmp/linkerd-ca")) | quote }}
+      - name: identity.issuer.tls.crtPEM
+        value: {{ readFile (printf "%s/issuer.crt" (env "LINKERD_CA_DIR" | default "/tmp/linkerd-ca")) | quote }}
+      - name: identity.issuer.tls.keyPEM
+        value: {{ readFile (printf "%s/issuer.key" (env "LINKERD_CA_DIR" | default "/tmp/linkerd-ca")) | quote }}
+
+  #############################################################################
+  # kube-prometheus-stack (optional - enable with --state-values-set monitoring.enabled=true)
+  #############################################################################
+  - name: kube-prometheus-stack
+    namespace: monitoring
+    chart: prometheus-community/kube-prometheus-stack
+    version: ~67.0.0
+    # Only install if monitoring.enabled is set
+    condition: monitoring.enabled
+    values:
+      - values/kube-prometheus-stack.yaml

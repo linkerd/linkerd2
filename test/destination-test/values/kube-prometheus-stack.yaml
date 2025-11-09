@@ -1,0 +1,66 @@
+# kube-prometheus-stack configuration for load testing
+# Minimal monitoring stack optimized for observing load tests
+
+prometheus:
+  prometheusSpec:
+    retention: 6h
+    resources:
+      requests:
+        memory: 2Gi
+        cpu: 500m
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 10Gi
+    
+    # Scrape Linkerd control plane metrics
+    additionalScrapeConfigs:
+      - job_name: linkerd-controller
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - linkerd
+                - linkerd-multicluster
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            action: keep
+            regex: admin-http
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            action: replace
+            target_label: component
+      
+      # Scrape destination load test controllers
+      - job_name: dst-load-controller
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - dst-load-test
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: dst-load-controller
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            action: keep
+            regex: metrics
+
+grafana:
+  enabled: true
+  adminPassword: admin
+  service:
+    type: NodePort
+  persistence:
+    enabled: false  # Don't need persistence for ephemeral load tests
+
+# Disable components we don't need for load testing
+alertmanager:
+  enabled: false
+
+nodeExporter:
+  enabled: false  # Don't need node metrics for KWOK-based tests
+
+kubeStateMetrics:
+  enabled: true  # Keep this for pod/service state
