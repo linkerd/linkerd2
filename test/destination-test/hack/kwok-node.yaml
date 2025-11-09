@@ -15,7 +15,10 @@ metadata:
     node-role.kubernetes.io/agent: ""
     type: kwok
 spec:
-  # No taints - allow normal scheduling with node selector
+  taints:
+  - effect: NoSchedule
+    key: kwok.x-k8s.io/node
+    value: fake
 status:
   allocatable:
     cpu: "1000"
