@@ -21,8 +21,10 @@ kube = { version = "0.95", default-features = false, features = [
 ] }
 
 # gRPC / Linkerd
-linkerd2-proxy-api = { git = "https://github.com/linkerd/linkerd2-proxy-api", tag = "v0.14.0" }
-tonic = { version = "0.12", default-features = false }
+linkerd2-proxy-api = { git = "https://github.com/linkerd/linkerd2-proxy-api", tag = "v0.17.0", features = [
+    "destination",
+] }
+tonic = { version = "0.13", default-features = false, features = ["transport"] }
 tower = { version = "0.5", default-features = false }
 
 # Async runtime

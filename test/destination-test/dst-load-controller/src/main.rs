@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 
 mod churn;
+mod client;
 
 #[derive(Parser)]
 #[command(name = "dst-load-controller")]
@@ -153,8 +154,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "Starting client controller"
             );
 
-            // TODO: Implement client controller
-            tracing::warn!("Client controller not yet implemented");
+            if target_services.is_empty() {
+                return Err("At least one target service must be specified".into());
+            }
+
+            if get_requests == 0 && get_profile_requests == 0 {
+                return Err("At least one of --get-requests or --get-profile-requests must be > 0".into());
+            }
+
+            // Set up metrics
+            let mut registry = prometheus_client::registry::Registry::default();
+            let metrics = client::ClientMetrics::new(&mut registry);
+
+            // Create client controller
+            let controller = client::ClientController::new(destination_addr, metrics);
+
+            // TODO: Start metrics server on metrics_port
+
+            // Run Get requests if requested
+            if get_requests > 0 {
+                // Replicate target services to match requested concurrency
+                let mut targets = Vec::new();
+                for _ in 0..get_requests {
+                    targets.extend(target_services.clone());
+                }
+                
+                controller.run_get_requests(targets).await?;
+            }
+
+            // Run GetProfile requests if requested
+            if get_profile_requests > 0 {
+                let mut targets = Vec::new();
+                for _ in 0..get_profile_requests {
+                    targets.extend(target_services.clone());
+                }
+                
+                controller.run_get_profile_requests(targets).await?;
+            }
         }
     }
 
