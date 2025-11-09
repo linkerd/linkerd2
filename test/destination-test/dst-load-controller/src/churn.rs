@@ -5,7 +5,10 @@ use std::{collections::BTreeMap, time::Duration};
 use k8s_openapi::{
     api::{
         apps::v1::{Deployment, DeploymentSpec},
-        core::v1::{Container, ContainerPort, PodSpec, PodTemplateSpec, Service, ServicePort, ServiceSpec},
+        core::v1::{
+            Container, ContainerPort, PodSpec, PodTemplateSpec, Service, ServicePort, ServiceSpec,
+            Toleration,
+        },
     },
     apimachinery::pkg::apis::meta::v1::LabelSelector,
 };
@@ -158,6 +161,13 @@ impl ChurnController {
                             "type".to_string(),
                             "kwok".to_string(),
                         )])),
+                        // Tolerate the KWOK node taint
+                        tolerations: Some(vec![Toleration {
+                            key: Some("kwok.x-k8s.io/node".to_string()),
+                            operator: Some("Exists".to_string()),
+                            effect: Some("NoSchedule".to_string()),
+                            ..Default::default()
+                        }]),
                         containers: vec![Container {
                             name: "app".to_string(),
                             image: Some("fake-image:latest".to_string()),

@@ -47,6 +47,16 @@ releases:
     # Latest release (0.2.0 = app v0.7.0)
 
   #############################################################################
+  # KWOK Stage Fast - Default pod/node emulation behavior
+  #############################################################################
+  - name: kwok-stage
+    namespace: default
+    chart: kwok/stage-fast
+    # Configures pods to transition quickly through lifecycle phases
+    needs:
+      - kwok
+
+  #############################################################################
   # Linkerd CRDs
   #############################################################################
   - name: linkerd-crds

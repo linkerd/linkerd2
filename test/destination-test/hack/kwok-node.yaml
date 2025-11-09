@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Node
+metadata:
+  name: kwok-node-0
+  annotations:
+    node.alpha.kubernetes.io/ttl: "0"
+    kwok.x-k8s.io/node: fake
+  labels:
+    beta.kubernetes.io/arch: amd64
+    beta.kubernetes.io/os: linux
+    kubernetes.io/arch: amd64
+    kubernetes.io/hostname: kwok-node-0
+    kubernetes.io/os: linux
+    kubernetes.io/role: agent
+    node-role.kubernetes.io/agent: ""
+    type: kwok
+spec:
+  # No taints - allow normal scheduling with node selector
+status:
+  allocatable:
+    cpu: "1000"
+    memory: 1000Gi
+    pods: "1000"
+  capacity:
+    cpu: "1000"
+    memory: 1000Gi
+    pods: "1000"
+  nodeInfo:
+    architecture: amd64
+    bootID: ""
+    containerRuntimeVersion: ""
+    kernelVersion: ""
+    kubeProxyVersion: fake
+    kubeletVersion: fake
+    machineID: ""
+    operatingSystem: linux
+    osImage: ""
+    systemUUID: ""
+  phase: Running

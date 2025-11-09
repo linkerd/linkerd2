@@ -64,6 +64,9 @@ k3d cluster create test \
 # Install all dependencies via Helmfile
 LINKERD_CA_DIR=/tmp/linkerd-ca helmfile sync
 
+# Create a fake KWOK node for pod scheduling
+kubectl apply -f hack/kwok-node.yaml
+
 # Wait for Linkerd to be ready
 linkerd check
 ```
@@ -75,7 +78,7 @@ linkerd check
 LINKERD_CA_DIR=/tmp/linkerd-ca helmfile --state-values-set monitoring.enabled=true apply
 ```
 
-### 5. Build and Deploy Load Controllers
+### 5. Run Load Tests
 
 ```bash
 # Build the Rust binary
