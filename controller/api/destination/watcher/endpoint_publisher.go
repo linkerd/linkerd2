@@ -125,7 +125,7 @@ func (t *endpointTopic) Subscribe(ctx context.Context) (<-chan struct{}, error) 
 	return sub.notify, nil
 }
 
-// Latest returns the current snapshot and whether a snapshot exists.
+// Latest returns the most recent snapshot and whether a snapshot exists.
 // Implements destination.EndpointTopic.Latest().
 //
 // This method is read-only and uses RLock for efficiency, allowing concurrent
@@ -142,6 +142,21 @@ func (t *endpointTopic) Latest() (AddressSnapshot, bool) {
 		return AddressSnapshot{}, false
 	}
 	return t.lastSnapshot, true
+}
+
+// NoEndpointsStatus returns whether the topic is in a "no endpoints" state
+// and whether the service exists.
+//
+// Returns:
+//   - (exists, true) if the topic has received a NoEndpoints notification
+//   - (false, false) if the topic has a snapshot or hasn't received any state yet
+func (t *endpointTopic) NoEndpointsStatus() (exists bool, hasNoEndpoints bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	if !t.hasNoEndpoints {
+		return false, false
+	}
+	return t.lastNoEndpoints, true
 }
 
 // publishSnapshot updates the topic's snapshot and notifies all subscribers.

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination"
@@ -179,6 +180,20 @@ func Main(args []string) {
 		forceOpaqueTransport = false
 	}
 
+	// Allow overriding the stream send timeout via environment variable.
+	// Format must be a valid Go duration string (e.g. "5s", "250ms", "1m").
+	streamSendTimeout := destination.DefaultStreamSendTimeout
+	if v, ok := os.LookupEnv("LINKERD_DESTINATION_STREAM_SEND_TIMEOUT"); ok && v != "" {
+		if d, err := time.ParseDuration(v); err != nil {
+			log.Warnf("Invalid LINKERD_DESTINATION_STREAM_SEND_TIMEOUT value %q (using default %s): %v", v, streamSendTimeout, err)
+		} else if d <= 0 {
+			log.Warnf("Non-positive LINKERD_DESTINATION_STREAM_SEND_TIMEOUT value %q (using default %s)", v, streamSendTimeout)
+		} else {
+			streamSendTimeout = d
+			log.Infof("Configured stream send timeout from environment: %s", streamSendTimeout)
+		}
+	}
+
 	config := destination.Config{
 		ControllerNS:            *controllerNamespace,
 		IdentityTrustDomain:     *trustDomain,
@@ -190,7 +205,7 @@ func Main(args []string) {
 		EnableIPv6:              *enableIPv6,
 		ExtEndpointZoneWeights:  *extEndpointZoneWeights,
 		MeshedHttp2ClientParams: meshedHTTP2ClientParams,
-		StreamSendTimeout:       destination.DefaultStreamSendTimeout,
+		StreamSendTimeout:       streamSendTimeout,
 	}
 	server, err := destination.NewServer(
 		*addr,

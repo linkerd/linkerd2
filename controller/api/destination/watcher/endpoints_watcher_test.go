@@ -45,7 +45,11 @@ func (bel *bufferingEndpointListener) ProcessEvent(topic *endpointTopic) {
 	if hasSnapshot {
 		bel.update(snapshot)
 	} else {
-		bel.noEndpoints(true)
+		// When no snapshot exists, check if we have NoEndpoints state
+		exists, hasNoEndpoints := topic.NoEndpointsStatus()
+		if hasNoEndpoints {
+			bel.noEndpoints(exists)
+		}
 	}
 }
 
