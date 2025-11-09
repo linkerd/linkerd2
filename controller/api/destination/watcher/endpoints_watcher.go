@@ -168,9 +168,9 @@ func (pp *portPublisher) notifySnapshotLocked() {
 	}
 }
 
-func (pp *portPublisher) notifyNoEndpoints(exists bool) {
+func (pp *portPublisher) notifyNoEndpoints() {
 	if pp.topic != nil {
-		pp.topic.publishNoEndpoints(exists)
+		pp.topic.publishNoEndpoints()
 	}
 }
 
@@ -758,7 +758,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) (*po
 
 	// If we still have no addresses after initialization, publish the initial no-endpoints state
 	if len(port.addresses.Addresses) == 0 {
-		port.notifyNoEndpoints(exists)
+		port.notifyNoEndpoints()
 	}
 
 	return port, nil
@@ -794,7 +794,7 @@ func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	pp.metrics.setExists(true)
 
 	if len(pp.addresses.Addresses) == 0 {
-		pp.notifyNoEndpoints(true)
+		pp.notifyNoEndpoints()
 	} else {
 		pp.notifySnapshotLocked()
 	}
@@ -820,7 +820,7 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 	pp.metrics.setExists(true)
 
 	if len(pp.addresses.Addresses) == 0 {
-		pp.notifyNoEndpoints(true)
+		pp.notifyNoEndpoints()
 	} else {
 		pp.notifySnapshotLocked()
 	}
@@ -854,7 +854,7 @@ func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, 
 	pp.metrics.setExists(true)
 
 	if len(pp.addresses.Addresses) == 0 {
-		pp.notifyNoEndpoints(true)
+		pp.notifyNoEndpoints()
 	} else {
 		pp.notifySnapshotLocked()
 	}
@@ -1281,7 +1281,7 @@ func (pp *portPublisher) noEndpoints(exists bool) {
 		LocalTrafficPolicy: pp.localTrafficPolicy,
 		Cluster:            pp.addresses.Cluster,
 	}
-	pp.notifyNoEndpoints(exists)
+	pp.notifyNoEndpoints()
 
 	pp.metrics.incUpdates()
 	pp.metrics.setExists(exists)

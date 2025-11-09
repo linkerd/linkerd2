@@ -61,12 +61,11 @@ type AddressSnapshot struct {
 //   - One endpointSubscriber (channel + map entry) per active subscription
 //   - Size-1 channels use minimal memory compared to buffered event queues
 type endpointTopic struct {
-	mu              sync.RWMutex
-	subscribers     map[*endpointSubscriber]struct{}
-	lastSnapshot    AddressSnapshot
-	hasSnapshot     bool
-	lastNoEndpoints bool
-	hasNoEndpoints  bool
+	mu           sync.RWMutex
+	subscribers  map[*endpointSubscriber]struct{}
+	lastSnapshot AddressSnapshot
+	hasSnapshot  bool
+	hasState     bool // tracks whether any publish method has been called
 }
 
 // endpointSubscriber represents a single subscription to an endpointTopic.
@@ -106,7 +105,7 @@ func (t *endpointTopic) Subscribe(ctx context.Context) (<-chan struct{}, error) 
 
 	t.mu.Lock()
 	t.subscribers[sub] = struct{}{}
-	hasUpdate := t.hasSnapshot || t.hasNoEndpoints
+	hasUpdate := t.hasState
 	t.mu.Unlock()
 
 	// Send initial notification if we have state
@@ -144,21 +143,6 @@ func (t *endpointTopic) Latest() (AddressSnapshot, bool) {
 	return t.lastSnapshot, true
 }
 
-// NoEndpointsStatus returns whether the topic is in a "no endpoints" state
-// and whether the service exists.
-//
-// Returns:
-//   - (exists, true) if the topic has received a NoEndpoints notification
-//   - (false, false) if the topic has a snapshot or hasn't received any state yet
-func (t *endpointTopic) NoEndpointsStatus() (exists bool, hasNoEndpoints bool) {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	if !t.hasNoEndpoints {
-		return false, false
-	}
-	return t.lastNoEndpoints, true
-}
-
 // publishSnapshot updates the topic's snapshot and notifies all subscribers.
 // Called by portPublisher when Kubernetes endpoints are updated.
 //
@@ -172,7 +156,7 @@ func (t *endpointTopic) publishSnapshot(snapshot AddressSnapshot) {
 	t.mu.Lock()
 	t.lastSnapshot = snapshot
 	t.hasSnapshot = true
-	t.hasNoEndpoints = false
+	t.hasState = true
 
 	subs := make([]*endpointSubscriber, 0, len(t.subscribers))
 	for sub := range t.subscribers {
@@ -194,18 +178,10 @@ func (t *endpointTopic) publishSnapshot(snapshot AddressSnapshot) {
 // publishNoEndpoints indicates that the service has no endpoints (either the
 // service doesn't exist, or it has no ready pods). Subscribers will receive
 // a notification and Latest() will return (empty, false).
-//
-// The exists parameter indicates whether the service itself exists:
-//   - true: service exists but has no endpoints
-//   - false: service does not exist
-//
-// This distinction is preserved for potential future use but currently both
-// cases result in Latest() returning false.
-func (t *endpointTopic) publishNoEndpoints(exists bool) {
+func (t *endpointTopic) publishNoEndpoints() {
 	t.mu.Lock()
 	t.hasSnapshot = false
-	t.hasNoEndpoints = true
-	t.lastNoEndpoints = exists
+	t.hasState = true
 
 	subs := make([]*endpointSubscriber, 0, len(t.subscribers))
 	for sub := range t.subscribers {

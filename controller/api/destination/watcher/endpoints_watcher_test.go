@@ -45,11 +45,8 @@ func (bel *bufferingEndpointListener) ProcessEvent(topic *endpointTopic) {
 	if hasSnapshot {
 		bel.update(snapshot)
 	} else {
-		// When no snapshot exists, check if we have NoEndpoints state
-		exists, hasNoEndpoints := topic.NoEndpointsStatus()
-		if hasNoEndpoints {
-			bel.noEndpoints(exists)
-		}
+		// Consumers don't care about the exists flag, always pass false.
+		bel.noEndpoints(false)
 	}
 }
 
@@ -116,12 +113,6 @@ func (bel *bufferingEndpointListener) endpointsAreNotCalled() bool {
 	bel.Lock()
 	defer bel.Unlock()
 	return bel.noEndpointsCalled
-}
-
-func (bel *bufferingEndpointListener) endpointsDoNotExist() bool {
-	bel.Lock()
-	defer bel.Unlock()
-	return bel.noEndpointsExist
 }
 
 func (bel *bufferingEndpointListener) update(snapshot AddressSnapshot) {
@@ -837,11 +828,6 @@ status:
 			if listener.endpointsAreNotCalled() != tt.expectedNoEndpoints {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
 					tt.expectedNoEndpoints, listener.endpointsAreNotCalled())
-			}
-
-			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
-				t.Fatalf("Expected noEndpointsExist to be [%t], got [%t]",
-					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
 			}
 		})
 	}
@@ -1587,11 +1573,6 @@ status:
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
 					tt.expectedNoEndpoints, listener.endpointsAreNotCalled())
 			}
-
-			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
-				t.Fatalf("Expected noEndpointsExist to be [%t], got [%t]",
-					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
-			}
 		})
 	}
 }
@@ -2003,11 +1984,6 @@ status:
 			if listener.endpointsAreNotCalled() != tt.expectedNoEndpoints {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
 					tt.expectedNoEndpoints, listener.endpointsAreNotCalled())
-			}
-
-			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
-				t.Fatalf("Expected noEndpointsExist to be [%t], got [%t]",
-					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
 			}
 		})
 	}
@@ -2730,11 +2706,6 @@ subsets:
 			if listener.endpointsAreNotCalled() != tt.expectedNoEndpoints {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
 					tt.expectedNoEndpoints, listener.endpointsAreNotCalled())
-			}
-
-			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
-				t.Fatalf("Expected noEndpointsExist to be [%t], got [%t]",
-					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
 			}
 		})
 	}
