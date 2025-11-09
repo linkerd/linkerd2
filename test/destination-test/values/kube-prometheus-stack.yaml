@@ -3,17 +3,38 @@
 
 prometheus:
   prometheusSpec:
-    retention: 6h
+    # Allow all ServiceMonitors/PodMonitors regardless of labels
+    podMonitorSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    
+    enableRemoteWriteReceiver: true
+    retention: 24h
+    retentionSize: 2GiB
+    
+    storageSpec:
+      emptyDir:
+        medium: Memory
+        sizeLimit: 2Gi
+    
+    # Schedule on control plane nodes if available
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: node-role.kubernetes.io/control-plane
+                  operator: Exists
+    
     resources:
       requests:
+        memory: 1Gi
+        cpu: 250m
+      limits:
         memory: 2Gi
-        cpu: 500m
-    storageSpec:
-      volumeClaimTemplate:
-        spec:
-          resources:
-            requests:
-              storage: 10Gi
+        cpu: 1000m
     
     # Scrape Linkerd control plane metrics
     additionalScrapeConfigs:
@@ -23,7 +44,7 @@ prometheus:
             namespaces:
               names:
                 - linkerd
-                - linkerd-multicluster
+                - linkerd-viz
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_container_port_name]
             action: keep
@@ -38,22 +59,41 @@ prometheus:
           - role: pod
             namespaces:
               names:
-                - dst-load-test
+                - dst-test
         relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_app]
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
             action: keep
-            regex: dst-load-controller
+            regex: (client|churn)
           - source_labels: [__meta_kubernetes_pod_container_port_name]
             action: keep
-            regex: metrics
+            regex: admin-http
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+            action: replace
+            target_label: component
 
 grafana:
   enabled: true
   adminPassword: admin
+  
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: local-path
+    accessModes: [ReadWriteOnce]
+    size: 2Gi
+  
+  sidecar:
+    datasources:
+      enabled: true
+      isDefaultDatasource: true
+      uid: prometheus
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+  
   service:
     type: NodePort
-  persistence:
-    enabled: false  # Don't need persistence for ephemeral load tests
 
 # Disable components we don't need for load testing
 alertmanager:

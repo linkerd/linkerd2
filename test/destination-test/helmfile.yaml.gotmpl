@@ -12,14 +12,14 @@
 #   # Setup cluster
 #   LINKERD_CA_DIR=/tmp/linkerd-ca helmfile sync
 #
-#   # Or with monitoring
-#   LINKERD_CA_DIR=/tmp/linkerd-ca helmfile --state-values-set monitoring.enabled=true sync
+#   # Without monitoring
+#   LINKERD_CA_DIR=/tmp/linkerd-ca helmfile --state-values-set monitoring.enabled=false sync
 
 environments:
   default:
     values:
       - monitoring:
-          enabled: false
+          enabled: true
 
 ---
 
@@ -36,6 +36,9 @@ repositories:
     url: https://kwok.sigs.k8s.io/charts/
   - name: prometheus-community
     url: https://prometheus-community.github.io/helm-charts
+  - name: linkerd-monitoring
+    url: https://ghcr.io/olix0r/charts
+    oci: true
 
 releases:
   #############################################################################
@@ -90,13 +93,26 @@ releases:
         value: {{ readFile (printf "%s/issuer.key" (env "LINKERD_CA_DIR" | default "/tmp/linkerd-ca")) | quote }}
 
   #############################################################################
-  # kube-prometheus-stack (optional - enable with --state-values-set monitoring.enabled=true)
+  # kube-prometheus-stack (monitoring infrastructure)
   #############################################################################
   - name: kube-prometheus-stack
     namespace: monitoring
     chart: prometheus-community/kube-prometheus-stack
     version: ~67.0.0
-    # Only install if monitoring.enabled is set
     condition: monitoring.enabled
     values:
       - values/kube-prometheus-stack.yaml
+
+  #############################################################################
+  # linkerd-monitoring (Linkerd dashboards and ServiceMonitors)
+  #############################################################################
+  - name: linkerd-monitoring
+    namespace: linkerd-viz
+    chart: oci://ghcr.io/olix0r/charts/linkerd-monitoring
+    version: 0.1.1
+    condition: monitoring.enabled
+    needs:
+      - linkerd-control-plane
+      - kube-prometheus-stack
+    values:
+      - values/linkerd-monitoring.yaml

@@ -1,0 +1,17 @@
+# linkerd-monitoring configuration
+# This chart provides Linkerd-specific Grafana dashboards and ServiceMonitors
+# for kube-prometheus-stack integration
+
+# The chart automatically creates ServiceMonitors for:
+# - linkerd-controller (destination, identity, proxy-injector)
+# - linkerd-prometheus (if using linkerd-viz)
+# - linkerd-proxy (via PodMonitors)
+
+# Additional configuration can be added here for custom dashboards
+# See: https://github.com/olix0r/linkerd-monitoring
+
+# Future: Add custom dst-load-test dashboards here
+# grafanaDashboards:
+#   dst-load-test:
+#     json: |
+#       { ... custom dashboard JSON ... }
