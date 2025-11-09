@@ -2,8 +2,10 @@ package destination
 
 import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	logging "github.com/sirupsen/logrus"
 )
 
 const (
@@ -18,7 +20,11 @@ const (
 	defaultProxyInboundPort = 4143
 )
 
-type endpointTranslatorConfig struct {
+// endpointViewConfig holds configuration and strategy functions for customizing
+// endpoint view behavior. Strategy functions can be overridden to provide
+// custom implementations (e.g., commercial features, testing).
+type endpointViewConfig struct {
+	// Configuration
 	controllerNS        string
 	identityTrustDomain string
 	nodeName            string
@@ -33,20 +39,30 @@ type endpointTranslatorConfig struct {
 
 	meshedHTTP2ClientParams *pb.Http2ClientParams
 	service                 string
+
+	// Strategy functions - can be overridden at construction
+	// BuildClientAdd builds a protobuf Add update from a set of addresses
+	BuildClientAdd func(log *logging.Entry, cfg *endpointViewConfig, set watcher.AddressSet) *pb.Update
+
+	// BuildClientRemove builds a protobuf Remove update from a set of addresses
+	BuildClientRemove func(log *logging.Entry, set watcher.AddressSet) *pb.Update
+
+	// EnhanceAddr allows post-processing of WeightedAddr (e.g., zone locality)
+	EnhanceAddr func(cfg *endpointViewConfig, address watcher.Address, wa *pb.WeightedAddr)
 }
 
-// newEndpointTranslatorConfig creates an endpointTranslatorConfig from common
-// server config and subscription parameters, reducing boilerplate when creating
-// endpoint views.
-func newEndpointTranslatorConfig(
+// newEndpointViewConfig creates an endpointViewConfig from common server config
+// and subscription parameters. Strategy functions are set to default
+// implementations which can be overridden by the caller.
+func newEndpointViewConfig(
 	cfg *Config,
 	identityTrustDomain string,
 	nodeName string,
 	nodeTopologyZone string,
 	service string,
 	enableEndpointFiltering bool,
-) *endpointTranslatorConfig {
-	return &endpointTranslatorConfig{
+) *endpointViewConfig {
+	viewCfg := &endpointViewConfig{
 		controllerNS:            cfg.ControllerNS,
 		identityTrustDomain:     identityTrustDomain,
 		nodeName:                nodeName,
@@ -60,6 +76,27 @@ func newEndpointTranslatorConfig(
 		meshedHTTP2ClientParams: cfg.MeshedHttp2ClientParams,
 		service:                 service,
 	}
+
+	// Set default strategy implementations
+	viewCfg.BuildClientAdd = defaultBuildClientAdd
+	viewCfg.BuildClientRemove = defaultBuildClientRemove
+	viewCfg.EnhanceAddr = defaultEnhanceAddr
+
+	return viewCfg
+}
+
+// Backward compatibility alias
+type endpointTranslatorConfig = endpointViewConfig
+
+func newEndpointTranslatorConfig(
+	cfg *Config,
+	identityTrustDomain string,
+	nodeName string,
+	nodeTopologyZone string,
+	service string,
+	enableEndpointFiltering bool,
+) *endpointTranslatorConfig {
+	return newEndpointViewConfig(cfg, identityTrustDomain, nodeName, nodeTopologyZone, service, enableEndpointFiltering)
 }
 
 var updatesQueueOverflowCounter = promauto.NewCounterVec(

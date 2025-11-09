@@ -9,15 +9,26 @@ import (
 	logging "github.com/sirupsen/logrus"
 )
 
-func buildClientAdd(log *logging.Entry, cfg *endpointTranslatorConfig, set watcher.AddressSet) *pb.Update {
+// This file contains default strategy implementations for building protobuf updates.
+// These strategies are pluggable via the endpointViewConfig function fields.
+
+// defaultBuildClientAdd is the default strategy for building Add updates.
+// It converts a set of watcher.Address into a protobuf WeightedAddrSet.
+func defaultBuildClientAdd(log *logging.Entry, cfg *endpointViewConfig, set watcher.AddressSet) *pb.Update {
 	addrs := []*pb.WeightedAddr{}
 	for _, address := range set.Addresses {
-		wa, err := buildWeightedAddr(cfg, address)
+		wa, err := buildWeightedAddrFromConfig(cfg, address)
 		if err != nil {
 			log.WithError(err).Error("Failed to build weighted address")
 			continue
 		}
-		applyZoneLocality(cfg, address, wa)
+		// Apply enhancement strategy (e.g., zone locality)
+		// Fallback to defaultEnhanceAddr if not configured
+		enhanceAddr := cfg.EnhanceAddr
+		if enhanceAddr == nil {
+			enhanceAddr = defaultEnhanceAddr
+		}
+		enhanceAddr(cfg, address, wa)
 		addrs = append(addrs, wa)
 	}
 
@@ -32,7 +43,9 @@ func buildClientAdd(log *logging.Entry, cfg *endpointTranslatorConfig, set watch
 	return add
 }
 
-func buildClientRemove(log *logging.Entry, set watcher.AddressSet) *pb.Update {
+// defaultBuildClientRemove is the default strategy for building Remove updates.
+// It converts a set of watcher.Address into a protobuf AddrSet.
+func defaultBuildClientRemove(log *logging.Entry, set watcher.AddressSet) *pb.Update {
 	addrs := []*net.TcpAddress{}
 	for _, address := range set.Addresses {
 		tcpAddr, err := toAddr(address)
@@ -53,7 +66,9 @@ func buildClientRemove(log *logging.Entry, set watcher.AddressSet) *pb.Update {
 	return remove
 }
 
-func buildWeightedAddr(cfg *endpointTranslatorConfig, address watcher.Address) (*pb.WeightedAddr, error) {
+// buildWeightedAddrFromConfig converts a watcher.Address to a protobuf WeightedAddr using endpointViewConfig.
+// It dispatches to the appropriate builder based on address type (Pod, ExternalWorkload, or bare address).
+func buildWeightedAddrFromConfig(cfg *endpointViewConfig, address watcher.Address) (*pb.WeightedAddr, error) {
 	switch {
 	case address.Pod != nil:
 		opaquePorts := watcher.GetAnnotatedOpaquePorts(address.Pod, cfg.defaultOpaquePorts)
@@ -109,23 +124,9 @@ func buildWeightedAddr(cfg *endpointTranslatorConfig, address watcher.Address) (
 	}
 }
 
-func applyZoneLocality(cfg *endpointTranslatorConfig, address watcher.Address, wa *pb.WeightedAddr) {
-	if wa.MetricLabels == nil {
-		wa.MetricLabels = map[string]string{}
-	}
-
-	if cfg.nodeTopologyZone == "" || address.Zone == nil {
-		wa.MetricLabels["zone_locality"] = "unknown"
-		return
-	}
-
-	if *address.Zone == cfg.nodeTopologyZone {
-		wa.MetricLabels["zone_locality"] = "local"
-		if cfg.extEndpointZoneWeights {
-			wa.Weight *= 10
-		}
-		return
-	}
-
-	wa.MetricLabels["zone_locality"] = "remote"
-}
+//
+// Helper functions for building protobuf weighted addresses from K8s resources
+// These are used by the default strategy implementations above.
+//
+// These are used by the default strategy implementations above.
+//

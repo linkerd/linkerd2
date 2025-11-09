@@ -3,6 +3,7 @@ package destination
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 	"sync/atomic"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // endpointView represents per-RPC stream state and filtering logic.
@@ -212,25 +214,193 @@ func (sv *endpointView) onNoEndpoints(exists bool) []*pb.Update {
 }
 
 func (sv *endpointView) buildFilteredUpdatesLocked() []*pb.Update {
-	filtered := filterAddresses(sv.cfg, &sv.available, sv.log)
-	filtered = selectAddressFamily(sv.cfg, filtered)
-	diffAdd, diffRemove := diffEndpoints(sv.filteredSnapshot, filtered)
+	filtered := sv.filterAddresses(&sv.available)
+	filtered = sv.selectAddressFamily(filtered)
+	diffAdd, diffRemove := sv.diffEndpoints(sv.filteredSnapshot, filtered)
 
 	updates := make([]*pb.Update, 0, 2)
 
 	if len(diffAdd.Addresses) > 0 {
-		if add := buildClientAdd(sv.log, sv.cfg, diffAdd); add != nil {
+		// Use pluggable strategy from config, fallback to default if not set
+		buildAdd := sv.cfg.BuildClientAdd
+		if buildAdd == nil {
+			buildAdd = defaultBuildClientAdd
+		}
+		if add := buildAdd(sv.log, sv.cfg, diffAdd); add != nil {
 			updates = append(updates, add)
 		}
 	}
 	if len(diffRemove.Addresses) > 0 {
-		if remove := buildClientRemove(sv.log, diffRemove); remove != nil {
+		// Use pluggable strategy from config, fallback to default if not set
+		buildRemove := sv.cfg.BuildClientRemove
+		if buildRemove == nil {
+			buildRemove = defaultBuildClientRemove
+		}
+		if remove := buildRemove(sv.log, diffRemove); remove != nil {
 			updates = append(updates, remove)
 		}
 	}
 
 	sv.filteredSnapshot = filtered
 	return updates
+}
+
+// selectAddressFamily filters addresses based on the configured IP family (IPv4 vs IPv6).
+// When IPv6 is enabled, it prefers IPv6 addresses over IPv4. When disabled, only IPv4 addresses
+// are returned.
+func (sv *endpointView) selectAddressFamily(addresses watcher.AddressSet) watcher.AddressSet {
+	filtered := make(map[watcher.ID]watcher.Address)
+	for id, addr := range addresses.Addresses {
+		if id.IPFamily == corev1.IPv6Protocol && !sv.cfg.enableIPv6 {
+			continue
+		}
+
+		if id.IPFamily == corev1.IPv4Protocol && sv.cfg.enableIPv6 {
+			// Only consider IPv4 address for which there's not already an IPv6
+			// alternative.
+			altID := id
+			altID.IPFamily = corev1.IPv6Protocol
+			if _, ok := addresses.Addresses[altID]; ok {
+				continue
+			}
+		}
+
+		filtered[id] = addr
+	}
+
+	return watcher.AddressSet{
+		Addresses:          filtered,
+		Labels:             addresses.Labels,
+		LocalTrafficPolicy: addresses.LocalTrafficPolicy,
+		Cluster:            addresses.Cluster,
+	}
+}
+
+// filterAddresses is responsible for filtering endpoints based on the node's
+// topology zone. The client will only receive endpoints with the same
+// consumption zone as the node. An endpoints consumption zone is set
+// by its Hints field and can be different than its actual Topology zone.
+// when service.spec.internalTrafficPolicy is set to local, Topology Aware
+// Hints are not used.
+func (sv *endpointView) filterAddresses(available *watcher.AddressSet) watcher.AddressSet {
+	filtered := make(map[watcher.ID]watcher.Address)
+
+	// If endpoint filtering is disabled globally or unsupported by the data
+	// source, return all available addresses.
+	if !sv.cfg.enableEndpointFiltering || available.Cluster != "local" {
+		for k, v := range available.Addresses {
+			filtered[k] = v
+		}
+		return watcher.AddressSet{
+			Addresses:          filtered,
+			Labels:             available.Labels,
+			LocalTrafficPolicy: available.LocalTrafficPolicy,
+			Cluster:            available.Cluster,
+		}
+	}
+
+	// If service.spec.internalTrafficPolicy is set to local, filter and return the addresses
+	// for local node only
+	if available.LocalTrafficPolicy {
+		sv.log.Debugf("Filtering through addresses that should be consumed by node %s", sv.cfg.nodeName)
+		for id, address := range available.Addresses {
+			if address.Pod != nil && address.Pod.Spec.NodeName == sv.cfg.nodeName {
+				filtered[id] = address
+			}
+		}
+		sv.log.Debugf("Filtered from %d to %d addresses", len(available.Addresses), len(filtered))
+		return watcher.AddressSet{
+			Addresses:          filtered,
+			Labels:             available.Labels,
+			LocalTrafficPolicy: available.LocalTrafficPolicy,
+			Cluster:            available.Cluster,
+		}
+	}
+	// If any address does not have a hint, then all hints are ignored and all
+	// available addresses are returned. This replicates kube-proxy behavior
+	// documented in the KEP: https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/2433-topology-aware-hints/README.md#kube-proxy
+	for _, address := range available.Addresses {
+		if len(address.ForZones) == 0 {
+			for k, v := range available.Addresses {
+				filtered[k] = v
+			}
+			sv.log.Debugf("Hints not available on endpointslice. Zone Filtering disabled. Falling back to routing to all pods")
+			return watcher.AddressSet{
+				Addresses:          filtered,
+				Labels:             available.Labels,
+				LocalTrafficPolicy: available.LocalTrafficPolicy,
+				Cluster:            available.Cluster,
+			}
+		}
+	}
+
+	// Each address that has a hint matching the node's zone should be added
+	// to the set of addresses that will be returned.
+	sv.log.Debugf("Filtering through addresses that should be consumed by zone %s", sv.cfg.nodeTopologyZone)
+	for id, address := range available.Addresses {
+		for _, zone := range address.ForZones {
+			if zone.Name == sv.cfg.nodeTopologyZone {
+				filtered[id] = address
+			}
+		}
+	}
+	if len(filtered) > 0 {
+		sv.log.Debugf("Filtered from %d to %d addresses", len(available.Addresses), len(filtered))
+		return watcher.AddressSet{
+			Addresses:          filtered,
+			Labels:             available.Labels,
+			LocalTrafficPolicy: available.LocalTrafficPolicy,
+			Cluster:            available.Cluster,
+		}
+	}
+
+	// If there were no filtered addresses, then fall to using endpoints from
+	// all zones.
+	for k, v := range available.Addresses {
+		filtered[k] = v
+	}
+	return watcher.AddressSet{
+		Addresses:          filtered,
+		Labels:             available.Labels,
+		LocalTrafficPolicy: available.LocalTrafficPolicy,
+		Cluster:            available.Cluster,
+	}
+}
+
+// diffEndpoints calculates the difference between the filtered set of
+// endpoints in the current (Add/Remove) operation and the snapshot of
+// previously filtered endpoints.
+func (sv *endpointView) diffEndpoints(previous watcher.AddressSet, filtered watcher.AddressSet) (watcher.AddressSet, watcher.AddressSet) {
+	add := make(map[watcher.ID]watcher.Address)
+	remove := make(map[watcher.ID]watcher.Address)
+
+	for id, new := range filtered.Addresses {
+		old, ok := previous.Addresses[id]
+		if !ok {
+			add[id] = new
+		} else if !reflect.DeepEqual(old, new) {
+			add[id] = new
+		}
+	}
+
+	for id, address := range previous.Addresses {
+		if _, ok := filtered.Addresses[id]; !ok {
+			remove[id] = address
+		}
+	}
+
+	return watcher.AddressSet{
+			Addresses:          add,
+			Labels:             filtered.Labels,
+			LocalTrafficPolicy: filtered.LocalTrafficPolicy,
+			Cluster:            filtered.Cluster,
+		},
+		watcher.AddressSet{
+			Addresses:          remove,
+			Labels:             filtered.Labels,
+			LocalTrafficPolicy: filtered.LocalTrafficPolicy,
+			Cluster:            filtered.Cluster,
+		}
 }
 
 func (sv *endpointView) emitUpdates(updates []*pb.Update) {
