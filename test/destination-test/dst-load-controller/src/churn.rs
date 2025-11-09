@@ -69,7 +69,7 @@ impl ChurnController {
         name: &str,
         replicas: i32,
         pattern: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         let deployments: Api<Deployment> = Api::namespaced(self.client.clone(), &self.namespace);
 
         let patch = serde_json::json!({
@@ -114,7 +114,7 @@ impl ChurnController {
         max_replicas: i32,
         hold_duration: Duration,
         jitter_percent: u8,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         info!(
             pattern,
             min_replicas,
@@ -144,7 +144,7 @@ impl ChurnController {
             .collect();
 
         if matching_deployments.is_empty() {
-            return Err(format!("No deployments found matching pattern: {}", pattern).into());
+            anyhow::bail!("No deployments found matching pattern: {}", pattern);
         }
 
         info!(
@@ -207,21 +207,21 @@ fn matches_pattern(name: &str, pattern: &str) -> bool {
 }
 
 /// Parse duration string (e.g., "30s", "5m", "1h")
-pub fn parse_duration(s: &str) -> Result<Duration, String> {
+pub fn parse_duration(s: &str) -> anyhow::Result<Duration> {
     let s = s.trim();
     if s.is_empty() {
-        return Err("Empty duration string".to_string());
+        anyhow::bail!("Empty duration string");
     }
 
     let (num_str, unit) = s.split_at(s.len() - 1);
     let num: u64 = num_str
         .parse()
-        .map_err(|_| format!("Invalid number: {}", num_str))?;
+        .map_err(|_| anyhow::anyhow!("Invalid number: {}", num_str))?;
 
     match unit {
         "s" => Ok(Duration::from_secs(num)),
         "m" => Ok(Duration::from_secs(num * 60)),
         "h" => Ok(Duration::from_secs(num * 3600)),
-        _ => Err(format!("Invalid duration unit: {}", unit)),
+        _ => anyhow::bail!("Invalid duration unit: {}", unit),
     }
 }

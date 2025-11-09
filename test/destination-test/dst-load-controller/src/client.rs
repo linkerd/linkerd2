@@ -13,7 +13,8 @@ use prometheus_client::{
     metrics::{counter::Counter, family::Family, gauge::Gauge},
     registry::Registry,
 };
-use tokio::time::sleep;
+use rand::Rng;
+use tokio::time::{sleep, timeout};
 use tonic::transport::Channel;
 use tracing::{error, info, warn};
 
@@ -97,7 +98,9 @@ impl ClientController {
         &self,
         service_label_selector: String,
         watchers_per_service: u32,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+        min_stream_lifetime: Duration,
+        max_stream_lifetime: Duration,
+    ) -> anyhow::Result<()> {
         info!(
             destination_addr = %self.destination_addr,
             namespace = %self.namespace,
@@ -113,11 +116,10 @@ impl ClientController {
         let service_list = services.list(&lp).await?;
         
         if service_list.items.is_empty() {
-            return Err(format!(
+            anyhow::bail!(
                 "No services found with label selector: {}",
                 service_label_selector
-            )
-            .into());
+            );
         }
 
         info!(
@@ -135,7 +137,7 @@ impl ClientController {
         // Spawn watchers for each service
         let mut tasks = Vec::new();
         for svc in service_list.items {
-            let svc_name = svc.metadata.name.as_ref().ok_or("Service missing name")?;
+            let svc_name = svc.metadata.name.as_ref().ok_or_else(|| anyhow::anyhow!("Service missing name"))?;
             
             // Get the service port (assume first port)
             let port = svc
@@ -144,7 +146,7 @@ impl ClientController {
                 .and_then(|spec| spec.ports.as_ref())
                 .and_then(|ports| ports.first())
                 .map(|p| p.port)
-                .ok_or("Service missing port")?;
+                .ok_or_else(|| anyhow::anyhow!("Service missing port"))?;
 
             // Build the destination path (authority)
             let target = format!(
@@ -166,6 +168,8 @@ impl ClientController {
                 let context_token = self.context_token.clone();
                 let metrics = self.metrics.clone();
                 let svc_name = svc_name.clone();
+                let min_lifetime = min_stream_lifetime;
+                let max_lifetime = max_stream_lifetime;
 
                 let task = tokio::spawn(async move {
                     if let Err(e) = subscribe_to_destination(
@@ -174,6 +178,8 @@ impl ClientController {
                         context_token,
                         metrics,
                         watcher_id,
+                        min_lifetime,
+                        max_lifetime,
                     )
                     .await
                     {
@@ -195,32 +201,26 @@ impl ClientController {
 
         Ok(())
     }
-
-    /// Run GetProfile requests for the specified target services
-    pub async fn run_get_profile_requests(
-        &self,
-        _service_label_selector: String,
-        _watchers_per_service: u32,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        warn!("GetProfile not yet implemented");
-        // TODO: Implement GetProfile streams
-        Ok(())
-    }
 }
 
 /// Subscribe to a destination service and process updates
+/// Streams have a bounded lifetime with randomized jitter to simulate realistic client behavior
 async fn subscribe_to_destination(
     channel: Channel,
     target: String,
     context_token: String,
     metrics: ClientMetrics,
     watcher_id: u32,
-) -> Result<(), Box<dyn std::error::Error>> {
+    min_stream_lifetime: Duration,
+    max_stream_lifetime: Duration,
+) -> anyhow::Result<()> {
     let mut client = dst_api::destination_client::DestinationClient::new(channel);
 
     info!(
         target = %target,
         watcher_id,
+        min_lifetime_secs = min_stream_lifetime.as_secs(),
+        max_lifetime_secs = max_stream_lifetime.as_secs(),
         "Subscribing to destination"
     );
 
@@ -230,6 +230,19 @@ async fn subscribe_to_destination(
     };
 
     loop {
+        // Randomize stream lifetime between min and max
+        let lifetime_secs = rand::thread_rng().gen_range(
+            min_stream_lifetime.as_secs()..=max_stream_lifetime.as_secs()
+        );
+        let stream_lifetime = Duration::from_secs(lifetime_secs);
+
+        info!(
+            target = %target,
+            watcher_id,
+            lifetime_secs = stream_lifetime.as_secs(),
+            "Starting bounded stream"
+        );
+
         // Create Get request with context token
         let request = tonic::Request::new(dst_api::GetDestination {
             scheme: "k8s".to_string(),
@@ -240,43 +253,62 @@ async fn subscribe_to_destination(
         // Track active stream
         metrics.streams_active.get_or_create(&labels).inc();
 
-        // Subscribe to stream
-        match client.get(request).await {
-            Ok(response) => {
-                let mut stream = response.into_inner();
+        // Subscribe to stream with timeout
+        let stream_result = timeout(stream_lifetime, async {
+            match client.get(request).await {
+                Ok(response) => {
+                    let mut stream = response.into_inner();
+                    info!(
+                        target = %target,
+                        watcher_id,
+                        "Stream established"
+                    );
+
+                    // Process updates until stream ends or timeout
+                    while let Ok(Some(update)) = stream.message().await {
+                        handle_update(&target, update, &metrics, &labels, watcher_id);
+                    }
+
+                    Ok(())
+                }
+                Err(e) => {
+                    error!(
+                        target = %target,
+                        watcher_id,
+                        error = ?e,
+                        "Failed to establish stream"
+                    );
+                    metrics.stream_errors.get_or_create(&labels).inc();
+                    Err(e)
+                }
+            }
+        })
+        .await;
+
+        // Stream closed (either timeout or natural end), mark as inactive
+        metrics.streams_active.get_or_create(&labels).dec();
+
+        match stream_result {
+            Ok(_) => {
                 info!(
                     target = %target,
                     watcher_id,
-                    "Stream established"
-                );
-
-                // Process updates
-                while let Ok(Some(update)) = stream.message().await {
-                    handle_update(&target, update, &metrics, &labels, watcher_id);
-                }
-
-                warn!(
-                    target = %target,
-                    watcher_id,
-                    "Stream ended, reconnecting..."
+                    "Stream ended naturally, reconnecting..."
                 );
             }
-            Err(e) => {
-                error!(
+            Err(_) => {
+                info!(
                     target = %target,
                     watcher_id,
-                    error = ?e,
-                    "Failed to establish stream"
+                    lifetime_secs = stream_lifetime.as_secs(),
+                    "Stream lifetime expired, reconnecting..."
                 );
-                metrics.stream_errors.get_or_create(&labels).inc();
             }
         }
 
-        // Stream closed, mark as inactive
-        metrics.streams_active.get_or_create(&labels).dec();
-
-        // Wait before reconnecting
-        sleep(Duration::from_secs(5)).await;
+        // Wait before reconnecting (short jitter)
+        let reconnect_delay = Duration::from_secs(rand::thread_rng().gen_range(1..5));
+        sleep(reconnect_delay).await;
     }
 }
 

@@ -9,6 +9,7 @@ members = [
     "policy-controller/k8s/status",
     "policy-controller/runtime",
     "policy-test",
+    "test/destination-test/dst-load-controller",
 ]
 
 [profile.release]
@@ -48,4 +49,4 @@ default-features = false
 
 [workspace.dependencies.linkerd2-proxy-api]
 version = "0.17.0"
-features = ["inbound", "outbound"]
+features = ["destination", "inbound", "outbound"]

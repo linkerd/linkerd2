@@ -70,11 +70,13 @@ spec:
         imagePullPolicy: {{ .Values.client.image.pullPolicy }}
         args:
         - client
+        - --admin-addr=0.0.0.0:{{ .Values.client.metricsPort }}
         - --destination-addr={{ .Values.client.destinationAddr }}
         - --service-label-selector={{ .Values.client.serviceLabelSelector }}
         - --watchers-per-service={{ .Values.client.watchersPerService }}
+        - --min-stream-lifetime={{ .Values.client.minStreamLifetime }}
+        - --max-stream-lifetime={{ .Values.client.maxStreamLifetime }}
         - --namespace={{ .Release.Namespace }}
-        - --metrics-port={{ .Values.client.metricsPort }}
         env:
         # Downward API - inject pod metadata for context token
         - name: POD_NAME
@@ -90,7 +92,7 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         ports:
-        - name: metrics
+        - name: admin-http
           containerPort: {{ .Values.client.metricsPort }}
           protocol: TCP
         resources:

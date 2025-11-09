@@ -19,15 +19,15 @@ spec:
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       args:
         - scale
+        - --admin-addr=0.0.0.0:{{ .Values.churn.metricsPort }}
         - --namespace={{ .Values.testNamespace }}
         - --deployment-pattern={{ .Values.churn.deploymentPattern }}
         - --min-replicas={{ .Values.churn.minReplicas }}
         - --max-replicas={{ .Values.churn.maxReplicas }}
         - --hold-duration={{ .Values.churn.holdDuration }}
         - --jitter-percent={{ .Values.churn.jitterPercent }}
-        - --metrics-port={{ .Values.churn.metricsPort }}
       ports:
-        - name: metrics
+        - name: admin-http
           containerPort: {{ .Values.churn.metricsPort }}
           protocol: TCP
       resources:

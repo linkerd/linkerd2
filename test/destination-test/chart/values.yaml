@@ -93,6 +93,12 @@ client:
   # Number of concurrent watchers per discovered service
   watchersPerService: 10
   
+  # Stream lifetime configuration
+  # Minimum time before reconnecting (with jitter)
+  minStreamLifetime: "5m"
+  # Maximum time before reconnecting (with jitter)
+  maxStreamLifetime: "30m"
+  
   # Metrics server port
   metricsPort: 8080
   

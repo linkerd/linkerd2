@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 mod churn;
@@ -6,7 +7,19 @@ mod client;
 #[derive(Parser)]
 #[command(name = "dst-load-controller")]
 #[command(about = "Destination service load testing controller", long_about = None)]
-struct Cli {
+struct Args {
+    #[clap(long, default_value = "linkerd=info,warn")]
+    log_level: kubert::LogFilter,
+
+    #[clap(long, default_value = "plain")]
+    log_format: kubert::LogFormat,
+
+    #[clap(flatten)]
+    client: kubert::ClientArgs,
+
+    #[clap(flatten)]
+    admin: kubert::AdminArgs,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -35,10 +48,6 @@ enum Commands {
         #[arg(long, default_value = "0")]
         jitter_percent: u8,
 
-        /// Prometheus metrics port
-        #[arg(long, default_value = "8080")]
-        metrics_port: u16,
-
         /// Namespace where deployments exist
         #[arg(long, default_value = "default")]
         namespace: String,
@@ -58,6 +67,14 @@ enum Commands {
         #[arg(long, default_value = "1")]
         watchers_per_service: u32,
 
+        /// Minimum stream lifetime before reconnection (e.g., "30s", "5m")
+        #[arg(long, default_value = "5m")]
+        min_stream_lifetime: String,
+
+        /// Maximum stream lifetime before reconnection (e.g., "1h", "30m")
+        #[arg(long, default_value = "30m")]
+        max_stream_lifetime: String,
+
         /// Namespace where services exist
         #[arg(long, default_value = "default")]
         namespace: String,
@@ -73,144 +90,170 @@ enum Commands {
         /// Node name (for context token, typically from downward API)
         #[arg(long, env = "NODE_NAME")]
         node_name: Option<String>,
-
-        /// Prometheus metrics port
-        #[arg(long, default_value = "8080")]
-        metrics_port: u16,
     },
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize tracing
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
-        )
-        .init();
+async fn main() -> Result<()> {
+    let args = Args::parse();
+    args.run().await
+}
 
-    let cli = Cli::parse();
+impl Args {
+    async fn run(self) -> Result<()> {
+        let Args {
+            log_level,
+            log_format,
+            client: client_args,
+            admin,
+            command,
+        } = self;
 
-    match cli.command {
-        Commands::Scale {
-            deployment_pattern,
-            min_replicas,
-            max_replicas,
-            hold_duration,
-            jitter_percent,
-            metrics_port,
-            namespace,
-        } => {
-            tracing::info!(
+        match command {
+            Commands::Scale {
                 deployment_pattern,
                 min_replicas,
                 max_replicas,
                 hold_duration,
                 jitter_percent,
-                metrics_port,
                 namespace,
-                "Starting scale controller"
-            );
-
-            // Validate inputs
-            if min_replicas < 0 || max_replicas < 0 {
-                return Err("Replica counts must be >= 0".into());
-            }
-            if min_replicas >= max_replicas {
-                return Err("--min-replicas must be < --max-replicas".into());
-            }
-            if jitter_percent > 100 {
-                return Err("--jitter-percent must be 0-100".into());
-            }
-
-            let hold_duration = churn::parse_duration(&hold_duration)?;
-
-            // Create Kubernetes client
-            let client = kube::Client::try_default().await?;
-
-            // Set up metrics
-            let mut registry = prometheus_client::registry::Registry::default();
-            let metrics = churn::ChurnMetrics::new(&mut registry);
-
-            // Create churn controller
-            let controller = churn::ChurnController::new(client, namespace, metrics);
-
-            // TODO: Start metrics server on metrics_port
-
-            // Run oscillate pattern on matching deployments
-            controller
-                .run_oscillate_deployments(
-                    &deployment_pattern,
+            } => {
+                tracing::info!(
+                    deployment_pattern,
                     min_replicas,
                     max_replicas,
                     hold_duration,
                     jitter_percent,
-                )
-                .await?;
-        }
+                    namespace,
+                    "Starting scale controller"
+                );
 
-        Commands::Client {
-            destination_addr,
-            service_label_selector,
-            watchers_per_service,
-            namespace,
-            pod_name,
-            pod_namespace,
-            node_name,
-            metrics_port,
-        } => {
-            tracing::info!(
+                // Validate inputs
+                if min_replicas < 0 || max_replicas < 0 {
+                    anyhow::bail!("Replica counts must be >= 0");
+                }
+                if min_replicas >= max_replicas {
+                    anyhow::bail!("--min-replicas must be < --max-replicas");
+                }
+                if jitter_percent > 100 {
+                    anyhow::bail!("--jitter-percent must be 0-100");
+                }
+
+                let hold_duration = churn::parse_duration(&hold_duration)?;
+
+                // Set up metrics
+                let mut prom = prometheus_client::registry::Registry::default();
+                let metrics = churn::ChurnMetrics::new(&mut prom);
+
+                // Build runtime with admin server (provides /metrics, /ready, /live)
+                let runtime = kubert::Runtime::builder()
+                    .with_log(log_level, log_format)
+                    .with_admin(admin.into_builder().with_prometheus(prom))
+                    .with_client(client_args)
+                    .build()
+                    .await?;
+
+                // Get Kubernetes client from runtime
+                let client = runtime.client();
+
+                // Create churn controller
+                let controller = churn::ChurnController::new(client, namespace, metrics);
+
+                // Run oscillate pattern on matching deployments
+                controller
+                    .run_oscillate_deployments(
+                        &deployment_pattern,
+                        min_replicas,
+                        max_replicas,
+                        hold_duration,
+                        jitter_percent,
+                    )
+                    .await?;
+            }
+
+            Commands::Client {
                 destination_addr,
                 service_label_selector,
                 watchers_per_service,
+                min_stream_lifetime,
+                max_stream_lifetime,
                 namespace,
-                ?pod_name,
-                ?pod_namespace,
-                ?node_name,
-                metrics_port,
-                "Starting client controller"
-            );
+                pod_name,
+                pod_namespace,
+                node_name,
+            } => {
+                tracing::info!(
+                    destination_addr,
+                    service_label_selector,
+                    watchers_per_service,
+                    min_stream_lifetime,
+                    max_stream_lifetime,
+                    namespace,
+                    ?pod_name,
+                    ?pod_namespace,
+                    ?node_name,
+                    "Starting client controller"
+                );
 
-            if watchers_per_service == 0 {
-                return Err("--watchers-per-service must be > 0".into());
+                if watchers_per_service == 0 {
+                    anyhow::bail!("--watchers-per-service must be > 0");
+                }
+
+                // Parse stream lifetime durations
+                let min_lifetime = churn::parse_duration(&min_stream_lifetime)?;
+                let max_lifetime = churn::parse_duration(&max_stream_lifetime)?;
+
+                if min_lifetime >= max_lifetime {
+                    anyhow::bail!("--min-stream-lifetime must be < --max-stream-lifetime");
+                }
+
+                // Build context token (mimics linkerd proxy injector)
+                let context_token = build_context_token(
+                    pod_name.as_deref(),
+                    pod_namespace.as_deref(),
+                    node_name.as_deref(),
+                )?;
+
+                tracing::info!(context_token, "Built context token");
+
+                // Set up metrics
+                let mut prom = prometheus_client::registry::Registry::default();
+                let metrics = client::ClientMetrics::new(&mut prom);
+
+                // Build runtime with admin server (provides /metrics, /ready, /live)
+                let runtime = kubert::Runtime::builder()
+                    .with_log(log_level, log_format)
+                    .with_admin(admin.into_builder().with_prometheus(prom))
+                    .with_client(client_args)
+                    .build()
+                    .await?;
+
+                // Get Kubernetes client from runtime
+                let client = runtime.client();
+
+                // Create client controller
+                let controller = client::ClientController::new(
+                    client,
+                    destination_addr,
+                    namespace,
+                    context_token,
+                    metrics,
+                );
+
+                // Run Get requests
+                controller
+                    .run_get_requests(
+                        service_label_selector,
+                        watchers_per_service,
+                        min_lifetime,
+                        max_lifetime,
+                    )
+                    .await?;
             }
-
-            // Build context token (mimics linkerd proxy injector)
-            let context_token = build_context_token(
-                pod_name.as_deref(),
-                pod_namespace.as_deref(),
-                node_name.as_deref(),
-            )?;
-
-            tracing::info!(context_token, "Built context token");
-
-            // Create Kubernetes client
-            let client = kube::Client::try_default().await?;
-
-            // Set up metrics
-            let mut registry = prometheus_client::registry::Registry::default();
-            let metrics = client::ClientMetrics::new(&mut registry);
-
-            // Create client controller
-            let controller = client::ClientController::new(
-                client,
-                destination_addr,
-                namespace,
-                context_token,
-                metrics,
-            );
-
-            // TODO: Start metrics server on metrics_port
-
-            // Run Get requests
-            controller
-                .run_get_requests(service_label_selector, watchers_per_service)
-                .await?;
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
 
 /// Build a context token for destination service requests
@@ -219,7 +262,7 @@ fn build_context_token(
     pod_name: Option<&str>,
     pod_namespace: Option<&str>,
     node_name: Option<&str>,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<String> {
     let mut token = serde_json::json!({});
 
     if let Some(ns) = pod_namespace {

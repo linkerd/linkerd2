@@ -9,17 +9,28 @@ name = "dst-load-controller"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = { workspace = true }
-clap = { workspace = true }
-futures = { workspace = true }
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+futures = "0.3"
 k8s-openapi = { workspace = true }
-kube = { workspace = true }
+kube = { workspace = true, default-features = false, features = [
+    "client",
+    "rustls-tls",
+] }
 linkerd2-proxy-api = { workspace = true }
 prometheus-client = { workspace = true }
-rand = { workspace = true }
-serde = { workspace = true }
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { workspace = true }
-tonic = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+tonic = { workspace = true, default-features = false, features = ["transport"] }
+tracing = "0.1"
+
+[dependencies.kubert]
+workspace = true
+default-features = false
+features = ["clap", "prometheus-client", "runtime", "rustls-tls"]
+
+[dependencies.tracing-subscriber]
+version = "0.3"
+features = ["env-filter", "fmt", "json"]
