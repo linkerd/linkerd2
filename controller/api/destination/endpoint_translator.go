@@ -3,8 +3,6 @@ package destination
 import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	logging "github.com/sirupsen/logrus"
 )
 
@@ -98,13 +96,3 @@ func newEndpointTranslatorConfig(
 ) *endpointTranslatorConfig {
 	return newEndpointViewConfig(cfg, identityTrustDomain, nodeName, nodeTopologyZone, service, enableEndpointFiltering)
 }
-
-var updatesQueueOverflowCounter = promauto.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "endpoint_updates_queue_overflow",
-		Help: "A counter incremented whenever the endpoint updates queue overflows",
-	},
-	[]string{
-		"service",
-	},
-)

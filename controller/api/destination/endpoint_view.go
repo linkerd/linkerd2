@@ -9,7 +9,6 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -53,10 +52,10 @@ import (
 //   - Without the mutex, filtered state could be corrupted during concurrent
 //     updates from topic notifications and explicit NoEndpoints() calls
 type endpointView struct {
-	cfg             *endpointTranslatorConfig
-	log             *logging.Entry
-	dispatcher      *endpointStreamDispatcher
-	overflowCounter prometheus.Counter
+	cfg        *endpointTranslatorConfig
+	log        *logging.Entry
+	dispatcher *endpointStreamDispatcher
+	metrics    *viewMetrics
 
 	// Per-view state
 	mu               sync.Mutex
@@ -106,16 +105,11 @@ func newEndpointView(
 		"service":   cfg.service,
 	})
 
-	counter, err := updatesQueueOverflowCounter.GetMetricWith(prometheus.Labels{"service": cfg.service})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create updates queue overflow counter: %w", err)
-	}
-
 	view := &endpointView{
 		cfg:              cfg,
 		log:              log,
 		dispatcher:       dispatcher,
-		overflowCounter:  counter,
+		metrics:          newViewMetrics(),
 		available:        newEmptyAddressSet(),
 		filteredSnapshot: newEmptyAddressSet(),
 	}
@@ -406,7 +400,7 @@ func (sv *endpointView) diffEndpoints(previous watcher.AddressSet, filtered watc
 func (sv *endpointView) emitUpdates(updates []*pb.Update) {
 	sv.log.Debugf("emitting %d updates", len(updates))
 	for _, update := range updates {
-		sv.dispatcher.enqueue(update, sv.overflowCounter)
+		sv.dispatcher.enqueue(update)
 	}
 }
 
@@ -441,4 +435,5 @@ func (sv *endpointView) close() {
 		sv.cancel()
 	}
 	sv.wg.Wait()
+	sv.metrics.close()
 }

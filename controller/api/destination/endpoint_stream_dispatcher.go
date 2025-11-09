@@ -8,7 +8,6 @@ import (
 	"time"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 )
 
@@ -77,7 +76,10 @@ func (d *endpointStreamDispatcher) process(send func(*pb.Update) error) error {
 		if update == nil {
 			continue
 		}
-		if err := send(update); err != nil {
+		start := time.Now()
+		err := send(update)
+		observeSendDuration(time.Since(start))
+		if err != nil {
 			return err
 		}
 	}
@@ -90,12 +92,12 @@ func (d *endpointStreamDispatcher) process(send func(*pb.Update) error) error {
 //  2. The sendTimeout expires (Send is stuck/slow)
 //
 // If the timeout expires, the stream is reset via the reset callback and the
-// overflow counter is incremented. The update is dropped.
+// timeout metric is incremented. The update is dropped.
 //
 // This blocking behavior is intentional and internal to the dispatcher - it
 // provides backpressure to the calling view, preventing unbounded accumulation
 // of stale updates when the client is slow or unresponsive.
-func (d *endpointStreamDispatcher) enqueue(update *pb.Update, overflow prometheus.Counter) {
+func (d *endpointStreamDispatcher) enqueue(update *pb.Update) {
 	if d.closed.Load() || update == nil {
 		return
 	}
@@ -113,9 +115,7 @@ func (d *endpointStreamDispatcher) enqueue(update *pb.Update, overflow prometheu
 		// Timeout exceeded - the process goroutine is blocked in Send,
 		// indicating the client is stuck or very slow. Reset the stream
 		// to allow the client to reconnect and get fresh state.
-		if overflow != nil {
-			overflow.Inc()
-		}
+		observeSendTimeout()
 		if d.reset != nil {
 			d.reset()
 		}
