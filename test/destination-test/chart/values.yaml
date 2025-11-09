@@ -1,0 +1,91 @@
+# Default values for dst-load-test
+# This Helm chart deploys load testing controllers for Linkerd's destination service
+
+# Docker image configuration
+image:
+  repository: dst-load-controller
+  tag: latest
+  pullPolicy: Never  # Use local image imported into k3d
+
+# Image pull secrets (if needed for private registries)
+imagePullSecrets: []
+
+# Service account configuration
+serviceAccount:
+  create: true
+  name: dst-load-test
+
+# RBAC permissions
+rbac:
+  create: true
+
+# Namespace where test services will be created
+testNamespace: dst-test
+
+# Churn controller configuration
+churn:
+  enabled: true
+  
+  # Stable services configuration
+  stable:
+    services: 10
+    endpoints: 100
+  
+  # Oscillate services configuration  
+  oscillate:
+    services: 5
+    minEndpoints: 10
+    maxEndpoints: 200
+    holdDuration: "30s"
+    jitterPercent: 10
+  
+  # Metrics server port
+  metricsPort: 8080
+  
+  # Resource limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Client controller configuration
+client:
+  enabled: false
+  
+  # Number of client replicas
+  replicas: 10
+  
+  # Destination service address
+  destinationAddr: linkerd-dst-headless.linkerd.svc.cluster.local:8086
+  
+  # Services to watch (will be generated from churn config if not specified)
+  targetServices: []
+  
+  # Metrics server port
+  metricsPort: 8080
+  
+  # Resource limits
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Pod annotations (for Linkerd injection)
+podAnnotations:
+  linkerd.io/inject: enabled
+  config.linkerd.io/skip-outbound-ports: "8080"  # Skip metrics port
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}

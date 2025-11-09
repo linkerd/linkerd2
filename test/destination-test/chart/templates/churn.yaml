@@ -1,0 +1,76 @@
+{{- if .Values.churn.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "dst-load-test.fullname" . }}-churn
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "dst-load-test.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: churn
+  annotations:
+    {{- toYaml .Values.podAnnotations | nindent 4 }}
+spec:
+  serviceAccountName: {{ .Values.serviceAccount.name }}
+  restartPolicy: Never
+  containers:
+    - name: churn
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      args:
+        - churn
+        - --namespace={{ .Values.testNamespace }}
+        - --stable-services={{ .Values.churn.stable.services }}
+        - --stable-endpoints={{ .Values.churn.stable.endpoints }}
+        {{- if gt (int .Values.churn.oscillate.services) 0 }}
+        - --oscillate-services={{ .Values.churn.oscillate.services }}
+        - --oscillate-min-endpoints={{ .Values.churn.oscillate.minEndpoints }}
+        - --oscillate-max-endpoints={{ .Values.churn.oscillate.maxEndpoints }}
+        - --oscillate-hold-duration={{ .Values.churn.oscillate.holdDuration }}
+        - --oscillate-jitter-percent={{ .Values.churn.oscillate.jitterPercent }}
+        {{- end }}
+        - --metrics-port={{ .Values.churn.metricsPort }}
+      ports:
+        - name: metrics
+          containerPort: {{ .Values.churn.metricsPort }}
+          protocol: TCP
+      resources:
+        {{- toYaml .Values.churn.resources | nindent 8 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dst-load-test.fullname" . }}-churn-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "dst-load-test.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: churn
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.churn.metricsPort }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    app.kubernetes.io/name: {{ include "dst-load-test.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: churn
+{{- end }}

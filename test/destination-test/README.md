@@ -78,16 +78,38 @@ linkerd check
 LINKERD_CA_DIR=/tmp/linkerd-ca helmfile --state-values-set monitoring.enabled=true apply
 ```
 
-### 5. Run Load Tests
+### 5. Build and Deploy Load Controllers
 
 ```bash
-# Build the Rust binary
-cargo build --release
-
 # Build Docker image
 docker build -t dst-load-controller:latest -f Dockerfile .
 
 # Load into k3d cluster
+k3d image import dst-load-controller:latest --cluster k3s-default
+
+# Deploy via Helm (churn controller only)
+helm install dst-load chart/ -n dst-test
+
+# Or with custom configuration
+helm install dst-load chart/ -n dst-test \
+  --set churn.stable.services=20 \
+  --set churn.stable.endpoints=50 \
+  --set churn.oscillate.services=5
+
+# Monitor churn metrics
+kubectl port-forward -n dst-test pod/dst-load-dst-load-test-churn 8080:8080 &
+curl localhost:8080/metrics | grep churn_
+```
+
+### 6. Verify Load Test
+
+```bash
+# Check services created by churn controller
+kubectl get svc,deploy,pods -n dst-test
+
+# Verify endpoints are visible to Linkerd
+linkerd diagnostics endpoints stable-svc-0.dst-test.svc.cluster.local:8080
+```
 k3d image import dst-load-controller:latest --cluster test
 
 # Deploy controllers

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: dst-load-test
+description: Destination service load testing controllers (churn + client)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - linkerd
+  - load-testing
+  - destination
+maintainers:
+  - name: Linkerd Authors
