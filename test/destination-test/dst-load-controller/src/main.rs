@@ -12,41 +12,33 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Churn controller: Creates and manages Services/Deployments (runs in target cluster)
-    Churn {
-        /// Number of stable Services to create
-        #[arg(long, default_value = "0")]
-        stable_services: u32,
+    /// Scale controller: Oscillates Deployment replicas between min/max to simulate autoscaler behavior
+    Scale {
+        /// Deployment name pattern to scale (supports wildcards, e.g., "test-svc-*")
+        #[arg(long)]
+        deployment_pattern: String,
 
-        /// Number of stable endpoints per Service
-        #[arg(long, default_value = "0")]
-        stable_endpoints: u32,
+        /// Minimum replica count
+        #[arg(long)]
+        min_replicas: i32,
 
-        /// Number of oscillating Services to create
-        #[arg(long, default_value = "0")]
-        oscillate_services: u32,
-
-        /// Minimum endpoints per oscillating Service
-        #[arg(long, default_value = "0")]
-        oscillate_min_endpoints: u32,
-
-        /// Maximum endpoints per oscillating Service
-        #[arg(long, default_value = "0")]
-        oscillate_max_endpoints: u32,
+        /// Maximum replica count
+        #[arg(long)]
+        max_replicas: i32,
 
         /// Hold time at min/max before changing (e.g., "30s", "1m")
         #[arg(long, default_value = "30s")]
-        oscillate_hold_duration: String,
+        hold_duration: String,
 
         /// Jitter percentage (0-100) to spread oscillation timing
         #[arg(long, default_value = "0")]
-        oscillate_jitter_percent: u8,
+        jitter_percent: u8,
 
         /// Prometheus metrics port
         #[arg(long, default_value = "8080")]
         metrics_port: u16,
 
-        /// Namespace to create resources in
+        /// Namespace where deployments exist
         #[arg(long, default_value = "default")]
         namespace: String,
     },
@@ -88,55 +80,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Churn {
-            stable_services,
-            stable_endpoints,
-            oscillate_services,
-            oscillate_min_endpoints,
-            oscillate_max_endpoints,
-            oscillate_hold_duration,
-            oscillate_jitter_percent,
+        Commands::Scale {
+            deployment_pattern,
+            min_replicas,
+            max_replicas,
+            hold_duration,
+            jitter_percent,
             metrics_port,
             namespace,
         } => {
             tracing::info!(
-                stable_services,
-                stable_endpoints,
-                oscillate_services,
-                oscillate_min_endpoints,
-                oscillate_max_endpoints,
-                oscillate_hold_duration,
-                oscillate_jitter_percent,
+                deployment_pattern,
+                min_replicas,
+                max_replicas,
+                hold_duration,
+                jitter_percent,
                 metrics_port,
                 namespace,
-                "Starting churn controller"
+                "Starting scale controller"
             );
 
             // Validate inputs
-            if stable_services == 0 && oscillate_services == 0 {
-                return Err("Must specify either --stable-services or --oscillate-services".into());
+            if min_replicas < 0 || max_replicas < 0 {
+                return Err("Replica counts must be >= 0".into());
+            }
+            if min_replicas >= max_replicas {
+                return Err("--min-replicas must be < --max-replicas".into());
+            }
+            if jitter_percent > 100 {
+                return Err("--jitter-percent must be 0-100".into());
             }
 
-            if stable_services > 0 && stable_endpoints == 0 {
-                return Err("--stable-endpoints must be > 0 when using --stable-services".into());
-            }
-
-            if oscillate_services > 0 {
-                if oscillate_min_endpoints == 0 || oscillate_max_endpoints == 0 {
-                    return Err(
-                        "--oscillate-min-endpoints and --oscillate-max-endpoints must be > 0"
-                            .into(),
-                    );
-                }
-                if oscillate_min_endpoints >= oscillate_max_endpoints {
-                    return Err("--oscillate-min-endpoints must be < --oscillate-max-endpoints".into());
-                }
-                if oscillate_jitter_percent > 100 {
-                    return Err("--oscillate-jitter-percent must be 0-100".into());
-                }
-            }
-
-            let hold_duration = churn::parse_duration(&oscillate_hold_duration)?;
+            let hold_duration = churn::parse_duration(&hold_duration)?;
 
             // Create Kubernetes client
             let client = kube::Client::try_default().await?;
@@ -150,57 +125,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // TODO: Start metrics server on metrics_port
 
-            // Run the appropriate pattern
-            if stable_services > 0 && oscillate_services == 0 {
-                // Pure stable
-                controller
-                    .run_stable(stable_services, stable_endpoints)
-                    .await?;
-            } else if stable_services == 0 && oscillate_services > 0 {
-                // Pure oscillate
-                controller
-                    .run_oscillate(
-                        oscillate_services,
-                        oscillate_min_endpoints,
-                        oscillate_max_endpoints,
-                        hold_duration,
-                        oscillate_jitter_percent,
-                    )
-                    .await?;
-            } else {
-                // Mixed mode - run both patterns concurrently
-                tracing::info!("Running mixed stable + oscillate patterns");
-
-                let stable_client = controller.client.clone();
-                let stable_namespace = controller.namespace.clone();
-                let stable_metrics = churn::ChurnMetrics::new(&mut registry);
-                let stable_controller =
-                    churn::ChurnController::new(stable_client, stable_namespace, stable_metrics);
-
-                let oscillate_client = controller.client.clone();
-                let oscillate_namespace = controller.namespace.clone();
-                let oscillate_metrics = churn::ChurnMetrics::new(&mut registry);
-                let oscillate_controller = churn::ChurnController::new(
-                    oscillate_client,
-                    oscillate_namespace,
-                    oscillate_metrics,
-                );
-
-                tokio::select! {
-                    result = stable_controller.run_stable(stable_services, stable_endpoints) => {
-                        result?;
-                    }
-                    result = oscillate_controller.run_oscillate(
-                        oscillate_services,
-                        oscillate_min_endpoints,
-                        oscillate_max_endpoints,
-                        hold_duration,
-                        oscillate_jitter_percent,
-                    ) => {
-                        result?;
-                    }
-                }
-            }
+            // Run oscillate pattern on matching deployments
+            controller
+                .run_oscillate_deployments(
+                    &deployment_pattern,
+                    min_replicas,
+                    max_replicas,
+                    hold_duration,
+                    jitter_percent,
+                )
+                .await?;
         }
 
         Commands::Client {

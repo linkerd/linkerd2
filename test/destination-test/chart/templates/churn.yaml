@@ -18,7 +18,7 @@ spec:
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       args:
-        - churn
+        - scale
         - --namespace={{ .Values.testNamespace }}
         - --deployment-pattern={{ .Values.churn.deploymentPattern }}
         - --min-replicas={{ .Values.churn.minReplicas }}

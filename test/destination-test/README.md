@@ -110,10 +110,13 @@ kubectl get svc,deploy,pods -n dst-test
 # Verify endpoints are visible to Linkerd
 linkerd diagnostics endpoints stable-svc-0.dst-test.svc.cluster.local:8080
 ```
+
 k3d image import dst-load-controller:latest --cluster test
 
 # Deploy controllers
+
 # TODO: Helm chart for deploying controllers
+
 ```
 
 ## Running Load Tests
