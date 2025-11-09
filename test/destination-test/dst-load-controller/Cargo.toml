@@ -1,0 +1,20 @@
+[package]
+name = "dst-load-controller"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "dst-load-controller"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+k8s-openapi = { workspace = true }
+kube = { workspace = true }
+linkerd2-proxy-api = { workspace = true }
+prometheus-client = { workspace = true }
+tokio = { workspace = true }
+tonic = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
