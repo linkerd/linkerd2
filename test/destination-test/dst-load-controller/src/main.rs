@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
 
+mod churn;
+
 #[derive(Parser)]
 #[command(name = "dst-load-controller")]
 #[command(about = "Destination service load testing controller", long_about = None)]
@@ -110,8 +112,95 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "Starting churn controller"
             );
 
-            // TODO: Implement churn controller
-            tracing::warn!("Churn controller not yet implemented");
+            // Validate inputs
+            if stable_services == 0 && oscillate_services == 0 {
+                return Err("Must specify either --stable-services or --oscillate-services".into());
+            }
+
+            if stable_services > 0 && stable_endpoints == 0 {
+                return Err("--stable-endpoints must be > 0 when using --stable-services".into());
+            }
+
+            if oscillate_services > 0 {
+                if oscillate_min_endpoints == 0 || oscillate_max_endpoints == 0 {
+                    return Err(
+                        "--oscillate-min-endpoints and --oscillate-max-endpoints must be > 0"
+                            .into(),
+                    );
+                }
+                if oscillate_min_endpoints >= oscillate_max_endpoints {
+                    return Err("--oscillate-min-endpoints must be < --oscillate-max-endpoints".into());
+                }
+                if oscillate_jitter_percent > 100 {
+                    return Err("--oscillate-jitter-percent must be 0-100".into());
+                }
+            }
+
+            let hold_duration = churn::parse_duration(&oscillate_hold_duration)?;
+
+            // Create Kubernetes client
+            let client = kube::Client::try_default().await?;
+
+            // Set up metrics
+            let mut registry = prometheus_client::registry::Registry::default();
+            let metrics = churn::ChurnMetrics::new(&mut registry);
+
+            // Create churn controller
+            let controller = churn::ChurnController::new(client, namespace, metrics);
+
+            // TODO: Start metrics server on metrics_port
+
+            // Run the appropriate pattern
+            if stable_services > 0 && oscillate_services == 0 {
+                // Pure stable
+                controller
+                    .run_stable(stable_services, stable_endpoints)
+                    .await?;
+            } else if stable_services == 0 && oscillate_services > 0 {
+                // Pure oscillate
+                controller
+                    .run_oscillate(
+                        oscillate_services,
+                        oscillate_min_endpoints,
+                        oscillate_max_endpoints,
+                        hold_duration,
+                        oscillate_jitter_percent,
+                    )
+                    .await?;
+            } else {
+                // Mixed mode - run both patterns concurrently
+                tracing::info!("Running mixed stable + oscillate patterns");
+
+                let stable_client = controller.client.clone();
+                let stable_namespace = controller.namespace.clone();
+                let stable_metrics = churn::ChurnMetrics::new(&mut registry);
+                let stable_controller =
+                    churn::ChurnController::new(stable_client, stable_namespace, stable_metrics);
+
+                let oscillate_client = controller.client.clone();
+                let oscillate_namespace = controller.namespace.clone();
+                let oscillate_metrics = churn::ChurnMetrics::new(&mut registry);
+                let oscillate_controller = churn::ChurnController::new(
+                    oscillate_client,
+                    oscillate_namespace,
+                    oscillate_metrics,
+                );
+
+                tokio::select! {
+                    result = stable_controller.run_stable(stable_services, stable_endpoints) => {
+                        result?;
+                    }
+                    result = oscillate_controller.run_oscillate(
+                        oscillate_services,
+                        oscillate_min_endpoints,
+                        oscillate_max_endpoints,
+                        hold_duration,
+                        oscillate_jitter_percent,
+                    ) => {
+                        result?;
+                    }
+                }
+            }
         }
 
         Commands::Client {
