@@ -345,7 +345,7 @@ func (api *MetadataAPI) GetRootOwnerKindAndName(ctx context.Context, tm *metav1.
 		return &parentType, &metav1.ObjectMeta{Name: parentRef.Name, Namespace: om.Namespace}
 	}
 
-	log.Infof("Unrecursable parent type %s, %s/%s", schema.FromAPIVersionAndKind(parentRef.APIVersion, parentRef.Kind), om.Namespace, parentRef.Name)
+	log.Debugf("Unrecursable parent type %s, %s/%s", schema.FromAPIVersionAndKind(parentRef.APIVersion, parentRef.Kind), om.Namespace, parentRef.Name)
 	return &parentType, &metav1.ObjectMeta{Name: parentRef.Name, Namespace: om.Namespace}
 }
 

@@ -56,7 +56,6 @@ func Inject(linkerdNamespace string, overrider inject.ValueOverrider) webhook.Ha
 			return nil, err
 		}
 		resourceConfig := inject.NewResourceConfig(valuesConfig, inject.OriginWebhook, linkerdNamespace).
-			WithOwnerRetriever(ownerRetriever(ctx, api, request.Namespace)).
 			WithRootOwnerRetriever(rootOwnerRetriever(ctx, api, request.Namespace)).
 			WithNsAnnotations(ns.GetAnnotations()).
 			WithKind(request.Kind.Kind)
