@@ -27,17 +27,42 @@ func TestInstallCalico(t *testing.T) {
 		return
 	}
 
-	out, err := TestHelper.Kubectl("", []string{"apply", "-f", "https://k3d.io/v5.1.0/usage/advanced/calico.yaml"}...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"kubectl apply command failed\n%s", out)
-	}
+	// install Calico as per instructions on
+	// https://k3d.io/v5.8.3/usage/advanced/calico/#1-create-the-cluster-without-flannel
+	// there's a lot of waiting involved here as the various components come up, so the easiest
+	// is to retry the steps until they succeed
+	var out string
+	err := testutil.RetryFor(time.Minute, func() error {
+		var err error
+		out, err = TestHelper.Kubectl("", []string{"apply", "-f", "https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/tigera-operator.yaml"}...)
+		if err != nil {
+			return err
+		}
 
-	time.Sleep(10 * time.Second)
-	o, err := TestHelper.Kubectl("", "--namespace=kube-system", "wait", "--for=condition=available", "--timeout=120s", "deploy/calico-kube-controllers")
+		deploys := map[string]testutil.DeploySpec{
+			"tigera-operator": {
+				Namespace: "tigera-operator",
+				Replicas:  1,
+			},
+		}
+		TestHelper.WaitRollout(t, deploys)
+
+		out, err = TestHelper.Kubectl("", []string{"apply", "-f", "https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/custom-resources.yaml"}...)
+		if err != nil {
+			return err
+		}
+
+		for _, system := range []string{"apiserver", "calico", "goldmane", "ippools", "whisker"} {
+			out, err = TestHelper.Kubectl("", "wait", "--for=condition=available", "--timeout=120s", "tigerastatus", system)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to wait for condition=available for calico resources",
-			"failed to wait for condition=available for calico resources: %s: %s", err, o)
+		testutil.AnnotatedFatalf(t, "failed to install calico", "failed to install calico: %s: %s", err, out)
 	}
 }
 

@@ -1,5 +1,0 @@
-# Used by the cni-calico-deep integration test, which requires k8s v1.27.6-k3s1
-# See https://github.com/k3d-io/k3d/issues/1375
-apiVersion: k3d.io/v1alpha4
-kind: Simple
-image: rancher/k3s:v1.27.6-k3s1
