@@ -17,7 +17,7 @@ hyper = { workspace = true, features = ["http1", "http2", "server"] }
 hyper-util = { workspace = true }
 ipnet = { version = "2", default-features = false }
 k8s-openapi = { workspace = true }
-openssl = { version = "0.10.74", optional = true }
+openssl = { version = "0.10.75", optional = true }
 parking_lot = "0.12"
 prometheus-client = { workspace = true }
 regex = "1"
