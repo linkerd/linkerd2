@@ -134,7 +134,7 @@ spec:
         type: object
         required: [spec]
         properties:
-          apiVerson:
+          apiVersion:
             type: string
           kind:
             type: string
@@ -6826,7 +6826,7 @@ spec:
         type: object
         required: [spec]
         properties:
-          apiVerson:
+          apiVersion:
             type: string
           kind:
             type: string
@@ -6968,7 +6968,7 @@ spec:
         type: object
         required: [spec]
         properties:
-          apiVerson:
+          apiVersion:
             type: string
           kind:
             type: string
