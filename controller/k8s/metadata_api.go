@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/metadata/metadatainformer"
@@ -270,6 +271,82 @@ func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod
 		return strings.ToLower(grandParent.Kind), grandParent.Name, nil
 	}
 	return strings.ToLower(parent.Kind), parent.Name, nil
+}
+
+// The set of resources that we look up in the indexer are fairly niche. They all must be able to:
+// - be a parent of another resource, usually a Pod
+// - have a parent resource themselves
+// Currently, this is limited to Jobs (parented by CronJobs) and ReplicaSets (parented by
+// Deployments, StatefulSets, argo Rollouts, etc.). This list may change in the future, but
+// is sufficient for now.
+var indexedParents = map[string]indexedParent{
+	"Job":        {Job, batchv1.SchemeGroupVersion.WithResource("jobs")},
+	"ReplicaSet": {RS, appsv1.SchemeGroupVersion.WithResource("replicasets")},
+}
+
+type indexedParent struct {
+	resource APIResource
+	gvr      schema.GroupVersionResource
+}
+
+// GetRootOwnerKindAndName returns the resource's owner's type and metadata, using owner
+// references from the Kubernetes API. Parent refs are recursively traversed to find the
+// root parent resource, at least as far as the controller has permissions to query.
+func (api *MetadataAPI) GetRootOwnerKindAndName(ctx context.Context, tm *metav1.TypeMeta, om *metav1.ObjectMeta, retry bool) (*metav1.TypeMeta, *metav1.ObjectMeta) {
+	ownerRefs := om.OwnerReferences
+	if len(ownerRefs) == 0 {
+		// resource without a parent
+		log.Debugf("Found root owner ref in ns %s: %s/%s: %s", om.Namespace, tm.APIVersion, tm.Kind, om.Name)
+		return tm, om
+	} else if len(ownerRefs) > 1 {
+		log.Debugf("unexpected owner reference count (%d): %+v", len(ownerRefs), ownerRefs)
+		return tm, om
+	}
+
+	parentRef := ownerRefs[0]
+	parentType := metav1.TypeMeta{Kind: parentRef.Kind, APIVersion: parentRef.APIVersion}
+
+	if parentRef.Kind == "" {
+		log.Warnf("parent ref has no kind: %v", parentRef)
+		return tm, om
+	}
+	indexedResource, ok := indexedParents[parentRef.Kind]
+	if ok {
+		getFromInformer := func() (*metav1.TypeMeta, *metav1.ObjectMeta, error) {
+			parent, err := api.getByNamespace(indexedResource.resource, om.Namespace, parentRef.Name)
+			if err != nil {
+				return nil, nil, err
+			}
+			if parent.ObjectMeta.Namespace == "" {
+				parent.ObjectMeta.Namespace = om.Namespace
+			}
+			tm, om := api.GetRootOwnerKindAndName(ctx, &parentType, &parent.ObjectMeta, retry)
+			return tm, om, nil
+		}
+
+		parentTm, parentOm, err := getFromInformer()
+		if err == nil {
+			return parentTm, parentOm
+		}
+		log.Warnf("failed to retrieve %s from informer %s/%s: %s", parentRef.Kind, om.Namespace, parentRef.Name, err)
+		if retry {
+			parentFromApi, err := api.client.
+				Resource(indexedResource.gvr).
+				Namespace(om.Namespace).
+				Get(ctx, parentRef.Name, metav1.GetOptions{})
+			if err == nil {
+				if parentFromApi.ObjectMeta.Namespace == "" {
+					parentFromApi.ObjectMeta.Namespace = om.Namespace
+				}
+				return api.GetRootOwnerKindAndName(ctx, &parentFromApi.TypeMeta, &parentFromApi.ObjectMeta, retry)
+			}
+			log.Warnf("failed to retrieve %s from direct API call %s/%s: %s", parentRef.Kind, om.Namespace, parentRef.Name, err)
+		}
+		return &parentType, &metav1.ObjectMeta{Name: parentRef.Name, Namespace: om.Namespace}
+	}
+
+	log.Debugf("Unrecursable parent type %s, %s/%s", schema.FromAPIVersionAndKind(parentRef.APIVersion, parentRef.Kind), om.Namespace, parentRef.Name)
+	return &parentType, &metav1.ObjectMeta{Name: parentRef.Name, Namespace: om.Namespace}
 }
 
 func (api *MetadataAPI) addInformer(res APIResource, informerLabels prometheus.Labels) error {

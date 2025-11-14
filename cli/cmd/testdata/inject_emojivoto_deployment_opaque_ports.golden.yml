@@ -19,6 +19,9 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web
+        linkerd.io/proxy-root-parent: web
+        linkerd.io/proxy-root-parent-group: apps
+        linkerd.io/proxy-root-parent-kind: Deployment
         linkerd.io/workload-ns: emojivoto
     spec:
       containers:

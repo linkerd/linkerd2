@@ -18,6 +18,9 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web1
+        linkerd.io/proxy-root-parent: web1
+        linkerd.io/proxy-root-parent-group: apps
+        linkerd.io/proxy-root-parent-kind: Deployment
         linkerd.io/workload-ns: emojivoto
     spec:
       containers:
@@ -283,6 +286,9 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web2
+        linkerd.io/proxy-root-parent: web2
+        linkerd.io/proxy-root-parent-group: apps
+        linkerd.io/proxy-root-parent-kind: Deployment
         linkerd.io/workload-ns: emojivoto
     spec:
       containers:
@@ -548,6 +554,9 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web3
+        linkerd.io/proxy-root-parent: web3
+        linkerd.io/proxy-root-parent-group: apps
+        linkerd.io/proxy-root-parent-kind: Deployment
         linkerd.io/workload-ns: emojivoto
     spec:
       containers:
@@ -813,6 +822,9 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web4
+        linkerd.io/proxy-root-parent: web4
+        linkerd.io/proxy-root-parent-group: apps
+        linkerd.io/proxy-root-parent-kind: Deployment
         linkerd.io/workload-ns: emojivoto
     spec:
       containers:
