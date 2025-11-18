@@ -281,8 +281,12 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections.",
 		},
 		{
-			Name:        k8s.ProxyEnableNativeSidecarAnnotation,
-			Description: "Enable KEP-753 native sidecars. This is an experimental feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used.",
+			Name:        k8s.ProxyEnableNativeSidecarAnnotationAlpha,
+			Description: "Enable KEP-753 native sidecars. This is a beta feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used. Deprecated in favor of " + k8s.ProxyEnableNativeSidecarAnnotationBeta,
+		},
+		{
+			Name:        k8s.ProxyEnableNativeSidecarAnnotationBeta,
+			Description: "Enable KEP-753 native sidecars. This is a beta feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used.",
 		},
 	}
 }

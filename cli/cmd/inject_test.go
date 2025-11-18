@@ -739,16 +739,16 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 		k8s.ProxyLogLevelAnnotation:            "debug",
 		k8s.ProxyLogFormatAnnotation:           "cool",
 
-		k8s.ProxyEnableExternalProfilesAnnotation: "true",
-		k8s.ProxyCPURequestAnnotation:             "10m",
-		k8s.ProxyCPULimitAnnotation:               "100m",
-		k8s.ProxyMemoryRequestAnnotation:          "10Mi",
-		k8s.ProxyMemoryLimitAnnotation:            "50Mi",
-		k8s.ProxyWaitBeforeExitSecondsAnnotation:  "10",
-		k8s.ProxyAwait:                            "disabled",
-		k8s.ProxyAccessLogAnnotation:              "apache",
-		k8s.ProxyShutdownGracePeriodAnnotation:    "60s",
-		k8s.ProxyEnableNativeSidecarAnnotation:    "true",
+		k8s.ProxyEnableExternalProfilesAnnotation:  "true",
+		k8s.ProxyCPURequestAnnotation:              "10m",
+		k8s.ProxyCPULimitAnnotation:                "100m",
+		k8s.ProxyMemoryRequestAnnotation:           "10Mi",
+		k8s.ProxyMemoryLimitAnnotation:             "50Mi",
+		k8s.ProxyWaitBeforeExitSecondsAnnotation:   "10",
+		k8s.ProxyAwait:                             "disabled",
+		k8s.ProxyAccessLogAnnotation:               "apache",
+		k8s.ProxyShutdownGracePeriodAnnotation:     "60s",
+		k8s.ProxyEnableNativeSidecarAnnotationBeta: "true",
 	}
 
 	overrides := getOverrideAnnotations(values, baseValues)

@@ -2,6 +2,7 @@ package destination
 
 import (
 	"context"
+	"errors"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	logging "github.com/sirupsen/logrus"
@@ -20,6 +21,8 @@ type synchronizedGetStream struct {
 	inner pb.Destination_GetServer
 	log   *logging.Entry
 }
+
+var errStreamStopped = errors.New("synchronized stream stopped")
 
 func newSyncronizedGetStream(stream pb.Destination_GetServer, log *logging.Entry) *synchronizedGetStream {
 	return &synchronizedGetStream{
@@ -50,8 +53,12 @@ func (s *synchronizedGetStream) RecvMsg(m any) error {
 }
 
 func (s *synchronizedGetStream) Send(update *pb.Update) error {
-	s.ch <- update
-	return nil
+	select {
+	case <-s.done:
+		return errStreamStopped
+	case s.ch <- update:
+		return nil
+	}
 }
 
 func (s *synchronizedGetStream) Start() {
@@ -71,5 +78,5 @@ func (s *synchronizedGetStream) Start() {
 }
 
 func (s *synchronizedGetStream) Stop() {
-	s.done <- struct{}{}
+	close(s.done)
 }

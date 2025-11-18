@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@212f9a7760ad2b8eb511185b841f3725a62c2ae0
+      - uses: tj-actions/changed-files@70069877f29101175ed2b055d210fe8b1d54d7d7
         id: core
         with:
           files: |
@@ -106,7 +106,7 @@ jobs:
         run: |
           mkdir -p /home/runner/archives
           docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: image-archives-${{ matrix.component }}
           path: /home/runner/archives
@@ -128,7 +128,7 @@ jobs:
       - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
         with:
           go-version-file: go.mod
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           pattern: image-archives-*
           path: image-archives
@@ -158,11 +158,11 @@ jobs:
         # Test the latest Kubernetes version with the latest Gateway API
         # version, as well as the vendored Gateway API CRDs.
         k8s:
-          - v1.32
+          - v1.34
         gateway-api:
           - version: linkerd
             channel: experimental
-          - version: v1.3.0-rc.1
+          - version: v1.4.0
             channel: experimental
         # Also test the Minimum Supported Kubernetes Version with the Minimum
         # Supported Gateway API version.
@@ -180,7 +180,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           pattern: image-archives-*
           path: image-archives
@@ -253,7 +253,7 @@ jobs:
         run: |
           mkdir -p /home/runner/archives
           docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: image-archives-${{ matrix.component }}
           path: /home/runner/archives
@@ -281,9 +281,7 @@ jobs:
       - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
         with:
           go-version-file: go.mod
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        if: matrix.integration_test == 'helm-upgrade'
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           pattern: image-archives-*
           path: image-archives
@@ -311,7 +309,7 @@ jobs:
       - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
         with:
           go-version-file: go.mod
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           pattern: image-archives-*
           path: image-archives
@@ -339,8 +337,8 @@ jobs:
       matrix:
         cases:
         - {k8s: "v1.23", manage-controllers: false}
-        - {k8s: "v1.32", manage-controllers: false}
-        - {k8s: "v1.32", manage-controllers: true}
+        - {k8s: "v1.34", manage-controllers: false}
+        - {k8s: "v1.34", manage-controllers: true}
     name: "test-multicluster(${{ matrix.cases.k8s }}, ${{ matrix.cases.manage-controllers && 'managed-controllers' || 'unmanaged-controllers' }})"
     steps:
       - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
@@ -350,7 +348,7 @@ jobs:
       - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
         with:
           go-version-file: go.mod
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           pattern: image-archives-*
           path: image-archives

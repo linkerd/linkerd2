@@ -519,6 +519,7 @@ data:
           endpoint: ""
           meshIdentity: null
         enabled: false
+        labels: null
         protocol: ""
         traceServiceName: ""
     controllerGID: -1
@@ -774,6 +775,10 @@ data:
             namespace: ""
             serviceAccountName: ""
         enabled: false
+        labels:
+          k8s.container.name: $(_pod_containerName)
+          k8s.pod.ip: $(_pod_ip)
+          k8s.pod.uid: $(_pod_uid)
         protocol: ""
         traceServiceName: linkerd-proxy
       uid: 2102

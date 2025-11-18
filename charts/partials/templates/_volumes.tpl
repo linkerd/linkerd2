@@ -11,6 +11,9 @@ downwardAPI:
     - path: labels
       fieldRef:
         fieldPath: metadata.labels
+    - path: annotations
+      fieldRef:
+        fieldPath: metadata.annotations
 {{- end -}}
 
 {{ define "partials.proxyInit.volumes.xtables" -}}

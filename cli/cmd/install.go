@@ -406,7 +406,7 @@ func validateFinalValues(installed GatewayAPICRDs, finalValues map[string]interf
 			// if we are not installing GW API Resources and they are not present, error
 			return errors.New(`The Gateway API CRDs must be installed prior to installing Linkerd. Run:
 
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/standard-install.yaml
 
 or see https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api for more options.`)
 		}

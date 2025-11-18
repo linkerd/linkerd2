@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
@@ -33,6 +33,8 @@ type (
 		k8sAPI               *k8s.API
 		metadataAPI          *k8s.MetadataAPI
 		publishers           map[IPPort]*workloadPublisher
+		metrics              metrics
+		subscriberCount      atomic.Int32
 		log                  *logging.Entry
 		enableEndpointSlices bool
 
@@ -50,6 +52,7 @@ type (
 		addr               Address
 		listeners          []WorkloadUpdateListener
 		metrics            metrics
+		subscriberCount    *atomic.Int32
 		log                *logging.Entry
 
 		mu sync.RWMutex
@@ -61,21 +64,29 @@ type (
 	}
 )
 
-var ipPortVecs = newMetricsVecs("ip_port", []string{"ip", "port"})
+var workloadVecs = newMetricsVecs("workload", []string{})
 
 func NewWorkloadWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.Entry, enableEndpointSlices bool, defaultOpaquePorts map[uint32]struct{}) (*WorkloadWatcher, error) {
+	// Omit high-cardinality IP:port labels.
+	metrics, err := workloadVecs.newMetrics(prometheus.Labels{})
+	if err != nil {
+		return nil, err
+	}
+
 	ww := &WorkloadWatcher{
 		defaultOpaquePorts: defaultOpaquePorts,
 		k8sAPI:             k8sAPI,
 		metadataAPI:        metadataAPI,
 		publishers:         make(map[IPPort]*workloadPublisher),
+		metrics:            metrics,
+		subscriberCount:    atomic.Int32{},
 		log: log.WithFields(logging.Fields{
 			"component": "workload-watcher",
 		}),
 		enableEndpointSlices: enableEndpointSlices,
 	}
 
-	_, err := k8sAPI.Pod().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = k8sAPI.Pod().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ww.addPod,
 		DeleteFunc: ww.deletePod,
 		UpdateFunc: ww.updatePod,
@@ -126,6 +137,8 @@ func (ww *WorkloadWatcher) Subscribe(service *ServiceID, hostname, ip string, po
 		return "", err
 	}
 
+	ww.updateSubscriberCount()
+
 	return wp.addr.IP, nil
 }
 
@@ -146,6 +159,12 @@ func (ww *WorkloadWatcher) Unsubscribe(ip string, port Port, listener WorkloadUp
 	if len(wp.listeners) == 0 {
 		delete(ww.publishers, IPPort{wp.addr.IP, wp.addr.Port})
 	}
+
+	ww.updateSubscriberCount()
+}
+
+func (ww *WorkloadWatcher) updateSubscriberCount() {
+	ww.metrics.setSubscribers(int(ww.subscriberCount.Load()))
 }
 
 // addPod is an event handler so it cannot block
@@ -455,13 +474,6 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 	ipPort := IPPort{ip, port}
 	wp, ok := ww.publishers[ipPort]
 	if !ok {
-		metrics, err := ipPortVecs.newMetrics(prometheus.Labels{
-			"ip":   ip,
-			"port": strconv.FormatUint(uint64(port), 10),
-		})
-		if err != nil {
-			return nil, err
-		}
 		wp = &workloadPublisher{
 			defaultOpaquePorts: ww.defaultOpaquePorts,
 			k8sAPI:             ww.k8sAPI,
@@ -470,7 +482,8 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 				IP:   ip,
 				Port: port,
 			},
-			metrics: metrics,
+			metrics:         ww.metrics,
+			subscriberCount: &ww.subscriberCount,
 			log: ww.log.WithFields(logging.Fields{
 				"component": "workload-publisher",
 				"ip":        ip,
@@ -633,12 +646,12 @@ func (wp *workloadPublisher) subscribe(listener WorkloadUpdateListener) error {
 	defer wp.mu.Unlock()
 
 	wp.listeners = append(wp.listeners, listener)
-	wp.metrics.setSubscribers(len(wp.listeners))
 
 	if err := listener.Update(&wp.addr); err != nil {
 		return fmt.Errorf("failed to send initial update: %w", err)
 	}
 	wp.metrics.incUpdates()
+	wp.subscriberCount.Add(1)
 	return nil
 }
 
@@ -652,11 +665,10 @@ func (wp *workloadPublisher) unsubscribe(listener WorkloadUpdateListener) {
 			wp.listeners[i] = wp.listeners[n-1]
 			wp.listeners[n-1] = nil
 			wp.listeners = wp.listeners[:n-1]
+			wp.subscriberCount.Add(-1)
 			break
 		}
 	}
-
-	wp.metrics.setSubscribers(len(wp.listeners))
 }
 
 // updatePod creates an Address instance for the given pod, that is passed to

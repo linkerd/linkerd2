@@ -126,7 +126,12 @@ func TestRender(t *testing.T) {
 				HostnameLabels: false,
 			},
 			Tracing: &charts.Tracing{
-				Enabled:          false,
+				Enabled: false,
+				Labels: map[string]string{
+					"k8s.pod.ip":         "$(_pod_ip)",
+					"k8s.pod.uid":        "$(_pod_uid)",
+					"k8s.container.name": "$(_pod_containerName)",
+				},
 				TraceServiceName: "linkerd-proxy",
 				Collector: &charts.TracingCollector{
 					Endpoint: "",
@@ -258,6 +263,16 @@ func TestRender(t *testing.T) {
 	withCustomDestinationGetNetsValues.ClusterNetworks = "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
 	addFakeTLSSecrets(withCustomDestinationGetNetsValues)
 
+	tracingValues, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	tracingValues.Proxy.Tracing.Enabled = true
+	tracingValues.Proxy.Tracing.Collector.Endpoint = "tracing.foo:4317"
+	tracingValues.Proxy.Tracing.Collector.MeshIdentity.ServiceAccountName = "default"
+	tracingValues.Proxy.Tracing.Collector.MeshIdentity.Namespace = "foo"
+	addFakeTLSSecrets(tracingValues)
+
 	testCases := []struct {
 		values         *charts.Values
 		goldenFileName string
@@ -277,6 +292,7 @@ func TestRender(t *testing.T) {
 		{defaultValues, "install_values_file.golden", values.Options{ValueFiles: []string{filepath.Join("testdata", "install_config.yaml")}}},
 		{defaultValues, "install_default_token.golden", values.Options{Values: []string{"identity.serviceAccountTokenProjection=false"}}},
 		{gidValues, "install_gid_output.golden", values.Options{}},
+		{tracingValues, "install_tracing.golden", values.Options{}},
 	}
 
 	for i, tc := range testCases {

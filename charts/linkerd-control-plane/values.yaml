@@ -52,7 +52,9 @@ controller:
     # -- Enables trace collection and export in the proxy
     enabled: false
     collector:
-      # -- The collector endpoint to send traces to. Required if tracing is enabled
+      # -- The collector endpoint to send traces to. Required if tracing is
+      # enabled. If this is unset and `proxy.tracing.collector.endpoint` is set,
+      # that endpoint will be re-used here.
       endpoint: ""
 # -- enabling this omits the NET_ADMIN capability in the PSP
 # and the proxy-init container when injecting the proxy;
@@ -250,7 +252,7 @@ proxy:
   # -- Configures the outbound transport mode. Valid values are "transport-header" and "transparent"
   outboundTransportMode: transport-header
   # -- Enable KEP-753 native sidecars
-  # This is an experimental feature. It requires Kubernetes >= 1.29.
+  # This is a beta feature. It requires Kubernetes >= 1.29.
   # If enabled, .proxy.waitBeforeExitSeconds should not be used.
   nativeSidecar: false
   # -- Native sidecar proxy startup probe parameters.
@@ -286,6 +288,13 @@ proxy:
     # -- Enables trace collection and export in the proxy
     enabled: false
     traceServiceName: linkerd-proxy
+    # -- Additional labels to add to the traces emitted by the proxy.
+    # These should generally not be set globally, and instead overridden on
+    # individual workloads via `resource.opentelemetry.io/<label>` annotations.
+    labels:
+      k8s.pod.ip: "$(_pod_ip)"
+      k8s.pod.uid: "$(_pod_uid)"
+      k8s.container.name: "$(_pod_containerName)"
     collector:
       # -- The collector endpoint to send traces to.
       endpoint: ""

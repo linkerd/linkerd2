@@ -39,7 +39,6 @@ var (
 	rTrail = regexp.MustCompile(`\},\s*\]`)
 
 	// ProxyAnnotations is the list of possible annotations that can be applied on a pod or namespace.
-	// All these annotations should be prefixed with "config.linkerd.io"
 	ProxyAnnotations = []string{
 		k8s.ProxyAdminPortAnnotation,
 		k8s.ProxyControlPortAnnotation,
@@ -79,12 +78,13 @@ var (
 		k8s.ProxyInboundDiscoveryCacheUnusedTimeout,
 		k8s.ProxyDisableOutboundProtocolDetectTimeout,
 		k8s.ProxyDisableInboundProtocolDetectTimeout,
+		k8s.ProxyEnableNativeSidecarAnnotationBeta,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
 	// (config.alpha prefix) that can be applied to a pod or namespace.
 	ProxyAlphaConfigAnnotations = []string{
 		k8s.ProxyWaitBeforeExitSecondsAnnotation,
-		k8s.ProxyEnableNativeSidecarAnnotation,
+		k8s.ProxyEnableNativeSidecarAnnotationAlpha,
 	}
 )
 
@@ -200,11 +200,11 @@ func GetOverriddenValues(rc *ResourceConfig) (*l5dcharts.Values, error) {
 		namedPorts = util.GetNamedPorts(rc.pod.spec.Containers)
 	}
 
-	ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), namedPorts)
+	ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), rc.GetLabelOverrides(), namedPorts)
 	return copyValues, nil
 }
 
-func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, namedPorts map[string]int32) {
+func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, labels map[string]string, namedPorts map[string]int32) {
 	if override, ok := annotations[k8s.ProxyInjectAnnotation]; ok {
 		if override == k8s.ProxyInjectIngress {
 			values.Proxy.IsIngress = true
@@ -366,7 +366,13 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyEnableNativeSidecarAnnotation]; ok {
+	// ProxyEnableNativeSidecarAnnotationBeta should take precedence over ProxyEnableNativeSidecarAnnotationAlpha
+	if override, ok := annotations[k8s.ProxyEnableNativeSidecarAnnotationBeta]; ok {
+		value, err := strconv.ParseBool(override)
+		if err == nil {
+			values.Proxy.NativeSidecar = value
+		}
+	} else if override, ok = annotations[k8s.ProxyEnableNativeSidecarAnnotationAlpha]; ok {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
 			values.Proxy.NativeSidecar = value
@@ -533,6 +539,25 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 	if override, ok := annotations[k8s.ProxyAccessLogAnnotation]; ok {
 		values.Proxy.AccessLog = override
 	}
+
+	if values.Proxy.Tracing != nil {
+		if values.Proxy.Tracing.Labels == nil {
+			values.Proxy.Tracing.Labels = make(map[string]string)
+		}
+
+		if override, ok := labels[k8s.TracingInstanceLabel]; ok {
+			values.Proxy.Tracing.Labels[k8s.TracingServiceName] = override
+		} else if override, ok := labels[k8s.TracingNameLabel]; ok {
+			values.Proxy.Tracing.Labels[k8s.TracingServiceName] = override
+		}
+
+		for name, value := range annotations {
+			after, found := strings.CutPrefix(name, k8s.TracingSemanticConventionPrefix)
+			if found {
+				values.Proxy.Tracing.Labels[after] = value
+			}
+		}
+	}
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
@@ -655,6 +680,20 @@ func (conf *ResourceConfig) GetAnnotationOverrides() map[string]string {
 
 	if conf.origin != OriginCLI {
 		for k, v := range conf.pod.annotations {
+			overrides[k] = v
+		}
+	}
+	return overrides
+}
+
+func (conf *ResourceConfig) GetLabelOverrides() map[string]string {
+	overrides := map[string]string{}
+	for k, v := range conf.pod.meta.Labels {
+		overrides[k] = v
+	}
+
+	if conf.origin != OriginCLI {
+		for k, v := range conf.pod.labels {
 			overrides[k] = v
 		}
 	}

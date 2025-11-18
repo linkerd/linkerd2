@@ -47,6 +47,10 @@ var profileUpdatesQueueOverflowCounter = promauto.NewCounterVec(
 )
 
 func newProfileTranslator(serviceID watcher.ServiceID, stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endStream chan struct{}) (*profileTranslator, error) {
+	return newProfileTranslatorWithCapacity(serviceID, stream, log, fqn, port, endStream, DefaultStreamQueueCapacity)
+}
+
+func newProfileTranslatorWithCapacity(serviceID watcher.ServiceID, stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endStream chan struct{}, queueCapacity int) (*profileTranslator, error) {
 	parentRef := &meta.Metadata{
 		Kind: &meta.Metadata_Resource{
 			Resource: &meta.Resource{
@@ -73,7 +77,7 @@ func newProfileTranslator(serviceID watcher.ServiceID, stream pb.Destination_Get
 		endStream:       endStream,
 		log:             log.WithField("component", "profile-translator"),
 		overflowCounter: overflowCounter,
-		updates:         make(chan *sp.ServiceProfile, updateQueueCapacity),
+		updates:         make(chan *sp.ServiceProfile, queueCapacity),
 		stop:            make(chan struct{}),
 	}, nil
 }

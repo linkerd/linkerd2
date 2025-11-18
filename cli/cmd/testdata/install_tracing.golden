@@ -508,7 +508,7 @@ data:
   values: |
     cliVersion: linkerd/cli dev-undefined
     clusterDomain: cluster.local
-    clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.0.0.0/8
+    clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8
     cniEnabled: false
     controller:
       podDisruptionBudget:
@@ -762,11 +762,11 @@ data:
         periodSeconds: 1
       tracing:
         collector:
-          endpoint: ""
+          endpoint: tracing.foo:4317
           meshIdentity:
-            namespace: ""
-            serviceAccountName: ""
-        enabled: false
+            namespace: foo
+            serviceAccountName: default
+        enabled: true
         labels:
           k8s.container.name: $(_pod_containerName)
           k8s.pod.ip: $(_pod_ip)
@@ -781,6 +781,10 @@ data:
       closeWaitTimeoutSecs: 0
       ignoreInboundPorts: 4567,4568
       ignoreOutboundPorts: 4567,4568
+      image:
+        name: cr.l5d.io/linkerd/proxy-init
+        pullPolicy: ""
+        version: v2.4.3
       iptablesMode: nft
       kubeAPIServerPorts: 443,6443
       logFormat: ""
@@ -1055,7 +1059,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
+          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8"
         - name: LINKERD2_PROXY_POLICY_SVC_ADDR
           value: linkerd-policy.linkerd.svc.cluster.local.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
@@ -1064,7 +1068,7 @@ spec:
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
           value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
+          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8"
         - name: LINKERD2_PROXY_CONTROL_STREAM_INITIAL_TIMEOUT
           value: "3s"
         - name: LINKERD2_PROXY_CONTROL_STREAM_IDLE_TIMEOUT
@@ -1107,6 +1111,23 @@ spec:
           value: 30s
         - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
           value: "false"
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
+        - name: LINKERD2_PROXY_TRACE_ANNOTATIONS_PATH
+          value: /var/run/linkerd/podinfo/annotations
+        - name: LINKERD2_PROXY_TRACE_PROTOCOL
+          value: opentelemetry
+        - name: LINKERD2_PROXY_TRACE_SERVICE_NAME
+          value: linkerd-proxy
+        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
+          value: tracing.foo:4317
+        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
+          value: default.foo.serviceaccount.identity.linkerd.cluster.local
+        - name: LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES
+          value: |
+            k8s.container.name=$(_pod_containerName)
+            k8s.pod.ip=$(_pod_ip)
+            k8s.pod.uid=$(_pod_uid)
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
           value: "10s"
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
@@ -1182,6 +1203,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/linkerd/podinfo
+          name: linkerd-podinfo
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
       initContainers:
@@ -1201,8 +1224,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy:install-proxy-version
-        command: ["/usr/lib/linkerd/linkerd2-proxy-init"]
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.3
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1264,6 +1286,15 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - name: linkerd-podinfo
+        downwardAPI:
+          items:
+            - path: labels
+              fieldRef:
+                fieldPath: metadata.labels
+            - path: annotations
+              fieldRef:
+                fieldPath: metadata.annotations
 ---
 ###
 ### Destination Controller Service
@@ -1444,7 +1475,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: localhost.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
+          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8"
         - name: LINKERD2_PROXY_POLICY_SVC_ADDR
           value: localhost.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
@@ -1453,7 +1484,7 @@ spec:
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
           value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
+          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8"
         - name: LINKERD2_PROXY_CONTROL_STREAM_INITIAL_TIMEOUT
           value: "3s"
         - name: LINKERD2_PROXY_CONTROL_STREAM_IDLE_TIMEOUT
@@ -1496,6 +1527,23 @@ spec:
           value: 30s
         - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
           value: "false"
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
+        - name: LINKERD2_PROXY_TRACE_ANNOTATIONS_PATH
+          value: /var/run/linkerd/podinfo/annotations
+        - name: LINKERD2_PROXY_TRACE_PROTOCOL
+          value: opentelemetry
+        - name: LINKERD2_PROXY_TRACE_SERVICE_NAME
+          value: linkerd-proxy
+        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
+          value: tracing.foo:4317
+        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
+          value: default.foo.serviceaccount.identity.linkerd.cluster.local
+        - name: LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES
+          value: |
+            k8s.container.name=$(_pod_containerName)
+            k8s.pod.ip=$(_pod_ip)
+            k8s.pod.uid=$(_pod_uid)
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
           value: "10s"
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
@@ -1578,6 +1626,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/linkerd/podinfo
+          name: linkerd-podinfo
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
       - args:
@@ -1677,7 +1727,7 @@ spec:
         - --server-addr=0.0.0.0:9443
         - --server-tls-key=/var/run/linkerd/tls/tls.key
         - --server-tls-certs=/var/run/linkerd/tls/tls.crt
-        - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.0.0.0/8
+        - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8
         - --identity-domain=cluster.local
         - --cluster-domain=cluster.local
         - --default-policy=all-unauthenticated
@@ -1741,8 +1791,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy:install-proxy-version
-        command: ["/usr/lib/linkerd/linkerd2-proxy-init"]
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.3
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1804,6 +1853,15 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - name: linkerd-podinfo
+        downwardAPI:
+          items:
+            - path: labels
+              fieldRef:
+                fieldPath: metadata.labels
+            - path: annotations
+              fieldRef:
+                fieldPath: metadata.annotations
       
 ---
 ###
@@ -1974,7 +2032,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
+          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8"
         - name: LINKERD2_PROXY_POLICY_SVC_ADDR
           value: linkerd-policy.linkerd.svc.cluster.local.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
@@ -1983,7 +2041,7 @@ spec:
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
           value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
+          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8"
         - name: LINKERD2_PROXY_CONTROL_STREAM_INITIAL_TIMEOUT
           value: "3s"
         - name: LINKERD2_PROXY_CONTROL_STREAM_IDLE_TIMEOUT
@@ -2026,6 +2084,23 @@ spec:
           value: 30s
         - name: LINKERD2_PROXY_OUTBOUND_METRICS_HOSTNAME_LABELS
           value: "false"
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
+        - name: LINKERD2_PROXY_TRACE_ANNOTATIONS_PATH
+          value: /var/run/linkerd/podinfo/annotations
+        - name: LINKERD2_PROXY_TRACE_PROTOCOL
+          value: opentelemetry
+        - name: LINKERD2_PROXY_TRACE_SERVICE_NAME
+          value: linkerd-proxy
+        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
+          value: tracing.foo:4317
+        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
+          value: default.foo.serviceaccount.identity.linkerd.cluster.local
+        - name: LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES
+          value: |
+            k8s.container.name=$(_pod_containerName)
+            k8s.pod.ip=$(_pod_ip)
+            k8s.pod.uid=$(_pod_uid)
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
           value: "10s"
         - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
@@ -2108,6 +2183,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/linkerd/podinfo
+          name: linkerd-podinfo
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
       - args:
@@ -2172,8 +2249,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy:install-proxy-version
-        command: ["/usr/lib/linkerd/linkerd2-proxy-init"]
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.3
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2238,6 +2314,15 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - name: linkerd-podinfo
+        downwardAPI:
+          items:
+            - path: labels
+              fieldRef:
+                fieldPath: metadata.labels
+            - path: annotations
+              fieldRef:
+                fieldPath: metadata.annotations
       
 ---
 kind: Service
@@ -2262,7 +2347,7 @@ spec:
 ---
 apiVersion: v1
 data:
-  linkerd-config-overrides: Y2x1c3Rlck5ldHdvcmtzOiAxMC4wLjAuMC84LDEwMC42NC4wLjAvMTAsMTcyLjAuMC4wLzgKZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICB2ZXJzaW9uOiBpbnN0YWxsLWRlYnVnLXZlcnNpb24KaGVhcnRiZWF0U2NoZWR1bGU6IDEgMiAzIDQgNQppZGVudGl0eToKICBpc3N1ZXI6CiAgICB0bHM6CiAgICAgIGNydFBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogICAgICAgIE1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUpSSWdaOFJ0TzhFd2cxWGVwZjhUNDR3Q2dZSUtvWkl6ajBFQXdJd0tURW4KICAgICAgICBNQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUI0WERUSXdNRGd5CiAgICAgICAgT0RBM01UTTBOMW9YRFRNd01EZ3lOakEzTVRNME4xb3dLVEVuTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdQogICAgICAgIGEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTEvRnAKICAgICAgICBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzJkUXZSYVlhbnV4RDM2RHQxCiAgICAgICAgMi9KeHlpU2d4S1dSZG9heSthTndNRzR3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQgogICAgICAgIEFmOENBUUF3SFFZRFZSME9CQllFRkkxV25ycU1ZS2FISE9vK3pweWlpRHEycE8wS01Da0dBMVVkRVFRaU1DQ0MKICAgICAgICBIbWxrWlc1MGFYUjVMbXhwYm10bGNtUXVZMngxYzNSbGNpNXNiMk5oYkRBS0JnZ3Foa2pPUFFRREFnTkhBREJFCiAgICAgICAgQWlBdHVvSTVYdUN0ckdWUnpTbVJUbDJyYTI4YVY5TXlUVTdkNXFuVEFGSEtTZ0lnUktDdmx1T1NnQTVPMjFwNQogICAgICAgIDUxdGRybWtIRVpScjBxbExTSmRIWWdFZk16az0KICAgICAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgICAgIGtleVBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gRUMgUFJJVkFURSBLRVktLS0tLQogICAgICAgIE1IY0NBUUVFSUFBZThuZmJ6WnU5Yy9PQjIrOHhKTTBGejdOVXdUUWF6dWxrRk5zNFRJNStvQW9HQ0NxR1NNNDkKICAgICAgICBBd0VIb1VRRFFnQUUxL0ZwZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyCiAgICAgICAgZFF2UmFZYW51eEQzNkR0MTIvSnh5aVNneEtXUmRvYXkrUT09CiAgICAgICAgLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQppZGVudGl0eVRydXN0QW5jaG9yc1BFTTogfAogIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogIE1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKICBKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3SGhjTk1qQXdPREk0CiAgTURjeE1qUTNXaGNOTXpBd09ESTJNRGN4TWpRM1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1cgogIFpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKICBsMXZndzc5cmpCNXVTSVRJQ1VBNkd5ZnZTRmZjdUlpczdCL1hGU2trd0FIVTVTL3MxQUFQK1IwVFg3SEJXVUM0CiAgdWFHNFdXc2l3SktObjdtZ28zQXdiakFPQmdOVkhROEJBZjhFQkFNQ0FRWXdFZ1lEVlIwVEFRSC9CQWd3QmdFQgogIC93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKICBhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUFvR0NDcUdTTTQ5QkFNQ0Ewa0FNRVlDCiAgSVFDTjdsQkZMRER2ang2VjArWGtqcEtFUlJzSllmNWFkTXZubG9GbDQ4aWxKZ0loQU50eGhuZGNyK1FKUHVDOAogIHZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCmxpbmtlcmRWZXJzaW9uOiBpbnN0YWxsLWNvbnRyb2wtcGxhbmUtdmVyc2lvbgpwb2xpY3lWYWxpZGF0b3I6CiAgY2FCdW5kbGU6IHBvbGljeSB2YWxpZGF0b3IgQ0EgYnVuZGxlCiAgZXh0ZXJuYWxTZWNyZXQ6IHRydWUKcHJvZmlsZVZhbGlkYXRvcjoKICBjYUJ1bmRsZTogcHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxlCiAgZXh0ZXJuYWxTZWNyZXQ6IHRydWUKcHJveHk6CiAgaW1hZ2U6CiAgICB2ZXJzaW9uOiBpbnN0YWxsLXByb3h5LXZlcnNpb24KcHJveHlJbmplY3RvcjoKICBjYUJ1bmRsZTogcHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxlCiAgZXh0ZXJuYWxTZWNyZXQ6IHRydWUK
+  linkerd-config-overrides: ZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICB2ZXJzaW9uOiBpbnN0YWxsLWRlYnVnLXZlcnNpb24KaGVhcnRiZWF0U2NoZWR1bGU6IDEgMiAzIDQgNQppZGVudGl0eToKICBpc3N1ZXI6CiAgICB0bHM6CiAgICAgIGNydFBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogICAgICAgIE1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUpSSWdaOFJ0TzhFd2cxWGVwZjhUNDR3Q2dZSUtvWkl6ajBFQXdJd0tURW4KICAgICAgICBNQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUI0WERUSXdNRGd5CiAgICAgICAgT0RBM01UTTBOMW9YRFRNd01EZ3lOakEzTVRNME4xb3dLVEVuTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdQogICAgICAgIGEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTEvRnAKICAgICAgICBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzJkUXZSYVlhbnV4RDM2RHQxCiAgICAgICAgMi9KeHlpU2d4S1dSZG9heSthTndNRzR3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQgogICAgICAgIEFmOENBUUF3SFFZRFZSME9CQllFRkkxV25ycU1ZS2FISE9vK3pweWlpRHEycE8wS01Da0dBMVVkRVFRaU1DQ0MKICAgICAgICBIbWxrWlc1MGFYUjVMbXhwYm10bGNtUXVZMngxYzNSbGNpNXNiMk5oYkRBS0JnZ3Foa2pPUFFRREFnTkhBREJFCiAgICAgICAgQWlBdHVvSTVYdUN0ckdWUnpTbVJUbDJyYTI4YVY5TXlUVTdkNXFuVEFGSEtTZ0lnUktDdmx1T1NnQTVPMjFwNQogICAgICAgIDUxdGRybWtIRVpScjBxbExTSmRIWWdFZk16az0KICAgICAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgICAgIGtleVBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gRUMgUFJJVkFURSBLRVktLS0tLQogICAgICAgIE1IY0NBUUVFSUFBZThuZmJ6WnU5Yy9PQjIrOHhKTTBGejdOVXdUUWF6dWxrRk5zNFRJNStvQW9HQ0NxR1NNNDkKICAgICAgICBBd0VIb1VRRFFnQUUxL0ZwZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyCiAgICAgICAgZFF2UmFZYW51eEQzNkR0MTIvSnh5aVNneEtXUmRvYXkrUT09CiAgICAgICAgLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQppZGVudGl0eVRydXN0QW5jaG9yc1BFTTogfAogIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogIE1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKICBKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3SGhjTk1qQXdPREk0CiAgTURjeE1qUTNXaGNOTXpBd09ESTJNRGN4TWpRM1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1cgogIFpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKICBsMXZndzc5cmpCNXVTSVRJQ1VBNkd5ZnZTRmZjdUlpczdCL1hGU2trd0FIVTVTL3MxQUFQK1IwVFg3SEJXVUM0CiAgdWFHNFdXc2l3SktObjdtZ28zQXdiakFPQmdOVkhROEJBZjhFQkFNQ0FRWXdFZ1lEVlIwVEFRSC9CQWd3QmdFQgogIC93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKICBhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUFvR0NDcUdTTTQ5QkFNQ0Ewa0FNRVlDCiAgSVFDTjdsQkZMRER2ang2VjArWGtqcEtFUlJzSllmNWFkTXZubG9GbDQ4aWxKZ0loQU50eGhuZGNyK1FKUHVDOAogIHZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCmxpbmtlcmRWZXJzaW9uOiBpbnN0YWxsLWNvbnRyb2wtcGxhbmUtdmVyc2lvbgpwb2xpY3lWYWxpZGF0b3I6CiAgY2FCdW5kbGU6IHBvbGljeSB2YWxpZGF0b3IgQ0EgYnVuZGxlCiAgZXh0ZXJuYWxTZWNyZXQ6IHRydWUKcHJvZmlsZVZhbGlkYXRvcjoKICBjYUJ1bmRsZTogcHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxlCiAgZXh0ZXJuYWxTZWNyZXQ6IHRydWUKcHJveHk6CiAgaW1hZ2U6CiAgICB2ZXJzaW9uOiBpbnN0YWxsLXByb3h5LXZlcnNpb24KICB0cmFjaW5nOgogICAgY29sbGVjdG9yOgogICAgICBlbmRwb2ludDogdHJhY2luZy5mb286NDMxNwogICAgICBtZXNoSWRlbnRpdHk6CiAgICAgICAgbmFtZXNwYWNlOiBmb28KICAgICAgICBzZXJ2aWNlQWNjb3VudE5hbWU6IGRlZmF1bHQKICAgIGVuYWJsZWQ6IHRydWUKcHJveHlJbmplY3RvcjoKICBjYUJ1bmRsZTogcHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxlCiAgZXh0ZXJuYWxTZWNyZXQ6IHRydWUK
 kind: Secret
 metadata:
   labels:

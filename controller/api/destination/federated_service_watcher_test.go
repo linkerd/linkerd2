@@ -151,7 +151,7 @@ func mockFederatedServiceWatcher(t *testing.T) (*federatedServiceWatcher, error)
 	if err != nil {
 		return nil, fmt.Errorf("NewClusterStoreWithDecoder returned an error: %w", err)
 	}
-	fsw, err := newFederatedServiceWatcher(k8sAPI, metadataAPI, &Config{}, clusterStore, localEndpoints, logging.WithField("test", t.Name()))
+	fsw, err := newFederatedServiceWatcher(k8sAPI, metadataAPI, &Config{StreamQueueCapacity: DefaultStreamQueueCapacity}, clusterStore, localEndpoints, logging.WithField("test", t.Name()))
 	if err != nil {
 		return nil, fmt.Errorf("newFederatedServiceWatcher returned an error: %w", err)
 	}

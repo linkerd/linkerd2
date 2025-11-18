@@ -73,7 +73,7 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyInboundDiscoveryCacheUnusedTimeout:      "900s",
 							k8s.ProxyDisableOutboundProtocolDetectTimeout:    "true",
 							k8s.ProxyDisableInboundProtocolDetectTimeout:     "true",
-							k8s.ProxyEnableNativeSidecarAnnotation:           "true",
+							k8s.ProxyEnableNativeSidecarAnnotationBeta:       "true",
 						},
 					},
 					Spec: corev1.PodSpec{},
@@ -141,6 +141,25 @@ func TestGetOverriddenValues(t *testing.T) {
 				return values
 			},
 		},
+		{id: "use tracing annotations",
+			nsAnnotations: make(map[string]string),
+			spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							k8s.TracingSemanticConventionPrefix + k8s.TracingServiceName: "foo",
+						},
+					},
+					Spec: corev1.PodSpec{},
+				},
+			},
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues()
+
+				values.Proxy.Tracing.Labels[k8s.TracingServiceName] = "foo"
+				return values
+			},
+		},
 		{id: "use namespace overrides",
 			nsAnnotations: map[string]string{
 				k8s.ProxyImageAnnotation:                      "cr.l5d.io/linkerd/proxy",
@@ -173,7 +192,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyInboundDiscoveryCacheUnusedTimeout:   "6000ms",
 				k8s.ProxyDisableOutboundProtocolDetectTimeout: "true",
 				k8s.ProxyDisableInboundProtocolDetectTimeout:  "false",
-				k8s.ProxyEnableNativeSidecarAnnotation:        "true",
+				k8s.ProxyEnableNativeSidecarAnnotationBeta:    "true",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -325,6 +344,67 @@ func TestGetOverriddenValues(t *testing.T) {
 				t.Errorf("%+v", diff)
 			}
 		})
+	}
+}
+
+func TestApplyAnnotationOverridesMissingProxyTracing(t *testing.T) {
+	values := &l5dcharts.Values{
+		Proxy: &l5dcharts.Proxy{
+			Image:   &l5dcharts.Image{},
+			Ports:   &l5dcharts.Ports{},
+			Metrics: &l5dcharts.ProxyMetrics{},
+		},
+		ProxyInit: &l5dcharts.ProxyInit{
+			Image: &l5dcharts.Image{},
+		},
+	}
+
+	annotations := map[string]string{
+		k8s.TracingSemanticConventionPrefix + "http.method": "GET",
+	}
+	labels := map[string]string{
+		k8s.TracingInstanceLabel: "example",
+	}
+
+	ApplyAnnotationOverrides(values, annotations, labels, nil)
+
+	if values.Proxy.Tracing != nil {
+		t.Fatalf("expected tracing to remain nil, got %#v", values.Proxy.Tracing)
+	}
+}
+
+func TestApplyAnnotationOverridesInitializesTracingLabels(t *testing.T) {
+	values := &l5dcharts.Values{
+		Proxy: &l5dcharts.Proxy{
+			Tracing: &l5dcharts.Tracing{},
+			Image:   &l5dcharts.Image{},
+			Ports:   &l5dcharts.Ports{},
+			Metrics: &l5dcharts.ProxyMetrics{},
+		},
+		ProxyInit: &l5dcharts.ProxyInit{
+			Image: &l5dcharts.Image{},
+		},
+	}
+
+	annotations := map[string]string{
+		k8s.TracingSemanticConventionPrefix + "http.target": "/health",
+	}
+	labels := map[string]string{
+		k8s.TracingNameLabel: "workload",
+	}
+
+	ApplyAnnotationOverrides(values, annotations, labels, nil)
+
+	if values.Proxy.Tracing == nil {
+		t.Fatal("expected tracing to be initialized")
+	}
+
+	if got := values.Proxy.Tracing.Labels[k8s.TracingServiceName]; got != "workload" {
+		t.Fatalf("expected tracing service name to be set, got %q", got)
+	}
+
+	if got := values.Proxy.Tracing.Labels["http.target"]; got != "/health" {
+		t.Fatalf("expected tracing semantic convention label to be set, got %q", got)
 	}
 }
 

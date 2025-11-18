@@ -151,6 +151,8 @@ env:
 {{ if .Values.proxy.tracing | default (dict) | dig "enabled" false -}}
 - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
   value: /var/run/linkerd/podinfo/labels
+- name: LINKERD2_PROXY_TRACE_ANNOTATIONS_PATH
+  value: /var/run/linkerd/podinfo/annotations
 - name: LINKERD2_PROXY_TRACE_PROTOCOL
   value: {{ default "opentelemetry" .Values.proxy.tracing.protocol }}
 - name: LINKERD2_PROXY_TRACE_SERVICE_NAME
@@ -170,9 +172,9 @@ env:
   value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.{{ .Values.proxy.tracing.collector.meshIdentity.namespace }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
 - name: LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES
   value: |
-    k8s.pod.ip=$(_pod_ip)
-    k8s.pod.uid=$(_pod_uid)
-    k8s.container.name=$(_pod_containerName)
+    {{- range $k, $v := .Values.proxy.tracing.labels }}
+    {{ $k }}={{ $v }}
+    {{- end }}
 {{ end -}}
 {{/* Configure inbound and outbound parameters, e.g. for HTTP/2 servers. */ -}}
 {{ range $proxyK, $proxyV := (dict "inbound" .Values.proxy.inbound "outbound" .Values.proxy.outbound) -}}
@@ -318,7 +320,7 @@ lifecycle:
 volumeMounts:
 - mountPath: /var/run/linkerd/identity/end-entity
   name: linkerd-identity-end-entity
-{{- if .Values.proxy.tracing | default (dict) | dig "enable" false }}
+{{- if .Values.proxy.tracing | default (dict) | dig "enabled" false }}
 - mountPath: /var/run/linkerd/podinfo
   name: linkerd-podinfo
 {{- end }}

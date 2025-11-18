@@ -54,6 +54,7 @@ func newEndpointProfileTranslator(
 	stream pb.Destination_GetProfileServer,
 	endStream chan struct{},
 	log *logging.Entry,
+	queueCapacity int,
 ) *endpointProfileTranslator {
 	return &endpointProfileTranslator{
 		forceOpaqueTransport: forceOpaqueTransport,
@@ -66,7 +67,7 @@ func newEndpointProfileTranslator(
 
 		stream:    stream,
 		endStream: endStream,
-		updates:   make(chan *watcher.Address, updateQueueCapacity),
+		updates:   make(chan *watcher.Address, queueCapacity),
 		stop:      make(chan struct{}),
 
 		log: log.WithField("component", "endpoint-profile-translator"),

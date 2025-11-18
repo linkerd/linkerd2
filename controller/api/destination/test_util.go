@@ -1062,7 +1062,7 @@ spec:
 		t.Fatalf("can't create cluster store: %s", err)
 	}
 
-	federatedServices, err := newFederatedServiceWatcher(k8sAPI, metadataAPI, &Config{}, clusterStore, endpoints, log)
+	federatedServices, err := newFederatedServiceWatcher(k8sAPI, metadataAPI, &Config{StreamQueueCapacity: DefaultStreamQueueCapacity}, clusterStore, endpoints, log)
 	if err != nil {
 		t.Fatalf("can't create federated service watcher: %s", err)
 	}
@@ -1082,6 +1082,7 @@ spec:
 			ClusterDomain:       "mycluster.local",
 			IdentityTrustDomain: "trust.domain",
 			DefaultOpaquePorts:  defaultOpaquePorts,
+			StreamQueueCapacity: DefaultStreamQueueCapacity,
 		},
 		workloads,
 		endpoints,
@@ -1191,6 +1192,7 @@ metadata:
 		mockGetServer,
 		nil,
 		logging.WithField("test", t.Name()),
+		DefaultStreamQueueCapacity,
 	)
 	if err != nil {
 		t.Fatalf("failed to create endpoint translator: %s", err)
