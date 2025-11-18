@@ -8,7 +8,10 @@ publish = false
 [dependencies]
 anyhow = "1"
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
-rustls = { version = "0.23.35", default-features = false, features = ["aws-lc-rs"] }
+rustls = { version = "0.23.20", default-features = false, features = ["aws-lc-rs"] }
+# Pin to <1.12 to force linking against aws-lc 2.0
+aws-lc-rs = { version = "=1.11", default-features = false }
+rustls-post-quantum = "0.2"
 
 [dependencies.linkerd-policy-controller-runtime]
 workspace = true
