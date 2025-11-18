@@ -354,9 +354,7 @@ func TestApplyAnnotationOverridesMissingProxyTracing(t *testing.T) {
 			Ports:   &l5dcharts.Ports{},
 			Metrics: &l5dcharts.ProxyMetrics{},
 		},
-		ProxyInit: &l5dcharts.ProxyInit{
-			Image: &l5dcharts.Image{},
-		},
+		ProxyInit: &l5dcharts.ProxyInit{},
 	}
 
 	annotations := map[string]string{
@@ -381,9 +379,7 @@ func TestApplyAnnotationOverridesInitializesTracingLabels(t *testing.T) {
 			Ports:   &l5dcharts.Ports{},
 			Metrics: &l5dcharts.ProxyMetrics{},
 		},
-		ProxyInit: &l5dcharts.ProxyInit{
-			Image: &l5dcharts.Image{},
-		},
+		ProxyInit: &l5dcharts.ProxyInit{},
 	}
 
 	annotations := map[string]string{
