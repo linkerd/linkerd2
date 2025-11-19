@@ -28,7 +28,7 @@ require (
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.67.2
+	github.com/prometheus/common v0.67.3
 	github.com/sergi/go-diff v1.4.0
 	github.com/shurcooL/vfsgen v0.0.0-20230704071429-0000e147ea92
 	github.com/sirupsen/logrus v1.9.3
@@ -54,7 +54,10 @@ require (
 	sigs.k8s.io/yaml v1.6.0
 )
 
-require golang.org/x/net v0.47.0 // indirect
+require (
+	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+)
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
