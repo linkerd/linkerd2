@@ -159,7 +159,7 @@ fn convert_gateway_rule(
     rule: gateway::HTTPRouteRules,
     cluster: &ClusterInfo,
     resource_info: &HashMap<ResourceRef, ResourceInfo>,
-    timeouts: RouteTimeouts,
+    mut timeouts: RouteTimeouts,
     retry: Option<RouteRetry<HttpRetryCondition>>,
 ) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryCondition>> {
     let matches = rule
@@ -182,6 +182,19 @@ fn convert_gateway_rule(
         .flatten()
         .map(convert_gateway_filter)
         .collect::<Result<_>>()?;
+
+    timeouts.request = timeouts.request.or_else(|| {
+        rule.timeouts.as_ref().and_then(|timeouts| {
+            let timeout = parse_duration(timeouts.request.as_ref()?).ok()?;
+
+            // zero means "no timeout", per GEP-1742
+            if timeout == time::Duration::ZERO {
+                return None;
+            }
+
+            Some(timeout)
+        })
+    });
 
     Ok(OutboundRouteRule {
         matches,
