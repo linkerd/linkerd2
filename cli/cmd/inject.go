@@ -417,15 +417,8 @@ func getOverrideAnnotations(values *linkerd2.Values, base *linkerd2.Values) map[
 	if proxy.Image.Name != baseProxy.Image.Name {
 		overrideAnnotations[k8s.ProxyImageAnnotation] = proxy.Image.Name
 	}
-	if values.ProxyInit.Image.Name != base.ProxyInit.Image.Name {
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = values.ProxyInit.Image.Name
-	}
 	if values.DebugContainer.Image.Name != base.DebugContainer.Image.Name {
 		overrideAnnotations[k8s.DebugImageAnnotation] = values.DebugContainer.Image.Name
-	}
-
-	if values.ProxyInit.Image.Version != base.ProxyInit.Image.Version {
-		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = values.ProxyInit.Image.Version
 	}
 
 	if values.DebugContainer.Image.Version != base.DebugContainer.Image.Version {

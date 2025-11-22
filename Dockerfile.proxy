@@ -1,5 +1,6 @@
-ARG RUNTIME_IMAGE=gcr.io/distroless/cc-debian12
 ARG BUILDPLATFORM=linux/amd64
+ARG RUNTIME_IMAGE="cr.l5d.io/linkerd/proxy-runtime:latest"
+ARG TARGETARCH
 
 # Precompile key slow-to-build dependencies
 FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS go-deps
@@ -43,8 +44,33 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -mod=readonly ./pkg/...
 COPY proxy-identity proxy-identity
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/proxy-identity -mod=readonly -ldflags "-s -w" ./proxy-identity
 
-FROM $RUNTIME_IMAGE AS runtime
+## build proxy-init
+FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v48-go AS proxy-init
+WORKDIR /build
+ARG PROXY_INIT_REPO="linkerd/linkerd2-proxy-init"
+ARG PROXY_INIT_REF="proxy-init/v2.4.3"
+RUN --mount=type=secret,id=github \
+    export GITHUB_TOKEN_FILE=/run/secrets/github; \
+    git init --initial-branch=main . && \
+    git remote add origin https://github.com/${PROXY_INIT_REPO}.git && \
+    git fetch --depth 1 origin ${PROXY_INIT_REF} && \
+    git checkout --detach FETCH_HEAD
+RUN go mod download
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH GO111MODULE=on \
+    go build -o /out/linkerd2-proxy-init -mod=readonly -ldflags "-s -w" -v ./proxy-init
+
+FROM $RUNTIME_IMAGE-$TARGETARCH AS runtime
 LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
+
+COPY --from=proxy-init /out/linkerd2-proxy-init /usr/lib/linkerd/linkerd2-proxy-init
+# Set sys caps for iptables utilities and proxy-init
+USER root
+RUN ["/usr/sbin/setcap", "cap_net_raw,cap_net_admin+eip", "/usr/sbin/xtables-legacy-multi"]
+RUN ["/usr/sbin/setcap", "cap_net_raw,cap_net_admin+eip", "/usr/sbin/xtables-nft-multi"]
+RUN ["/usr/sbin/setcap", "cap_net_raw,cap_net_admin+eip", "/usr/lib/linkerd/linkerd2-proxy-init"]
+USER 65534
+
 COPY --from=fetch /build/target/proxy/LICENSE /usr/lib/linkerd/LICENSE
 COPY --from=fetch /build/proxy-version /usr/lib/linkerd/linkerd2-proxy-version.txt
 COPY --from=fetch /build/linkerd2-proxy /usr/lib/linkerd/linkerd2-proxy

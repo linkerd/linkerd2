@@ -80,6 +80,11 @@ jobs:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    services:
+      registry:
+        image: registry:3
+        ports:
+          - 5000:5000
     strategy:
       matrix:
         component:

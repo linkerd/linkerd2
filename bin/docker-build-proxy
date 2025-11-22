@@ -2,6 +2,8 @@
 
 set -eu
 
+apko_version=v0.30.13
+
 if [ $# -ne 0 ]; then
     echo "no arguments allowed for ${0##*/}, given: $*" >&2
     exit 64
@@ -14,8 +16,11 @@ rootdir=$( cd "$bindir"/.. && pwd )
 . "$bindir"/_docker.sh
 # shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
+# shellcheck source=_os.sh
+. "$bindir"/_os.sh
 
-dockerfile=$rootdir/Dockerfile-proxy
+dockerfile=$rootdir/Dockerfile.proxy
+runtime_image="${RUNTIME_IMAGE:-"cr.l5d.io/linkerd/proxy-runtime:${TAG:-$(head_root_tag)}"}"
 
 get_extra_options() {
     options=
@@ -25,9 +30,22 @@ get_extra_options() {
     echo "$options"
 }
 
+# Build proxy base image with apko
+go install chainguard.dev/apko@$apko_version
+export PATH=$PATH:$(go env GOPATH)/bin
+# Add --local flag unless PUSH_RUNTIME_IMAGE is set
+apko build "$rootdir/proxy-runtime.yml" "$runtime_image" "$rootdir/proxy-runtime.tar"
+docker load < "$rootdir/proxy-runtime.tar"
+if [[ -n "${PUSH_RUNTIME_IMAGE:-}" ]]; then
+    for arch in "arm64" "amd64"; do
+        docker push "$runtime_image-$arch"
+    done
+fi
+
 # We want wordsplit for the extra options here:
 # shellcheck disable=SC2046
 docker_build proxy "${TAG:-$(head_root_tag)}" "$dockerfile" \
+  --build-arg RUNTIME_IMAGE="$runtime_image" \
   --build-arg LINKERD_VERSION="${TAG:-$(head_root_tag)}" \
   --build-arg LINKERD2_PROXY_REPO="${LINKERD2_PROXY_REPO:-linkerd/linkerd2-proxy}" \
   --build-arg LINKERD2_PROXY_VERSION="${LINKERD2_PROXY_VERSION:-$(cat .proxy-version)}" \
