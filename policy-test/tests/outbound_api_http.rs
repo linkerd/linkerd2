@@ -775,6 +775,8 @@ async fn http_route_linkerd_timeouts() {
     test::<policy::EgressNetwork>().await;
 }
 
+// The timeout field on HTTPRoute is only available in Gateway API v1.2+.
+#[cfg(feature = "gateway-api-experimental")]
 #[tokio::test(flavor = "current_thread")]
 async fn http_route_gateway_timeouts() {
     async fn test<P: TestParent>() {
