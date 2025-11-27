@@ -47,7 +47,7 @@ Note that the provided certificates must be ECDSA certificates.
 ## Adding Linkerd's Helm repository
 
 Included here for completeness-sake, but should have already been added when
-`linkerd-base` was installed.
+`linkerd-crds` was installed.
 
 ```bash
 # To add the repo for Linkerd edge releases:
@@ -68,7 +68,7 @@ helm install linkerd-control-plane -n linkerd \
 ```
 
 Note that you require to install this chart in the same namespace you installed
-the `linkerd-base` chart.
+the `linkerd-crds` chart.
 
 ## Setting High-Availability
 
