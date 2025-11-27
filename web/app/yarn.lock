@@ -8882,10 +8882,10 @@ serialize-javascript@^6.0.2:
   dependencies:
     randombytes "^2.1.0"
 
-serialize-query-params@^2.0.2:
-  version "2.0.2"
-  resolved "https://registry.yarnpkg.com/serialize-query-params/-/serialize-query-params-2.0.2.tgz#598a3fb9e13f4ea1c1992fbd20231aa16b31db81"
-  integrity sha512-1chMo1dST4pFA9RDXAtF0Rbjaut4is7bzFbI1Z26IuMub68pNCILku85aYmeFhvnY//BXUPUhoRMjYcsT93J/Q==
+serialize-query-params@^2.0.3:
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/serialize-query-params/-/serialize-query-params-2.0.3.tgz#1bbc9d5353a3a90c782129549e0ec34a9575f0a0"
+  integrity sha512-PyDK5dkxtWa9jo9qJDy19x/haAcTQnUfIGsCXIv53HlgTCH5pC2KHIqrtM+VOruqRmH2XwYZZyn7BNHN0W58EQ==
 
 serve-index@^1.9.1:
   version "1.9.1"
@@ -9903,12 +9903,12 @@ url-loader@^4.1.1:
     mime-types "^2.1.27"
     schema-utils "^3.0.0"
 
-use-query-params@2.2.1:
-  version "2.2.1"
-  resolved "https://registry.yarnpkg.com/use-query-params/-/use-query-params-2.2.1.tgz#c558ab70706f319112fbccabf6867b9f904e947d"
-  integrity sha512-i6alcyLB8w9i3ZK3caNftdb+UnbfBRNPDnc89CNQWkGRmDrm/gfydHvMBfVsQJRq3NoHOM2dt/ceBWG2397v1Q==
+use-query-params@2.2.2:
+  version "2.2.2"
+  resolved "https://registry.yarnpkg.com/use-query-params/-/use-query-params-2.2.2.tgz#a029b00b24a680ceffea1e3ae0ce8ac9c5c77645"
+  integrity sha512-OwGab8u8/x2xZp9uSyBsx0kXlkR9IR436zbygsYVGikPYY3OJosvve6IJVGwIJPcfyb/YHwvPrUNu65/JR++Kw==
   dependencies:
-    serialize-query-params "^2.0.2"
+    serialize-query-params "^2.0.3"
 
 util-deprecate@^1.0.1, util-deprecate@^1.0.2, util-deprecate@~1.0.1:
   version "1.0.2"
