@@ -5,6 +5,12 @@ metadata:
   labels:
     app: test
 spec:
+  initContainers:
+  - name: memcached
+    image: memcached
+    restartPolicy: Always
+    ports:
+    - containerPort: 11211
   containers:
   - name: foo
     image: mysql
