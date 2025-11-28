@@ -349,14 +349,6 @@ proxyInit:
   # -- Log format (`plain` or `json`) for the proxy-init
   # @default -- plain
   logFormat: ""
-  image:
-    # -- Docker image for the proxy-init container
-    name: cr.l5d.io/linkerd/proxy-init
-    # -- Pull policy for the proxy-init container image
-    # @default -- imagePullPolicy
-    pullPolicy: ""
-    # -- Tag for the proxy-init container image
-    version: v2.4.3
   # -- Changes the default value for the nf_conntrack_tcp_timeout_close_wait
   # kernel parameter. If used, runAsRoot needs to be true.
   closeWaitTimeoutSecs: 0

@@ -304,7 +304,6 @@ _gateway-url := if GATEWAY_API_VERSION != "linkerd" { "https://github.com/kubern
 #
 # We execute these commands lazily in case `yq` isn't present (so that other
 # just recipes can succeed).
-_proxy-init-image-cmd := "yq '.proxyInit.image | \"ghcr.io/linkerd/proxy-init:\" + .version' charts/linkerd-control-plane/values.yaml"
 _cni-plugin-image-cmd := "yq '.image | \"ghcr.io/linkerd/cni-plugin:\" + .version' charts/linkerd2-cni/values.yaml"
 _prometheus-image-cmd := "yq '.prometheus.image | .registry + \"/\" + .name + \":\" + .tag'  viz/charts/linkerd-viz/values.yaml"
 
@@ -330,7 +329,6 @@ linkerd-install *args='': linkerd-load linkerd-crds-install && _linkerd-ready
             --set='linkerdVersion={{ linkerd-tag }}' \
             --set='proxy.image.name={{ proxy-image }}' \
             --set='proxy.image.version={{ linkerd-tag }}' \
-            --set='proxyInit.image.name=ghcr.io/linkerd/proxy-init' \
             {{ args }} \
         | {{ _kubectl }} apply -f -
 
@@ -343,7 +341,7 @@ linkerd-load: _linkerd-images _k3d-init
     for i in {1..3} ; do {{ _k3d-load }} \
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}' \
-        $({{ _proxy-init-image-cmd }}) && exit || sleep 1 ; done
+        && exit || sleep 1 ; done
 
 linkerd-load-cni:
     docker pull -q $({{ _cni-plugin-image-cmd }})
@@ -355,7 +353,6 @@ linkerd-build: _controller-build
 _linkerd-images:
     #!/usr/bin/env bash
     set -xeuo pipefail
-    docker pull -q $({{ _proxy-init-image-cmd }})
     for img in \
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}'

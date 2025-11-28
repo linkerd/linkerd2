@@ -781,10 +781,6 @@ data:
       closeWaitTimeoutSecs: 0
       ignoreInboundPorts: 4567,4568
       ignoreOutboundPorts: 4567,4568
-      image:
-        name: cr.l5d.io/linkerd/proxy-init
-        pullPolicy: ""
-        version: v2.4.3
       iptablesMode: nft
       kubeAPIServerPorts: 443,6443
       logFormat: ""

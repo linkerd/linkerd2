@@ -313,11 +313,7 @@ start_test() {
       config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=servicelb,traefik@server:0' --image "$k8s_version_max")
       ;;
     cni-calico-deep)
-      # This requires k8s v1.27.6-k3s1 because after that Calico won't work.
-      # We have to use a config file because that version can't be set via the
-      # --image flag.
-      # See https://github.com/k3d-io/k3d/issues/1375
-      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=servicelb,traefik@server:0' --config "$testdir"/deep/calico-k3d.yml)
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=servicelb,traefik@server:0')
       ;;
     multicluster)
       config=("${config[@]}" --network multicluster-test --image "$k8s_version_max")

@@ -1,13 +1,13 @@
 package util
 
 import (
+	"context"
 	"errors"
 	"io"
 	"sync"
 
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
