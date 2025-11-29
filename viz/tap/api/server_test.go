@@ -18,12 +18,13 @@ import (
 
 func TestAPIServerAuth(t *testing.T) {
 	expectations := []struct {
-		k8sRes         []string
-		clientCAPem    string
-		allowedNames   []string
-		usernameHeader string
-		groupHeader    string
-		err            error
+		k8sRes            []string
+		clientCAPem       string
+		allowedNames      []string
+		usernameHeader    string
+		groupHeader       string
+		extraHeaderPrefix string
+		err               error
 	}{
 		{
 			err: fmt.Errorf("failed to load [%s] config: configmaps %q not found", k8sutils.ExtensionAPIServerAuthenticationConfigMapName, k8sutils.ExtensionAPIServerAuthenticationConfigMapName),
@@ -44,11 +45,12 @@ data:
   requestheader-username-headers: '["X-Remote-User"]'
 `,
 			},
-			clientCAPem:    "requestheader-client-ca-file",
-			allowedNames:   []string{"name1", "name2"},
-			usernameHeader: "X-Remote-User",
-			groupHeader:    "X-Remote-Group",
-			err:            nil,
+			clientCAPem:       "requestheader-client-ca-file",
+			allowedNames:      []string{"name1", "name2"},
+			usernameHeader:    "X-Remote-User",
+			groupHeader:       "X-Remote-Group",
+			extraHeaderPrefix: "X-Remote-Extra-",
+			err:               nil,
 		},
 	}
 
@@ -62,7 +64,7 @@ data:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			clientCAPem, allowedNames, usernameHeader, groupHeader, err := serverAuth(ctx, k8sAPI)
+			clientCAPem, allowedNames, usernameHeader, groupHeader, extraHeaderPrefix, err := serverAuth(ctx, k8sAPI)
 
 			if err != nil && exp.err != nil {
 				if err.Error() != exp.err.Error() {
@@ -85,6 +87,9 @@ data:
 			}
 			if groupHeader != exp.groupHeader {
 				t.Errorf("apiServerAuth returned unexpected groupHeader: %q, expected: %q", groupHeader, exp.groupHeader)
+			}
+			if extraHeaderPrefix != exp.extraHeaderPrefix {
+				t.Errorf("apiServerAuth returned unexpected extraHeaderPrefix: %q, expected: %q", extraHeaderPrefix, exp.extraHeaderPrefix)
 			}
 		})
 	}
