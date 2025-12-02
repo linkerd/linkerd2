@@ -708,7 +708,7 @@ where
     .await;
     tracing::trace!(?ns);
     tokio::time::timeout(
-        tokio::time::Duration::from_secs(60),
+        tokio::time::Duration::from_secs(15),
         await_service_account(&client, &ns.name_unchecked(), "default"),
     )
     .await
