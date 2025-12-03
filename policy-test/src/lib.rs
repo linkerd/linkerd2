@@ -757,18 +757,34 @@ where
 pub async fn await_service_account(client: &kube::Client, ns: &str, name: &str) {
     use futures::StreamExt;
 
-    tracing::trace!(%name, %ns, "Waiting for serviceaccount");
+    tracing::trace!(%ns, "Waiting for namespace");
 
-    time::sleep(time::Duration::from_millis(2)).await;
-    // First check if it already exists
-    /*if kube::Api::<k8s::ServiceAccount>::namespaced(client.clone(), ns)
-        .get(name)
-        .await
-        .is_ok()
-    {
-        return;
+    // First, wait for the namespace to be created
+    tokio::pin! {
+        let namespaces = kube::runtime::watcher(
+            kube::Api::<k8s::Namespace>::all(client.clone()),
+            Default::default(),
+        );
     }
-    tracing::trace!("The serviceaccount does not yet exist; watching");*/
+    loop {
+        let ev = namespaces
+            .next()
+            .await
+            .expect("namespaces watch must not end")
+            .expect("namespaces watch must not fail");
+        tracing::info!(?ev);
+        match ev {
+            kube::runtime::watcher::Event::InitApply(namespace)
+            | kube::runtime::watcher::Event::Apply(namespace)
+                if namespace.name_unchecked() == ns =>
+            {
+                break
+            }
+            _ => {}
+        }
+    }
+
+    tracing::trace!(%name, %ns, "Waiting for serviceaccount");
 
     tokio::pin! {
         let sas = kube::runtime::watcher(
