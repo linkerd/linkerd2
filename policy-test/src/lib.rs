@@ -759,15 +759,16 @@ pub async fn await_service_account(client: &kube::Client, ns: &str, name: &str) 
 
     tracing::trace!(%name, %ns, "Waiting for serviceaccount");
 
+    time::sleep(time::Duration::from_millis(2)).await;
     // First check if it already exists
-    if kube::Api::<k8s::ServiceAccount>::namespaced(client.clone(), ns)
+    /*if kube::Api::<k8s::ServiceAccount>::namespaced(client.clone(), ns)
         .get(name)
         .await
         .is_ok()
     {
         return;
     }
-    tracing::trace!("The serviceaccount does not yet exist; watching");
+    tracing::trace!("The serviceaccount does not yet exist; watching");*/
 
     tokio::pin! {
         let sas = kube::runtime::watcher(
