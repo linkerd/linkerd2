@@ -2973,6 +2973,62 @@ subsets:
 			},
 			expected: nil,
 		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  selector:
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  labels:
+    app: test
+spec:
+  initContainers:
+  - name: test
+    image: test
+    restartPolicy: Always
+    ports:
+    - name: test
+      containerPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nod
+    targetRef:
+      kind: Pod
+      name: pod
+      namespace: test-ns
+  ports:
+  - name: test
+    port: 9200
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* service svc expects target port 9200 to be opaque; add it to pod pod config.linkerd.io/opaque-ports annotation"),
+		},
 	}
 
 	for i, tc := range testCases {
