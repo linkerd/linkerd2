@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -19,10 +20,24 @@ type (
 
 	trace struct {
 		Processes map[string]process `json:"processes"`
+		Spans     []span             `json:"spans"`
 	}
 
 	process struct {
 		ServiceName string `json:"serviceName"`
+		Tags        []tag  `json:"tags"`
+	}
+
+	span struct {
+		OperationName string `json:"operationName"`
+		Tags          []tag  `json:"tags"`
+		ProcessId     string `json:"processID"`
+	}
+
+	tag struct {
+		Key   string      `json:"key"`
+		Type  string      `json:"type"`
+		Value interface{} `json:"value"`
 	}
 )
 
@@ -101,8 +116,46 @@ func TestTracing(t *testing.T) {
 					return err
 				}
 
-				if !hasTraceWithProcess(&traces, "linkerd-proxy") {
-					return noProxyTraceFound{}
+				expected := []expectedTrace{
+					{
+						serviceName: "linkerd-proxy",
+						app:         "web-svc",
+						processTags: map[string]tagMatcher{
+							"host.name":                   anyStringMatcher{},
+							"k8s.container.name":          stringMatcher("linkerd-proxy"),
+							"k8s.pod.ip":                  anyStringMatcher{},
+							"k8s.pod.uid":                 anyStringMatcher{},
+							"linkerd.io/control-plane-ns": stringMatcher("linkerd"),
+							"linkerd.io/proxy-deployment": stringMatcher("web"),
+							"linkerd.io/workload-ns":      stringMatcher(namespace),
+							"pod-template-hash":           anyStringMatcher{},
+							"process.pid":                 anyMatcher{},
+							"process.start_timestamp":     anyMatcher{},
+						},
+						operation: "/api/vote",
+						spanKind:  "server",
+						spanTags: map[string]tagMatcher{
+							"http.request.method":                stringMatcher("GET"),
+							"url.scheme":                         stringMatcher("http"),
+							"url.path":                           stringMatcher("/api/vote"),
+							"url.query":                          anyStringMatcher{},
+							"url.full":                           anyStringMatcher{},
+							"network.transport":                  stringMatcher("tcp"),
+							"server.address":                     stringMatcher("web-svc"),
+							"server.port":                        stringMatcher("80"),
+							"user_agent.original":                anyStringMatcher{},
+							"http.request.header.l5d-orig-proto": stringMatcher("HTTP/1.1"),
+							"direction":                          stringMatcher("inbound"),
+							"http.response.status_code":          stringMatcher("200"),
+						},
+					},
+				}
+
+				for _, e := range expected {
+					err := inspectTraces(t, &traces, e)
+					if err != nil {
+						return err
+					}
 				}
 				return nil
 			})
@@ -144,19 +197,133 @@ func installTracing(t *testing.T, namespace string) {
 	}
 }
 
-func hasTraceWithProcess(traces *traces, ps string) bool {
-	for _, trace := range traces.Data {
-		for _, process := range trace.Processes {
-			if process.ServiceName == ps {
-				return true
-			}
-		}
-	}
-	return false
+type expectedTrace struct {
+	serviceName string
+	app         string
+	processTags map[string]tagMatcher
+	operation   string
+	spanKind    string
+	spanTags    map[string]tagMatcher
 }
 
-type noProxyTraceFound struct{}
+type tagMatcher interface {
+	assertMatches(t *testing.T, key string, value interface{})
+}
+
+type stringMatcher string
+
+func (expected stringMatcher) assertMatches(t *testing.T, key string, actual interface{}) {
+	anyStringMatcher{}.assertMatches(t, key, actual)
+	if string(expected) != actual.(string) {
+		t.Fatalf("Tag %s found with incorrect value\nExpected %s, found %s", key, string(expected), actual.(string))
+	}
+}
+
+type anyStringMatcher struct{}
+
+func (_ anyStringMatcher) assertMatches(t *testing.T, key string, value interface{}) {
+	_, ok := value.(string)
+	if !ok {
+		t.Fatalf("Tag %s has incorrect type\nexpected string, found %s", key, reflect.TypeOf(value).Name())
+	}
+}
+
+type anyMatcher struct{}
+
+func (_ anyMatcher) assertMatches(_ *testing.T, _ string, _ interface{}) {}
+
+func inspectTraces(t *testing.T, traces *traces, expected expectedTrace) error {
+	for _, trace := range traces.Data {
+		var matchedProcess = ""
+		for id, process := range trace.Processes {
+			if process.ServiceName != expected.serviceName {
+				continue
+			}
+
+			var appMatches = false
+			for _, tag := range process.Tags {
+				if tag.Key != "app" {
+					continue
+				}
+				value, ok := tag.Value.(string)
+				if !ok {
+					continue
+				}
+				if value != expected.app {
+					break
+				}
+				appMatches = true
+				break
+			}
+			if !appMatches {
+				continue
+			}
+
+			assertContainsTags(t, process.Tags, expected.processTags)
+
+			matchedProcess = id
+			break
+		}
+		if matchedProcess == "" {
+			continue
+		}
+
+		for _, span := range trace.Spans {
+			if span.ProcessId != matchedProcess {
+				continue
+			}
+
+			if span.OperationName != expected.operation {
+				continue
+			}
+
+			var kindMatches = false
+			for _, tag := range span.Tags {
+				value, ok := tag.Value.(string)
+				if tag.Key != "span.kind" {
+					continue
+				}
+				if !ok {
+					continue
+				}
+				if value != expected.spanKind {
+					break
+				}
+				kindMatches = true
+				break
+			}
+			if !kindMatches {
+				continue
+			}
+
+			assertContainsTags(t, span.Tags, expected.spanTags)
+
+			return nil
+		}
+	}
+
+	return noProxyTraceFound{traces}
+}
+
+func assertContainsTags(t *testing.T, rawTags []tag, expected map[string]tagMatcher) {
+	tags := map[string]interface{}{}
+	for _, tag := range rawTags {
+		tags[tag.Key] = tag.Value
+	}
+
+	for key, expectedValue := range expected {
+		actual, ok := tags[key]
+		if !ok {
+			t.Fatalf("Tag %s not found in tags\nTags: %v", key, tags)
+		}
+		expectedValue.assertMatches(t, key, actual)
+	}
+}
+
+type noProxyTraceFound struct {
+	traces *traces
+}
 
 func (e noProxyTraceFound) Error() string {
-	return "no trace found with processes: linkerd-proxy"
+	return fmt.Sprintf("no trace found with processes: linkerd-proxy\n%v", e.traces.Data)
 }
