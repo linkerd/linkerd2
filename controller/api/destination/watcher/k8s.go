@@ -145,7 +145,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 		// each of its containers' ports that exposes a host port, add
 		// that hostIP:hostPort endpoint to the indexer.
 		addrs := []string{}
-		for _, c := range pod.Spec.Containers {
+		for _, c := range append(pod.Spec.InitContainers, pod.Spec.Containers...) {
 			for _, p := range c.Ports {
 				if p.HostPort == 0 {
 					continue

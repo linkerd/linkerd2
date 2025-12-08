@@ -11,6 +11,7 @@ import (
 func TestIpWatcherGetPod(t *testing.T) {
 	podIP := "10.255.0.1"
 	hostIP := "172.0.0.1"
+	var hostPort0 uint32 = 22344
 	var hostPort1 uint32 = 22345
 	var hostPort2 uint32 = 22346
 	expectedPodName := "hostPortPod1"
@@ -21,9 +22,16 @@ metadata:
   name: hostPortPod1
   namespace: ns
 spec:
+  initContainers:
+  - image: test
+    name: hostPortInitContainer
+    ports:
+    - containerPort: 12344
+      hostPort: 22344
   containers:
   - image: test
     name: hostPortContainer1
+    restartPolicy: Always
     ports:
     - containerPort: 12345
       hostIP: 172.0.0.1
@@ -67,8 +75,20 @@ status:
 			}),
 		}
 
+		// Get host IP pod that is mapped to the port `hostPort0` (in an init container)
+		pod, err := ww.getPodByHostIP(hostIP, hostPort0)
+		if err != nil {
+			t.Fatalf("failed to get pod: %s", err)
+		}
+		if pod == nil {
+			t.Fatalf("failed to find pod mapped to %s:%d", hostIP, hostPort1)
+		}
+		if pod.Name != expectedPodName {
+			t.Fatalf("expected pod name to be %s, but got %s", expectedPodName, pod.Name)
+		}
+
 		// Get host IP pod that is mapped to the port `hostPort1`
-		pod, err := ww.getPodByHostIP(hostIP, hostPort1)
+		pod, err = ww.getPodByHostIP(hostIP, hostPort1)
 		if err != nil {
 			t.Fatalf("failed to get pod: %s", err)
 		}
