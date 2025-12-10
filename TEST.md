@@ -192,8 +192,8 @@ bin/tests $PWD/bin/linkerd
 ```
 
 **Note**: As stated above, if running tests in an existing KinD cluster by
-passing `--skip-cluster-create`, `bin/kind-load` must be run so that the images are
-available to the cluster
+passing `--skip-cluster-create`, `bin/kind-load` must be run so that the images
+are available to the cluster
 
 #### Special tests: cluster-domain, cni-calico-deep and multicluster
 
