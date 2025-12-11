@@ -11,6 +11,9 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/sirupsen/logrus"
+	authV1 "k8s.io/api/authorization/v1"
+	k8sFake "k8s.io/client-go/kubernetes/fake"
+	k8sTesting "k8s.io/client-go/testing"
 )
 
 func TestHandleTap(t *testing.T) {
@@ -69,5 +72,57 @@ func TestHandleTap(t *testing.T) {
 				t.Errorf("Unexpected body: %s, expected: %s", recorder.Body.String(), exp.body)
 			}
 		})
+	}
+}
+
+func TestHandleTap_ExtraHeaders(t *testing.T) {
+	k8sAPI, err := k8s.NewFakeAPI()
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+
+	h := &handler{
+		k8sAPI:            k8sAPI,
+		log:               logrus.WithField("test", t.Name()),
+		extraHeaderPrefix: "X-Remote-Extra-",
+	}
+
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/apis/tap.linkerd.io/v1alpha1/watch/namespaces/foo/tap", nil)
+	req.Header.Set("X-Remote-Extra-Foo", "bar")
+	req.Header.Set("X-Remote-Extra-Baz", "qux")
+
+	params := httprouter.Params{
+		{Key: "namespace", Value: "foo"},
+	}
+
+	h.handleTap(recorder, req, params)
+
+	client := k8sAPI.Client.(*k8sFake.Clientset)
+	actions := client.Actions()
+
+	var sar *authV1.SubjectAccessReview
+	for _, action := range actions {
+		if action.GetVerb() == "create" && action.GetResource().Resource == "subjectaccessreviews" {
+			createAction := action.(k8sTesting.CreateAction)
+			obj := createAction.GetObject()
+			sar = obj.(*authV1.SubjectAccessReview)
+			break
+		}
+	}
+
+	if sar == nil {
+		t.Fatal("Expected SubjectAccessReview to be created")
+	}
+
+	if len(sar.Spec.Extra) != 2 {
+		t.Errorf("Expected 2 extra headers, got %d", len(sar.Spec.Extra))
+	}
+
+	if v, ok := sar.Spec.Extra["Foo"]; !ok || v[0] != "bar" {
+		t.Errorf("Expected Extra['Foo'] to be ['bar'], got %v", v)
+	}
+	if v, ok := sar.Spec.Extra["Baz"]; !ok || v[0] != "qux" {
+		t.Errorf("Expected Extra['Baz'] to be ['qux'], got %v", v)
 	}
 }
