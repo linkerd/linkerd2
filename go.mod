@@ -38,7 +38,7 @@ require (
 	golang.org/x/tools v0.40.0
 	google.golang.org/grpc v1.77.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
 	helm.sh/helm/v3 v3.19.2
 	k8s.io/api v0.34.2
