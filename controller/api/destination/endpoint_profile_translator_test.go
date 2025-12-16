@@ -18,20 +18,49 @@ func TestEndpointProfileTranslator(t *testing.T) {
 	// logging.SetLevel(logging.TraceLevel)
 	// defer logging.SetLevel(logging.PanicLevel)
 
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				consts.ProxyOpaquePortsAnnotation: "sidecar,http",
+			},
+		},
+		Spec: corev1.PodSpec{
+			InitContainers: []corev1.Container{
+				corev1.Container{
+					Ports: []corev1.ContainerPort{
+						corev1.ContainerPort{
+							Name:          "sidecar",
+							ContainerPort: 8081,
+						},
+					},
+				},
+			},
+			Containers: []corev1.Container{
+				corev1.Container{
+					Ports: []corev1.ContainerPort{
+						corev1.ContainerPort{
+							Name:          "http",
+							ContainerPort: 8080,
+						},
+					},
+				},
+			},
+		},
+	}
+
 	addr := &watcher.Address{
 		IP:   "10.10.11.11",
 		Port: 8080,
 	}
-	podAddr := &watcher.Address{
+	podAddr1 := &watcher.Address{
 		IP:   "10.10.11.11",
 		Port: 8080,
-		Pod: &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					consts.ProxyOpaquePortsAnnotation: "8080",
-				},
-			},
-		},
+		Pod:  &pod,
+	}
+	podAddr2 := &watcher.Address{
+		IP:   "10.10.11.11",
+		Port: 8081,
+		Pod:  &pod,
 	}
 
 	t.Run("Sends update", func(t *testing.T) {
@@ -68,13 +97,22 @@ func TestEndpointProfileTranslator(t *testing.T) {
 		case <-time.After(1 * time.Second):
 		}
 
-		if err := translator.Update(podAddr); err != nil {
+		if err := translator.Update(podAddr1); err != nil {
 			t.Fatal("Expected update")
 		}
-		select {
-		case p := <-mockGetProfileServer.profilesReceived:
-			log.Debugf("Received update: %v", p)
-		case <-time.After(1 * time.Second):
+
+		p1 := <-mockGetProfileServer.profilesReceived
+		if !p1.GetOpaqueProtocol() {
+			t.Errorf("Expected port 8080 to be opaque")
+		}
+
+		if err := translator.Update(podAddr2); err != nil {
+			t.Fatal("Expected update")
+		}
+
+		p2 := <-mockGetProfileServer.profilesReceived
+		if !p2.GetOpaqueProtocol() {
+			t.Errorf("Expected port 8081 to be opaque")
 		}
 	})
 
@@ -97,7 +135,7 @@ func TestEndpointProfileTranslator(t *testing.T) {
 		// queue and we can test the overflow behavior.
 
 		for i := 0; i < queueCapacity/2; i++ {
-			if err := translator.Update(podAddr); err != nil {
+			if err := translator.Update(podAddr1); err != nil {
 				t.Fatal("Expected update")
 			}
 			select {
@@ -118,7 +156,7 @@ func TestEndpointProfileTranslator(t *testing.T) {
 
 		// The queue should be full and the next update should fail.
 		t.Logf("Queue length=%d capacity=%d", translator.queueLen(), queueCapacity)
-		if err := translator.Update(podAddr); err == nil {
+		if err := translator.Update(podAddr1); err == nil {
 			if !errors.Is(err, http.ErrServerClosed) {
 				t.Fatalf("Expected update to fail; queue=%d; capacity=%d", translator.queueLen(), queueCapacity)
 			}
