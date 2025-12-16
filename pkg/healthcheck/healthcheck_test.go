@@ -1854,11 +1854,6 @@ data:
 					GID: 2102,
 				},
 				ProxyInit: &linkerd2.ProxyInit{
-					Image: &linkerd2.Image{
-						Name:       "ProxyInitImageName",
-						PullPolicy: "ImagePullPolicy",
-						Version:    "ProxyInitVersion",
-					},
 					XTMountPath: &linkerd2.VolumeMountPath{
 						MountPath: "/run",
 						Name:      "linkerd-proxy-init-xtables-lock",
@@ -1879,7 +1874,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","proxyGid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v2.3.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","proxyGid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v2.3.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -1939,10 +1934,6 @@ data:
         closeWaitTimeoutSecs: 0
         ignoreInboundPorts: ""
         ignoreOutboundPorts: ""
-        image:
-          name: ProxyInitImageName
-          pullPolicy: ImagePullPolicy
-          version: ProxyInitVersion
         resources:
         saMountPath: null
         xtMountPath:
@@ -1995,11 +1986,6 @@ data:
 					GID: 2102,
 				},
 				ProxyInit: &linkerd2.ProxyInit{
-					Image: &linkerd2.Image{
-						Name:       "ProxyInitImageName",
-						PullPolicy: "ImagePullPolicy",
-						Version:    "ProxyInitVersion",
-					},
 					XTMountPath: &linkerd2.VolumeMountPath{
 						MountPath: "/run",
 						Name:      "linkerd-proxy-init-xtables-lock",
@@ -2986,6 +2972,62 @@ subsets:
 `,
 			},
 			expected: nil,
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  selector:
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  labels:
+    app: test
+spec:
+  initContainers:
+  - name: test
+    image: test
+    restartPolicy: Always
+    ports:
+    - name: test
+      containerPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nod
+    targetRef:
+      kind: Pod
+      name: pod
+      namespace: test-ns
+  ports:
+  - name: test
+    port: 9200
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* service svc expects target port 9200 to be opaque; add it to pod pod config.linkerd.io/opaque-ports annotation"),
 		},
 	}
 

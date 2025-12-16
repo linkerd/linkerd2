@@ -263,6 +263,28 @@ func TestGetPodPatch(t *testing.T) {
 			t.Errorf("Expected empty patch")
 		}
 	})
+
+	t.Run("by injecting pod already having a native sidecar container", func(t *testing.T) {
+		pod := fileContents(factory, t, "pod-nativesidecar-inject-enabled.yaml")
+		fakeReq := getFakePodReq(pod)
+		fullConf := confNsDisabled().
+			WithKind(fakeReq.Kind.Kind).
+			WithOwnerRetriever(ownerRetrieverFake)
+		_, err = fullConf.ParseMetaAndYAML(fakeReq.Object.Raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		patchJSON, err := fullConf.GetPodPatch(true, inject.GetOverriddenValues)
+		if err != nil {
+			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+		}
+		actualPatch := unmarshalPatch(t, patchJSON)
+		_, expectedPatch := loadPatch(factory, t, "pod.nativesidecar.patch.json")
+		if diff := deep.Equal(expectedPatch, actualPatch); diff != nil {
+			t.Fatalf("The actual patch didn't match what was expected.\n%+v", diff)
+		}
+	})
 }
 
 func TestGetAnnotationPatch(t *testing.T) {

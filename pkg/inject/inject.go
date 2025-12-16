@@ -46,8 +46,6 @@ var (
 		k8s.ProxyEnableExternalProfilesAnnotation,
 		k8s.ProxyImagePullPolicyAnnotation,
 		k8s.ProxyInboundPortAnnotation,
-		k8s.ProxyInitImageAnnotation,
-		k8s.ProxyInitImageVersionAnnotation,
 		k8s.ProxyOutboundPortAnnotation,
 		k8s.ProxyPodInboundPortsAnnotation,
 		k8s.ProxyCPULimitAnnotation,
@@ -199,7 +197,7 @@ func GetOverriddenValues(rc *ResourceConfig) (*l5dcharts.Values, error) {
 
 	namedPorts := make(map[string]int32)
 	if rc.HasPodTemplate() {
-		namedPorts = util.GetNamedPorts(rc.pod.spec.Containers)
+		namedPorts = util.GetNamedPorts(append(rc.pod.spec.InitContainers, rc.pod.spec.Containers...))
 	}
 
 	ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), rc.GetLabelOverrides(), namedPorts)
@@ -223,10 +221,6 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 
 	if override, ok := annotations[k8s.ProxyImagePullPolicyAnnotation]; ok {
 		values.Proxy.Image.PullPolicy = override
-	}
-
-	if override, ok := annotations[k8s.ProxyInitImageVersionAnnotation]; ok {
-		values.ProxyInit.Image.Version = override
 	}
 
 	if override, ok := annotations[k8s.ProxyControlPortAnnotation]; ok {
@@ -488,14 +482,6 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		if err == nil {
 			values.Proxy.EnableExternalProfiles = value
 		}
-	}
-
-	if override, ok := annotations[k8s.ProxyInitImageAnnotation]; ok {
-		values.ProxyInit.Image.Name = override
-	}
-
-	if override, ok := annotations[k8s.ProxyImagePullPolicyAnnotation]; ok {
-		values.ProxyInit.Image.PullPolicy = override
 	}
 
 	if override, ok := annotations[k8s.ProxyIgnoreInboundPortsAnnotation]; ok {
@@ -868,7 +854,7 @@ func (conf *ResourceConfig) CreateOpaquePortsPatch() ([]byte, error) {
 // are also in the given default opaque ports list.
 func (conf *ResourceConfig) FilterPodOpaquePorts(defaultPorts []string) []string {
 	var filteredPorts []string
-	for _, c := range conf.pod.spec.Containers {
+	for _, c := range append(conf.pod.spec.InitContainers, conf.pod.spec.Containers...) {
 		for _, p := range c.Ports {
 			port := strconv.Itoa(int(p.ContainerPort))
 			if util.ContainsString(port, defaultPorts) {
@@ -1380,7 +1366,7 @@ func ToWholeCPUCores(q k8sResource.Quantity) (int64, error) {
 func getPodInboundPorts(podSpec *corev1.PodSpec) string {
 	ports := make(map[int32]struct{})
 	if podSpec != nil {
-		for _, container := range podSpec.Containers {
+		for _, container := range append(podSpec.InitContainers, podSpec.Containers...) {
 			for _, port := range container.Ports {
 				ports[port.ContainerPort] = struct{}{}
 			}

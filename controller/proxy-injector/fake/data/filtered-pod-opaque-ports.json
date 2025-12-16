@@ -7,6 +7,6 @@
     {
         "op": "add",
         "path": "/metadata/annotations/config.linkerd.io~1opaque-ports",
-        "value": "3306"
+        "value": "11211,3306"
     }
 ]

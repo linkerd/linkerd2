@@ -2441,7 +2441,8 @@ Projections, used to set up the pods' identities. These tokens are bounded
 specifically for this use case and are rotated daily, replacing the usage of the
 default tokens injected by Kubernetes which are overly permissive.
 
-Note that this edge release updates the minimum supported kubernetes version to 1.20.
+Note that this edge release updates the minimum supported kubernetes version to
+1.20.
 
 * Updated the minimum supported kubernetes version to 1.20
 * Use Service Account Token Volume Projections to set up the pods' identities;
@@ -2787,9 +2788,9 @@ to work.
 ## edge-21.8.3
 
 This release adds support for dynamic inbound policies. The proxy now discovers
-policies from the policy-controller API for all application ports documented in a
-pod spec. Rejected connections are logged. Policies are not yet reflected in the
-proxy's metrics.
+policies from the policy-controller API for all application ports documented in
+a pod spec. Rejected connections are logged. Policies are not yet reflected in
+the proxy's metrics.
 
 These policies also allow the proxy to skip protocol detection when a server is
 explicitly annotated as HTTP/2 or when the server is documented to be opaque or

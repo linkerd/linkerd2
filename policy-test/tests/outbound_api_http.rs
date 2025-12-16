@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use futures::StreamExt;
 use linkerd2_proxy_api::{self as api, outbound};
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy};
@@ -699,6 +701,155 @@ async fn http_route_retries_and_timeouts() {
     test::<k8s::Service, policy::HttpRoute>().await;
     test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn http_route_linkerd_timeouts() {
+    async fn test<P: TestParent>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
+        with_temp_ns(|client, ns| async move {
+            // Create a parent
+            let parent = create(&client, P::make_parent(&ns)).await;
+            let port = 4191;
+            // Create a backend
+            let backend_port = 8888;
+            let backend = match P::make_backend(&ns) {
+                Some(b) => create(&client, b).await,
+                None => parent.clone(),
+            };
+
+            let route = policy::HttpRoute {
+                metadata: k8s::ObjectMeta {
+                    namespace: Some(ns.to_string()),
+                    name: Some("foo-route".to_string()),
+                    ..Default::default()
+                },
+                spec: policy::HttpRouteSpec {
+                    parent_refs: Some(vec![parent.obj_ref()]),
+                    hostnames: None,
+                    rules: Some(vec![policy::httproute::HttpRouteRule {
+                        matches: Some(vec![]),
+                        filters: None,
+                        timeouts: Some(policy::httproute::HttpRouteTimeouts {
+                            request: Some(Duration::from_secs(5).into()),
+                            backend_request: None,
+                        }),
+                        backend_refs: Some(vec![backend.backend_ref(backend_port)]),
+                    }]),
+                },
+                status: None,
+            };
+
+            let route = create(&client, route).await;
+            await_route_accepted(&client, &route).await;
+
+            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config);
+            assert_resource_meta(&config.metadata, parent.obj_ref(), port);
+
+            policy::HttpRoute::routes(&config, |routes| {
+                let outbound_route = routes.first().expect("route must exist");
+                assert!(route.meta_eq(policy::HttpRoute::extract_meta(outbound_route)));
+                let rule = assert_singleton(&outbound_route.rules);
+                let timeout = rule
+                    .timeouts
+                    .as_ref()
+                    .expect("timeouts expected")
+                    .request
+                    .as_ref()
+                    .expect("request timeout expected");
+                assert_eq!(timeout.seconds, 5);
+            });
+        })
+        .await;
+    }
+
+    test::<k8s::Service>().await;
+    test::<policy::EgressNetwork>().await;
+}
+
+// The timeout field on HTTPRoute is only available in Gateway API v1.2+.
+#[cfg(feature = "gateway-api-experimental")]
+#[tokio::test(flavor = "current_thread")]
+async fn http_route_gateway_timeouts() {
+    async fn test<P: TestParent>() {
+        tracing::debug!(
+            parent = %P::kind(&P::DynamicType::default()),
+        );
+        with_temp_ns(|client, ns| async move {
+            // Create a parent
+            let parent = create(&client, P::make_parent(&ns)).await;
+            let port = 4191;
+            // Create a backend
+            let backend_port = 8888;
+            let backend = match P::make_backend(&ns) {
+                Some(b) => create(&client, b).await,
+                None => parent.clone(),
+            };
+
+            let route = gateway::HTTPRoute {
+                metadata: k8s::ObjectMeta {
+                    namespace: Some(ns.to_string()),
+                    name: Some("foo-route".to_string()),
+                    ..Default::default()
+                },
+                spec: gateway::HTTPRouteSpec {
+                    parent_refs: Some(vec![parent.obj_ref()]),
+                    hostnames: None,
+                    rules: Some(vec![gateway::HTTPRouteRules {
+                        name: None,
+                        matches: Some(vec![]),
+                        filters: None,
+                        timeouts: Some(gateway::HTTPRouteRulesTimeouts {
+                            request: Some("5s".to_string()),
+                            backend_request: None,
+                        }),
+                        retry: None,
+                        backend_refs: Some(vec![backend.backend_ref(backend_port)]),
+                        session_persistence: None,
+                    }]),
+                },
+                status: None,
+            };
+
+            let route = create(&client, route).await;
+            await_route_accepted(&client, &route).await;
+
+            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config);
+            assert_resource_meta(&config.metadata, parent.obj_ref(), port);
+
+            gateway::HTTPRoute::routes(&config, |routes| {
+                let outbound_route = routes.first().expect("route must exist");
+                assert!(route.meta_eq(gateway::HTTPRoute::extract_meta(outbound_route)));
+                let rule = assert_singleton(&outbound_route.rules);
+                let timeout = rule
+                    .timeouts
+                    .as_ref()
+                    .expect("timeouts expected")
+                    .request
+                    .as_ref()
+                    .expect("request timeout expected");
+                assert_eq!(timeout.seconds, 5);
+            });
+        })
+        .await;
+    }
+
+    test::<k8s::Service>().await;
+    test::<policy::EgressNetwork>().await;
 }
 
 #[tokio::test(flavor = "current_thread")]

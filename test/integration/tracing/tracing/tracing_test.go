@@ -134,7 +134,7 @@ func installTracing(t *testing.T, namespace string) {
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to add OpenTelemetry repository", "failed to add OpenTelemetry repository\n%s\n------\n%s\n", stdout, stderr)
 	}
-	stdout, stderr, err = TestHelper.HelmRun("install", "jaeger", "jaegertracing/jaeger", "--namespace=tracing", "--values=testdata/jaeger-aio-values.yaml")
+	stdout, stderr, err = TestHelper.HelmRun("install", "jaeger", "jaegertracing/jaeger", "--namespace=tracing", "--values=testdata/jaeger-aio-values.yaml", "--version=3.4.1")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to install jaeger", "failed to install jaeger\n%s\n------\n%s\n", stdout, stderr)
 	}

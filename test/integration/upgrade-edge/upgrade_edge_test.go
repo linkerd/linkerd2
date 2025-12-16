@@ -380,10 +380,6 @@ func TestOverridesSecret(t *testing.T) {
 					"name": reg + "/proxy",
 				},
 			}
-			knownKeys["proxyInit"].(tree.Tree)["image"] = tree.Tree{
-				"name": reg + "/proxy-init",
-			}
-
 		}
 
 		// Check if the keys in overridesTree match with knownKeys

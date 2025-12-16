@@ -26,10 +26,10 @@ jobs:
   meta:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@d03a93c0dbfac6d6dd6a0d8a5e7daff992b07449
+      - uses: tj-actions/changed-files@abdd2f68ea150cee8f236d4a9fb4e0f2491abf1b
         id: core
         with:
           files: |
@@ -80,6 +80,11 @@ jobs:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    services:
+      registry:
+        image: registry:3
+        ports:
+          - 5000:5000
     strategy:
       matrix:
         component:
@@ -87,7 +92,7 @@ jobs:
           - proxy
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
       - uses: ./.github/actions/docker-build
         id: build
         env:
@@ -101,7 +106,7 @@ jobs:
         run: |
           mkdir -p /home/runner/archives
           docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: image-archives-${{ matrix.component }}
           path: /home/runner/archives
@@ -119,11 +124,11 @@ jobs:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c
         with:
           go-version-file: go.mod
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           pattern: image-archives-*
           path: image-archives
@@ -174,8 +179,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           pattern: image-archives-*
           path: image-archives
@@ -199,7 +204,7 @@ jobs:
           tar -xzf nextest.tar.gz
           mv cargo-nextest ~/.cargo/bin/
           chmod +x ~/.cargo/bin/cargo-nextest
-      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1
+      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5
       - run: just policy-test-build
       - run: just k3d-k8s='${{ matrix.k8s }}' k3d-create
       - run: docker load <image-archives/controller.tar
@@ -236,7 +241,7 @@ jobs:
           - web
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -248,7 +253,7 @@ jobs:
         run: |
           mkdir -p /home/runner/archives
           docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: image-archives-${{ matrix.component }}
           path: /home/runner/archives
@@ -272,13 +277,11 @@ jobs:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c
         with:
           go-version-file: go.mod
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        if: matrix.integration_test == 'helm-upgrade'
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           pattern: image-archives-*
           path: image-archives
@@ -302,11 +305,11 @@ jobs:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c
         with:
           go-version-file: go.mod
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           pattern: image-archives-*
           path: image-archives
@@ -341,11 +344,11 @@ jobs:
       - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c
         with:
           go-version-file: go.mod
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           pattern: image-archives-*
           path: image-archives

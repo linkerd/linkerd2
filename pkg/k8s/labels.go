@@ -137,13 +137,6 @@ const (
 	// proxyImagePullPolicy and proxyInitImagePullPolicy configs.
 	ProxyImagePullPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/image-pull-policy"
 
-	// ProxyInitImageAnnotation can be used to override the proxyInitImage
-	// config.
-	ProxyInitImageAnnotation = ProxyConfigAnnotationsPrefix + "/init-image"
-
-	// ProxyInitImageVersionAnnotation can be used to override the proxy-init image version
-	ProxyInitImageVersionAnnotation = ProxyConfigAnnotationsPrefix + "/init-image-version"
-
 	// DebugImageAnnotation can be used to override the debugImage config.
 	DebugImageAnnotation = ProxyConfigAnnotationsPrefix + "/debug-image"
 
