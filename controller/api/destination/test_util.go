@@ -631,7 +631,7 @@ spec:
   podSelector:
     matchLabels:
       app: native
-  port: 80
+  port: http
   proxyProtocol: opaque`,
 	}
 
