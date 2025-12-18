@@ -1363,7 +1363,7 @@ func (pp *portPublisher) isAddressSelected(address Address, server *v1beta3.Serv
 				return true
 			}
 		case intstr.String:
-			for _, c := range address.Pod.Spec.Containers {
+			for _, c := range append(address.Pod.Spec.InitContainers, address.Pod.Spec.Containers...) {
 				for _, p := range c.Ports {
 					if p.ContainerPort == int32(address.Port) && p.Name == server.Spec.Port.StrVal {
 						return true
@@ -1550,7 +1550,7 @@ func SetToServerProtocol(k8sAPI *k8s.API, address *Address, log *logging.Entry) 
 					portMatch = true
 				}
 			case intstr.String:
-				for _, c := range address.Pod.Spec.Containers {
+				for _, c := range append(address.Pod.Spec.InitContainers, address.Pod.Spec.Containers...) {
 					for _, p := range c.Ports {
 						if (p.ContainerPort == int32(address.Port) || p.HostPort == int32(address.Port)) &&
 							p.Name == server.Spec.Port.StrVal {
