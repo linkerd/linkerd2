@@ -32,6 +32,9 @@ jobs:
     container: ghcr.io/linkerd/dev:v48-go
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+        with:
+          go-version-file: go.mod
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just go-lint --verbose --timeout=10m
 
@@ -43,6 +46,9 @@ jobs:
     container: ghcr.io/linkerd/dev:v48-go
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+        with:
+          go-version-file: go.mod
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just go-fmt
 
@@ -54,6 +60,9 @@ jobs:
     container: ghcr.io/linkerd/dev:v48-go
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+        with:
+          go-version-file: go.mod
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just go-fetch
       - run: just go-test
