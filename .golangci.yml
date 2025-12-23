@@ -159,10 +159,17 @@ issues:
   - path: pkg/k8s/fake.go
     text: Error return value is not checked
 
-  # Ignore Endpoints and EndpointSubset deprecation warnings for now.
+  # Ignore NewSimpleClientset, Endpoints, EndpointSubset, and NewGone
+  # deprecation warnings for now.
   - linters:
     - staticcheck
     text: "corev1.Endpoints is deprecated: This API is deprecated in v1.33+"
   - linters:
     - staticcheck
     text: "corev1.EndpointSubset is deprecated: This API is deprecated in v1.33+"
+  - linters:
+    - staticcheck
+    text: "fake.NewSimpleClientset is deprecated"
+  - linters:
+    - staticcheck
+    text: "k8sError.NewGone is deprecated"

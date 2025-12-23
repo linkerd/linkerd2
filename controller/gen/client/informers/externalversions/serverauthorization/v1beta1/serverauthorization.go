@@ -57,20 +57,32 @@ func NewServerAuthorizationInformer(client versioned.Interface, namespace string
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredServerAuthorizationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ServerauthorizationV1beta1().ServerAuthorizations(namespace).List(context.TODO(), options)
+				return client.ServerauthorizationV1beta1().ServerAuthorizations(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ServerauthorizationV1beta1().ServerAuthorizations(namespace).Watch(context.TODO(), options)
+				return client.ServerauthorizationV1beta1().ServerAuthorizations(namespace).Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ServerauthorizationV1beta1().ServerAuthorizations(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ServerauthorizationV1beta1().ServerAuthorizations(namespace).Watch(ctx, options)
+			},
+		}, client),
 		&apisserverauthorizationv1beta1.ServerAuthorization{},
 		resyncPeriod,
 		indexers,
