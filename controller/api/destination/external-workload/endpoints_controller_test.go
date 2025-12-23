@@ -452,14 +452,14 @@ func TestSyncService(t *testing.T) {
 					Port:     ptr.To(int32(161)),
 				},
 				{
-					Name:     ptr.To("sctp-example"),
-					Protocol: protoPtr(v1.ProtocolSCTP),
-					Port:     ptr.To(int32(3456)),
-				},
-				{
 					Name:     ptr.To("tcp-example"),
 					Protocol: protoPtr(v1.ProtocolTCP),
 					Port:     ptr.To(int32(80)),
+				},
+				{
+					Name:     ptr.To("sctp-example"),
+					Protocol: protoPtr(v1.ProtocolSCTP),
+					Port:     ptr.To(int32(3456)),
 				},
 			},
 			expectedEndpoints: []discoveryv1.Endpoint{
@@ -570,14 +570,14 @@ func TestSyncService(t *testing.T) {
 					Port:     ptr.To(int32(161)),
 				},
 				{
-					Name:     ptr.To("sctp-example"),
-					Protocol: protoPtr(v1.ProtocolSCTP),
-					Port:     ptr.To(int32(3456)),
-				},
-				{
 					Name:     ptr.To("tcp-example"),
 					Protocol: protoPtr(v1.ProtocolTCP),
 					Port:     ptr.To(int32(80)),
+				},
+				{
+					Name:     ptr.To("sctp-example"),
+					Protocol: protoPtr(v1.ProtocolSCTP),
+					Port:     ptr.To(int32(3456)),
 				},
 			},
 			expectedEndpoints: []discoveryv1.Endpoint{
@@ -679,14 +679,14 @@ func TestSyncService(t *testing.T) {
 					Port:     ptr.To(int32(161)),
 				},
 				{
-					Name:     ptr.To("sctp-example"),
-					Protocol: protoPtr(v1.ProtocolSCTP),
-					Port:     ptr.To(int32(3456)),
-				},
-				{
 					Name:     ptr.To("tcp-example"),
 					Protocol: protoPtr(v1.ProtocolTCP),
 					Port:     ptr.To(int32(80)),
+				},
+				{
+					Name:     ptr.To("sctp-example"),
+					Protocol: protoPtr(v1.ProtocolSCTP),
+					Port:     ptr.To(int32(3456)),
 				},
 			},
 			expectedEndpoints: []discoveryv1.Endpoint{
@@ -793,14 +793,14 @@ func TestSyncService(t *testing.T) {
 					Port:     ptr.To(int32(161)),
 				},
 				{
-					Name:     ptr.To("sctp-example"),
-					Protocol: protoPtr(v1.ProtocolSCTP),
-					Port:     ptr.To(int32(3456)),
-				},
-				{
 					Name:     ptr.To("tcp-example"),
 					Protocol: protoPtr(v1.ProtocolTCP),
 					Port:     ptr.To(int32(80)),
+				},
+				{
+					Name:     ptr.To("sctp-example"),
+					Protocol: protoPtr(v1.ProtocolSCTP),
+					Port:     ptr.To(int32(3456)),
 				},
 			},
 			expectedEndpoints: []discoveryv1.Endpoint{
@@ -862,6 +862,26 @@ func TestSyncService(t *testing.T) {
 
 			if !reflect.DeepEqual(testcase.expectedEndpointPorts, slice.Ports) {
 				t.Error("actual ports do not match expected ones")
+
+				for i, ep := range slice.Ports {
+					t.Logf(
+						"actual port[%d]: name=%s proto=%v port=%v",
+						i,
+						ptr.Deref(ep.Name, "<nil>"),
+						ptr.Deref(ep.Protocol, "<nil>"),
+						ptr.Deref(ep.Port, 0),
+					)
+				}
+
+				for i, ep := range testcase.expectedEndpointPorts {
+					t.Logf(
+						"expected port[%d]: name=%s proto=%v port=%v",
+						i,
+						ptr.Deref(ep.Name, "<nil>"),
+						ptr.Deref(ep.Protocol, "<nil>"),
+						ptr.Deref(ep.Port, 0),
+					)
+				}
 			}
 
 			// sort actual endpoints in terms of targetRef name, in ascending
