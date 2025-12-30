@@ -1,3 +1,4 @@
+{{- if not (.Values.gateway.enabled | default false) -}}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -165,3 +166,4 @@ spec:
     matchLabels:
       component: local-service-mirror
 {{- end}}
+{{end -}}
