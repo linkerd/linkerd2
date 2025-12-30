@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -61,10 +62,12 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) servePing(w http.ResponseWriter) {
+	protohttp.SetViaHeader(w)
 	w.Write([]byte("pong\n"))
 }
 
 func (h *handler) serveReady(w http.ResponseWriter) {
+	protohttp.SetViaHeader(w)
 	if *h.ready {
 		w.Write([]byte("ok\n"))
 	} else {

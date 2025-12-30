@@ -433,3 +433,46 @@ func assertResponseHasProtobufContentType(t *testing.T, responseWriter *stubResp
 		t.Fatalf("Expected content-type to be [%s], but got [%s]", expectedContentType, actualContentType)
 	}
 }
+
+func TestSetViaHeader(t *testing.T) {
+	t.Run("Sets Via header correctly", func(t *testing.T) {
+		responseWriter := newStubResponseWriter()
+		SetViaHeader(responseWriter)
+
+		actualVia := responseWriter.headers.Get(ViaHeaderName)
+		if actualVia != ViaHeaderValue {
+			t.Fatalf("Expected Via header to be [%s], but got [%s]", ViaHeaderValue, actualVia)
+		}
+	})
+}
+
+func TestWriteErrorToHTTPResponseSetsViaHeader(t *testing.T) {
+	t.Run("WriteErrorToHTTPResponse sets Via header", func(t *testing.T) {
+		responseWriter := newStubResponseWriter()
+		genericError := errors.New("test error")
+
+		WriteErrorToHTTPResponse(responseWriter, genericError)
+
+		actualVia := responseWriter.headers.Get(ViaHeaderName)
+		if actualVia != ViaHeaderValue {
+			t.Fatalf("Expected Via header to be [%s], but got [%s]", ViaHeaderValue, actualVia)
+		}
+	})
+}
+
+func TestWriteProtoToHTTPResponseSetsViaHeader(t *testing.T) {
+	t.Run("WriteProtoToHTTPResponse sets Via header", func(t *testing.T) {
+		responseWriter := newStubResponseWriter()
+		protoMessage := &metricsPb.Pod{Name: "test"}
+
+		err := WriteProtoToHTTPResponse(responseWriter, protoMessage)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		actualVia := responseWriter.headers.Get(ViaHeaderName)
+		if actualVia != ViaHeaderValue {
+			t.Fatalf("Expected Via header to be [%s], but got [%s]", ViaHeaderValue, actualVia)
+		}
+	})
+}

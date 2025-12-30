@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strings"
+
+	"github.com/linkerd/linkerd2/pkg/protohttp"
 )
 
 // reverseProxy is an HTTP reverse proxy that forwards all web requests
@@ -26,7 +28,17 @@ func newReverseProxy(addr string, prefix string) *reverseProxy {
 		}
 	}
 
+	// ModifyResponse adds the Via header to responses to identify that
+	// this response was proxied through Linkerd
+	modifyResponse := func(resp *http.Response) error {
+		resp.Header.Set(protohttp.ViaHeaderName, protohttp.ViaHeaderValue)
+		return nil
+	}
+
 	return &reverseProxy{
-		ReverseProxy: &httputil.ReverseProxy{Director: director},
+		ReverseProxy: &httputil.ReverseProxy{
+			Director:       director,
+			ModifyResponse: modifyResponse,
+		},
 	}
 }

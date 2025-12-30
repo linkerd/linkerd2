@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
 	vizPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
@@ -64,6 +65,7 @@ type (
 
 // this is called by the HTTP server to actually respond to a request
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	protohttp.SetViaHeader(w)
 	if !s.reHost.MatchString(req.Host) {
 		err := fmt.Sprintf(`It appears that you are trying to reach this service with a host of '%s'.
 This does not match /%s/ and has been denied for security reasons.

@@ -23,6 +23,11 @@ const (
 	contentTypeHeader          = "Content-Type"
 	protobufContentType        = "application/octet-stream"
 	numBytesForMessageLength   = 4
+
+	// ViaHeaderName is the HTTP Via header name per RFC 7230
+	ViaHeaderName = "Via"
+	// ViaHeaderValue is the value added to responses to identify the Linkerd proxy
+	ViaHeaderValue = "1.1 linkerd"
 )
 
 // HTTPError is an error which indicates the HTTP response contained an error
@@ -41,6 +46,13 @@ type FlushableResponseWriter interface {
 // Error satisfies the error interface for HTTPError.
 func (e HTTPError) Error() string {
 	return fmt.Sprintf("HTTP error, status Code [%d] (%v)", e.Code, e.WrappedError)
+}
+
+// SetViaHeader adds the Via header to identify this response as coming from
+// the Linkerd proxy. Per RFC 7230, the Via header indicates intermediate
+// protocols and recipients between the user agent and the server.
+func SetViaHeader(w http.ResponseWriter) {
+	w.Header().Set(ViaHeaderName, ViaHeaderValue)
 }
 
 // HTTPRequestToProto converts an HTTP Request to a protobuf request.
@@ -75,6 +87,7 @@ func WriteErrorToHTTPResponse(w http.ResponseWriter, errorObtained error) {
 		errorToReturn = he.WrappedError
 	}
 
+	SetViaHeader(w)
 	w.Header().Set(errorHeader, http.StatusText(statusCode))
 
 	errorMessageToReturn := errorToReturn.Error()
@@ -94,6 +107,7 @@ func WriteErrorToHTTPResponse(w http.ResponseWriter, errorObtained error) {
 // WriteProtoToHTTPResponse writes a protobuf-encoded message to an HTTP
 // Response.
 func WriteProtoToHTTPResponse(w http.ResponseWriter, msg proto.Message) error {
+	SetViaHeader(w)
 	w.Header().Set(contentTypeHeader, protobufContentType)
 	marshalledProtobufMessage, err := proto.Marshal(msg)
 	if err != nil {
@@ -113,6 +127,7 @@ func NewStreamingWriter(w http.ResponseWriter) (FlushableResponseWriter, error) 
 		return nil, fmt.Errorf("streaming not supported by this writer")
 	}
 
+	SetViaHeader(flushableWriter)
 	flushableWriter.Header().Set("Connection", "keep-alive")
 	flushableWriter.Header().Set("Transfer-Encoding", "chunked")
 	return flushableWriter, nil
