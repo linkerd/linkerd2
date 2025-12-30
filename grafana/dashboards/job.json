@@ -75,12 +75,87 @@
   "links": [],
   "panels": [
     {
-      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">job/$job</span>\n</div>",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "Prometheus is not receiving data. Please check your Prometheus configuration and ensure it is running."
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "noValue": "Prometheus is not receiving data. Please check your Prometheus configuration and ensure it is running.",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 2,
         "w": 24,
         "x": 0,
         "y": 0
+      },
+      "id": 172,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "prometheus_ready",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">job/$job</span>\n</div>",
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 2
       },
       "id": 20,
       "links": [],
@@ -116,7 +191,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 2
+        "y": 4
       },
       "id": 5,
       "interval": null,
@@ -204,7 +279,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 2
+        "y": 4
       },
       "id": 4,
       "interval": null,
@@ -292,7 +367,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 2
+        "y": 4
       },
       "id": 11,
       "interval": null,
@@ -378,7 +453,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 2
+        "y": 4
       },
       "id": 15,
       "interval": null,
@@ -445,7 +520,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 6
+        "y": 8
       },
       "id": 17,
       "links": [],
@@ -469,7 +544,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8
+        "y": 10
       },
       "id": 67,
       "legend": {
@@ -559,7 +634,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8
+        "y": 10
       },
       "id": 2,
       "legend": {
@@ -589,7 +664,7 @@
           "expr": "sum(irate(request_total{namespace=\"$namespace\", k8s_job=\"$job\", direction=\"inbound\", tls=\"true\"}[$__rate_interval])) by (k8s_job)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒job/{{k8s_job}}",
+          "legendFormat": "\ud83d\udd12job/{{k8s_job}}",
           "refId": "A"
         },
         {
@@ -656,7 +731,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8
+        "y": 10
       },
       "id": 68,
       "legend": {
@@ -753,7 +828,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 15
+        "y": 17
       },
       "id": 148,
       "panels": [
@@ -771,7 +846,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 16
+            "y": 18
           },
           "id": 167,
           "legend": {
@@ -861,7 +936,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 16
+            "y": 18
           },
           "id": 168,
           "legend": {
@@ -957,7 +1032,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 16
+            "y": 18
           },
           "heatmap": {},
           "hideZeroBuckets": false,
@@ -1011,7 +1086,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 18
       },
       "id": 152,
       "panels": [],
@@ -1024,7 +1099,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 19
       },
       "id": 76,
       "links": [],
@@ -1040,7 +1115,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 21
       },
       "id": 59,
       "panels": [
@@ -1050,7 +1125,7 @@
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 22.2
+            "y": 24.2
           },
           "id": 39,
           "links": [],
@@ -1074,7 +1149,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 24.2
+            "y": 26.2
           },
           "id": 36,
           "legend": {
@@ -1165,7 +1240,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 24.2
+            "y": 26.2
           },
           "id": 22,
           "legend": {
@@ -1195,7 +1270,7 @@
               "expr": "sum(irate(request_total{k8s_job!=\"\", k8s_job=\"$inbound\", dst_namespace=\"$namespace\", dst_k8s_job=\"$job\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (k8s_job, pod)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "🔒po/{{pod}}",
+              "legendFormat": "\ud83d\udd12po/{{pod}}",
               "refId": "A"
             },
             {
@@ -1262,7 +1337,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 24.2
+            "y": 26.2
           },
           "id": 29,
           "legend": {
@@ -1362,7 +1437,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 22
       },
       "id": 34,
       "panels": [],
@@ -1376,7 +1451,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 21
+        "y": 23
       },
       "id": 32,
       "links": [],
@@ -1400,7 +1475,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 23
+        "y": 25
       },
       "id": 77,
       "legend": {
@@ -1490,7 +1565,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 23
+        "y": 25
       },
       "id": 78,
       "legend": {
@@ -1520,7 +1595,7 @@
           "expr": "sum(irate(request_total{namespace=\"$namespace\", k8s_job=\"$job\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (dst_k8s_job)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒job/{{dst_k8s_job}}",
+          "legendFormat": "\ud83d\udd12job/{{dst_k8s_job}}",
           "refId": "A"
         },
         {
@@ -1586,7 +1661,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 23
+        "y": 25
       },
       "id": 79,
       "legend": {
@@ -1667,7 +1742,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 32
       },
       "id": 154,
       "panels": [
@@ -1685,7 +1760,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 29
+            "y": 31
           },
           "id": 157,
           "legend": {
@@ -1775,7 +1850,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 29
+            "y": 31
           },
           "id": 166,
           "legend": {
@@ -1871,7 +1946,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 29
+            "y": 31
           },
           "heatmap": {},
           "hideZeroBuckets": false,
@@ -1925,7 +2000,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 33
       },
       "id": 156,
       "panels": [],
@@ -1938,7 +2013,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 34
       },
       "id": 80,
       "links": [],
@@ -1954,7 +2029,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 34
+        "y": 36
       },
       "id": 27,
       "panels": [
@@ -1964,7 +2039,7 @@
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 36
+            "y": 38
           },
           "id": 40,
           "links": [],
@@ -1988,7 +2063,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 38
+            "y": 40
           },
           "id": 28,
           "legend": {
@@ -2078,7 +2153,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 38
+            "y": 40
           },
           "id": 35,
           "legend": {
@@ -2108,7 +2183,7 @@
               "expr": "sum(irate(request_total{namespace=\"$namespace\", k8s_job=\"$job\", dst_k8s_job=\"$outbound\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (dst_k8s_job)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "🔒job/{{dst_k8s_job}}",
+              "legendFormat": "\ud83d\udd12job/{{dst_k8s_job}}",
               "refId": "A"
             },
             {
@@ -2174,7 +2249,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 38
+            "y": 40
           },
           "id": 41,
           "legend": {
@@ -2274,7 +2349,7 @@
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 37
       },
       "height": "1px",
       "id": 171,
