@@ -138,6 +138,12 @@ fn try_gateway_filter(filter: gateway::HTTPRouteRulesFilters) -> Result<Filter> 
     if let Some(_extension_ref) = filter.extension_ref {
         bail!("ExtensionRef filter is not supported")
     }
+    if let Some(_cors) = filter.cors {
+        bail!("CORS filter is not supported")
+    }
+    if let Some(_external_auth) = filter.external_auth {
+        bail!("ExternalAuth filter is not supported")
+    }
     bail!("No filter specified");
 }
 
