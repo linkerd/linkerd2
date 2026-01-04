@@ -187,6 +187,25 @@ webhooks:
     - serverauthorizations
     - servers
     - egressnetworks
+  sideEffects: None
+- name: linkerd-policy-validator-gateway.linkerd.io
+  namespaceSelector:
+    {{- toYaml .Values.policyValidator.namespaceSelector | trim | nindent 4 }}
+  {{- if .Values.policyValidator.objectSelector }}
+  objectSelector:
+    {{- toYaml .Values.policyValidator.objectSelector | trim | nindent 4 }}
+  {{- end }}
+  clientConfig:
+    service:
+      name: linkerd-policy-validator
+      namespace: {{ .Release.Namespace }}
+      path: "/"
+    {{- if and (empty .Values.policyValidator.injectCaFrom) (empty .Values.policyValidator.injectCaFromSecret) }}
+    caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.policyValidator.caBundle)) (empty .Values.policyValidator.caBundle) }}
+    {{- end }}
+  failurePolicy: {{.Values.webhookFailurePolicy}}
+  admissionReviewVersions: ["v1", "v1beta1"]
+  rules:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["gateway.networking.k8s.io"]
     apiVersions: ["*"]

@@ -647,6 +647,26 @@ policyValidator:
       values:
       - disabled
 
+  # -- Object selector used by admission webhook for Gateway API resources.
+  # By default, all Gateway API resources in selected namespaces are validated.
+  # To exclude specific HTTPRoutes from validation (e.g., when using Gateway API v1.3+
+  # features not supported by Linkerd), add the label 'config.linkerd.io/policy-validation: disabled'
+  # to those resources.
+  # Example objectSelector to exclude labeled resources:
+  #   matchExpressions:
+  #   - key: config.linkerd.io/policy-validation
+  #     operator: NotIn
+  #     values:
+  #     - disabled
+  objectSelector: {}
+
+  # -- Label selector to filter Gateway API resources that are watched by the policy controller.
+  # Use this in conjunction with objectSelector to prevent both validation and watching of
+  # Gateway API resources with unsupported features (e.g., v1.3 CORS filter).
+  # Example: "config.linkerd.io/policy-validation!=disabled" to exclude resources
+  # labeled with config.linkerd.io/policy-validation=disabled
+  gatewayAPILabelSelector: ""
+
   # -- Certificate for the policy validator. If not provided and not using an external secret
   # then Helm will generate one.
   crtPEM: |

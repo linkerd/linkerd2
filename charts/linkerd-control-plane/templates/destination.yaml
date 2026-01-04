@@ -356,6 +356,9 @@ spec:
         {{- if .Values.policyController.probeNetworks }}
         - --probe-networks={{.Values.policyController.probeNetworks | join ","}}
         {{- end}}
+        {{- if .Values.policyValidator.gatewayAPILabelSelector }}
+        - --gateway-api-label-selector={{.Values.policyValidator.gatewayAPILabelSelector}}
+        {{- end}}
         {{- range .Values.policyController.additionalArgs }}
         - {{ . }}
         {{- end }}
