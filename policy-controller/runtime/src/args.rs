@@ -93,6 +93,13 @@ pub struct Args {
 
     #[clap(long, default_value = "linkerd-egress")]
     global_egress_network_namespace: String,
+
+    /// Label selector to filter Gateway API resources (HTTPRoute, GRPCRoute, etc.).
+    /// Use this to exclude Gateway API resources from being watched and validated.
+    /// Example: "config.linkerd.io/policy-validation!=disabled" to exclude resources
+    /// labeled with config.linkerd.io/policy-validation=disabled
+    #[clap(long)]
+    gateway_api_label_selector: Option<String>,
 }
 
 impl Args {
@@ -121,6 +128,7 @@ impl Args {
             patch_timeout_ms,
             allow_l5d_request_headers,
             global_egress_network_namespace,
+            gateway_api_label_selector,
         } = self;
 
         let server = if admission_controller_disabled {
@@ -265,6 +273,14 @@ impl Args {
             .push(status_index.clone())
             .shared();
 
+        // Configure Gateway API resource watches with optional label selector
+        let gateway_watcher_config = if let Some(ref selector) = gateway_api_label_selector {
+            info!(%selector, "Configuring Gateway API watches with label selector");
+            watcher::Config::default().labels(selector)
+        } else {
+            watcher::Config::default()
+        };
+
         if api_resource_exists::<k8s::policy::HttpRoute>(&runtime.client()).await {
             let http_routes =
                 runtime.watch_all::<k8s::policy::HttpRoute>(watcher::Config::default());
@@ -281,7 +297,7 @@ impl Args {
 
         if api_resource_exists::<gateway::HTTPRoute>(&runtime.client()).await {
             let gateway_http_routes =
-                runtime.watch_all::<gateway::HTTPRoute>(watcher::Config::default());
+                runtime.watch_all::<gateway::HTTPRoute>(gateway_watcher_config.clone());
             tokio::spawn(
                 kubert::index::namespaced(http_routes_indexes, gateway_http_routes)
                     .instrument(info_span!("httproutes.gateway.networking.k8s.io")),
@@ -294,7 +310,7 @@ impl Args {
 
         if api_resource_exists::<gateway::GRPCRoute>(&runtime.client()).await {
             let gateway_grpc_routes =
-                runtime.watch_all::<gateway::GRPCRoute>(watcher::Config::default());
+                runtime.watch_all::<gateway::GRPCRoute>(gateway_watcher_config.clone());
             let gateway_grpc_routes_indexes = IndexList::new(outbound_index.clone())
                 .push(inbound_index.clone())
                 .push(status_index.clone())
@@ -310,7 +326,7 @@ impl Args {
         }
 
         if api_resource_exists::<gateway::TLSRoute>(&runtime.client()).await {
-            let tls_routes = runtime.watch_all::<gateway::TLSRoute>(watcher::Config::default());
+            let tls_routes = runtime.watch_all::<gateway::TLSRoute>(gateway_watcher_config.clone());
             let tls_routes_indexes = IndexList::new(status_index.clone())
                 .push(outbound_index.clone())
                 .shared();
@@ -325,7 +341,7 @@ impl Args {
         }
 
         if api_resource_exists::<gateway::TCPRoute>(&runtime.client()).await {
-            let tcp_routes = runtime.watch_all::<gateway::TCPRoute>(watcher::Config::default());
+            let tcp_routes = runtime.watch_all::<gateway::TCPRoute>(gateway_watcher_config.clone());
             let tcp_routes_indexes = IndexList::new(status_index.clone())
                 .push(outbound_index.clone())
                 .shared();
