@@ -191,9 +191,13 @@ webhooks:
 - name: linkerd-policy-validator-gateway.linkerd.io
   namespaceSelector:
     {{- toYaml .Values.policyValidator.namespaceSelector | trim | nindent 4 }}
-  {{- if .Values.policyValidator.objectSelector }}
+  {{- if .Values.policyValidator.gatewayAPILabelSelector }}
   objectSelector:
-    {{- toYaml .Values.policyValidator.objectSelector | trim | nindent 4 }}
+    matchExpressions:
+    - key: {{ regexReplaceAll "!=.*" .Values.policyValidator.gatewayAPILabelSelector "" }}
+      operator: NotIn
+      values:
+      - {{ regexReplaceAll ".*!=" .Values.policyValidator.gatewayAPILabelSelector "" }}
   {{- end }}
   clientConfig:
     service:
