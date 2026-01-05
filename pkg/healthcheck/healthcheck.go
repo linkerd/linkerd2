@@ -1781,8 +1781,15 @@ func (hc *HealthChecker) fetchWebhookCaBundle(ctx context.Context, webhook strin
 		return nil, err
 	}
 
-	if len(vwc.Webhooks) != 1 {
-		return nil, fmt.Errorf("expected 1 webhooks, found %d", len(vwc.Webhooks))
+	// Policy validator has 2 webhooks (one for policy.linkerd.io, one for gateway.networking.k8s.io)
+	// Service profile validator has 1 webhook
+	expectedWebhooks := 1
+	if webhook == k8s.PolicyValidatorWebhookConfigName {
+		expectedWebhooks = 2
+	}
+
+	if len(vwc.Webhooks) != expectedWebhooks {
+		return nil, fmt.Errorf("expected %d webhooks, found %d", expectedWebhooks, len(vwc.Webhooks))
 	}
 
 	caBundle, err := tls.DecodePEMCertificates(string(vwc.Webhooks[0].ClientConfig.CABundle))
