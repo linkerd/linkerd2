@@ -97,7 +97,7 @@ pub struct Args {
     /// Skip Gateway API routes labeled with 'config.linkerd.io/policy-validation: disabled'
     /// from being watched and validated. Use this to skip Gateway API routes with
     /// unsupported features (e.g., v1.3+ CORS filter).
-    #[clap(long, default_value = "false")]
+    #[clap(long)]
     skip_labeled_gateway_api_routes: bool,
 }
 

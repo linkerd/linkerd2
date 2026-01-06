@@ -357,7 +357,7 @@ spec:
         - --probe-networks={{.Values.policyController.probeNetworks | join ","}}
         {{- end}}
         {{- if .Values.policyValidator.skipLabeledGatewayAPIRoutes }}
-        - --skip-labeled-gateway-api-routes=true
+        - --skip-labeled-gateway-api-routes
         {{- end}}
         {{- range .Values.policyController.additionalArgs }}
         - {{ . }}
