@@ -94,12 +94,11 @@ pub struct Args {
     #[clap(long, default_value = "linkerd-egress")]
     global_egress_network_namespace: String,
 
-    /// Label selector to filter Gateway API resources (HTTPRoute, GRPCRoute, etc.).
-    /// Use this to exclude Gateway API resources from being watched and validated.
-    /// Example: "config.linkerd.io/policy-validation!=disabled" to exclude resources
-    /// labeled with config.linkerd.io/policy-validation=disabled
-    #[clap(long)]
-    gateway_api_label_selector: Option<String>,
+    /// Skip Gateway API routes labeled with 'config.linkerd.io/policy-validation: disabled'
+    /// from being watched and validated. Use this to skip Gateway API routes with
+    /// unsupported features (e.g., v1.3+ CORS filter).
+    #[clap(long, default_value = "false")]
+    skip_labeled_gateway_api_routes: bool,
 }
 
 impl Args {
@@ -128,7 +127,7 @@ impl Args {
             patch_timeout_ms,
             allow_l5d_request_headers,
             global_egress_network_namespace,
-            gateway_api_label_selector,
+            skip_labeled_gateway_api_routes,
         } = self;
 
         let server = if admission_controller_disabled {
@@ -273,9 +272,10 @@ impl Args {
             .push(status_index.clone())
             .shared();
 
-        // Configure Gateway API resource watches with optional label selector
-        let gateway_watcher_config = if let Some(ref selector) = gateway_api_label_selector {
-            info!(%selector, "Configuring Gateway API watches with label selector");
+        // Configure Gateway API resource watches to skip labeled routes
+        let gateway_watcher_config = if skip_labeled_gateway_api_routes {
+            let selector = "config.linkerd.io/policy-validation!=disabled";
+            info!(%selector, "Skipping Gateway API routes with label config.linkerd.io/policy-validation=disabled");
             watcher::Config::default().labels(selector)
         } else {
             watcher::Config::default()

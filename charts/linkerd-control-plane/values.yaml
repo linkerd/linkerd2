@@ -647,18 +647,15 @@ policyValidator:
       values:
       - disabled
 
-  # -- Label selector to filter Gateway API resources (HTTPRoute, GRPCRoute, TLSRoute, TCPRoute).
-  # This selector is applied to BOTH webhook validation and policy controller watches.
-  # Use this to exclude Gateway API resources with unsupported features (e.g., v1.3 CORS filter).
-  #
-  # Example: "config.linkerd.io/policy-validation!=disabled"
-  # This will exclude resources labeled with config.linkerd.io/policy-validation=disabled
-  # from both webhook validation and policy controller watching.
+  # -- Skip Gateway API routes (HTTPRoute, GRPCRoute, TLSRoute, TCPRoute) labeled with
+  # 'config.linkerd.io/policy-validation: disabled' from both webhook validation and
+  # policy controller watches. Use this to exclude Gateway API routes with unsupported
+  # features (e.g., v1.3+ CORS filter).
   #
   # To use this feature:
-  # 1. Set this selector (e.g., "config.linkerd.io/policy-validation!=disabled")
-  # 2. Label HTTPRoutes you want to exclude: config.linkerd.io/policy-validation: disabled
-  gatewayAPILabelSelector: ""
+  # 1. Set this to true
+  # 2. Label routes you want to skip: config.linkerd.io/policy-validation: disabled
+  skipLabeledGatewayAPIRoutes: false
 
   # -- Certificate for the policy validator. If not provided and not using an external secret
   # then Helm will generate one.
