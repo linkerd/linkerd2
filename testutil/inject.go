@@ -49,8 +49,8 @@ func PatchDeploy(in string, name string, annotations map[string]string) (string,
 }
 
 // GetProxyContainer get the proxy containers
-func GetProxyContainer(containers []v1.Container) *v1.Container {
-	for _, c := range containers {
+func GetProxyContainer(spec v1.PodSpec) *v1.Container {
+	for _, c := range append(spec.InitContainers, spec.Containers...) {
 		container := c
 		if container.Name == k8s.ProxyContainerName {
 			return &container

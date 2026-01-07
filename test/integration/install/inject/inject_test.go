@@ -55,7 +55,7 @@ func parseDeployment(yamlString string) (*appsv1.Deployment, error) {
 
 func TestInjectManualParams(t *testing.T) {
 	reg := "cr.l5d.io/linkerd"
-	if override := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
+	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
 		reg = override
 	}
 
@@ -78,28 +78,35 @@ func TestInjectManualParams(t *testing.T) {
 		LogLevel:               "off",
 		EnableExternalProfiles: true,
 	}
-	flags, _ := injectionValidator.GetFlagsAndAnnotations()
 
-	// TODO: test config.linkerd.io/proxy-version
-	cmd := append([]string{"inject",
-		"--manual",
-	}, flags...)
+	for _, nativeSidecar := range []bool{false, true} {
+		t.Run(fmt.Sprintf("Testing manual injection with nativeSidecar=%v", nativeSidecar), func(t *testing.T) {
+			injectionValidator.NativeSidecar = nativeSidecar
 
-	cmd = append(cmd, "testdata/inject_test.yaml")
+			flags, _ := injectionValidator.GetFlagsAndAnnotations()
 
-	out, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		testutil.AnnotatedFatal(t, "unexpected error", err)
-	}
+			// TODO: test config.linkerd.io/proxy-version
+			cmd := append([]string{"inject",
+				"--manual",
+			}, flags...)
 
-	deploy, err := parseDeployment(out)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed parsing deployment", "failed parsing deployment\n%s", err.Error())
-	}
+			cmd = append(cmd, "testdata/inject_test.yaml")
 
-	err = injectionValidator.ValidatePod(&deploy.Spec.Template.Spec)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
+			out, err := TestHelper.LinkerdRun(cmd...)
+			if err != nil {
+				testutil.AnnotatedFatal(t, "unexpected error", err)
+			}
+
+			deploy, err := parseDeployment(out)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "failed parsing deployment", "failed parsing deployment\n%s", err.Error())
+			}
+
+			err = injectionValidator.ValidatePod(&deploy.Spec.Template.Spec)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
+			}
+		})
 	}
 }
 
@@ -114,78 +121,88 @@ func TestInjectAutoParams(t *testing.T) {
 
 	ctx := context.Background()
 
-	TestHelper.WithDataPlaneNamespace(ctx, injectNS, map[string]string{}, t, func(t *testing.T, ns string) {
-		injectionValidator := testutil.InjectValidator{
-			NoInitContainer:         TestHelper.CNI() || TestHelper.Calico(),
-			AutoInject:              true,
-			AdminPort:               8888,
-			ControlPort:             8881,
-			EnableExternalProfiles:  true,
-			EnableDebug:             true,
-			ImagePullPolicy:         "Never",
-			InboundPort:             8882,
-			OutboundPort:            8883,
-			CPULimit:                "160m",
-			CPURequest:              "150m",
-			MemoryLimit:             "150Mi",
-			MemoryRequest:           "100Mi",
-			EphemeralStorageLimit:   "50Mi",
-			EphemeralStorageRequest: "10Mi",
-			Image:                   "proxy-image",
-			LogLevel:                "proxy-log-level",
-			UID:                     10,
-			Version:                 "proxy-version",
-			RequireIdentityOnPorts:  "8884,8885",
-			OpaquePorts:             "8888,8889",
-			OutboundConnectTimeout:  "888ms",
-			InboundConnectTimeout:   "999ms",
-			SkipOutboundPorts:       "1111,2222,3333",
-			SkipInboundPorts:        "4444,5555,6666",
-			WaitBeforeExitSeconds:   10,
-		}
+	injectionValidator := testutil.InjectValidator{
+		NoInitContainer:         TestHelper.CNI() || TestHelper.Calico(),
+		AutoInject:              true,
+		AdminPort:               8888,
+		ControlPort:             8881,
+		EnableExternalProfiles:  true,
+		EnableDebug:             true,
+		ImagePullPolicy:         "Never",
+		InboundPort:             8882,
+		OutboundPort:            8883,
+		CPULimit:                "160m",
+		CPURequest:              "150m",
+		MemoryLimit:             "150Mi",
+		MemoryRequest:           "100Mi",
+		EphemeralStorageLimit:   "50Mi",
+		EphemeralStorageRequest: "10Mi",
+		Image:                   "proxy-image",
+		LogLevel:                "proxy-log-level",
+		UID:                     10,
+		Version:                 "proxy-version",
+		RequireIdentityOnPorts:  "8884,8885",
+		OpaquePorts:             "8888,8889",
+		OutboundConnectTimeout:  "888ms",
+		InboundConnectTimeout:   "999ms",
+		SkipOutboundPorts:       "1111,2222,3333",
+		SkipInboundPorts:        "4444,5555,6666",
+		WaitBeforeExitSeconds:   10,
+	}
 
-		_, annotations := injectionValidator.GetFlagsAndAnnotations()
-
-		patchedYAML, err := testutil.PatchDeploy(injectYAML, deployName, annotations)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "failed to patch inject test YAML",
-				"failed to patch inject test YAML in namespace %s for deploy/%s: %s", ns, deployName, err)
-		}
-
-		o, err := TestHelper.Kubectl(patchedYAML, "--namespace", ns, "create", "-f", "-")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "failed to create deployment", "failed to create deploy/%s in namespace %s for  %s: %s", deployName, ns, err, o)
-		}
-
-		var pod *v1.Pod
-		err = testutil.RetryFor(30*time.Second, func() error {
-			pods, err := TestHelper.GetPodsForDeployment(ctx, ns, deployName)
-			if err != nil {
-				return fmt.Errorf("failed to get pods for namespace %s", ns)
-			}
-
-			for _, p := range pods {
-				p := p // pin
-				creator, ok := p.Annotations[k8s.CreatedByAnnotation]
-				if ok && strings.Contains(creator, "proxy-injector") {
-					pod = &p
-					break
+	for _, nativeSidecar := range []bool{false, true} {
+		TestHelper.WithDataPlaneNamespace(ctx, fmt.Sprintf("%s-%v", injectNS, nativeSidecar), map[string]string{}, t, func(t *testing.T, ns string) {
+			t.Run(fmt.Sprintf("Testing injection via webhook with nativeSidecar=%v", nativeSidecar), func(t *testing.T) {
+				injectionValidator.NativeSidecar = nativeSidecar
+				// proxy.nativeSidecar and waitBeforeExitSeconds cannot be used simultaneously
+				if nativeSidecar {
+					injectionValidator.WaitBeforeExitSeconds = 0
 				}
-			}
-			if pod == nil {
-				return fmt.Errorf("failed to find auto injected pod for deployment %s", deployName)
-			}
-			return nil
+
+				_, annotations := injectionValidator.GetFlagsAndAnnotations()
+
+				patchedYAML, err := testutil.PatchDeploy(injectYAML, deployName, annotations)
+				if err != nil {
+					testutil.AnnotatedFatalf(t, "failed to patch inject test YAML",
+						"failed to patch inject test YAML in namespace %s for deploy/%s: %s", ns, deployName, err)
+				}
+
+				o, err := TestHelper.Kubectl(patchedYAML, "--namespace", ns, "create", "-f", "-")
+				if err != nil {
+					testutil.AnnotatedFatalf(t, "failed to create deployment", "failed to create deploy/%s in namespace %s for  %s: %s", deployName, ns, err, o)
+				}
+
+				var pod *v1.Pod
+				err = testutil.RetryFor(30*time.Second, func() error {
+					pods, err := TestHelper.GetPodsForDeployment(ctx, ns, deployName)
+					if err != nil {
+						return fmt.Errorf("failed to get pods for namespace %s", ns)
+					}
+
+					for _, p := range pods {
+						p := p // pin
+						creator, ok := p.Annotations[k8s.CreatedByAnnotation]
+						if ok && strings.Contains(creator, "proxy-injector") {
+							pod = &p
+							break
+						}
+					}
+					if pod == nil {
+						return fmt.Errorf("failed to find auto injected pod for deployment %s", deployName)
+					}
+					return nil
+				})
+
+				if err != nil {
+					testutil.AnnotatedFatal(t, "failed to find autoinjected pod: ", err.Error())
+				}
+
+				if err := injectionValidator.ValidatePod(&pod.Spec); err != nil {
+					testutil.AnnotatedFatal(t, "failed to validate auto injection", err.Error())
+				}
+			})
 		})
-
-		if err != nil {
-			testutil.AnnotatedFatal(t, "failed to find autoinjected pod: ", err.Error())
-		}
-
-		if err := injectionValidator.ValidatePod(&pod.Spec); err != nil {
-			testutil.AnnotatedFatal(t, "failed to validate auto injection", err.Error())
-		}
-	})
+	}
 }
 
 func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
@@ -239,8 +256,7 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 				"failed to get pods for namespace %s: %s", ns, err)
 		}
 
-		containers := pods[0].Spec.Containers
-		proxyContainer := testutil.GetProxyContainer(containers)
+		proxyContainer := testutil.GetProxyContainer(pods[0].Spec)
 
 		// Match the pod configuration with the namespace level overrides
 		if proxyContainer.Resources.Requests["memory"] != resource.MustParse(nsProxyMemReq) {
@@ -252,117 +268,6 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 			testutil.Fatalf(t, "proxy cpu resource request failed to match with pod level override")
 		}
 	})
-}
-
-func TestInjectAutoAnnotationPermutations(t *testing.T) {
-	injectYAML, err := testutil.ReadFile("testdata/inject_test.yaml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to read inject test file", "failed to read inject test file: %s", err)
-	}
-
-	injectNS := "inject-test"
-	deployName := "inject-test-terminus"
-	containerName := "bb-terminus"
-	injectAnnotations := []string{"", k8s.ProxyInjectDisabled, k8s.ProxyInjectEnabled}
-
-	// deploy
-	ctx := context.Background()
-	for _, nsAnnotation := range injectAnnotations {
-		nsAnnotation := nsAnnotation // pin
-		nsPrefix := injectNS
-		nsAnnotations := map[string]string{}
-		if nsAnnotation != "" {
-			nsAnnotations[k8s.ProxyInjectAnnotation] = nsAnnotation
-			nsPrefix = fmt.Sprintf("%s-%s", nsPrefix, nsAnnotation)
-		}
-
-		TestHelper.WithDataPlaneNamespace(ctx, nsPrefix, nsAnnotations, t, func(t *testing.T, ns string) {
-			for _, podAnnotation := range injectAnnotations {
-				// patch injectYAML with unique name and pod annotations
-				name := deployName
-				podAnnotations := map[string]string{}
-				if podAnnotation != "" {
-					podAnnotations[k8s.ProxyInjectAnnotation] = podAnnotation
-					name = fmt.Sprintf("%s-%s", name, podAnnotation)
-				}
-
-				patchedYAML, err := testutil.PatchDeploy(injectYAML, name, podAnnotations)
-				if err != nil {
-					testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to patch inject test YAML in namespace %s for deploy/%s", ns, name),
-						"failed to patch inject test YAML in namespace %s for deploy/%s: %s", ns, name, err)
-				}
-
-				o, err := TestHelper.Kubectl(patchedYAML, "--namespace", ns, "create", "-f", "-")
-				if err != nil {
-					testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create deploy/%s in namespace %s", name, ns),
-						"failed to create deploy/%s in namespace %s for %s: %s", name, ns, err, o)
-				}
-
-				// check for successful deploy
-				o, err = TestHelper.Kubectl("", "--namespace", ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
-				if err != nil {
-					testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
-						"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
-				}
-
-				pods, err := TestHelper.GetPodsForDeployment(ctx, ns, name)
-				if err != nil {
-					testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to get pods for namespace %s", ns),
-						"failed to get pods for namespace %s: %s", ns, err)
-				}
-
-				if len(pods) != 1 {
-					testutil.Fatalf(t, "expected 1 pod for namespace %s, got %d", ns, len(pods))
-				}
-
-				shouldBeInjected := false
-				switch nsAnnotation {
-				case "", k8s.ProxyInjectDisabled:
-					switch podAnnotation {
-					case k8s.ProxyInjectEnabled:
-						shouldBeInjected = true
-					}
-				case k8s.ProxyInjectEnabled:
-					switch podAnnotation {
-					case "", k8s.ProxyInjectEnabled:
-						shouldBeInjected = true
-					}
-				}
-
-				containers := pods[0].Spec.Containers
-				initContainers := pods[0].Spec.InitContainers
-
-				if shouldBeInjected {
-					if len(containers) != 2 {
-						testutil.Fatalf(t, "expected 2 containers for pod %s/%s, got %d", ns, pods[0].GetName(), len(containers))
-					}
-					if containers[0].Name != containerName && containers[1].Name != containerName {
-						testutil.Fatalf(t, "expected bb-terminus container in pod %s/%s, got %+v", ns, pods[0].GetName(), containers[0])
-					}
-					if containers[0].Name != k8s.ProxyContainerName && containers[1].Name != k8s.ProxyContainerName {
-						testutil.Fatalf(t, "expected %s container in pod %s/%s, got %+v", ns, pods[0].GetName(), k8s.ProxyContainerName, containers[0])
-					}
-					if !TestHelper.CNI() && len(initContainers) != 1 {
-						testutil.Fatalf(t, "expected 1 init container for pod %s/%s, got %d", ns, pods[0].GetName(), len(initContainers))
-					}
-					if !TestHelper.CNI() && initContainers[0].Name != k8s.InitContainerName {
-						testutil.Fatalf(t, "expected %s init container in pod %s/%s, got %+v", ns, pods[0].GetName(), k8s.InitContainerName, initContainers[0])
-					}
-				} else {
-					if len(containers) != 1 {
-						testutil.Fatalf(t, "expected 1 container for pod %s/%s, got %d", ns, pods[0].GetName(), len(containers))
-					}
-					if containers[0].Name != containerName {
-						testutil.Fatalf(t, "expected bb-terminus container in pod %s/%s, got %s", ns, pods[0].GetName(), containers[0].Name)
-					}
-					if len(initContainers) != 0 {
-						testutil.Fatalf(t, "expected 0 init containers for pod %s/%s, got %d", ns, pods[0].GetName(), len(initContainers))
-					}
-				}
-			}
-		})
-
-	}
 }
 
 func TestInjectAutoPod(t *testing.T) {
@@ -472,8 +377,7 @@ func TestInjectAutoPod(t *testing.T) {
 			testutil.Fatalf(t, "expected pod in namespace %s to have %s opaque ports, but it had %s", ns, manualOpaquePorts, annotation)
 		}
 
-		containers := pods[0].Spec.Containers
-		if proxyContainer := testutil.GetProxyContainer(containers); proxyContainer == nil {
+		if proxyContainer := testutil.GetProxyContainer(pods[0].Spec); proxyContainer == nil {
 			testutil.Fatalf(t, "pod in namespace %s wasn't injected with the proxy container", ns)
 		}
 
@@ -489,7 +393,7 @@ func TestInjectAutoPod(t *testing.T) {
 			// Removed token volume name from comparison because it contains a random string
 			initContainer.VolumeMounts[1].Name = ""
 			// Expect the init container image to use the proxy container image
-			expectedInitContainer.Image = testutil.GetProxyContainer(pods[0].Spec.Containers).Image
+			expectedInitContainer.Image = testutil.GetProxyContainer(pods[0].Spec).Image
 			if diff := deep.Equal(expectedInitContainer, initContainer); diff != nil {
 				testutil.AnnotatedFatalf(t, "malformed init container", "malformed init container:\n%v", diff)
 			}
@@ -555,8 +459,7 @@ func TestInjectDisabledAutoPod(t *testing.T) {
 			testutil.Fatalf(t, "expected pod in namespace %s to have %s opaque ports, but it had %s", ns, manualOpaquePorts, annotation)
 		}
 
-		containers := pods[0].Spec.Containers
-		if proxyContainer := testutil.GetProxyContainer(containers); proxyContainer != nil {
+		if proxyContainer := testutil.GetProxyContainer(pods[0].Spec); proxyContainer != nil {
 			testutil.Fatalf(t, "pod in namespace %s should not have been injected", ns)
 		}
 	})

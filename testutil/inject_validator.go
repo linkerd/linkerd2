@@ -18,6 +18,7 @@ const enabled = "true"
 // injected pods
 type InjectValidator struct {
 	NoInitContainer         bool
+	NativeSidecar           bool
 	AutoInject              bool
 	AdminPort               int
 	ControlPort             int
@@ -62,6 +63,21 @@ func (iv *InjectValidator) getContainer(pod *v1.PodSpec, name string, isInit boo
 	return nil
 }
 
+func (iv *InjectValidator) getPodContainer(pod *v1.PodSpec) *v1.Container {
+	var containers []v1.Container
+	if iv.NativeSidecar {
+		containers = pod.InitContainers
+	} else {
+		containers = pod.Containers
+	}
+	for _, container := range containers {
+		if container.Name == k8s.ProxyContainerName {
+			return &container
+		}
+	}
+	return nil
+}
+
 func (iv *InjectValidator) validateEnvVar(container *v1.Container, envName, expectedValue string) error {
 	for _, env := range container.Env {
 		if env.Name == envName {
@@ -99,9 +115,9 @@ func (iv *InjectValidator) validateDebugContainer(pod *v1.PodSpec) error {
 }
 
 func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
-	proxyContainer := iv.getContainer(pod, k8s.ProxyContainerName, false)
+	proxyContainer := iv.getPodContainer(pod)
 	if proxyContainer == nil {
-		return fmt.Errorf("container %s missing", k8s.ProxyContainerName)
+		return fmt.Errorf("proxy container %s missing", k8s.ProxyContainerName)
 	}
 
 	if iv.AdminPort != 0 {
@@ -412,6 +428,15 @@ func (iv *InjectValidator) ValidatePod(pod *v1.PodSpec) error {
 func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string) {
 	annotations := make(map[string]string)
 	var flags []string
+
+	// native sidecar annotation and flag are set explicitly to avoid relying on defaults that might change
+	if iv.NativeSidecar {
+		annotations[k8s.ProxyEnableNativeSidecarAnnotationBeta] = enabled
+		flags = append(flags, "--native-sidecar")
+	} else {
+		annotations[k8s.ProxyEnableNativeSidecarAnnotationBeta] = "false"
+		flags = append(flags, "--native-sidecar=false")
+	}
 
 	if iv.AutoInject {
 		annotations[k8s.ProxyInjectAnnotation] = k8s.ProxyInjectEnabled
