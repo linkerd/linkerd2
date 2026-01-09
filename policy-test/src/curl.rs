@@ -338,12 +338,17 @@ impl Running {
             |pod: Option<&k8s::Pod>| -> bool {
                 if let Some(pod) = pod {
                     if let Some(status) = pod.status.as_ref() {
-                        return status.init_container_statuses.iter().flatten().all(|init| {
-                            init.state
-                                .as_ref()
-                                .map(|s| s.terminated.is_some())
-                                .unwrap_or(false)
-                        });
+                        return status
+                            .init_container_statuses
+                            .iter()
+                            .flatten()
+                            .filter(|init| init.name != "linkerd-proxy")
+                            .all(|init| {
+                                init.state
+                                    .as_ref()
+                                    .map(|s| s.terminated.is_some())
+                                    .unwrap_or(false)
+                            });
                     }
                 }
                 false
