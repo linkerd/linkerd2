@@ -10,8 +10,7 @@ use crate::{
 use anyhow::{bail, Result};
 use clap::Parser;
 use futures::prelude::*;
-use kube::runtime::watcher;
-use kube::core::DeserializeGuard;
+use kube::{runtime::watcher, core::DeserializeGuard, ResourceExt};
 use prometheus_client::registry::Registry;
 use serde::de::DeserializeOwned;
 use std::{net::SocketAddr, sync::Arc};
@@ -477,6 +476,8 @@ where
         .any(|r| r.kind == T::kind(&dt))
 }
 
+// A watch that uses DeserializeGuard to skip resources which fail to deserialize.
+// Any deserialization errors are logged as warnings and the event is skipped.
 fn guarded_watch<T, R>(
     runtime: &mut kubert::Runtime<T>,
     watcher_config: watcher::Config,
@@ -491,10 +492,12 @@ where
             match item {
                 watcher::Event::Apply(t) => match t.0 {
                     Ok(res) => Some(watcher::Event::<R>::Apply(res)),
-                    Err(err) => {
+                    Err(ref err) => {
                         tracing::warn!(
-                            "skipping invalid {} resource: {}",
+                            "skipping invalid {} resource {}/{}: {}",
                             R::kind(&Default::default()),
+                            t.namespace().unwrap_or("<cluster>".to_string()),
+                            t.name_any(),
                             err
                         );
                         None
@@ -502,10 +505,12 @@ where
                 },
                 watcher::Event::Delete(t) => match t.0 {
                     Ok(res) => Some(watcher::Event::<R>::Delete(res)),
-                    Err(err) => {
+                    Err(ref err) => {
                         tracing::warn!(
-                            "skipping invalid {} resource: {}",
+                            "skipping invalid {} resource {}/{}: {}",
                             R::kind(&Default::default()),
+                            t.namespace().unwrap_or("<cluster>".to_string()),
+                            t.name_any(),
                             err
                         );
                         None
@@ -514,10 +519,12 @@ where
                 watcher::Event::Init => Some(watcher::Event::<R>::Init),
                 watcher::Event::InitApply(t) => match t.0 {
                     Ok(res) => Some(watcher::Event::<R>::InitApply(res)),
-                    Err(err) => {
+                    Err(ref err) => {
                         tracing::warn!(
-                            "skipping invalid {} resource: {}",
+                            "skipping invalid {} resource {}/{}: {}",
                             R::kind(&Default::default()),
+                            t.namespace().unwrap_or("<cluster>".to_string()),
+                            t.name_any(),
                             err
                         );
                         None
