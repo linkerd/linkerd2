@@ -11,11 +11,14 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use futures::prelude::*;
 use kube::runtime::watcher;
+use kube::core::DeserializeGuard;
 use prometheus_client::registry::Registry;
+use serde::de::DeserializeOwned;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{sync::mpsc, time::Duration};
 use tonic::transport::Server;
 use tracing::{info, info_span, instrument, Instrument};
+use std::fmt::Debug;
 
 const DETECT_TIMEOUT: Duration = Duration::from_secs(10);
 const RECONCILIATION_PERIOD: Duration = Duration::from_secs(10);
@@ -200,21 +203,19 @@ impl Args {
 
         // Spawn resource watches.
 
-        let pods = runtime.watch_all::<k8s::Pod>(
-            watcher::Config::default().labels("linkerd.io/control-plane-ns"),
-        );
+        let pods = guarded_watch::<_, k8s::Pod>(&mut runtime, watcher::Config::default().labels("linkerd.io/control-plane-ns"));
+
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), pods).instrument(info_span!("pods")),
         );
 
-        let external_workloads = runtime
-            .watch_all::<k8s::external_workload::ExternalWorkload>(watcher::Config::default());
+        let external_workloads = guarded_watch::<_, k8s::external_workload::ExternalWorkload>(&mut runtime, watcher::Config::default());
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), external_workloads)
                 .instrument(info_span!("external_workloads")),
         );
 
-        let servers = runtime.watch_all::<k8s::policy::Server>(watcher::Config::default());
+        let servers = guarded_watch::<_, k8s::policy::Server>(&mut runtime, watcher::Config::default());
         let servers_indexes = IndexList::new(inbound_index.clone())
             .push(status_index.clone())
             .shared();
@@ -222,36 +223,34 @@ impl Args {
             kubert::index::namespaced(servers_indexes, servers).instrument(info_span!("servers")),
         );
 
-        let server_authzs =
-            runtime.watch_all::<k8s::policy::ServerAuthorization>(watcher::Config::default());
+        let server_authzs = guarded_watch::<_, k8s::policy::ServerAuthorization>(&mut runtime, watcher::Config::default());
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), server_authzs)
                 .instrument(info_span!("serverauthorizations")),
         );
 
         let authz_policies =
-            runtime.watch_all::<k8s::policy::AuthorizationPolicy>(watcher::Config::default());
+            guarded_watch::<_, k8s::policy::AuthorizationPolicy>(&mut runtime, watcher::Config::default());
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), authz_policies)
                 .instrument(info_span!("authorizationpolicies")),
         );
 
         let mtls_authns =
-            runtime.watch_all::<k8s::policy::MeshTLSAuthentication>(watcher::Config::default());
+            guarded_watch::<_, k8s::policy::MeshTLSAuthentication>(&mut runtime, watcher::Config::default());
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), mtls_authns)
                 .instrument(info_span!("meshtlsauthentications")),
         );
 
-        let network_authns =
-            runtime.watch_all::<k8s::policy::NetworkAuthentication>(watcher::Config::default());
+        let network_authns = guarded_watch::<_, k8s::policy::NetworkAuthentication>(&mut runtime, watcher::Config::default());
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), network_authns)
                 .instrument(info_span!("networkauthentications")),
         );
 
         let ratelimit_policies =
-            runtime.watch_all::<k8s::policy::HttpLocalRateLimitPolicy>(watcher::Config::default());
+            guarded_watch::<_, k8s::policy::HttpLocalRateLimitPolicy>(&mut runtime, watcher::Config::default());
         let ratelimit_policies_indexes = IndexList::new(inbound_index.clone())
             .push(status_index.clone())
             .shared();
@@ -267,7 +266,7 @@ impl Args {
 
         if api_resource_exists::<k8s::policy::HttpRoute>(&runtime.client()).await {
             let http_routes =
-                runtime.watch_all::<k8s::policy::HttpRoute>(watcher::Config::default());
+                guarded_watch::<_, k8s::policy::HttpRoute>(&mut runtime, watcher::Config::default());
 
             tokio::spawn(
                 kubert::index::namespaced(http_routes_indexes.clone(), http_routes)
@@ -281,7 +280,7 @@ impl Args {
 
         if api_resource_exists::<gateway::HTTPRoute>(&runtime.client()).await {
             let gateway_http_routes =
-                runtime.watch_all::<gateway::HTTPRoute>(watcher::Config::default());
+                guarded_watch::<_, gateway::HTTPRoute>(&mut runtime, watcher::Config::default());
             tokio::spawn(
                 kubert::index::namespaced(http_routes_indexes, gateway_http_routes)
                     .instrument(info_span!("httproutes.gateway.networking.k8s.io")),
@@ -294,7 +293,7 @@ impl Args {
 
         if api_resource_exists::<gateway::GRPCRoute>(&runtime.client()).await {
             let gateway_grpc_routes =
-                runtime.watch_all::<gateway::GRPCRoute>(watcher::Config::default());
+                guarded_watch::<_, gateway::GRPCRoute>(&mut runtime, watcher::Config::default());
             let gateway_grpc_routes_indexes = IndexList::new(outbound_index.clone())
                 .push(inbound_index.clone())
                 .push(status_index.clone())
@@ -310,7 +309,7 @@ impl Args {
         }
 
         if api_resource_exists::<gateway::TLSRoute>(&runtime.client()).await {
-            let tls_routes = runtime.watch_all::<gateway::TLSRoute>(watcher::Config::default());
+            let tls_routes = guarded_watch::<_, gateway::TLSRoute>(&mut runtime, watcher::Config::default());
             let tls_routes_indexes = IndexList::new(status_index.clone())
                 .push(outbound_index.clone())
                 .shared();
@@ -325,7 +324,7 @@ impl Args {
         }
 
         if api_resource_exists::<gateway::TCPRoute>(&runtime.client()).await {
-            let tcp_routes = runtime.watch_all::<gateway::TCPRoute>(watcher::Config::default());
+            let tcp_routes = guarded_watch::<_, gateway::TCPRoute>(&mut runtime, watcher::Config::default());
             let tcp_routes_indexes = IndexList::new(status_index.clone())
                 .push(outbound_index.clone())
                 .shared();
@@ -339,7 +338,7 @@ impl Args {
             );
         }
 
-        let services = runtime.watch_all::<k8s::Service>(watcher::Config::default());
+        let services = guarded_watch::<_, k8s::Service>(&mut runtime, watcher::Config::default());
         let services_indexes = IndexList::new(outbound_index.clone())
             .push(status_index.clone())
             .shared();
@@ -349,7 +348,7 @@ impl Args {
         );
 
         let egress_networks =
-            runtime.watch_all::<k8s::policy::EgressNetwork>(watcher::Config::default());
+            guarded_watch::<_, k8s::policy::EgressNetwork>(&mut runtime, watcher::Config::default());
         let egress_networks_indexes = IndexList::new(status_index.clone())
             .push(outbound_index.clone())
             .shared();
@@ -476,4 +475,55 @@ where
         .iter()
         .flat_map(|r| r.resources.iter())
         .any(|r| r.kind == T::kind(&dt))
+}
+
+fn guarded_watch<T, R>(
+    runtime: &mut kubert::Runtime<T>,
+    watcher_config: watcher::Config,
+) -> impl Stream<Item = watcher::Event<R>>
+where
+        R: Resource + DeserializeOwned + Clone + Debug + Send + 'static,
+        R::DynamicType: Default,
+{
+    runtime
+        .watch_all::<DeserializeGuard<R>>(watcher_config)
+        .filter_map(async |item| {
+            match item {
+                watcher::Event::Apply(t) => match t.0 {
+                    Ok(res) => Some(watcher::Event::<R>::Apply(res)),
+                    Err(err) => {
+                        tracing::warn!(
+                            "skipping invalid {} resource: {}",
+                            R::kind(&Default::default()),
+                            err
+                        );
+                        None
+                    }
+                },
+                watcher::Event::Delete(t) => match t.0 {
+                    Ok(res) => Some(watcher::Event::<R>::Delete(res)),
+                    Err(err) => {
+                        tracing::warn!(
+                            "skipping invalid {} resource: {}",
+                            R::kind(&Default::default()),
+                            err
+                        );
+                        None
+                    }
+                },
+                watcher::Event::Init => Some(watcher::Event::<R>::Init),
+                watcher::Event::InitApply(t) => match t.0 {
+                    Ok(res) => Some(watcher::Event::<R>::InitApply(res)),
+                    Err(err) => {
+                        tracing::warn!(
+                            "skipping invalid {} resource: {}",
+                            R::kind(&Default::default()),
+                            err
+                        );
+                        None
+                    }
+                },
+                watcher::Event::InitDone => Some(watcher::Event::<R>::InitDone),
+            }
+        })
 }
