@@ -10,8 +10,10 @@ use crate::{
 use anyhow::{bail, Result};
 use clap::Parser;
 use futures::prelude::*;
-use kube::runtime::watcher;
+use kube::{core::DeserializeGuard, runtime::watcher, ResourceExt};
 use prometheus_client::registry::Registry;
+use serde::de::DeserializeOwned;
+use std::fmt::Debug;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{sync::mpsc, time::Duration};
 use tonic::transport::Server;
@@ -200,21 +202,26 @@ impl Args {
 
         // Spawn resource watches.
 
-        let pods = runtime.watch_all::<k8s::Pod>(
+        let pods = guarded_watch::<k8s::Pod, _>(
+            &mut runtime,
             watcher::Config::default().labels("linkerd.io/control-plane-ns"),
         );
+
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), pods).instrument(info_span!("pods")),
         );
 
-        let external_workloads = runtime
-            .watch_all::<k8s::external_workload::ExternalWorkload>(watcher::Config::default());
+        let external_workloads = guarded_watch::<k8s::external_workload::ExternalWorkload, _>(
+            &mut runtime,
+            watcher::Config::default(),
+        );
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), external_workloads)
                 .instrument(info_span!("external_workloads")),
         );
 
-        let servers = runtime.watch_all::<k8s::policy::Server>(watcher::Config::default());
+        let servers =
+            guarded_watch::<k8s::policy::Server, _>(&mut runtime, watcher::Config::default());
         let servers_indexes = IndexList::new(inbound_index.clone())
             .push(status_index.clone())
             .shared();
@@ -222,36 +229,46 @@ impl Args {
             kubert::index::namespaced(servers_indexes, servers).instrument(info_span!("servers")),
         );
 
-        let server_authzs =
-            runtime.watch_all::<k8s::policy::ServerAuthorization>(watcher::Config::default());
+        let server_authzs = guarded_watch::<k8s::policy::ServerAuthorization, _>(
+            &mut runtime,
+            watcher::Config::default(),
+        );
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), server_authzs)
                 .instrument(info_span!("serverauthorizations")),
         );
 
-        let authz_policies =
-            runtime.watch_all::<k8s::policy::AuthorizationPolicy>(watcher::Config::default());
+        let authz_policies = guarded_watch::<k8s::policy::AuthorizationPolicy, _>(
+            &mut runtime,
+            watcher::Config::default(),
+        );
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), authz_policies)
                 .instrument(info_span!("authorizationpolicies")),
         );
 
-        let mtls_authns =
-            runtime.watch_all::<k8s::policy::MeshTLSAuthentication>(watcher::Config::default());
+        let mtls_authns = guarded_watch::<k8s::policy::MeshTLSAuthentication, _>(
+            &mut runtime,
+            watcher::Config::default(),
+        );
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), mtls_authns)
                 .instrument(info_span!("meshtlsauthentications")),
         );
 
-        let network_authns =
-            runtime.watch_all::<k8s::policy::NetworkAuthentication>(watcher::Config::default());
+        let network_authns = guarded_watch::<k8s::policy::NetworkAuthentication, _>(
+            &mut runtime,
+            watcher::Config::default(),
+        );
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), network_authns)
                 .instrument(info_span!("networkauthentications")),
         );
 
-        let ratelimit_policies =
-            runtime.watch_all::<k8s::policy::HttpLocalRateLimitPolicy>(watcher::Config::default());
+        let ratelimit_policies = guarded_watch::<k8s::policy::HttpLocalRateLimitPolicy, _>(
+            &mut runtime,
+            watcher::Config::default(),
+        );
         let ratelimit_policies_indexes = IndexList::new(inbound_index.clone())
             .push(status_index.clone())
             .shared();
@@ -266,8 +283,10 @@ impl Args {
             .shared();
 
         if api_resource_exists::<k8s::policy::HttpRoute>(&runtime.client()).await {
-            let http_routes =
-                runtime.watch_all::<k8s::policy::HttpRoute>(watcher::Config::default());
+            let http_routes = guarded_watch::<k8s::policy::HttpRoute, _>(
+                &mut runtime,
+                watcher::Config::default(),
+            );
 
             tokio::spawn(
                 kubert::index::namespaced(http_routes_indexes.clone(), http_routes)
@@ -281,7 +300,7 @@ impl Args {
 
         if api_resource_exists::<gateway::HTTPRoute>(&runtime.client()).await {
             let gateway_http_routes =
-                runtime.watch_all::<gateway::HTTPRoute>(watcher::Config::default());
+                guarded_watch::<gateway::HTTPRoute, _>(&mut runtime, watcher::Config::default());
             tokio::spawn(
                 kubert::index::namespaced(http_routes_indexes, gateway_http_routes)
                     .instrument(info_span!("httproutes.gateway.networking.k8s.io")),
@@ -294,7 +313,7 @@ impl Args {
 
         if api_resource_exists::<gateway::GRPCRoute>(&runtime.client()).await {
             let gateway_grpc_routes =
-                runtime.watch_all::<gateway::GRPCRoute>(watcher::Config::default());
+                guarded_watch::<gateway::GRPCRoute, _>(&mut runtime, watcher::Config::default());
             let gateway_grpc_routes_indexes = IndexList::new(outbound_index.clone())
                 .push(inbound_index.clone())
                 .push(status_index.clone())
@@ -310,7 +329,8 @@ impl Args {
         }
 
         if api_resource_exists::<gateway::TLSRoute>(&runtime.client()).await {
-            let tls_routes = runtime.watch_all::<gateway::TLSRoute>(watcher::Config::default());
+            let tls_routes =
+                guarded_watch::<gateway::TLSRoute, _>(&mut runtime, watcher::Config::default());
             let tls_routes_indexes = IndexList::new(status_index.clone())
                 .push(outbound_index.clone())
                 .shared();
@@ -325,7 +345,8 @@ impl Args {
         }
 
         if api_resource_exists::<gateway::TCPRoute>(&runtime.client()).await {
-            let tcp_routes = runtime.watch_all::<gateway::TCPRoute>(watcher::Config::default());
+            let tcp_routes =
+                guarded_watch::<gateway::TCPRoute, _>(&mut runtime, watcher::Config::default());
             let tcp_routes_indexes = IndexList::new(status_index.clone())
                 .push(outbound_index.clone())
                 .shared();
@@ -339,7 +360,7 @@ impl Args {
             );
         }
 
-        let services = runtime.watch_all::<k8s::Service>(watcher::Config::default());
+        let services = guarded_watch::<k8s::Service, _>(&mut runtime, watcher::Config::default());
         let services_indexes = IndexList::new(outbound_index.clone())
             .push(status_index.clone())
             .shared();
@@ -348,8 +369,10 @@ impl Args {
                 .instrument(info_span!("services")),
         );
 
-        let egress_networks =
-            runtime.watch_all::<k8s::policy::EgressNetwork>(watcher::Config::default());
+        let egress_networks = guarded_watch::<k8s::policy::EgressNetwork, _>(
+            &mut runtime,
+            watcher::Config::default(),
+        );
         let egress_networks_indexes = IndexList::new(status_index.clone())
             .push(outbound_index.clone())
             .shared();
@@ -476,4 +499,47 @@ where
         .iter()
         .flat_map(|r| r.resources.iter())
         .any(|r| r.kind == T::kind(&dt))
+}
+
+// A watch that uses DeserializeGuard to skip resources which fail to deserialize.
+// Any deserialization errors are logged as warnings and the event is skipped.
+fn guarded_watch<R, T>(
+    runtime: &mut kubert::Runtime<T>,
+    watcher_config: watcher::Config,
+) -> impl Stream<Item = watcher::Event<R>>
+where
+    R: Resource + DeserializeOwned + Clone + Debug + Send + 'static,
+    R::DynamicType: Default,
+{
+    runtime
+        .watch_all::<DeserializeGuard<R>>(watcher_config)
+        .filter_map(async |item| {
+            let log_warning = |t: &DeserializeGuard<R>| {
+                if let Err(ref err) = t.0 {
+                    tracing::warn!(
+                        "skipping invalid {} resource {}/{}: {}",
+                        R::kind(&Default::default()),
+                        t.namespace().unwrap_or("<cluster>".to_string()),
+                        t.name_any(),
+                        err,
+                    );
+                }
+            };
+            match item {
+                watcher::Event::Apply(t) => {
+                    log_warning(&t);
+                    t.0.ok().map(watcher::Event::Apply)
+                }
+                watcher::Event::Delete(t) => {
+                    log_warning(&t);
+                    t.0.ok().map(watcher::Event::Delete)
+                }
+                watcher::Event::Init => Some(watcher::Event::<R>::Init),
+                watcher::Event::InitApply(t) => {
+                    log_warning(&t);
+                    t.0.ok().map(watcher::Event::InitApply)
+                }
+                watcher::Event::InitDone => Some(watcher::Event::<R>::InitDone),
+            }
+        })
 }
