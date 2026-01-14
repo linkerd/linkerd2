@@ -75,12 +75,87 @@
   "links": [],
   "panels": [
     {
-      "content": "<div class=\"text-center dashboard-header\">\n  <span>Data-Plane Telemetry</span>\n</div>",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "Prometheus is not receiving data. Please check your Prometheus configuration and ensure it is running."
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "noValue": "Prometheus is not receiving data. Please check your Prometheus configuration and ensure it is running.",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 2,
         "w": 24,
         "x": 0,
         "y": 0
+      },
+      "id": 732,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "prometheus_ready",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>Data-Plane Telemetry</span>\n</div>",
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 2
       },
       "id": 400,
       "links": [],
@@ -104,7 +179,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 2
+        "y": 4
       },
       "id": 397,
       "legend": {
@@ -200,7 +275,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 2
+        "y": 4
       },
       "id": 399,
       "legend": {
@@ -289,7 +364,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 2
+        "y": 4
       },
       "id": 398,
       "legend": {
@@ -370,7 +445,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 11
       },
       "id": 401,
       "links": [],
@@ -394,7 +469,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 11
+        "y": 13
       },
       "id": 23,
       "legend": {
@@ -488,7 +563,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 11
+        "y": 13
       },
       "id": 24,
       "legend": {
@@ -583,7 +658,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 11
+        "y": 13
       },
       "id": 25,
       "legend": {
@@ -669,7 +744,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 20
       },
       "id": 731,
       "links": [],
@@ -685,7 +760,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 22
       },
       "id": 179,
       "panels": [
@@ -695,7 +770,7 @@
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 21
+            "y": 23
           },
           "id": 282,
           "links": [],
@@ -725,7 +800,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 23
+            "y": 25
           },
           "id": 227,
           "legend": {
@@ -819,7 +894,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 23
+            "y": 25
           },
           "id": 132,
           "legend": {
@@ -920,7 +995,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 23
+            "y": 25
           },
           "heatmap": {},
           "hideZeroBuckets": false,
@@ -985,7 +1060,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 30
       },
       "id": 27,
       "links": [],
@@ -1009,7 +1084,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 30
+        "y": 32
       },
       "id": 2,
       "legend": {
@@ -1098,7 +1173,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 30
+        "y": 32
       },
       "id": 5,
       "legend": {
@@ -1194,7 +1269,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 30
+        "y": 32
       },
       "id": 7,
       "legend": {
@@ -1283,7 +1358,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 37
+        "y": 39
       },
       "id": 9,
       "legend": {
@@ -1364,7 +1439,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 46
       },
       "id": 625,
       "links": [],
@@ -1388,7 +1463,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 46
+        "y": 48
       },
       "id": 622,
       "legend": {
@@ -1477,7 +1552,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 46
+        "y": 48
       },
       "id": 12,
       "legend": {
@@ -1580,7 +1655,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 46
+        "y": 48
       },
       "id": 624,
       "legend": {
@@ -1683,7 +1758,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 53
+        "y": 55
       },
       "id": 623,
       "legend": {
@@ -1772,7 +1847,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 53
+        "y": 55
       },
       "id": 570,
       "legend": {
@@ -1875,7 +1950,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 53
+        "y": 55
       },
       "id": 621,
       "legend": {
@@ -1956,7 +2031,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 60
+        "y": 62
       },
       "id": 458,
       "panels": [],
@@ -1975,7 +2050,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 61
+        "y": 63
       },
       "id": 30,
       "links": [],
@@ -2004,7 +2079,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 63
+        "y": 65
       },
       "id": 6,
       "legend": {
@@ -2119,7 +2194,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 63
+        "y": 65
       },
       "id": 8,
       "legend": {
@@ -2227,7 +2302,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 63
+        "y": 65
       },
       "id": 14,
       "legend": {
@@ -2320,7 +2395,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 141.4
+        "y": 143.4
       },
       "id": 515,
       "panels": [],
@@ -2333,7 +2408,7 @@
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 142.4
+        "y": 144.4
       },
       "height": "1px",
       "id": 519,
