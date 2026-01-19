@@ -48,18 +48,15 @@ jobs:
           ./docker-build-proxy
           ./docker-build-controller
           ./docker-build-debug
-          ./docker-build-policy-controller
 
       - name: Tag images
         run: |
           docker tag ${DOCKER_REGISTRY}/proxy:version-${{ inputs.linkerd-version }} ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/proxy:${{ inputs.proxy-version }}
           docker tag ${DOCKER_REGISTRY}/controller:version-${{ inputs.linkerd-version }} ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/controller:${{ inputs.linkerd-version }}
           docker tag ${DOCKER_REGISTRY}/debug:version-${{ inputs.linkerd-version }} ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/debug:${{ inputs.linkerd-version }}
-          docker tag ${DOCKER_REGISTRY}/policy-controller:version-${{ inputs.linkerd-version }} ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/policy-controller:${{ inputs.linkerd-version }}
 
       - name: Push images
         run: |
           docker push ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/proxy:${{ inputs.proxy-version }}
           docker push ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/controller:${{ inputs.linkerd-version }}
           docker push ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/debug:${{ inputs.linkerd-version }}
-          docker push ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/policy-controller:${{ inputs.linkerd-version }}
