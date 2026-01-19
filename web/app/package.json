@@ -44,7 +44,7 @@
     "@babel/core": "^7.28.5",
     "@babel/eslint-parser": "^7.28.6",
     "@babel/plugin-proposal-class-properties": "^7.17.12",
-    "@babel/preset-env": "^7.28.5",
+    "@babel/preset-env": "^7.28.6",
     "@babel/preset-react": "^7.28.5",
     "@babel/runtime": "^7.28.4",
     "@lingui/cli": "3.17.2",
