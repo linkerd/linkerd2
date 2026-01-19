@@ -1,0 +1,65 @@
+name: docker-build-and-push
+
+on:
+  workflow_dispatch:
+    inputs:
+      linkerd-version:
+        description: 'A linkerd (stable) release version'
+        required: true
+        default: 2.17
+      proxy-version:
+        description: 'A linkerd proxy release'
+        required: true
+        default: 2.268.0
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  GITHUB_ORG: onpier-oss
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca
+
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          ref: version-${{ inputs.linkerd-version }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build images
+        run: |
+          cd bin
+
+          echo "v${{ inputs.proxy-version }}" > .proxy-version
+          
+          ./docker-build-proxy
+          ./docker-build-controller
+          ./docker-build-debug
+          ./docker-build-policy-controller
+
+      - name: Tag images
+        run: |
+          docker tag ${DOCKER_REGISTRY}/proxy:version-${{ inputs.linkerd-version }} ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/proxy:${{ inputs.proxy-version }}
+          docker tag ${DOCKER_REGISTRY}/controller:version-${{ inputs.linkerd-version }} ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/controller:${{ inputs.linkerd-version }}
+          docker tag ${DOCKER_REGISTRY}/debug:version-${{ inputs.linkerd-version }} ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/debug:${{ inputs.linkerd-version }}
+          docker tag ${DOCKER_REGISTRY}/policy-controller:version-${{ inputs.linkerd-version }} ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/policy-controller:${{ inputs.linkerd-version }}
+
+      - name: Push images
+        run: |
+          docker push ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/proxy:${{ inputs.proxy-version }}
+          docker push ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/controller:${{ inputs.linkerd-version }}
+          docker push ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/debug:${{ inputs.linkerd-version }}
+          docker push ${DOCKER_REGISTRY}/${GITHUB_ORG}/linkerd/policy-controller:${{ inputs.linkerd-version }}
