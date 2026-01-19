@@ -6,11 +6,11 @@ on:
       linkerd-version:
         description: 'A linkerd (stable) release version'
         required: true
-        default: 2.17
+        default: 2.19
       proxy-version:
         description: 'A linkerd proxy release'
         required: true
-        default: 2.268.0
+        default: 2.326.0
 
 env:
   DOCKER_REGISTRY: ghcr.io
