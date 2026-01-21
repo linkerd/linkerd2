@@ -25,7 +25,7 @@
     "date-fns": "4.1.0",
     "jest-progress-bar-reporter": "^1.0.25",
     "locales-detector": "3.0.2",
-    "lodash": "4.17.21",
+    "lodash": "4.17.23",
     "make-plural": "^7.4.0",
     "path": "0.12.7",
     "prop-types": "15.8.1",
