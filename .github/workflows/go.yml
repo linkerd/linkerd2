@@ -8,7 +8,7 @@ jobs:
   meta:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: tj-actions/changed-files@e0021407031f5be11a464abee9a0776171c79891
         id: changed
         with:
@@ -31,7 +31,7 @@ jobs:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     container: ghcr.io/linkerd/dev:v48-go
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
         with:
           go-version-file: go.mod
@@ -45,7 +45,7 @@ jobs:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     container: ghcr.io/linkerd/dev:v48-go
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
         with:
           go-version-file: go.mod
@@ -59,7 +59,7 @@ jobs:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     container: ghcr.io/linkerd/dev:v48-go
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
         with:
           go-version-file: go.mod
