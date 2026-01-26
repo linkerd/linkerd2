@@ -90,7 +90,9 @@ func TestTracing(t *testing.T) {
 					return err
 				}
 
-				tracesJSON, err := TestHelper.HTTPGetURL(url + "/api/traces?lookback=1h&service=linkerd-proxy")
+				proxyProcess := "web-linkerd-proxy"
+
+				tracesJSON, err := TestHelper.HTTPGetURL(url + "/api/traces?lookback=1h&service=" + proxyProcess)
 				if err != nil {
 					return err
 				}
@@ -101,7 +103,7 @@ func TestTracing(t *testing.T) {
 					return err
 				}
 
-				if !hasTraceWithProcess(&traces, "linkerd-proxy") {
+				if !hasTraceWithProcess(&traces, proxyProcess) {
 					return noProxyTraceFound{}
 				}
 				return nil
@@ -155,8 +157,10 @@ func hasTraceWithProcess(traces *traces, ps string) bool {
 	return false
 }
 
-type noProxyTraceFound struct{}
+type noProxyTraceFound struct {
+	process string
+}
 
 func (e noProxyTraceFound) Error() string {
-	return "no trace found with processes: linkerd-proxy"
+	return "no trace found with processes: " + e.process
 }
