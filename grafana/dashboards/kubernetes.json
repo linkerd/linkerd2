@@ -76,12 +76,87 @@
   "links": [],
   "panels": [
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "Prometheus is not receiving data. Please check your Prometheus configuration and ensure it is running."
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "noValue": "Prometheus is not receiving data. Please check your Prometheus configuration and ensure it is running.",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 46,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "prometheus_ready",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 2
       },
       "id": 33,
       "panels": [],
@@ -106,7 +181,7 @@
         "h": 5,
         "w": 24,
         "x": 0,
-        "y": 1
+        "y": 3
       },
       "height": "200px",
       "id": 32,
@@ -206,7 +281,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 6
+        "y": 8
       },
       "id": 34,
       "panels": [],
@@ -240,7 +315,7 @@
         "h": 5,
         "w": 8,
         "x": 0,
-        "y": 7
+        "y": 9
       },
       "height": "180px",
       "id": 4,
@@ -330,7 +405,7 @@
         "h": 5,
         "w": 8,
         "x": 8,
-        "y": 7
+        "y": 9
       },
       "height": "180px",
       "id": 6,
@@ -420,7 +495,7 @@
         "h": 5,
         "w": 8,
         "x": 16,
-        "y": 7
+        "y": 9
       },
       "height": "180px",
       "id": 7,
@@ -512,7 +587,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 12
+        "y": 14
       },
       "height": "1px",
       "id": 9,
@@ -602,7 +677,7 @@
         "h": 3,
         "w": 4,
         "x": 4,
-        "y": 12
+        "y": 14
       },
       "height": "1px",
       "id": 10,
@@ -692,7 +767,7 @@
         "h": 3,
         "w": 4,
         "x": 8,
-        "y": 12
+        "y": 14
       },
       "height": "1px",
       "id": 11,
@@ -782,7 +857,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 12
+        "y": 14
       },
       "height": "1px",
       "id": 12,
@@ -872,7 +947,7 @@
         "h": 3,
         "w": 4,
         "x": 16,
-        "y": 12
+        "y": 14
       },
       "height": "1px",
       "id": 13,
@@ -962,7 +1037,7 @@
         "h": 3,
         "w": 4,
         "x": 20,
-        "y": 12
+        "y": 14
       },
       "height": "1px",
       "id": 14,
@@ -1030,7 +1105,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 15
+        "y": 17
       },
       "id": 35,
       "panels": [],
@@ -1055,7 +1130,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 18
       },
       "height": "",
       "id": 17,
@@ -1145,7 +1220,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 25
       },
       "id": 36,
       "panels": [
@@ -1165,7 +1240,7 @@
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 23
+            "y": 25
           },
           "height": "",
           "id": 23,
@@ -1249,7 +1324,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 26
       },
       "id": 37,
       "panels": [
@@ -1269,7 +1344,7 @@
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 24
+            "y": 26
           },
           "height": "",
           "id": 24,
@@ -1375,7 +1450,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 27
       },
       "id": 38,
       "panels": [
@@ -1395,7 +1470,7 @@
             "h": 13,
             "w": 24,
             "x": 0,
-            "y": 25
+            "y": 27
           },
           "id": 20,
           "isNew": true,
@@ -1479,7 +1554,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 28
       },
       "id": 39,
       "panels": [],
@@ -1504,7 +1579,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 27
+        "y": 29
       },
       "id": 25,
       "isNew": true,
@@ -1594,7 +1669,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 34
+        "y": 36
       },
       "id": 40,
       "panels": [
@@ -1614,7 +1689,7 @@
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 34
+            "y": 36
           },
           "id": 26,
           "isNew": true,
@@ -1697,7 +1772,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 37
       },
       "id": 41,
       "panels": [
@@ -1717,7 +1792,7 @@
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 35
+            "y": 37
           },
           "id": 27,
           "isNew": true,
@@ -1818,7 +1893,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 38
       },
       "id": 42,
       "panels": [
@@ -1838,7 +1913,7 @@
             "h": 13,
             "w": 24,
             "x": 0,
-            "y": 36
+            "y": 38
           },
           "id": 28,
           "isNew": true,
@@ -1921,7 +1996,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 37
+        "y": 39
       },
       "id": 43,
       "panels": [],
@@ -1944,7 +2019,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 40
       },
       "id": 16,
       "isNew": true,
@@ -2033,7 +2108,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 47
       },
       "id": 44,
       "panels": [
@@ -2053,7 +2128,7 @@
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 45
+            "y": 47
           },
           "id": 30,
           "isNew": true,
@@ -2187,7 +2262,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 46
+        "y": 48
       },
       "id": 45,
       "panels": [
@@ -2207,7 +2282,7 @@
             "h": 13,
             "w": 24,
             "x": 0,
-            "y": 46
+            "y": 48
           },
           "id": 29,
           "isNew": true,

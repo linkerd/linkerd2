@@ -92,6 +92,81 @@
   ],
   "panels": [
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "Prometheus is not receiving data. Please check your Prometheus configuration and ensure it is running."
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "noValue": "Prometheus is not receiving data. Please check your Prometheus configuration and ensure it is running.",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 172,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "prometheus_ready",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
       "aliasColors": {
         "prometheus": "#C15C17",
         "{instance=\"localhost:9090\",job=\"prometheus\"}": "#CCA300"
@@ -111,7 +186,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 0
+        "y": 2
       },
       "id": 3,
       "legend": {
@@ -205,7 +280,7 @@
         "h": 5,
         "w": 6,
         "x": 6,
-        "y": 0
+        "y": 2
       },
       "id": 14,
       "legend": {
@@ -296,7 +371,7 @@
         "h": 5,
         "w": 6,
         "x": 12,
-        "y": 0
+        "y": 2
       },
       "id": 16,
       "legend": {
@@ -408,7 +483,7 @@
         "h": 5,
         "w": 6,
         "x": 18,
-        "y": 0
+        "y": 2
       },
       "id": 37,
       "interval": null,
@@ -483,7 +558,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 5
+        "y": 7
       },
       "id": 29,
       "legend": {
@@ -590,7 +665,7 @@
         "h": 5,
         "w": 6,
         "x": 6,
-        "y": 5
+        "y": 7
       },
       "id": 2,
       "legend": {
@@ -680,7 +755,7 @@
         "h": 5,
         "w": 6,
         "x": 12,
-        "y": 5
+        "y": 7
       },
       "id": 33,
       "legend": {
@@ -771,7 +846,7 @@
         "h": 5,
         "w": 6,
         "x": 18,
-        "y": 5
+        "y": 7
       },
       "id": 36,
       "legend": {
@@ -876,7 +951,7 @@
         "h": 5,
         "w": 8,
         "x": 0,
-        "y": 10
+        "y": 12
       },
       "id": 20,
       "legend": {
@@ -997,7 +1072,7 @@
         "h": 5,
         "w": 8,
         "x": 8,
-        "y": 10
+        "y": 12
       },
       "id": 32,
       "legend": {
@@ -1096,7 +1171,7 @@
         "h": 5,
         "w": 8,
         "x": 16,
-        "y": 10
+        "y": 12
       },
       "id": 38,
       "legend": {
@@ -1190,7 +1265,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 15
+        "y": 17
       },
       "id": 35,
       "legend": {
@@ -1282,7 +1357,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 15
+        "y": 17
       },
       "id": 39,
       "legend": {
@@ -1372,7 +1447,7 @@
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 24
       },
       "height": "1px",
       "id": 171,
