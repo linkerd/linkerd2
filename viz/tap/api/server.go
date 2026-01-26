@@ -50,7 +50,7 @@ func NewServer(
 		}
 	}()
 
-	clientCAPem, allowedNames, usernameHeader, groupHeader, err := serverAuth(ctx, k8sAPI)
+	clientCAPem, allowedNames, usernameHeader, groupHeader, extraHeaderPrefix, err := serverAuth(ctx, k8sAPI)
 	if err != nil {
 		return nil, err
 	}
@@ -80,11 +80,12 @@ func NewServer(
 
 	var emptyCert atomic.Value
 	h := &handler{
-		k8sAPI:         k8sAPI,
-		usernameHeader: usernameHeader,
-		groupHeader:    groupHeader,
-		grpcTapServer:  grpcTapServer,
-		log:            log,
+		k8sAPI:            k8sAPI,
+		usernameHeader:    usernameHeader,
+		groupHeader:       groupHeader,
+		extraHeaderPrefix: extraHeaderPrefix,
+		grpcTapServer:     grpcTapServer,
+		log:               log,
 	}
 
 	lis, err := net.Listen("tcp", addr)
@@ -164,28 +165,28 @@ func (a *Server) validate(req *http.Request) error {
 // authentication.
 // kubectl -n kube-system get cm/extension-apiserver-authentication
 // accessible via the extension-apiserver-authentication-reader role
-func serverAuth(ctx context.Context, k8sAPI *k8s.API) (string, []string, string, string, error) {
+func serverAuth(ctx context.Context, k8sAPI *k8s.API) (string, []string, string, string, string, error) {
 
 	cm, err := k8sAPI.Client.CoreV1().
 		ConfigMaps(metav1.NamespaceSystem).
 		Get(ctx, pkgk8s.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
 	if err != nil {
-		return "", nil, "", "", fmt.Errorf("failed to load [%s] config: %w", pkgk8s.ExtensionAPIServerAuthenticationConfigMapName, err)
+		return "", nil, "", "", "", fmt.Errorf("failed to load [%s] config: %w", pkgk8s.ExtensionAPIServerAuthenticationConfigMapName, err)
 	}
 
 	clientCAPem, ok := cm.Data[pkgk8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey]
 	if !ok {
-		return "", nil, "", "", fmt.Errorf("no client CA cert available for apiextension-server")
+		return "", nil, "", "", "", fmt.Errorf("no client CA cert available for apiextension-server")
 	}
 
 	allowedNames, err := deserializeStrings(cm.Data["requestheader-allowed-names"])
 	if err != nil {
-		return "", nil, "", "", err
+		return "", nil, "", "", "", err
 	}
 
 	usernameHeaders, err := deserializeStrings(cm.Data["requestheader-username-headers"])
 	if err != nil {
-		return "", nil, "", "", err
+		return "", nil, "", "", "", err
 	}
 	usernameHeader := ""
 	if len(usernameHeaders) > 0 {
@@ -194,14 +195,28 @@ func serverAuth(ctx context.Context, k8sAPI *k8s.API) (string, []string, string,
 
 	groupHeaders, err := deserializeStrings(cm.Data["requestheader-group-headers"])
 	if err != nil {
-		return "", nil, "", "", err
+		return "", nil, "", "", "", err
 	}
 	groupHeader := ""
 	if len(groupHeaders) > 0 {
 		groupHeader = groupHeaders[0]
 	}
 
-	return clientCAPem, allowedNames, usernameHeader, groupHeader, nil
+	extraHeaderPrefixes, err := deserializeStrings(cm.Data["requestheader-extra-headers-prefix"])
+	if err != nil {
+		return "", nil, "", "", "", err
+	}
+	// The extra headers prefix is used to identify headers that contain additional
+	// user attributes for authorization (e.g., "X-Remote-Extra-"). These headers are
+	// forwarded by the Kubernetes API server when acting as an aggregating proxy.
+	// The prefix is configurable via the --requestheader-extra-headers-prefix flag
+	// on the API server (defaults to "X-Remote-Extra-").
+	extraHeaderPrefix := ""
+	if len(extraHeaderPrefixes) > 0 {
+		extraHeaderPrefix = extraHeaderPrefixes[0]
+	}
+
+	return clientCAPem, allowedNames, usernameHeader, groupHeader, extraHeaderPrefix, nil
 }
 
 // copied from https://github.com/kubernetes/apiserver/blob/781c3cd1b3dc5b6f79c68ab0d16fe544600421ef/pkg/server/options/authentication.go#L360
