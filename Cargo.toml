@@ -15,7 +15,7 @@ members = [
 lto = "thin"
 
 [workspace.dependencies]
-gateway-api = "0.16"
+gateway-api = "0.19"
 http = "1"
 hyper = "1"
 k8s-openapi = { version = "0.25", features = ["v1_33"] }
