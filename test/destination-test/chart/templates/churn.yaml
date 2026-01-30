@@ -19,7 +19,6 @@ spec:
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       args:
         - scale
-        - --admin-addr=0.0.0.0:{{ .Values.churn.metricsPort }}
         - --namespace={{ .Values.testNamespace }}
         - --deployment-pattern={{ .Values.churn.deploymentPattern }}
         - --min-replicas={{ .Values.churn.minReplicas }}

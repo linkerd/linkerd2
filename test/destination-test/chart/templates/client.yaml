@@ -70,7 +70,6 @@ spec:
         imagePullPolicy: {{ .Values.client.image.pullPolicy }}
         args:
         - client
-        - --admin-addr=0.0.0.0:{{ .Values.client.metricsPort }}
         - --destination-addr={{ .Values.client.destinationAddr }}
         - --service-label-selector={{ .Values.client.serviceLabelSelector }}
         - --watchers-per-service={{ .Values.client.watchersPerService }}

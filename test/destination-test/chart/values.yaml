@@ -57,7 +57,7 @@ churn:
   maxReplicas: 200
   holdDuration: "30s"
   jitterPercent: 10
-  
+
   # Metrics server port
   metricsPort: 8080
   
