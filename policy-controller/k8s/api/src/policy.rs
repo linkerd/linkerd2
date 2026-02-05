@@ -1,4 +1,5 @@
 pub mod authorization_policy;
+pub mod concurrency_limit_policy;
 pub mod egress_network;
 pub mod grpcroute;
 pub mod httproute;
@@ -14,6 +15,10 @@ pub mod tlsroute;
 
 pub use self::{
     authorization_policy::{AuthorizationPolicy, AuthorizationPolicySpec},
+    concurrency_limit_policy::{
+        ConcurrencyLimitPolicySpec, HttpLocalConcurrencyLimitPolicy,
+        HttpLocalConcurrencyLimitPolicyStatus,
+    },
     egress_network::{EgressNetwork, EgressNetworkSpec, EgressNetworkStatus, TrafficPolicy},
     httproute::{HttpRoute, HttpRouteSpec},
     meshtls_authentication::{MeshTLSAuthentication, MeshTLSAuthenticationSpec},
