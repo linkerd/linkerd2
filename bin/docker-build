@@ -18,5 +18,5 @@ if [ -z "${LINKERD_LOCAL_BUILD_CLI:-}" ]; then
 else
     "$bindir"/build-cli-bin
 fi
-"$bindir"/docker-build-metrics-api
-"$bindir"/docker-build-tap
+# "$bindir"/docker-build-metrics-api
+# "$bindir"/docker-build-tap
