@@ -41,7 +41,7 @@ gateway:
   tolerations: []
 
   # -- The pause container to use
-  pauseImage: "gcr.io/google_containers/pause:3.2"
+  pauseImage: "registry.k8s.io/pause:3.2"
 
   # -- User id under which the gateway shall be ran
   UID: 2103
