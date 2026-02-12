@@ -426,6 +426,8 @@ jobs:
           echo 'needs.test-ext.result: ${{ needs.test-ext.result }}'
           echo 'needs.test-viz.result: ${{ needs.test-viz.result }}'
           echo 'needs.test-multicluster.result: ${{ needs.test-multicluster.result }}'
+          kubectl get po -A
+          kubectl -n linkerd-multicluster describe po
       - name: Verify jobs
         # All jobs must succeed or be skipped.
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
