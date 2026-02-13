@@ -118,7 +118,7 @@ spec:
       # script copies the files into place and then sleeps so
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
-        image: cr.l5d.io/linkerd/cni-plugin:v1.6.5
+        image: cr.l5d.io/linkerd/cni-plugin:v1.6.6
         imagePullPolicy: 
         env:
         - name: DEST_CNI_NET_DIR
