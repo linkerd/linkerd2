@@ -44,6 +44,7 @@ jobs:
             justfile
             bin/fetch-proxy
             bin/_test-helper.sh
+            test/integration/**
           files_ignore: |
             .devcontainer/**
             **/Chart.yaml
