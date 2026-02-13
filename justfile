@@ -490,9 +490,9 @@ mc-target-k3d-delete:
             k3d-delete
     fi
 
-_mc-load: _k3d-init linkerd-load
+mc-load: _k3d-init linkerd-load
 
-_mc-target-load:
+mc-target-load:
     @{{ just_executable() }} \
         k3d-name='{{ k3d-name }}-target' \
         k3d-k8s='{{ k3d-k8s }}' \
@@ -505,16 +505,14 @@ _mc-target-load:
         linkerd-exec='{{ linkerd-exec }}' \
         linkerd-tag='{{ linkerd-tag }}' \
         _pause-load \
-        _mc-load
+        mc-load
 
-# Run the multicluster tests with cluster setup
-mc-test: mc-test-load mc-test-run
+mc-install-gwapi:
+	{{ _kubectl }} apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/experimental-install.yaml
 
 mc-test-build:
     go build --mod=readonly \
         ./test/integration/multicluster/...
-
-mc-test-load: _mc-load _mc-target-load mc-flat-network-init
 
 k3d-source-server := "k3d-" + k3d-name + "-server-0"
 k3d-target-server := "k3d-" + k3d-name + "-target-server-0"
