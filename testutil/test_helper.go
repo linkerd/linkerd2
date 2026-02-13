@@ -749,12 +749,6 @@ func (h *TestHelper) InstallGatewayAPI() error {
 	return err
 }
 
-func (h *TestHelper) InstallGatewayAPIWithContext(ctx string) error {
-	url := fmt.Sprintf("https://github.com/kubernetes-sigs/gateway-api/releases/download/%s/experimental-install.yaml", GATEWAY_API_VERSION)
-	_, err := h.KubectlWithContext("", ctx, "apply", "-f", url)
-	return err
-}
-
 // ReadFile reads a file from disk and returns the contents as a string.
 func ReadFile(file string) (string, error) {
 	b, err := os.ReadFile(file)
