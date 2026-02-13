@@ -45,10 +45,11 @@ COPY proxy-identity proxy-identity
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/proxy-identity -mod=readonly -ldflags "-s -w" ./proxy-identity
 
 ## build proxy-init
-FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v48-go AS proxy-init
+FROM --platform=$BUILDPLATFORM golang:1.25.7-alpine AS proxy-init
 WORKDIR /build
 ARG PROXY_INIT_REPO="linkerd/linkerd2-proxy-init"
 ARG PROXY_INIT_REF="proxy-init/v2.4.5"
+RUN apk add --no-cache ca-certificates git
 RUN --mount=type=secret,id=github \
     export GITHUB_TOKEN_FILE=/run/secrets/github; \
     git init --initial-branch=main . && \
