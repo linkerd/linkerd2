@@ -75,12 +75,87 @@
   "links": [],
   "panels": [
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "Prometheus is not receiving data. Please check your Prometheus configuration and ensure it is running."
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "noValue": "Prometheus is not receiving data. Please check your Prometheus configuration and ensure it is running.",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 87,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "prometheus_ready",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
       "content": "<div>\n  <div style=\"position: absolute; top: 0, left: 0\">\n    <a href=\"https://linkerd.io\" target=\"_blank\"><img src=\"https://linkerd.io/images/identity/svg/linkerd_primary_color_white.svg\" style=\"height: 30px;\"></a>\n  </div>\n  <div id=\"version\" style=\"position: absolute; top: 0; right: 0; font-size: 15px\">\n  </div>\n</div>\n<div style=\"display:none\">\n<script type=\"text/javascript\">\nvar localReqURL =\n  window.location.href.substring(\n    0,\n    window.location.href.indexOf(\n    \"/grafana/\"\n    )\n  )+'/overview';\n\nfetch(localReqURL, {\n  credentials: 'include',\n  headers: {\n    \"Content-Type\": \"text/html; charset=utf-8\",\n  },\n})\n.then(response => response.text())\n.then(text => (new window.DOMParser()).parseFromString(text, \"text/html\"))\n.then(html => {\n  var main = html.getElementById('main');\n  var localVersion = main.getAttribute(\"data-release-version\");\n  var versionElem = document.getElementById('version');\n\n  var channel;\n  var parts = localVersion.split(\"-\", 2);\n  if (parts.length === 2) {\n    channel = parts[0];\n    versionElem.innerHTML += 'Running Linkerd ' + parts[1] + ' (' + parts[0] + ')' + '.<br>';\n  } else {\n    versionElem.innerHTML += 'Running Linkerd ' + localVersion + '.<br>';\n  }\n  var uuid = main.getAttribute(\"data-uuid\");\n\n  fetch('https://versioncheck.linkerd.io/version.json?version='+localVersion+'&uuid='+uuid+'&source=grafana', {\n    credentials: 'include',\n    headers: {\n      \"Content-Type\": \"application/json; charset=utf-8\",\n    },\n  })\n  .then(response => response.json())\n  .then(json => {\n    if (!channel || !json[channel]) {\n      versionElem.innerHTML += 'Version check failed.'\n    } else if (json[channel] === localVersion) {\n      versionElem.innerHTML += 'Linkerd is up to date.';\n    } else {\n      parts = json[channel].split(\"-\", 2);\n      if (parts.length === 2) {\n        versionElem.innerHTML += \"A new \"+parts[0]+\" version (\"+parts[1]+\") is available.\"\n      } else {\n        versionElem.innerHTML += \"A new version (\"+json[channel]+\") is available.\"\n      }\n      versionElem.innerHTML += \" <a href='https://versioncheck.linkerd.io/update' target='_blank'>Update now</a>.\";\n    }\n  });\n});\n</script>\n</div>",
       "gridPos": {
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 2
       },
       "height": "1px",
       "id": 14,
@@ -116,7 +191,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 3
+        "y": 5
       },
       "height": "",
       "id": 28,
@@ -202,7 +277,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 3
+        "y": 5
       },
       "height": "",
       "id": 29,
@@ -288,7 +363,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 3
+        "y": 5
       },
       "height": "",
       "id": 86,
@@ -355,7 +430,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 7
+        "y": 9
       },
       "height": "1px",
       "id": 20,
@@ -380,7 +455,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 9
+        "y": 11
       },
       "id": 21,
       "legend": {
@@ -469,7 +544,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 9
+        "y": 11
       },
       "id": 22,
       "legend": {
@@ -499,7 +574,7 @@
           "expr": "sum(irate(request_total{namespace=~\"$namespace\", deployment=~\"$deployment\", direction=\"inbound\", tls=\"true\"}[$__rate_interval])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒deploy/{{deployment}}",
+          "legendFormat": "\ud83d\udd12deploy/{{deployment}}",
           "refId": "A"
         },
         {
@@ -565,7 +640,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 9
+        "y": 11
       },
       "id": 23,
       "legend": {
@@ -646,7 +721,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 18
       },
       "height": "1px",
       "id": 19,
@@ -663,7 +738,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 20
       },
       "id": 40,
       "panels": [],
@@ -677,7 +752,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 21
       },
       "height": "1px",
       "id": 13,
@@ -702,7 +777,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 21
+        "y": 23
       },
       "id": 6,
       "legend": {
@@ -791,7 +866,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 21
+        "y": 23
       },
       "id": 8,
       "legend": {
@@ -822,7 +897,7 @@
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
-          "legendFormat": "🔒deploy/{{deployment}}",
+          "legendFormat": "\ud83d\udd12deploy/{{deployment}}",
           "refId": "A"
         },
         {
@@ -889,7 +964,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 21
+        "y": 23
       },
       "id": 9,
       "legend": {

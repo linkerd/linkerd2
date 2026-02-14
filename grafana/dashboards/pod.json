@@ -75,12 +75,87 @@
   "links": [],
   "panels": [
     {
-      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">po/$pod</span>\n</div>",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "Prometheus is not receiving data. Please check your Prometheus configuration and ensure it is running."
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "noValue": "Prometheus is not receiving data. Please check your Prometheus configuration and ensure it is running.",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 2,
         "w": 24,
         "x": 0,
         "y": 0
+      },
+      "id": 202,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "prometheus_ready",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">po/$pod</span>\n</div>",
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 2
       },
       "id": 20,
       "links": [],
@@ -116,7 +191,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 2
+        "y": 4
       },
       "id": 5,
       "interval": null,
@@ -204,7 +279,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 2
+        "y": 4
       },
       "id": 4,
       "interval": null,
@@ -292,7 +367,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 2
+        "y": 4
       },
       "id": 11,
       "interval": null,
@@ -379,7 +454,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 2
+        "y": 4
       },
       "id": 15,
       "interval": null,
@@ -446,7 +521,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 6
+        "y": 8
       },
       "id": 17,
       "links": [],
@@ -470,7 +545,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8
+        "y": 10
       },
       "id": 67,
       "legend": {
@@ -560,7 +635,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8
+        "y": 10
       },
       "id": 2,
       "legend": {
@@ -590,7 +665,7 @@
           "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\", tls=\"true\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒po/{{pod}}",
+          "legendFormat": "\ud83d\udd12po/{{pod}}",
           "refId": "A"
         },
         {
@@ -657,7 +732,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8
+        "y": 10
       },
       "id": 68,
       "legend": {
@@ -754,7 +829,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 15
+        "y": 17
       },
       "id": 201,
       "panels": [
@@ -772,7 +847,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 16
+            "y": 18
           },
           "id": 173,
           "legend": {
@@ -861,7 +936,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 16
+            "y": 18
           },
           "id": 175,
           "legend": {
@@ -957,7 +1032,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 16
+            "y": 18
           },
           "heatmap": {},
           "hideZeroBuckets": false,
@@ -1011,7 +1086,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 18
       },
       "id": 199,
       "panels": [],
@@ -1024,7 +1099,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 19
       },
       "id": 80,
       "links": [],
@@ -1048,7 +1123,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 19
+        "y": 21
       },
       "id": 81,
       "legend": {
@@ -1139,7 +1214,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 19
+        "y": 21
       },
       "id": 82,
       "legend": {
@@ -1169,7 +1244,7 @@
           "expr": "sum(irate(request_total{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒po/{{pod}}",
+          "legendFormat": "\ud83d\udd12po/{{pod}}",
           "refId": "A"
         },
         {
@@ -1236,7 +1311,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 19
+        "y": 21
       },
       "id": 83,
       "legend": {
@@ -1333,7 +1408,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 28
       },
       "id": 88,
       "links": [],
@@ -1357,7 +1432,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 28
+        "y": 30
       },
       "id": 89,
       "legend": {
@@ -1448,7 +1523,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 28
+        "y": 30
       },
       "id": 90,
       "legend": {
@@ -1478,7 +1553,7 @@
           "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒po/{{pod}}",
+          "legendFormat": "\ud83d\udd12po/{{pod}}",
           "refId": "A"
         },
         {
@@ -1545,7 +1620,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 28
+        "y": 30
       },
       "id": 91,
       "legend": {
@@ -1642,7 +1717,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 37
       },
       "id": 197,
       "panels": [
@@ -1660,7 +1735,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 36
+            "y": 38
           },
           "id": 191,
           "legend": {
@@ -1749,7 +1824,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 36
+            "y": 38
           },
           "id": 183,
           "legend": {
@@ -1845,7 +1920,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 36
+            "y": 38
           },
           "heatmap": {},
           "hideZeroBuckets": false,
@@ -1899,7 +1974,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 38
       },
       "id": 187,
       "panels": [],
@@ -1912,7 +1987,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 37
+        "y": 39
       },
       "id": 84,
       "links": [],
@@ -1936,7 +2011,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 39
+        "y": 41
       },
       "id": 85,
       "legend": {
@@ -2027,7 +2102,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 39
+        "y": 41
       },
       "id": 86,
       "legend": {
@@ -2057,7 +2132,7 @@
           "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (dst_pod)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒po/{{dst_pod}}",
+          "legendFormat": "\ud83d\udd12po/{{dst_pod}}",
           "refId": "A"
         },
         {
@@ -2124,7 +2199,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 39
+        "y": 41
       },
       "id": 87,
       "legend": {
@@ -2221,7 +2296,7 @@
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 46
+        "y": 48
       },
       "height": "1px",
       "id": 171,
