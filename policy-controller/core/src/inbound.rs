@@ -91,6 +91,14 @@ pub struct Override {
     pub client_identities: Vec<String>,
 }
 
+/// Describes a concurrency limit configuration for a server.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ConcurrencyLimit {
+    pub name: String,
+    /// Maximum number of concurrent in-flight requests allowed.
+    pub max_in_flight_requests: u32,
+}
+
 /// Models inbound server configuration discovery.
 #[async_trait::async_trait]
 pub trait DiscoverInboundServer<T> {
@@ -109,6 +117,7 @@ pub struct InboundServer {
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
     pub ratelimit: Option<RateLimit>,
+    pub concurrency_limit: Option<ConcurrencyLimit>,
     pub http_routes: HashMap<RouteRef, InboundRoute<HttpRouteMatch>>,
     pub grpc_routes: HashMap<RouteRef, InboundRoute<GrpcRouteMatch>>,
 }

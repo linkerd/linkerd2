@@ -47,5 +47,6 @@ path = "./policy-controller/runtime"
 default-features = false
 
 [workspace.dependencies.linkerd2-proxy-api]
-version = "0.18.0"
+git = "https://github.com/zeptonow/linkerd2-proxy-api"
+rev = "da0d99bf8814729e774f473952e61823dc258b46"
 features = ["inbound", "outbound"]

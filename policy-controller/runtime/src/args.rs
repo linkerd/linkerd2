@@ -277,6 +277,22 @@ impl Args {
                 .instrument(info_span!("httplocalratelimitpolicies")),
         );
 
+        let concurrency_limit_policies =
+            guarded_watch::<k8s::policy::HttpLocalConcurrencyLimitPolicy, _>(
+                &mut runtime,
+                watcher::Config::default(),
+            );
+        let concurrency_limit_policies_indexes = IndexList::new(inbound_index.clone())
+            .push(status_index.clone())
+            .shared();
+        tokio::spawn(
+            kubert::index::namespaced(
+                concurrency_limit_policies_indexes.clone(),
+                concurrency_limit_policies,
+            )
+            .instrument(info_span!("httplocalconcurrencylimitpolicies")),
+        );
+
         let http_routes_indexes = IndexList::new(inbound_index.clone())
             .push(outbound_index.clone())
             .push(status_index.clone())
