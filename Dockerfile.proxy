@@ -28,7 +28,7 @@ RUN --mount=type=secret,id=github \
 RUN echo "$LINKERD2_PROXY_VERSION" > proxy-version
 ARG LINKERD_AWAIT_VERSION=v0.3.1
 RUN bin/scurl -o linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x linkerd-await
-ARG LINKERD_VALIDATOR_VERSION=v0.1.5
+ARG LINKERD_VALIDATOR_VERSION=v0.1.6
 RUN bin/scurl -O https://github.com/linkerd/linkerd2-proxy-init/releases/download/validator%2F${LINKERD_VALIDATOR_VERSION}/linkerd-network-validator-${LINKERD_VALIDATOR_VERSION}-${TARGETARCH}-linux.tgz
 RUN tar -zxvf linkerd-network-validator-${LINKERD_VALIDATOR_VERSION}-${TARGETARCH}-linux.tgz && mv linkerd-network-validator-${LINKERD_VALIDATOR_VERSION}-${TARGETARCH}-linux/linkerd-network-validator .
 
@@ -45,10 +45,11 @@ COPY proxy-identity proxy-identity
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/proxy-identity -mod=readonly -ldflags "-s -w" ./proxy-identity
 
 ## build proxy-init
-FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v48-go AS proxy-init
+FROM --platform=$BUILDPLATFORM golang:1.25.7-alpine AS proxy-init
 WORKDIR /build
 ARG PROXY_INIT_REPO="linkerd/linkerd2-proxy-init"
-ARG PROXY_INIT_REF="proxy-init/v2.4.4"
+ARG PROXY_INIT_REF="proxy-init/v2.4.5"
+RUN apk add --no-cache ca-certificates git
 RUN --mount=type=secret,id=github \
     export GITHUB_TOKEN_FILE=/run/secrets/github; \
     git init --initial-branch=main . && \
