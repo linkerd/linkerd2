@@ -724,14 +724,44 @@ podMonitor:
       matchNames:
         - {{ .Release.Namespace }}
         - linkerd-viz
+
+    # -- Custom metric relabelings for controller metrics
+    metricRelabelings: []
+    # Example:
+    # metricRelabelings:
+    #   - sourceLabels: [__name__]
+    #     regex: 'controller_.*_duration_seconds_bucket'
+    #     action: drop
+
+    # -- Additional relabelings appended to default ones
+    additionalRelabelings: []
+    # Example:
+    # additionalRelabelings:
+    #   - action: labeldrop
+    #     regex: 'unwanted_label'
+    #   - sourceLabels: [__meta_kubernetes_pod_label_version]
+    #     targetLabel: app_version
+    #     action: replace
+
   serviceMirror:
     # -- Enables the creation of PodMonitor for the Service Mirror component
     enabled: true
+
+    # -- Custom metric relabelings for service mirror metrics
+    metricRelabelings: []
+
+    # -- Additional relabelings appended to default ones
+    additionalRelabelings: []
+
   proxy:
     # -- Enables the creation of PodMonitor for the data-plane
     enabled: true
 
+    # -- Custom metric relabelings for proxy metrics (recommended for cardinality control)
+    metricRelabelings: []
 
+    # -- Additional relabelings appended to default ones
+    additionalRelabelings: []
 # Egress related configuration
 egress:
   # -- The namespace that is used to store egress configuration that affects all client workloads in the cluster
