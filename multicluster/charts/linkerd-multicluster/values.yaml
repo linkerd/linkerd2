@@ -82,7 +82,7 @@ namespaceMetadata:
     # -- Docker image name for the namespace-metadata instance
     name: extension-init
     # -- Docker image tag for the namespace-metadata instance
-    tag: v0.1.7
+    tag: v0.1.8
     # -- Pull policy for the namespace-metadata instance
     # @default -- imagePullPolicy
     pullPolicy: ""
