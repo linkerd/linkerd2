@@ -1,5 +1,6 @@
 mod annotation;
 mod authorization_policy;
+mod concurrency_limit_policy;
 mod grpc_routes;
 mod http_routes;
 mod ratelimit_policy;
@@ -243,6 +244,7 @@ impl TestConfig {
             reference: ServerRef::Default(self.default_policy.as_str()),
             authorizations: mk_default_policy(self.default_policy, self.cluster.networks.clone()),
             ratelimit: None,
+            concurrency_limit: None,
             protocol: ProxyProtocol::Detect {
                 timeout: self.detect_timeout,
             },

@@ -373,6 +373,7 @@ pub mod defaults {
             kind: Some(Kind::Http1(Http1 {
                 routes: vec![http_route(), probe_route()],
                 local_rate_limit,
+                local_concurrency_limit: None,
             })),
         }
     }
@@ -387,6 +388,7 @@ pub mod defaults {
             kind: Some(Kind::Http1(Http1 {
                 routes: vec![http_route()],
                 local_rate_limit: None,
+                local_concurrency_limit: None,
             })),
         }
     }

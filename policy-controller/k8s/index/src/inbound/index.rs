@@ -7,8 +7,9 @@
 //! kubernetes resources.
 
 use super::{
-    authorization_policy, meshtls_authentication, network_authentication, ratelimit_policy,
-    routes::RouteBinding, server, server_authorization, workload,
+    authorization_policy, concurrency_limit_policy, meshtls_authentication,
+    network_authentication, ratelimit_policy, routes::RouteBinding, server, server_authorization,
+    workload,
 };
 use crate::{
     ports::{PortHasher, PortMap, PortSet},
@@ -19,9 +20,9 @@ use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     inbound::{
-        AuthorizationRef, ClientAuthentication, ClientAuthorization, GrpcRoute, HttpRoute,
-        InboundRouteRule, InboundServer, Limit, Override, ProxyProtocol, RateLimit, RouteRef,
-        ServerRef,
+        AuthorizationRef, ClientAuthentication, ClientAuthorization, ConcurrencyLimit, GrpcRoute,
+        HttpRoute, InboundRouteRule, InboundServer, Limit, Override, ProxyProtocol, RateLimit,
+        RouteRef, ServerRef,
     },
     routes::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
@@ -165,6 +166,7 @@ struct PolicyIndex {
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
     ratelimit_policies: HashMap<String, ratelimit_policy::Spec>,
+    concurrency_limit_policies: HashMap<String, concurrency_limit_policy::Spec>,
     http_routes: HashMap<GroupKindName, RouteBinding<HttpRoute>>,
     grpc_routes: HashMap<GroupKindName, RouteBinding<GrpcRoute>>,
 }
@@ -1021,6 +1023,97 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpLocalRateLimitPolic
     }
 }
 
+impl kubert::index::IndexNamespacedResource<k8s::policy::HttpLocalConcurrencyLimitPolicy>
+    for Index
+{
+    fn apply(&mut self, policy: k8s::policy::HttpLocalConcurrencyLimitPolicy) {
+        let ns = policy.namespace().unwrap();
+        let name = policy.name_unchecked();
+        let _span = info_span!("apply", %ns, cl = %name).entered();
+
+        let spec = match concurrency_limit_policy::Spec::try_from(policy) {
+            Ok(spec) => spec,
+            Err(error) => {
+                tracing::warn!(%error, "Invalid concurrency limit policy");
+                return;
+            }
+        };
+
+        self.ns_or_default_with_reindex(ns, |ns| {
+            ns.policy.update_concurrency_limit_policy(name, spec)
+        })
+    }
+
+    fn delete(&mut self, ns: String, ap: String) {
+        let _span = info_span!("delete", %ns, %ap).entered();
+        tracing::trace!(name = %ap, "Delete");
+        self.ns_with_reindex(ns, |ns| {
+            ns.policy.concurrency_limit_policies.remove(&ap).is_some()
+        })
+    }
+
+    fn reset(
+        &mut self,
+        policies: Vec<k8s::policy::HttpLocalConcurrencyLimitPolicy>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        let _span = info_span!("reset");
+
+        tracing::trace!(?deleted, ?policies, "Reset");
+        // Aggregate all of the updates by namespace so that we only reindex
+        // once per namespace.
+        type Ns = NsUpdate<String, concurrency_limit_policy::Spec>;
+        let mut updates_by_ns = HashMap::<String, Ns>::default();
+        for policy in policies.into_iter() {
+            let namespace = policy
+                .namespace()
+                .expect("concurrencylimitpolicy must be namespaced");
+            let name = policy.name_unchecked();
+            match concurrency_limit_policy::Spec::try_from(policy) {
+                Ok(spec) => updates_by_ns
+                    .entry(namespace)
+                    .or_default()
+                    .added
+                    .push((name, spec)),
+                Err(error) => {
+                    tracing::warn!(ns = %namespace, %name, %error, "Illegal server concurrency limit update")
+                }
+            }
+        }
+        for (ns, names) in deleted.into_iter() {
+            updates_by_ns.entry(ns).or_default().removed = names;
+        }
+
+        for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
+            if added.is_empty() {
+                // If there are no live resources in the namespace, we do not
+                // want to create a default namespace instance, we just want to
+                // clear out all resources for the namespace (and then drop the
+                // whole namespace, if necessary).
+                self.ns_with_reindex(namespace, |ns| {
+                    ns.policy.concurrency_limit_policies.clear();
+                    true
+                });
+            } else {
+                // Otherwise, we take greater care to reindex only when the
+                // state actually changed. The vast majority of resets will see
+                // no actual data change.
+                self.ns_or_default_with_reindex(namespace, |ns| {
+                    let mut changed = !removed.is_empty();
+                    for name in removed.into_iter() {
+                        ns.policy.concurrency_limit_policies.remove(&name);
+                    }
+                    for (name, spec) in added.into_iter() {
+                        changed =
+                            ns.policy.update_concurrency_limit_policy(name, spec) || changed;
+                    }
+                    changed
+                });
+            }
+        }
+    }
+}
+
 impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     fn apply(&mut self, route: k8s::policy::HttpRoute) {
         self.apply_http_route(route)
@@ -1145,6 +1238,7 @@ impl Namespace {
                 server_authorizations: HashMap::default(),
                 authorization_policies: HashMap::default(),
                 ratelimit_policies: HashMap::default(),
+                concurrency_limit_policies: HashMap::default(),
                 http_routes: HashMap::default(),
                 grpc_routes: HashMap::default(),
             },
@@ -1746,6 +1840,26 @@ impl PolicyIndex {
         true
     }
 
+    fn update_concurrency_limit_policy(
+        &mut self,
+        name: String,
+        spec: concurrency_limit_policy::Spec,
+    ) -> bool {
+        match self.concurrency_limit_policies.entry(name) {
+            Entry::Vacant(entry) => {
+                entry.insert(spec);
+            }
+            Entry::Occupied(entry) => {
+                let cl = entry.into_mut();
+                if *cl == spec {
+                    return false;
+                }
+                *cl = spec;
+            }
+        }
+        true
+    }
+
     fn default_inbound_server<'p>(
         port: NonZeroU16,
         settings: &workload::Settings,
@@ -1774,6 +1888,7 @@ impl PolicyIndex {
         let authorizations = policy.default_authzs(config);
 
         let ratelimit = Default::default();
+        let concurrency_limit = Default::default();
 
         let http_routes = config.default_inbound_http_routes(probe_paths);
 
@@ -1782,6 +1897,7 @@ impl PolicyIndex {
             protocol,
             authorizations,
             ratelimit,
+            concurrency_limit,
             http_routes,
             grpc_routes: HashMap::default(),
         }
@@ -1797,6 +1913,7 @@ impl PolicyIndex {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
         let ratelimit = self.client_ratelimit(&name);
+        let concurrency_limit = self.client_concurrency_limit(&name);
         let http_routes = self.http_routes(&name, authentications, probe_paths);
         let grpc_routes = self.grpc_routes(&name, authentications);
 
@@ -1804,6 +1921,7 @@ impl PolicyIndex {
             reference: ServerRef::Server(name),
             authorizations,
             ratelimit,
+            concurrency_limit,
             protocol: server.protocol.clone(),
             http_routes,
             grpc_routes,
@@ -1927,6 +2045,27 @@ impl PolicyIndex {
                 requests_per_second: l.requests_per_second,
             }),
             overrides,
+        })
+    }
+
+    fn client_concurrency_limit(&self, server_name: &str) -> Option<ConcurrencyLimit> {
+        use concurrency_limit_policy::Target;
+
+        let (name, spec) = self
+            .concurrency_limit_policies
+            .iter()
+            .find(|(_, spec)| matches!(spec.target, Target::Server(ref n) if n == server_name && spec.accepted_by_server(server_name)))?;
+
+        tracing::trace!(
+            ns = %self.namespace,
+            concurrencylimitpolicy = %name,
+            server = %server_name,
+            "HTTPLocalConcurrencyLimitPolicy targets server",
+        );
+
+        Some(ConcurrencyLimit {
+            name: name.to_string(),
+            max_in_flight_requests: spec.max_in_flight_requests,
         })
     }
 

@@ -1,5 +1,5 @@
 use crate::{
-    ratelimit,
+    concurrency_limit, ratelimit,
     resource_id::{NamespaceGroupKindName, ResourceId},
     routes,
     service::Service,
@@ -41,6 +41,7 @@ mod reasons {
     pub const NO_MATCHING_TARGET: &str = "NoMatchingTarget";
     pub const ROUTE_REASON_CONFLICTED: &str = "RouteReasonConflicted";
     pub const RATELIMIT_REASON_ALREADY_EXISTS: &str = "RateLimitReasonAlreadyExists";
+    pub const CONCURRENCYLIMIT_REASON_ALREADY_EXISTS: &str = "ConcurrencyLimitReasonAlreadyExists";
     pub const EGRESS_NET_REASON_OVERLAP: &str = "EgressReasonNetworkOverlap";
 }
 
@@ -90,6 +91,9 @@ pub struct Index {
     /// Maps rate limit ids to a list of details about these rate limits.
     ratelimits: HashMap<ResourceId, HttpLocalRateLimitPolicyRef>,
 
+    /// Maps concurrency limit ids to a list of details about these concurrency limits.
+    concurrencylimits: HashMap<ResourceId, HttpLocalConcurrencyLimitPolicyRef>,
+
     /// Maps egress network ids to a list of details about these networks.
     egress_networks: HashMap<ResourceId, EgressNetworkRef>,
 
@@ -121,6 +125,13 @@ pub(crate) type TCPRouteRef = RouteRef<gateway::TCPRouteStatus>;
 struct HttpLocalRateLimitPolicyRef {
     creation_timestamp: Option<DateTime<Utc>>,
     target_ref: ratelimit::TargetReference,
+    status_conditions: Vec<k8s::Condition>,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+struct HttpLocalConcurrencyLimitPolicyRef {
+    creation_timestamp: Option<DateTime<Utc>>,
+    target_ref: concurrency_limit::TargetReference,
     status_conditions: Vec<k8s::Condition>,
 }
 
@@ -285,6 +296,8 @@ impl Controller {
                             self.patch::<gateway::TLSRoute>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.is_a::<policy::HttpLocalRateLimitPolicy>() {
                             self.patch::<policy::HttpLocalRateLimitPolicy>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.is_a::<policy::HttpLocalConcurrencyLimitPolicy>() {
+                            self.patch::<policy::HttpLocalConcurrencyLimitPolicy>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.is_a::<policy::EgressNetwork>() {
                             self.patch::<policy::EgressNetwork>(&id.gkn.name, &id.namespace, patch).await;
                         }
@@ -359,6 +372,7 @@ impl Index {
             tls_route_refs: HashMap::new(),
             tcp_route_refs: HashMap::new(),
             ratelimits: HashMap::new(),
+            concurrencylimits: HashMap::new(),
             egress_networks: HashMap::new(),
             servers: HashSet::new(),
             services: HashMap::new(),
@@ -536,6 +550,27 @@ impl Index {
                     return false;
                 }
                 entry.insert(ratelimit.clone());
+            }
+        }
+        true
+    }
+
+    // If the concurrency limit is new or its contents have changed, return true, so that a patch is
+    // generated; otherwise return false.
+    fn update_concurrencylimit(
+        &mut self,
+        id: ResourceId,
+        concurrencylimit: &HttpLocalConcurrencyLimitPolicyRef,
+    ) -> bool {
+        match self.concurrencylimits.entry(id) {
+            Entry::Vacant(entry) => {
+                entry.insert(concurrencylimit.clone());
+            }
+            Entry::Occupied(mut entry) => {
+                if entry.get() == concurrencylimit {
+                    return false;
+                }
+                entry.insert(concurrencylimit.clone());
             }
         }
         true
@@ -1130,6 +1165,72 @@ impl Index {
         make_patch(id, status)
     }
 
+    fn concurrency_target_ref_status(
+        &self,
+        id: &NamespaceGroupKindName,
+        target_ref: &concurrency_limit::TargetReference,
+    ) -> Option<policy::HttpLocalConcurrencyLimitPolicyStatus> {
+        match target_ref {
+            concurrency_limit::TargetReference::Server(server) => {
+                let condition = if self.servers.contains(server) {
+                    // Collect concurrency limits for this server, sorted by creation timestamp and then
+                    // by name. If the current CL is the first one in the list, it is accepted.
+                    let mut concurrency_limits = self
+                        .concurrencylimits
+                        .iter()
+                        .filter(|(_, cl_ref)| cl_ref.target_ref == *target_ref)
+                        .collect::<Vec<_>>();
+                    concurrency_limits.sort_by(|(a_id, a), (b_id, b)| {
+                        let by_ts = match (&a.creation_timestamp, &b.creation_timestamp) {
+                            (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
+                            (None, None) => std::cmp::Ordering::Equal,
+                            // entries with timestamps are preferred over ones without
+                            (Some(_), None) => return std::cmp::Ordering::Less,
+                            (None, Some(_)) => return std::cmp::Ordering::Greater,
+                        };
+                        by_ts.then_with(|| a_id.name.cmp(&b_id.name))
+                    });
+
+                    let Some((first_id, _)) = concurrency_limits.first() else {
+                        // No concurrency limits exist for this server; we shouldn't reach this point!
+                        return None;
+                    };
+
+                    if first_id.name == id.gkn.name {
+                        accepted()
+                    } else {
+                        concurrencylimit_already_exists()
+                    }
+                } else {
+                    no_matching_target()
+                };
+
+                Some(policy::HttpLocalConcurrencyLimitPolicyStatus {
+                    conditions: vec![condition],
+                    target_ref: policy::LocalTargetRef {
+                        group: Some(POLICY_API_GROUP.to_string()),
+                        kind: "Server".to_string(),
+                        name: server.name.clone(),
+                    },
+                })
+            }
+            concurrency_limit::TargetReference::UnknownKind => None,
+        }
+    }
+
+    fn make_concurrencylimit_patch(
+        &self,
+        id: &NamespaceGroupKindName,
+        concurrencylimit: &HttpLocalConcurrencyLimitPolicyRef,
+    ) -> Option<k8s::Patch<serde_json::Value>> {
+        let status = self.concurrency_target_ref_status(id, &concurrencylimit.target_ref)?;
+        if eq_time_insensitive_conditions(&status.conditions, &concurrencylimit.status_conditions) {
+            return None;
+        }
+
+        make_patch(id, status)
+    }
+
     fn network_condition(&self, egress_net: &EgressNetworkRef) -> k8s::Condition {
         for egress_network_block in &egress_net.networks {
             for cluster_network_block in &self.cluster_networks {
@@ -1185,14 +1286,16 @@ impl Index {
             tls_routes = self.tls_route_refs.len(),
             tcp_routes = self.tcp_route_refs.len(),
             httplocalratelimits = self.ratelimits.len(),
+            httplocalconcurrencylimits = self.concurrencylimits.len(),
             "Reconciling"
         );
         let egressnetworks = self.reconcile_egress_networks();
         let routes = self.reconcile_routes();
         let ratelimits = self.reconcile_ratelimits();
+        let concurrencylimits = self.reconcile_concurrencylimits();
 
-        if egressnetworks + routes + ratelimits > 0 {
-            tracing::debug!(egressnetworks, routes, ratelimits, "Reconciled");
+        if egressnetworks + routes + ratelimits + concurrencylimits > 0 {
+            tracing::debug!(egressnetworks, routes, ratelimits, concurrencylimits, "Reconciled");
         }
     }
 
@@ -1317,6 +1420,53 @@ impl Index {
         // Insert into the index; if the route is already in the index, and it hasn't
         // changed, skip creating a patch.
         if !self.update_ratelimit(id.clone(), &ratelimit) {
+            return;
+        }
+
+        self.reconcile_if_leader();
+    }
+
+    fn reconcile_concurrencylimits(&self) -> usize {
+        let mut patches = 0;
+        for (id, cl) in self.concurrencylimits.iter() {
+            let id = NamespaceGroupKindName {
+                namespace: id.namespace.clone(),
+                gkn: GroupKindName {
+                    group: policy::HttpLocalConcurrencyLimitPolicy::group(&()),
+                    kind: policy::HttpLocalConcurrencyLimitPolicy::kind(&()),
+                    name: id.name.clone().into(),
+                },
+            };
+
+            if let Some(patch) = self.make_concurrencylimit_patch(&id, cl) {
+                match self.updates.try_send(Update {
+                    id: id.clone(),
+                    patch,
+                }) {
+                    Ok(()) => {
+                        patches += 1;
+                        self.metrics.patch_enqueues.inc();
+                    }
+                    Err(error) => {
+                        self.metrics.patch_channel_full.inc();
+                        tracing::error!(%id.namespace, concurrencylimit = ?id.gkn, %error, "Failed to send concurrencylimit patch");
+                    }
+                }
+            }
+        }
+        patches
+    }
+
+    #[tracing::instrument(level = "debug", skip(self, concurrencylimit))]
+    fn index_concurrencylimit(
+        &mut self,
+        id: ResourceId,
+        concurrencylimit: HttpLocalConcurrencyLimitPolicyRef,
+    ) {
+        tracing::trace!(?concurrencylimit);
+        // Insert into the index; if the concurrency limit is already in the index, and it hasn't
+        // changed, skip creating a patch.
+        if !self.update_concurrencylimit(id.clone(), &concurrencylimit) {
             return;
         }
 
@@ -1740,6 +1890,40 @@ impl kubert::index::IndexNamespacedResource<policy::HttpLocalRateLimitPolicy> fo
     }
 }
 
+impl kubert::index::IndexNamespacedResource<policy::HttpLocalConcurrencyLimitPolicy> for Index {
+    fn apply(&mut self, resource: policy::HttpLocalConcurrencyLimitPolicy) {
+        let namespace = resource
+            .namespace()
+            .expect("HTTPLocalConcurrencyLimitPolicy must have a namespace");
+        let name = resource.name_unchecked();
+
+        let status_conditions = resource
+            .status
+            .into_iter()
+            .flat_map(|s| s.conditions)
+            .collect();
+
+        let id = ResourceId::new(namespace.clone(), name);
+        let creation_timestamp = resource.metadata.creation_timestamp.map(|Time(t)| t);
+        let target_ref =
+            concurrency_limit::TargetReference::make_target_ref(&namespace, &resource.spec);
+
+        let cl = HttpLocalConcurrencyLimitPolicyRef {
+            creation_timestamp,
+            target_ref,
+            status_conditions,
+        };
+
+        self.index_concurrencylimit(id, cl);
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let id = ResourceId::new(namespace, name);
+        self.concurrencylimits.remove(&id);
+        self.reconcile_if_leader();
+    }
+}
+
 impl kubert::index::IndexNamespacedResource<policy::EgressNetwork> for Index {
     fn apply(&mut self, resource: policy::EgressNetwork) {
         let namespace = resource
@@ -1883,6 +2067,17 @@ pub(crate) fn ratelimit_already_exists() -> k8s::Condition {
         message: "".to_string(),
         observed_generation: None,
         reason: reasons::RATELIMIT_REASON_ALREADY_EXISTS.to_string(),
+        status: cond_statuses::STATUS_FALSE.to_string(),
+        type_: conditions::ACCEPTED.to_string(),
+    }
+}
+
+pub(crate) fn concurrencylimit_already_exists() -> k8s::Condition {
+    k8s::Condition {
+        last_transition_time: k8s::Time(now()),
+        message: "".to_string(),
+        observed_generation: None,
+        reason: reasons::CONCURRENCYLIMIT_REASON_ALREADY_EXISTS.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
     }

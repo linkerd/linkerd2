@@ -28,6 +28,9 @@ impl NamespaceGroupKindName {
             (POLICY_API_GROUP, "HTTPLocalRateLimitPolicy") => {
                 Ok(linkerd_k8s_api::HttpLocalRateLimitPolicy::api_version(&()))
             }
+            (POLICY_API_GROUP, "HTTPLocalConcurrencyLimitPolicy") => {
+                Ok(linkerd_k8s_api::HttpLocalConcurrencyLimitPolicy::api_version(&()))
+            }
             (POLICY_API_GROUP, "EgressNetwork") => {
                 Ok(linkerd_k8s_api::EgressNetwork::api_version(&()))
             }

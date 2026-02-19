@@ -42,7 +42,11 @@ fn links_named_server_port() {
         InboundServer {
             reference: ServerRef::Server("srv-admin".to_string()),
             authorizations: Default::default(),
+            ratelimit: None,
+            concurrency_limit: None,
             protocol: ProxyProtocol::Http1,
+            http_routes: mk_default_http_routes(),
+            grpc_routes: mk_default_grpc_routes(),
         },
     );
 }
@@ -77,7 +81,11 @@ fn links_unnamed_server_port() {
         InboundServer {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
+            ratelimit: None,
+            concurrency_limit: None,
             protocol: ProxyProtocol::Http1,
+            http_routes: mk_default_http_routes(),
+            grpc_routes: mk_default_grpc_routes(),
         },
     );
 }
@@ -113,8 +121,12 @@ fn server_update_deselects_pod() {
         *rx.borrow_and_update(),
         InboundServer {
             reference: ServerRef::Server("srv-0".to_string()),
-            protocol: ProxyProtocol::Http2,
             authorizations: Default::default(),
+            ratelimit: None,
+            concurrency_limit: None,
+            protocol: ProxyProtocol::Http2,
+            http_routes: mk_default_http_routes(),
+            grpc_routes: mk_default_grpc_routes(),
         }
     );
 
