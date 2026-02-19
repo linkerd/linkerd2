@@ -90,6 +90,9 @@ data:
       kubernetes_sd_configs:
       - role: pod
       relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_phase]
+        regex: (Pending|Running)
+        action: keep
       - source_labels:
         - __meta_kubernetes_pod_container_name
         - __meta_kubernetes_pod_container_port_name
