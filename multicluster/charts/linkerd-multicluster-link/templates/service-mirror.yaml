@@ -150,6 +150,7 @@ spec:
         {{- if .Values.enableNamespaceCreation }}
         - -enable-namespace-creation
         {{- end }}
+        - -enable-endpoint-slices={{.Values.enableEndpointSlices}}
         - -enable-pprof={{.Values.enablePprof | default false}}
         - -probe-service=probe-gateway-{{.Values.targetClusterName}}
         - {{.Values.targetClusterName}}

@@ -11,6 +11,11 @@ rules:
 - apiGroups: [""]
   resources: ["endpoints", "services"]
   verbs: ["list", "get", "watch", "create", "delete", "update"]
+{{- if .Values.localServiceMirror.enableEndpointSlices }}
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["list", "get", "watch"]
+{{- end }}
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list", "get", "watch"]
@@ -100,6 +105,7 @@ spec:
         - -event-requeue-limit={{.Values.localServiceMirror.serviceMirrorRetryLimit}}
         - -namespace={{.Release.Namespace}}
         - -enable-pprof={{.Values.localServiceMirror.enablePprof | default false}}
+        - -enable-endpoint-slices={{.Values.localServiceMirror.enableEndpointSlices}}
         - -local-mirror
         - -federated-service-selector={{.Values.localServiceMirror.federatedServiceSelector}}
         - -excluded-labels={{.Values.localServiceMirror.excludedLabels}}
