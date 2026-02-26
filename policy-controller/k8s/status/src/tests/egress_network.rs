@@ -160,6 +160,7 @@ fn egress_network_with_overlapping_networks_specified() {
         metadata: k8s_core_api::ObjectMeta {
             name: Some(id.gkn.name.to_string()),
             namespace: Some(id.namespace.clone()),
+            generation: Some(3),
             ..Default::default()
         },
         spec: linkerd_k8s_api::EgressNetworkSpec {
@@ -180,7 +181,7 @@ fn egress_network_with_overlapping_networks_specified() {
 
     // Create the expected update.
     let status = EgressNetworkStatus {
-        conditions: vec![in_cluster_net_overlap()],
+        conditions: vec![in_cluster_net_overlap(egress_network.metadata.generation)],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
     let update = updates_rx.try_recv().unwrap();

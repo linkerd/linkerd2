@@ -127,6 +127,7 @@ struct HttpLocalRateLimitPolicyRef {
 
 #[derive(Clone, PartialEq, Debug)]
 struct EgressNetworkRef {
+    generation: Option<i64>,
     networks: Vec<Network>,
     status_conditions: Vec<k8s::Condition>,
 }
@@ -1135,12 +1136,12 @@ impl Index {
         for egress_network_block in &egress_net.networks {
             for cluster_network_block in &self.cluster_networks {
                 if egress_network_block.intersect(cluster_network_block) {
-                    return in_cluster_net_overlap();
+                    return in_cluster_net_overlap(egress_net.generation);
                 }
             }
         }
 
-        accepted(None)
+        accepted(egress_net.generation)
     }
 
     fn make_egress_net_patch(
@@ -1781,6 +1782,7 @@ impl kubert::index::IndexNamespacedResource<policy::EgressNetwork> for Index {
         let id = ResourceId::new(namespace, name);
 
         let net = EgressNetworkRef {
+            generation: resource.metadata.generation,
             status_conditions,
             networks,
         };
@@ -1905,11 +1907,11 @@ pub(crate) fn accepted(observed_generation: Option<i64>) -> k8s::Condition {
     }
 }
 
-pub(crate) fn in_cluster_net_overlap() -> k8s::Condition {
+pub(crate) fn in_cluster_net_overlap(observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "networks overlap with clusterNetworks".to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: reasons::EGRESS_NET_REASON_OVERLAP.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
