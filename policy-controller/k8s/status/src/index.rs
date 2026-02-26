@@ -107,6 +107,7 @@ pub struct IndexMetrics {
 
 #[derive(Clone, PartialEq, Debug)]
 pub(crate) struct RouteRef<S> {
+    pub(crate) generation: Option<i64>,
     pub(crate) parents: Vec<routes::ParentReference>,
     pub(crate) backends: Vec<routes::BackendReference>,
     pub(crate) statuses: Vec<S>,
@@ -1364,6 +1365,7 @@ impl kubert::index::IndexNamespacedResource<policy::HttpRoute> for Index {
         // Construct route and insert into the index; if the HTTPRoute is
         // already in the index, and it hasn't changed, skip creating a patch.
         let route = HTTPRouteRef {
+            generation: resource.metadata.generation,
             parents,
             backends,
             statuses: vec![gateway::HTTPRouteStatus { parents: statuses }],
@@ -1434,6 +1436,7 @@ impl kubert::index::IndexNamespacedResource<gateway::HTTPRoute> for Index {
         // Construct route and insert into the index; if the HTTPRoute is
         // already in the index, and it hasn't changed, skip creating a patch.
         let route = RouteRef {
+            generation: resource.metadata.generation,
             parents,
             backends,
             statuses: vec![gateway::HTTPRouteStatus { parents: statuses }],
@@ -1504,6 +1507,7 @@ impl kubert::index::IndexNamespacedResource<gateway::GRPCRoute> for Index {
         // Construct route and insert into the index; if the GRPCRoute is
         // already in the index and it hasn't changed, skip creating a patch.
         let route = RouteRef {
+            generation: resource.metadata.generation,
             parents,
             backends,
             statuses: vec![gateway::GRPCRouteStatus { parents: statuses }],
@@ -1573,6 +1577,7 @@ impl kubert::index::IndexNamespacedResource<gateway::TLSRoute> for Index {
         // Construct route and insert into the index; if the TLSRoute is
         // already in the index, and it hasn't changed, skip creating a patch.
         let route = RouteRef {
+            generation: resource.metadata.generation,
             parents,
             backends,
             statuses: vec![gateway::TLSRouteStatus { parents: statuses }],
@@ -1642,6 +1647,7 @@ impl kubert::index::IndexNamespacedResource<gateway::TCPRoute> for Index {
         // Construct route and insert into the index; if the TCPRoute is
         // already in the index, and it hasn't changed, skip creating a patch.
         let route = RouteRef {
+            generation: resource.metadata.generation,
             parents,
             backends,
             statuses: vec![gateway::TCPRouteStatus { parents: statuses }],
