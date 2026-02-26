@@ -58,7 +58,7 @@ fn egress_network_with_no_networks_specified() {
 
     // Create the expected update.
     let status = EgressNetworkStatus {
-        conditions: vec![accepted()],
+        conditions: vec![accepted(None)],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 
@@ -120,7 +120,7 @@ fn egress_network_with_nonoverlapping_networks_specified() {
 
     // Create the expected update.
     let status = EgressNetworkStatus {
-        conditions: vec![accepted()],
+        conditions: vec![accepted(None)],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
 

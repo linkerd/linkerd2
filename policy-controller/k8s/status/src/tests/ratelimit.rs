@@ -38,7 +38,7 @@ fn ratelimit_accepted() {
     index.write().apply(ratelimit);
 
     let expected_status = linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
-        conditions: vec![accepted()],
+        conditions: vec![accepted(None)],
         target_ref: linkerd_k8s_api::LocalTargetRef {
             group: Some("policy.linkerd.io".to_string()),
             kind: "Server".to_string(),
@@ -110,7 +110,7 @@ fn ratelimit_not_accepted_already_exists() {
     index.write().apply(rl_1);
 
     let expected_status = linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
-        conditions: vec![accepted()],
+        conditions: vec![accepted(None)],
         target_ref: linkerd_k8s_api::LocalTargetRef {
             group: Some("policy.linkerd.io".to_string()),
             kind: "Server".to_string(),

@@ -597,7 +597,7 @@ impl Index {
             if self.parent_has_conflicting_routes(parent_ref, &id.gkn.kind) {
                 route_conflicted()
             } else {
-                accepted()
+                accepted(None)
             }
         } else {
             no_matching_parent()
@@ -616,7 +616,7 @@ impl Index {
                 if self.parent_has_conflicting_routes(parent_ref, &id.gkn.kind) {
                     route_conflicted()
                 } else {
-                    accepted()
+                    accepted(None)
                 }
             }
             Some(_svc) => headless_parent(),
@@ -636,7 +636,7 @@ impl Index {
                 if self.parent_has_conflicting_routes(parent_ref, &id.gkn.kind) {
                     route_conflicted()
                 } else {
-                    accepted()
+                    accepted(None)
                 }
             }
             Some(_) => egress_net_not_accepted(),
@@ -1097,7 +1097,7 @@ impl Index {
                     };
 
                     if first_id.name == id.gkn.name {
-                        accepted()
+                        accepted(None)
                     } else {
                         ratelimit_already_exists()
                     }
@@ -1140,7 +1140,7 @@ impl Index {
             }
         }
 
-        accepted()
+        accepted(None)
     }
 
     fn make_egress_net_patch(
@@ -1894,11 +1894,11 @@ pub(crate) fn ratelimit_already_exists() -> k8s::Condition {
     }
 }
 
-pub(crate) fn accepted() -> k8s::Condition {
+pub(crate) fn accepted(observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: conditions::ACCEPTED.to_string(),
         status: cond_statuses::STATUS_TRUE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
