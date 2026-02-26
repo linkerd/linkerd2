@@ -116,7 +116,7 @@ fn route_with_valid_service_backends() {
     // Create the expected update.
     let accepted_condition = accepted(None);
     // All backends exist and can be resolved.
-    let backend_condition = resolved_refs();
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::TLSRouteStatusParents {
         parent_ref: gateway::TLSRouteStatusParentsParentRef {
             group: parent.group,
@@ -195,7 +195,7 @@ fn route_with_valid_egress_network_backend() {
     // Create the expected update.
     let accepted_condition = accepted(None);
     // All backends exist and can be resolved.
-    let backend_condition = resolved_refs();
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::TLSRouteStatusParents {
         parent_ref: gateway::TLSRouteStatusParentsParentRef {
             group: parent.group,
@@ -288,7 +288,7 @@ fn route_with_invalid_service_backend() {
     // Create the expected update.
     let accepted_condition = accepted(None);
     // One of the backends does not exist so the status should be BackendNotFound.
-    let backend_condition = backend_not_found();
+    let backend_condition = backend_not_found(None);
     let parent_status = gateway::TLSRouteStatusParents {
         parent_ref: gateway::TLSRouteStatusParentsParentRef {
             group: parent.group,
@@ -372,6 +372,7 @@ fn route_with_egress_network_backend_different_from_parent() {
     let accepted_condition = accepted(None);
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
+        None,
     );
     let parent_status = gateway::TLSRouteStatusParents {
         parent_ref: gateway::TLSRouteStatusParentsParentRef {
@@ -456,6 +457,7 @@ fn route_with_egress_network_backend_and_service_parent() {
     let accepted_condition = accepted(None);
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
+        None,
     );
     let parent_status = gateway::TLSRouteStatusParents {
         parent_ref: gateway::TLSRouteStatusParentsParentRef {
@@ -538,7 +540,7 @@ fn route_with_egress_network_parent_and_service_backend() {
 
     // Create the expected update.
     let accepted_condition = accepted(None);
-    let backend_condition = resolved_refs();
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::TLSRouteStatusParents {
         parent_ref: gateway::TLSRouteStatusParentsParentRef {
             group: parent.group,
@@ -687,8 +689,8 @@ fn route_accepted_after_egress_network_create() {
     index.write().apply(route);
 
     // Create the expected update.
-    let accepted_condition = no_matching_parent();
-    let backend_condition = resolved_refs();
+    let accepted_condition = no_matching_parent(None);
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::TLSRouteStatusParents {
         parent_ref: gateway::TLSRouteStatusParentsParentRef {
             group: parent.group.clone(),
@@ -883,7 +885,7 @@ fn route_rejected_after_egress_network_delete() {
 
     // Create the expected update.
     let accepted_condition = accepted(None);
-    let backend_condition = resolved_refs();
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::TLSRouteStatusParents {
         parent_ref: gateway::TLSRouteStatusParentsParentRef {
             group: parent.group.clone(),
@@ -918,7 +920,7 @@ fn route_rejected_after_egress_network_delete() {
     }
 
     // Create the expected update.
-    let rejected_condition = no_matching_parent();
+    let rejected_condition = no_matching_parent(None);
     let parent_status = gateway::TLSRouteStatusParents {
         parent_ref: gateway::TLSRouteStatusParentsParentRef {
             group: parent.group.clone(),
@@ -1009,7 +1011,7 @@ fn service_route_type_conflict() {
     // Create the expected update -- TCPRoute should be accepted
     let accepted_condition = accepted(None);
     // No backends were specified, so we have vacuously resolved them all.
-    let backend_condition = resolved_refs();
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::TLSRouteStatusParents {
         parent_ref: gateway::TLSRouteStatusParentsParentRef {
             group: parent.group.clone(),
@@ -1046,7 +1048,7 @@ fn service_route_type_conflict() {
     for _ in 0..2 {
         let update = updates_rx.try_recv().unwrap();
         if update.id.gkn.kind == gateway::TCPRoute::kind(&()) {
-            let conflict_condition = route_conflicted();
+            let conflict_condition = route_conflicted(None);
             let parent_status = gateway::TLSRouteStatusParents {
                 parent_ref: gateway::TLSRouteStatusParentsParentRef {
                     group: parent.group.clone(),
@@ -1153,7 +1155,7 @@ fn egress_network_route_type_conflict() {
     // Create the expected update -- TCPRoute should be accepted
     let accepted_condition = accepted(None);
     // No backends were specified, so we have vacuously resolved them all.
-    let backend_condition = resolved_refs();
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::TLSRouteStatusParents {
         parent_ref: gateway::TLSRouteStatusParentsParentRef {
             group: parent.group.clone(),
@@ -1190,7 +1192,7 @@ fn egress_network_route_type_conflict() {
     for _ in 0..2 {
         let update = updates_rx.try_recv().unwrap();
         if update.id.gkn.kind == gateway::TCPRoute::kind(&()) {
-            let conflict_condition = route_conflicted();
+            let conflict_condition = route_conflicted(None);
             let parent_status = gateway::TLSRouteStatusParents {
                 parent_ref: gateway::TLSRouteStatusParentsParentRef {
                     group: parent.group.clone(),
