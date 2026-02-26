@@ -120,6 +120,7 @@ pub(crate) type TCPRouteRef = RouteRef<gateway::TCPRouteStatus>;
 
 #[derive(Clone, PartialEq, Debug)]
 struct HttpLocalRateLimitPolicyRef {
+    generation: Option<i64>,
     creation_timestamp: Option<DateTime<Utc>>,
     target_ref: ratelimit::TargetReference,
     status_conditions: Vec<k8s::Condition>,
@@ -1732,6 +1733,7 @@ impl kubert::index::IndexNamespacedResource<policy::HttpLocalRateLimitPolicy> fo
         let target_ref = ratelimit::TargetReference::make_target_ref(&namespace, &resource.spec);
 
         let rl = HttpLocalRateLimitPolicyRef {
+            generation: resource.metadata.generation,
             creation_timestamp,
             target_ref,
             status_conditions,
