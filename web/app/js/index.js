@@ -122,102 +122,101 @@ const AppHTML = function() {
       <CssBaseline />
       <MuiThemeProvider theme={theme}>
         <BrowserRouter>
-          <QueryParamProvider adapter={ReactRouter5Adapter}>
-            <Switch>
-              <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/namespaces`} />
-              <Redirect exact from={`${pathPrefix}/overview`} to={`${pathPrefix}/namespaces`} />
-              <Redirect exact from={`${pathPrefix}/deployments`} to={`${pathPrefix}/namespaces/_all/deployments`} />
-              <Redirect exact from={`${pathPrefix}/services`} to={`${pathPrefix}/namespaces/_all/services`} />
-              <Redirect exact from={`${pathPrefix}/daemonsets`} to={`${pathPrefix}/namespaces/_all/daemonsets`} />
-              <Redirect exact from={`${pathPrefix}/statefulsets`} to={`${pathPrefix}/namespaces/_all/statefulsets`} />
-              <Redirect exact from={`${pathPrefix}/jobs`} to={`${pathPrefix}/namespaces/_all/jobs`} />
-              <Redirect exact from={`${pathPrefix}/replicationcontrollers`} to={`${pathPrefix}/namespaces/_all/replicationcontrollers`} />
-              <Redirect exact from={`${pathPrefix}/pods`} to={`${pathPrefix}/namespaces/_all/pods`} />
+          <QueryParamProvider adapter={ReactRouter6Adapter}>
+            <Routes>
+              <Route path={`${pathPrefix}/`} element={<Navigate replace to={`${pathPrefix}/namespaces`} />} />
+              <Route path={`${pathPrefix}/overview`} element={<Navigate replace to={`${pathPrefix}/namespaces`} />} />
+              <Route path={`${pathPrefix}/deployments`} element={<Navigate replace to={`${pathPrefix}/namespaces/_all/deployments`} />} />
+              <Route path={`${pathPrefix}/services`} element={<Navigate replace to={`${pathPrefix}/namespaces/_all/services`} />} />
+              <Route path={`${pathPrefix}/daemonsets`} element={<Navigate replace to={`${pathPrefix}/namespaces/_all/daemonsets`} />} />
+              <Route path={`${pathPrefix}/statefulsets`} element={<Navigate replace to={`${pathPrefix}/namespaces/_all/statefulsets`} />} />
+              <Route path={`${pathPrefix}/jobs`} element={<Navigate replace to={`${pathPrefix}/namespaces/_all/jobs`} />} />
+              <Route path={`${pathPrefix}/replicationcontrollers`} element={<Navigate replace to={`${pathPrefix}/namespaces/_all/replicationcontrollers`} />} />
+              <Route path={`${pathPrefix}/pods`} element={<Navigate replace to={`${pathPrefix}/namespaces/_all/pods`} />} />
 
               <Route
                 path={`${pathPrefix}/controlplane`}
-                render={props => <Navigation {...props} ChildComponent={ServiceMesh} />} />
+                element={<Navigation ChildComponent={ServiceMesh} />} />
               <Route
                 path={`${pathPrefix}/gateways`}
-                render={props => <Navigation {...props} ChildComponent={Gateway} resource="gateway" />} />
+                element={<Navigation ChildComponent={Gateway} resource="gateway" />} />
               <Route
-                exact
                 path={`${pathPrefix}/namespaces/:namespace`}
-                render={props => <Navigation {...props} ChildComponent={Namespace} />} />
+                element={<Navigation ChildComponent={Namespace} />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/pods/:pod`}
-                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+                element={<Navigation ChildComponent={ResourceDetail} />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/pods`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="pod" />} />
+                element={<Navigation ChildComponent={ResourceList} resource="pod" />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/daemonsets/:daemonset`}
-                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+                element={<Navigation ChildComponent={ResourceDetail} />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/daemonsets`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="daemonset" />} />
+                element={<Navigation ChildComponent={ResourceList} resource="daemonset" />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/statefulsets/:statefulset`}
-                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+                element={<Navigation ChildComponent={ResourceDetail} />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/statefulsets`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="statefulset" />} />
+                element={<Navigation ChildComponent={ResourceList} resource="statefulset" />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/jobs/:job`}
-                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+                element={<Navigation ChildComponent={ResourceDetail} />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/jobs`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="job" />} />
+                element={<Navigation ChildComponent={ResourceList} resource="job" />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/deployments/:deployment`}
-                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+                element={<Navigation ChildComponent={ResourceDetail} />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/services/:service`}
-                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+                element={<Navigation ChildComponent={ResourceDetail} />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/deployments`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="deployment" />} />
+                element={<Navigation ChildComponent={ResourceList} resource="deployment" />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/services`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="service" />} />
+                element={<Navigation ChildComponent={ResourceList} resource="service" />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/replicationcontrollers/:replicationcontroller`}
-                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+                element={<Navigation ChildComponent={ResourceDetail} />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/replicationcontrollers`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="replicationcontroller" />} />
+                element={<Navigation ChildComponent={ResourceList} resource="replicationcontroller" />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/cronjobs/:cronjob`}
-                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+                element={<Navigation ChildComponent={ResourceDetail} />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/cronjobs`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="cronjob" />} />
+                element={<Navigation ChildComponent={ResourceList} resource="cronjob" />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/replicasets/:replicaset`}
-                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+                element={<Navigation ChildComponent={ResourceDetail} />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/replicasets`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="replicaset" />} />
+                element={<Navigation ChildComponent={ResourceList} resource="replicaset" />} />
               <Route
                 path={`${pathPrefix}/tap`}
-                render={props => <Navigation {...props} ChildComponent={Tap} />} />
+                element={<Navigation ChildComponent={Tap} />} />
               <Route
                 path={`${pathPrefix}/top`}
-                render={props => <Navigation {...props} ChildComponent={Top} />} />
+                element={<Navigation ChildComponent={Top} />} />
               <Route
                 path={`${pathPrefix}/routes`}
-                render={props => <Navigation {...props} ChildComponent={TopRoutes} />} />
+                element={<Navigation ChildComponent={TopRoutes} />} />
               <Route
                 path={`${pathPrefix}/namespaces`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="namespace" />} />
+                element={<Navigation ChildComponent={ResourceList} resource="namespace" />} />
               <Route
                 path={`${pathPrefix}/community`}
-                render={props => <Navigation {...props} ChildComponent={Community} />} />
+                element={<Navigation ChildComponent={Community} />} />
               <Route
                 path={`${pathPrefix}/extensions`}
-                render={props => <Navigation {...props} ChildComponent={Extensions} />} />
-              <Route component={NoMatch} />
-            </Switch>
+                element={<Navigation ChildComponent={Extensions} />} />
+              <Route path="*" element={<NoMatch />} />
+            </Routes>
           </QueryParamProvider>
         </BrowserRouter>
       </MuiThemeProvider>
