@@ -1,7 +1,7 @@
 import '../css/styles.css';
 import '../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
 
-import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { DETECTORS, LocaleResolver, TRANSFORMERS } from 'locales-detector';
 import { MuiThemeProvider, createTheme } from '@material-ui/core/styles';
 
@@ -14,7 +14,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import _find from 'lodash/find';
 import _isEmpty from 'lodash/isEmpty';
-import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5';
+import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6';
 import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
 import Community from './components/Community.jsx';
@@ -49,8 +49,8 @@ const pathArray = window.location.pathname.split('/');
 // defaultNamespace
 if (pathArray[0] === '' && pathArray[1] === 'namespaces' && pathArray[2]) {
   defaultNamespace = pathArray[2];
-// if the current URL path is a legacy path such as `/daemonsets`, the
-// defaultNamespace should be "_all", unless the path is `/namespaces`
+  // if the current URL path is a legacy path such as `/daemonsets`, the
+  // defaultNamespace should be "_all", unless the path is `/namespaces`
 } else if (pathArray.length === 2 && pathArray[1] !== '' && pathArray[1] !== 'namespaces') {
   defaultNamespace = '_all';
 }
@@ -70,7 +70,7 @@ const langOptions = {
   },
 };
 const selectedLocale =
-    _find(detectedLocales, l => !_isEmpty(langOptions[l])) || 'en';
+  _find(detectedLocales, l => !_isEmpty(langOptions[l])) || 'en';
 const selectedLangOptions = langOptions[selectedLocale] || langOptions.en;
 
 i18n.loadLocaleData(selectedLocale, { plurals: selectedLangOptions.plurals });
@@ -114,7 +114,7 @@ class App extends React.Component {
   }
 }
 
-const AppHTML = function() {
+const AppHTML = function () {
   const theme = createTheme(dashboardTheme);
 
   return (

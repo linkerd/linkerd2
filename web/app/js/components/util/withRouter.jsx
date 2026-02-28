@@ -17,7 +17,7 @@ export function withRouter(Component) {
                     replace: (path, state) => navigate(path, { replace: true, state }),
                     location,
                 }}
-                match={{ params }}
+                match={{ params, url: location.pathname }}
             />
         );
     }
