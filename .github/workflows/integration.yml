@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@e0021407031f5be11a464abee9a0776171c79891
+      - uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a
         id: core
         with:
           files: |
@@ -336,9 +336,10 @@ jobs:
       fail-fast: false
       matrix:
         cases:
-        - {k8s: "v1.23", manage-controllers: false}
-        - {k8s: "v1.34", manage-controllers: false}
-        - {k8s: "v1.34", manage-controllers: true}
+        - {k8s: "v1.23", manage-controllers: false, install-gwapi: true}
+        # for v1.34 onwards, gwapi gets installed by Traefik on the target cluster
+        - {k8s: "v1.34", manage-controllers: false, install-gwapi: false}
+        - {k8s: "v1.34", manage-controllers: true, install-gwapi: false}
     name: "test-multicluster(${{ matrix.cases.k8s }}, ${{ matrix.cases.manage-controllers && 'managed-controllers' || 'unmanaged-controllers' }})"
     steps:
       - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
@@ -370,11 +371,21 @@ jobs:
           done
       - run: docker image ls
       - run: just mc-test-build
-      - name: Run just mc-test-load
+      - name: Run just mc-load
         run: |
           just linkerd-tag='${{ needs.meta.outputs.tag }}' \
               k3d-k8s='${{ matrix.cases.k8s }}' \
-              mc-test-load
+              mc-load
+      - run: just mc-install-gwapi
+      - name: Run just mc-target-load
+        run: |
+          just linkerd-tag='${{ needs.meta.outputs.tag }}' \
+              k3d-k8s='${{ matrix.cases.k8s }}' \
+              mc-target-load
+      - name: Run just mc-install-gwapi
+        if: ${{ matrix.cases.install-gwapi }}
+        run: just k3d-name='l5d-test-target' mc-install-gwapi
+      - run: just mc-flat-network-init
       - name: Run just mc-test-run
         run: |
           just linkerd-tag='${{ needs.meta.outputs.tag }}' \
