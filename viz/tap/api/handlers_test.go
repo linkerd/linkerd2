@@ -98,22 +98,7 @@ func TestHandleTap_ExtraHeaders(t *testing.T) {
 
 	h.handleTap(recorder, req, params)
 
-	client := k8sAPI.Client.(*k8sFake.Clientset)
-	actions := client.Actions()
-
-	var sar *authV1.SubjectAccessReview
-	for _, action := range actions {
-		if action.GetVerb() == "create" && action.GetResource().Resource == "subjectaccessreviews" {
-			createAction := action.(k8sTesting.CreateAction)
-			obj := createAction.GetObject()
-			sar = obj.(*authV1.SubjectAccessReview)
-			break
-		}
-	}
-
-	if sar == nil {
-		t.Fatal("Expected SubjectAccessReview to be created")
-	}
+	sar := getSubjectAccessReview(t, k8sAPI)
 
 	if len(sar.Spec.Extra) != 2 {
 		t.Errorf("Expected 2 extra headers, got %d", len(sar.Spec.Extra))
@@ -125,4 +110,79 @@ func TestHandleTap_ExtraHeaders(t *testing.T) {
 	if v, ok := sar.Spec.Extra["Baz"]; !ok || v[0] != "qux" {
 		t.Errorf("Expected Extra['Baz'] to be ['qux'], got %v", v)
 	}
+}
+
+func TestHandleTap_ExtraHeadersPrefixCaseInsensitive(t *testing.T) {
+	k8sAPI, err := k8s.NewFakeAPI()
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+
+	h := &handler{
+		k8sAPI:            k8sAPI,
+		log:               logrus.WithField("test", t.Name()),
+		extraHeaderPrefix: "x-remote-extra-",
+	}
+
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/apis/tap.linkerd.io/v1alpha1/watch/namespaces/foo/tap", nil)
+	req.Header.Set("X-Remote-Extra-Foo", "bar")
+
+	params := httprouter.Params{
+		{Key: "namespace", Value: "foo"},
+	}
+
+	h.handleTap(recorder, req, params)
+	sar := getSubjectAccessReview(t, k8sAPI)
+
+	if v, ok := sar.Spec.Extra["Foo"]; !ok || v[0] != "bar" {
+		t.Errorf("Expected Extra['Foo'] to be ['bar'], got %v", v)
+	}
+}
+
+func TestHandleTap_ExtraHeadersEmptyPrefix(t *testing.T) {
+	k8sAPI, err := k8s.NewFakeAPI()
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+
+	h := &handler{
+		k8sAPI: k8sAPI,
+		log:    logrus.WithField("test", t.Name()),
+	}
+
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/apis/tap.linkerd.io/v1alpha1/watch/namespaces/foo/tap", nil)
+	req.Header.Set("X-Remote-Extra-Foo", "bar")
+	req.Header.Set("X-Remote-User", "alice")
+	req.Header.Set("Content-Type", "application/json")
+
+	params := httprouter.Params{
+		{Key: "namespace", Value: "foo"},
+	}
+
+	h.handleTap(recorder, req, params)
+	sar := getSubjectAccessReview(t, k8sAPI)
+
+	if len(sar.Spec.Extra) != 0 {
+		t.Errorf("Expected 0 extra headers, got %d", len(sar.Spec.Extra))
+	}
+}
+
+func getSubjectAccessReview(t *testing.T, k8sAPI *k8s.API) *authV1.SubjectAccessReview {
+	t.Helper()
+
+	client := k8sAPI.Client.(*k8sFake.Clientset)
+	actions := client.Actions()
+
+	for _, action := range actions {
+		if action.GetVerb() == "create" && action.GetResource().Resource == "subjectaccessreviews" {
+			createAction := action.(k8sTesting.CreateAction)
+			obj := createAction.GetObject()
+			return obj.(*authV1.SubjectAccessReview)
+		}
+	}
+
+	t.Fatal("Expected SubjectAccessReview to be created")
+	return nil
 }

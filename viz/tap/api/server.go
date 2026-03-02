@@ -22,6 +22,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const defaultExtraHeaderPrefix = "X-Remote-Extra-"
+
 // Server holds the underlying http server and its config
 type Server struct {
 	*http.Server
@@ -211,8 +213,8 @@ func serverAuth(ctx context.Context, k8sAPI *k8s.API) (string, []string, string,
 	// forwarded by the Kubernetes API server when acting as an aggregating proxy.
 	// The prefix is configurable via the --requestheader-extra-headers-prefix flag
 	// on the API server (defaults to "X-Remote-Extra-").
-	extraHeaderPrefix := ""
-	if len(extraHeaderPrefixes) > 0 {
+	extraHeaderPrefix := defaultExtraHeaderPrefix
+	if len(extraHeaderPrefixes) > 0 && extraHeaderPrefixes[0] != "" {
 		extraHeaderPrefix = extraHeaderPrefixes[0]
 	}
 

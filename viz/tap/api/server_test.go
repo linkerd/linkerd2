@@ -52,6 +52,23 @@ data:
 			extraHeaderPrefix: "X-Remote-Extra-",
 			err:               nil,
 		},
+		{
+			k8sRes: []string{`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: extension-apiserver-authentication
+  namespace: kube-system
+data:
+  requestheader-client-ca-file: 'requestheader-client-ca-file'
+`},
+			clientCAPem:       "requestheader-client-ca-file",
+			allowedNames:      nil,
+			usernameHeader:    "",
+			groupHeader:       "",
+			extraHeaderPrefix: defaultExtraHeaderPrefix,
+			err:               nil,
+		},
 	}
 
 	ctx := context.Background()

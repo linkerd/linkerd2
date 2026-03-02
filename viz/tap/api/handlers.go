@@ -126,15 +126,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		namespace, resource, name, h.usernameHeader, h.groupHeader,
 	)
 
-	extra := make(map[string]authV1.ExtraValue)
-	for key, values := range req.Header {
-		if strings.HasPrefix(key, h.extraHeaderPrefix) {
-			key, err := url.QueryUnescape(strings.TrimPrefix(key, h.extraHeaderPrefix))
-			if err == nil {
-				extra[key] = authV1.ExtraValue(values)
-			}
-		}
-	}
+	extra := extractExtraHeaders(req.Header, h.extraHeaderPrefix)
 
 	// TODO: it's possible this SubjectAccessReview is redundant, consider
 	// removing, more info at https://github.com/linkerd/linkerd2/issues/3182
@@ -192,6 +184,29 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		protohttp.WriteErrorToHTTPResponse(flushableWriter, err)
 		return
 	}
+}
+
+func extractExtraHeaders(header http.Header, extraHeaderPrefix string) map[string]authV1.ExtraValue {
+	if extraHeaderPrefix == "" {
+		return nil
+	}
+
+	extraHeaderPrefixLower := strings.ToLower(extraHeaderPrefix)
+	extraHeaderPrefixLen := len(extraHeaderPrefix)
+	extra := make(map[string]authV1.ExtraValue)
+
+	for key, values := range header {
+		if !strings.HasPrefix(strings.ToLower(key), extraHeaderPrefixLower) {
+			continue
+		}
+
+		extraKey, err := url.QueryUnescape(key[extraHeaderPrefixLen:])
+		if err == nil {
+			extra[extraKey] = authV1.ExtraValue(values)
+		}
+	}
+
+	return extra
 }
 
 // GET (not found)
