@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/go-openapi/spec"
@@ -17,17 +18,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
+	authV1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/version"
 )
 
 type handler struct {
-	k8sAPI         *k8s.API
-	usernameHeader string
-	groupHeader    string
-	grpcTapServer  pb.TapServer
-	log            *logrus.Entry
+	k8sAPI            *k8s.API
+	usernameHeader    string
+	groupHeader       string
+	extraHeaderPrefix string
+	grpcTapServer     pb.TapServer
+	log               *logrus.Entry
 }
 
 // TODO: share with api_handlers.go
@@ -123,6 +126,8 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		namespace, resource, name, h.usernameHeader, h.groupHeader,
 	)
 
+	extra := extractExtraHeaders(req.Header, h.extraHeaderPrefix)
+
 	// TODO: it's possible this SubjectAccessReview is redundant, consider
 	// removing, more info at https://github.com/linkerd/linkerd2/issues/3182
 	err := pkgK8s.ResourceAuthzForUser(
@@ -137,6 +142,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		name,
 		req.Header.Get(h.usernameHeader),
 		req.Header.Values(h.groupHeader),
+		extra,
 	)
 	if err != nil {
 		err = fmt.Errorf("tap authorization failed (%w), visit %s for more information", err, pkg.TapRbacURL)
@@ -178,6 +184,29 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		protohttp.WriteErrorToHTTPResponse(flushableWriter, err)
 		return
 	}
+}
+
+func extractExtraHeaders(header http.Header, extraHeaderPrefix string) map[string]authV1.ExtraValue {
+	if extraHeaderPrefix == "" {
+		return nil
+	}
+
+	extraHeaderPrefixLower := strings.ToLower(extraHeaderPrefix)
+	extraHeaderPrefixLen := len(extraHeaderPrefix)
+	extra := make(map[string]authV1.ExtraValue)
+
+	for key, values := range header {
+		if !strings.HasPrefix(strings.ToLower(key), extraHeaderPrefixLower) {
+			continue
+		}
+
+		extraKey, err := url.QueryUnescape(key[extraHeaderPrefixLen:])
+		if err == nil {
+			extra[extraKey] = authV1.ExtraValue(values)
+		}
+	}
+
+	return extra
 }
 
 // GET (not found)

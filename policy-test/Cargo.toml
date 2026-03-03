@@ -19,7 +19,7 @@ futures = { version = "0.3", default-features = false }
 ipnet = "2"
 k8s-openapi = { workspace = true }
 maplit = "1"
-rand = "0.9"
+rand = "0.10"
 serde = "1"
 serde_json = "1"
 schemars = "0.8"

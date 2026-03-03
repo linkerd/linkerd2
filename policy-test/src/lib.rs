@@ -812,7 +812,7 @@ pub async fn await_service_account(client: &kube::Client, ns: &str, name: &str) 
 }
 
 pub fn random_suffix(len: usize) -> String {
-    use rand::Rng;
+    use rand::RngExt;
 
     rand::rng()
         .sample_iter(&LowercaseAlphanumeric)
