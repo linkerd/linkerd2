@@ -1246,12 +1246,9 @@ metadata:
     component: linkerd-service-mirror
 spec:
   podSelector:
-    matchExpressions:
-    - key: component
-      operator: In
-      values:
-      - linkerd-service-mirror
-      - controller
+    matchLabels:
+      linkerd.io/extension: multicluster
+      component: linkerd-service-mirror
   port: svcmi-admin
   proxyProtocol: HTTP/1
 ---
@@ -1268,6 +1265,82 @@ spec:
     group: policy.linkerd.io
     kind: Server
     name: service-mirror
+  requiredAuthenticationRefs:
+    # In order to use `linkerd mc gateways` you need viz' Prometheus instance
+    # to be able to reach the service-mirror. In order to also have a separate
+    # Prometheus scrape the service-mirror an additional AuthorizationPolicy
+    # resource should be created.
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: linkerd-viz
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  namespace: linkerd-multicluster
+  name: controller
+  labels:
+    linkerd.io/extension: multicluster
+    component: controller
+spec:
+  podSelector:
+    matchLabels:
+      linkerd.io/extension: multicluster
+      component: controller
+  port: ctrl-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: linkerd-multicluster
+  name: controller
+  labels:
+    linkerd.io/extension: multicluster
+    component: controller
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: controller
+  requiredAuthenticationRefs:
+    # In order to use `linkerd mc gateways` you need viz' Prometheus instance
+    # to be able to reach the service-mirror. In order to also have a separate
+    # Prometheus scrape the service-mirror an additional AuthorizationPolicy
+    # resource should be created.
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: linkerd-viz
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  namespace: linkerd-multicluster
+  name: local-service-mirror
+  labels:
+    linkerd.io/extension: multicluster
+    component: local-service-mirror
+spec:
+  podSelector:
+    matchLabels:
+      linkerd.io/extension: multicluster
+      component: local-service-mirror
+  port: locsm-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: linkerd-multicluster
+  name: local-service-mirror
+  labels:
+    linkerd.io/extension: multicluster
+    component: local-service-mirror
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: local-service-mirror
   requiredAuthenticationRefs:
     # In order to use `linkerd mc gateways` you need viz' Prometheus instance
     # to be able to reach the service-mirror. In order to also have a separate
