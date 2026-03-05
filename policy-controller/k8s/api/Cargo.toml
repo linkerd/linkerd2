@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 gateway-api = { workspace = true }
-ipnet = { version = "2.11", features = ["json"] }
+ipnet = { version = "2.12", features = ["json"] }
 k8s-openapi = { workspace = true }
 schemars = "0.8"
 serde = { version = "1", features = ["derive"] }
