@@ -1240,6 +1240,37 @@ apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-multicluster
+  name: linkerd-admin
+  labels:
+    linkerd.io/extension: multicluster
+spec:
+  podSelector:
+    matchLabels:
+      linkerd.io/extension: multicluster
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: linkerd-multicluster
+  name: linkerd-admin
+  labels:
+    linkerd.io/extension: multicluster
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: linkerd-admin
+  requiredAuthenticationRefs:
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: linkerd-viz
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  namespace: linkerd-multicluster
   name: service-mirror
   labels:
     linkerd.io/extension: multicluster
