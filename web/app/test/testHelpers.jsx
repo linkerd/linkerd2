@@ -1,8 +1,7 @@
+import React from 'react';
 import _merge from 'lodash/merge';
 import ApiHelpers from '../js/components/util/ApiHelpers.jsx';
-import { createMemoryHistory } from 'history';
-import React from 'react';
-import { Route, Router } from 'react-router-dom';
+import { Route, Routes, MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@lingui/react';
 import { i18n } from '@lingui/core';
 import { en } from 'make-plural/plurals'
@@ -20,14 +19,16 @@ i18n.loadLocaleData('en');
 i18n.load('en', catalogEn.messages);
 i18n.activate('en');
 
-export function routerWrap(Component, extraProps={}, route="/", currentLoc="/") {
+export function routerWrap(Component, extraProps = {}, route = "/", currentLoc = "/") {
   const createElement = (ComponentToWrap, props) => (
     <ComponentToWrap {...(_merge({}, componentDefaultProps, props, extraProps))} />
   );
   return (
-    <Router history={createMemoryHistory(currentLoc)} createElement={createElement}>
-      <Route path={route} render={props => createElement(Component, props)} />
-    </Router>
+    <MemoryRouter initialEntries={[currentLoc]}>
+      <Routes>
+        <Route path={route} element={createElement(Component, {})} />
+      </Routes>
+    </MemoryRouter>
   );
 }
 
@@ -39,4 +40,4 @@ export function i18nWrap(Component) {
   );
 }
 
-export function i18nAndRouterWrap(component, props) { return i18nWrap(routerWrap(component, props))};
+export function i18nAndRouterWrap(component, props) { return i18nWrap(routerWrap(component, props)) };

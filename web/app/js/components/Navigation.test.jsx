@@ -1,20 +1,19 @@
 import _merge from 'lodash/merge';
 import ApiHelpers from './util/ApiHelpers.jsx';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import React from 'react';
 import mediaQuery from 'css-mediaquery';
 import Navigation from './Navigation.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 import { mount } from 'enzyme';
-import { createMemoryHistory } from 'history';
 import { i18nWrap } from '../../test/testHelpers.jsx';
 
 function createMatchMedia(width) {
   return query => ({
     matches: mediaQuery.match(query, { width }),
-    addListener: () => {},
-    removeListener: () => {},
+    addListener: () => { },
+    removeListener: () => { },
   });
 }
 
@@ -32,16 +31,15 @@ const newVer = "edge-2.3.4";
 
 const defaultProps = {
   api: ApiHelpers(''),
-  checkNamespaceMatch: () => {},
+  checkNamespaceMatch: () => { },
   ChildComponent: () => null,
   classes: {},
-  history: createMemoryHistory('/namespaces'),
   location: loc,
   pathPrefix: '',
   releaseVersion: curVer,
   selectedNamespace: 'emojivoto',
   theme: {},
-  updateNamespaceInContext: () => {},
+  updateNamespaceInContext: () => { },
   uuid: 'fakeuuid',
 };
 
@@ -68,9 +66,9 @@ describe('Navigation', () => {
     });
 
     component = mount(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={['/namespaces']}>
         <Navigation {...defaultProps} />
-      </BrowserRouter>
+      </MemoryRouter>
     );
 
     return withPromise(() => {
@@ -86,9 +84,9 @@ describe('Navigation', () => {
     });
 
     component = mount(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={['/namespaces']}>
         <Navigation {...defaultProps} />
-      </BrowserRouter>
+      </MemoryRouter>
     );
 
     return withPromise(() => {
@@ -109,9 +107,9 @@ describe('Navigation', () => {
     });
 
     component = mount(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={['/namespaces']}>
         <Navigation {...defaultProps} />
-      </BrowserRouter>
+      </MemoryRouter>
     );
 
     return withPromise(() => {
@@ -134,9 +132,9 @@ describe('Namespace Select Button', () => {
 
     const component = mount(
       i18nWrap(
-        <BrowserRouter>
+        <MemoryRouter initialEntries={['/namespaces']}>
           <Navigation {...extraProps} />
-        </BrowserRouter>
+        </MemoryRouter>
       )
     );
 
@@ -147,9 +145,9 @@ describe('Namespace Select Button', () => {
   it('renders emojivoto text', () => {
     const component = mount(
       i18nWrap(
-        <BrowserRouter>
+        <MemoryRouter initialEntries={['/namespaces']}>
           <Navigation {...defaultProps} />
-        </BrowserRouter>
+        </MemoryRouter>
       )
     );
 
