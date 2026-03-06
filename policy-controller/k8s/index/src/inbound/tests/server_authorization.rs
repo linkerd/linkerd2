@@ -43,6 +43,7 @@ fn link_server_authz(selector: ServerSelector) {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             ratelimit: None,
+            concurrency_limit: None,
             protocol: ProxyProtocol::Http1,
             http_routes: mk_default_http_routes(),
             grpc_routes: mk_default_grpc_routes(),

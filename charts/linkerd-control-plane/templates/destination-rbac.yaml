@@ -180,6 +180,7 @@ webhooks:
     apiVersions: ["*"]
     resources:
     - authorizationpolicies
+    - httplocalconcurrencylimitpolicies
     - httplocalratelimitpolicies
     - httproutes
     - networkauthentications
@@ -225,6 +226,7 @@ rules:
       - policy.linkerd.io
     resources:
       - authorizationpolicies
+      - httplocalconcurrencylimitpolicies
       - httplocalratelimitpolicies
       - httproutes
       - meshtlsauthentications
@@ -251,6 +253,7 @@ rules:
       - policy.linkerd.io
     resources:
       - httproutes/status
+      - httplocalconcurrencylimitpolicies/status
       - httplocalratelimitpolicies/status
       - egressnetworks/status
     verbs:
