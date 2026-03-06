@@ -56,7 +56,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: Set tag
         run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+      - uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
         with:
           registry: ghcr.io
           username: ${{ secrets.DOCKER_GHCR_USERNAME }}
@@ -104,7 +104,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417
         with:
           go-version-file: go.mod
       - uses: ./.github/actions/cli-setup
@@ -131,7 +131,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3
         with:
           artifact-ids: ${{ needs.cli.outputs.artifact-id }}
           path: cli

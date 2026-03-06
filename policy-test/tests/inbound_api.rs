@@ -823,7 +823,7 @@ fn mk_pause(ns: &str, name: &str) -> k8s::Pod {
         spec: Some(k8s::PodSpec {
             containers: vec![k8s::api::core::v1::Container {
                 name: "pause".to_string(),
-                image: Some("gcr.io/google_containers/pause:3.2".to_string()),
+                image: Some("registry.k8s.io/pause:3.2".to_string()),
                 ..Default::default()
             }],
             ..Default::default()

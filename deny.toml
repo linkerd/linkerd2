@@ -59,6 +59,10 @@ skip-tree = [
     { name = "thiserror", version = "1" },
     # getrandom v0.3 is still making its way through the ecosystem
     { name = "getrandom", version = "0.2" },
+    # rand v0.10 is still making its way through the ecosystem. it uses a
+    # newer version of `cpufeatures` as well.
+    { name = "rand", version = "0.9" },
+    { name = "cpufeatures", version = "0.2" },
 ]
 
 [sources]
