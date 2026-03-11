@@ -1,6 +1,5 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import ReactRouterPropTypes from 'react-router-prop-types';
 import { Trans } from '@lingui/macro';
 import _chunk from 'lodash/chunk';
 import _takeWhile from 'lodash/takeWhile';
@@ -87,7 +86,7 @@ class BreadcrumbHeader extends React.Component {
       return (
         <span key={pathSegment.segment}>
           {BreadcrumbHeader.renderBreadcrumbSegment(pathSegment.segment, breadcrumbs.length, index)}
-          { index < breadcrumbs.length - 1 ? ' > ' : null }
+          {index < breadcrumbs.length - 1 ? ' > ' : null}
         </span>
       );
     });
@@ -98,7 +97,7 @@ BreadcrumbHeader.propTypes = {
   api: PropTypes.shape({
     PrefixedLink: PropTypes.func.isRequired,
   }).isRequired,
-  location: ReactRouterPropTypes.location.isRequired,
+  location: PropTypes.shape({}).isRequired,
   pathPrefix: PropTypes.string.isRequired,
 };
 
