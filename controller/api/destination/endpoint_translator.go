@@ -244,7 +244,7 @@ func (et *endpointTranslator) remove(set watcher.AddressSet) {
 func (et *endpointTranslator) noEndpoints(exists bool) {
 	et.log.Debugf("NoEndpoints(%+v)", exists)
 
-	et.availableEndpoints.Addresses = map[watcher.ID]watcher.Address{}
+	et.availableEndpoints.Addresses = map[watcher.ID]*watcher.Address{}
 
 	et.sendFilteredUpdate()
 }
@@ -265,7 +265,7 @@ func (et *endpointTranslator) sendFilteredUpdate() {
 }
 
 func (et *endpointTranslator) selectAddressFamily(addresses watcher.AddressSet) watcher.AddressSet {
-	filtered := make(map[watcher.ID]watcher.Address)
+	filtered := make(map[watcher.ID]*watcher.Address)
 	for id, addr := range addresses.Addresses {
 		if id.IPFamily == corev1.IPv6Protocol && !et.enableIPv6 {
 			continue
@@ -298,7 +298,7 @@ func (et *endpointTranslator) selectAddressFamily(addresses watcher.AddressSet) 
 // when service.spec.internalTrafficPolicy is set to local, Topology Aware
 // Hints are not used.
 func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
-	filtered := make(map[watcher.ID]watcher.Address)
+	filtered := make(map[watcher.ID]*watcher.Address)
 
 	// If endpoint filtering is disabled, return all available addresses.
 	if !et.enableEndpointFiltering {
@@ -381,8 +381,8 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 // the endpoints that match the topological zone, by adding new endpoints and
 // removing stale ones.
 func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watcher.AddressSet, watcher.AddressSet) {
-	add := make(map[watcher.ID]watcher.Address)
-	remove := make(map[watcher.ID]watcher.Address)
+	add := make(map[watcher.ID]*watcher.Address)
+	remove := make(map[watcher.ID]*watcher.Address)
 
 	for id, new := range filtered.Addresses {
 		old, ok := et.filteredSnapshot.Addresses[id]
@@ -529,7 +529,7 @@ func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 	}
 }
 
-func toAddr(address watcher.Address) (*net.TcpAddress, error) {
+func toAddr(address *watcher.Address) (*net.TcpAddress, error) {
 	ip, err := addr.ParseProxyIP(address.IP)
 	if err != nil {
 		return nil, err
@@ -541,7 +541,7 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 }
 
 func createWeightedAddrForExternalWorkload(
-	address watcher.Address,
+	address *watcher.Address,
 	forceOpaqueTransport bool,
 	opaquePorts map[uint32]struct{},
 	http2 *pb.Http2ClientParams,
@@ -612,7 +612,7 @@ func createWeightedAddrForExternalWorkload(
 }
 
 func createWeightedAddr(
-	address watcher.Address,
+	address *watcher.Address,
 	opaquePorts map[uint32]struct{},
 	forceOpaqueTransport bool,
 	enableH2Upgrade bool,
@@ -726,7 +726,7 @@ func getNodeTopologyZone(k8sAPI *k8s.MetadataAPI, srcNode string) (string, error
 
 func newEmptyAddressSet() watcher.AddressSet {
 	return watcher.AddressSet{
-		Addresses: make(map[watcher.ID]watcher.Address),
+		Addresses: make(map[watcher.ID]*watcher.Address),
 		Labels:    make(map[string]string),
 	}
 }

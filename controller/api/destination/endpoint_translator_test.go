@@ -1166,7 +1166,7 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 		addressSet.LocalTrafficPolicy = true
 		translator.Add(addressSet)
 		set := watcher.AddressSet{
-			Addresses:          make(map[watcher.ServiceID]watcher.Address),
+			Addresses:          make(map[watcher.ServiceID]*watcher.Address),
 			Labels:             map[string]string{"service": "service-name", "namespace": "service-ns"},
 			LocalTrafficPolicy: false,
 		}
@@ -1238,7 +1238,7 @@ func TestGetInboundPort(t *testing.T) {
 
 func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.ServiceID]watcher.Address),
+		Addresses: make(map[watcher.ServiceID]*watcher.Address),
 		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 	}
 	for _, a := range gatewayAddresses {
@@ -1250,7 +1250,7 @@ func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.Addres
 				fmt.Sprint(a.Port),
 			}, "-"),
 		}
-		set.Addresses[id] = a
+		set.Addresses[id] = &a
 	}
 	return set
 }
@@ -1259,7 +1259,7 @@ func mkAddressSetForPods(t *testing.T, podAddresses ...watcher.Address) watcher.
 	t.Helper()
 
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.PodID]watcher.Address),
+		Addresses: make(map[watcher.PodID]*watcher.Address),
 		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 	}
 	for _, p := range podAddresses {
@@ -1279,19 +1279,19 @@ func mkAddressSetForPods(t *testing.T, podAddresses ...watcher.Address) watcher.
 			Namespace: p.Pod.Namespace,
 			IPFamily:  fam,
 		}
-		set.Addresses[id] = p
+		set.Addresses[id] = &p
 	}
 	return set
 }
 
 func mkAddressSetForExternalWorkloads(ewAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.PodID]watcher.Address),
+		Addresses: make(map[watcher.PodID]*watcher.Address),
 		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 	}
 	for _, ew := range ewAddresses {
 		id := watcher.ExternalWorkloadID{Name: ew.ExternalWorkload.Name, Namespace: ew.ExternalWorkload.Namespace}
-		set.Addresses[id] = ew
+		set.Addresses[id] = &ew
 	}
 	return set
 }
