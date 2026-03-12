@@ -1,0 +1,52 @@
+{{- if .Values.rbac.create -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.serviceAccount.name }}
+  labels:
+    app.kubernetes.io/name: {{ include "dst-load-test.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "dst-load-test.fullname" . }}
+  namespace: {{ .Values.testNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "dst-load-test.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+rules:
+  # Allow listing and getting Deployments (to find matching pattern)
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+  # Allow patching Deployments (to update spec.replicas)
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["patch"]
+  # Allow reading Services (for validation/metrics)
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch"]
+  # Allow reading Pods (for metrics)
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "dst-load-test.fullname" . }}
+  namespace: {{ .Values.testNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "dst-load-test.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "dst-load-test.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.serviceAccount.name }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

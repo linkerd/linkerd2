@@ -1,0 +1,118 @@
+# Helmfile for destination load testing infrastructure
+#
+# Prerequisites:
+# 1. k3d cluster created (e.g., k3d-test)
+# 2. LINKERD_CA_DIR set with generated certificates:
+#    - ca.crt (trust anchor)
+#    - issuer.crt (issuer certificate)
+#    - issuer.key (issuer private key)
+# 3. Run: hack/gen-certs.sh to generate these files
+#
+# Usage:
+#   # Setup cluster
+#   LINKERD_CA_DIR=/tmp/linkerd-ca helmfile sync
+#
+#   # Without monitoring
+#   LINKERD_CA_DIR=/tmp/linkerd-ca helmfile --state-values-set monitoring.enabled=false sync
+
+environments:
+  default:
+    values:
+      - monitoring:
+          enabled: true
+
+---
+
+helmDefaults:
+  wait: true
+  timeout: 300
+  createNamespace: true
+  atomic: true
+
+repositories:
+  - name: linkerd-edge
+    url: https://helm.linkerd.io/edge
+  - name: kwok
+    url: https://kwok.sigs.k8s.io/charts/
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+  - name: linkerd-monitoring
+    url: https://ghcr.io/olix0r/charts
+    oci: true
+
+releases:
+  #############################################################################
+  # KWOK - Fake pods/nodes for load testing
+  #############################################################################
+  - name: kwok
+    namespace: kwok-system
+    chart: kwok/kwok
+    # Latest release (0.2.0 = app v0.7.0)
+
+  #############################################################################
+  # KWOK Stage Fast - Default pod/node emulation behavior
+  #############################################################################
+  - name: kwok-stage
+    namespace: default
+    chart: kwok/stage-fast
+    # Configures pods to transition quickly through lifecycle phases
+    needs:
+      - kwok
+
+  #############################################################################
+  # Linkerd CRDs
+  #############################################################################
+  - name: linkerd-crds
+    namespace: linkerd
+    chart: linkerd-edge/linkerd-crds
+    # Latest edge release
+
+  #############################################################################
+  # Linkerd Control Plane
+  #############################################################################
+  - name: linkerd-control-plane
+    namespace: linkerd
+    chart: linkerd-edge/linkerd-control-plane
+    # Latest edge release
+    needs:
+      - linkerd-crds
+    set:
+      - name: identityTrustDomain
+        value: cluster.local
+      - name: controllerLogLevel
+        value: debug
+      - name: controllerLogFormat
+        value: json
+      - name: identity.issuer.scheme
+        value: linkerd.io/tls
+      - name: identityTrustAnchorsPEM
+        value: {{ readFile (printf "%s/ca.crt" (env "LINKERD_CA_DIR" | default "/tmp/linkerd-ca")) | quote }}
+      - name: identity.issuer.tls.crtPEM
+        value: {{ readFile (printf "%s/issuer.crt" (env "LINKERD_CA_DIR" | default "/tmp/linkerd-ca")) | quote }}
+      - name: identity.issuer.tls.keyPEM
+        value: {{ readFile (printf "%s/issuer.key" (env "LINKERD_CA_DIR" | default "/tmp/linkerd-ca")) | quote }}
+
+  #############################################################################
+  # kube-prometheus-stack (monitoring infrastructure)
+  #############################################################################
+  - name: kube-prometheus-stack
+    namespace: monitoring
+    chart: prometheus-community/kube-prometheus-stack
+    version: ~67.0.0
+    condition: monitoring.enabled
+    values:
+      - values/kube-prometheus-stack.yaml
+
+  #############################################################################
+  # linkerd-monitoring (Linkerd dashboards and ServiceMonitors)
+  #############################################################################
+  - name: linkerd-monitoring
+    namespace: linkerd-viz
+    chart: oci://ghcr.io/olix0r/charts/linkerd-monitoring
+    version: 0.1.1
+    condition: monitoring.enabled
+    needs:
+      - linkerd-control-plane
+      - kube-prometheus-stack
+    values:
+      - values/linkerd-monitoring.yaml
