@@ -66,7 +66,7 @@ type (
 	// id.IPFamily refers to the ES AddressType (see newPodRefAddress).
 	// 3) A reference to an ExternalWorkload: id.Name refers to the EW's name.
 	AddressSet struct {
-		Addresses          map[ID]Address
+		Addresses          map[ID]*Address
 		Labels             map[string]string
 		LocalTrafficPolicy bool
 		Cluster            string
@@ -178,7 +178,7 @@ func (pp *portPublisher) notifyNoEndpoints() {
 // ExternalWorkload fields of the Addresses map values still point to the
 // locations of the original variable
 func (addr AddressSet) shallowCopy() AddressSet {
-	addresses := make(map[ID]Address)
+	addresses := make(map[ID]*Address)
 	for k, v := range addr.Addresses {
 		addresses[k] = v
 	}
@@ -828,7 +828,7 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
 	updatedAddressSet := AddressSet{
-		Addresses:          make(map[ID]Address),
+		Addresses:          make(map[ID]*Address),
 		Labels:             pp.addresses.Labels,
 		LocalTrafficPolicy: pp.localTrafficPolicy,
 		Cluster:            pp.addresses.Cluster,
@@ -901,7 +901,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 	if resolvedPort == undefinedEndpointPort {
 		return AddressSet{
 			Labels:             metricLabels(es),
-			Addresses:          make(map[ID]Address),
+			Addresses:          make(map[ID]*Address),
 			LocalTrafficPolicy: pp.localTrafficPolicy,
 			Cluster:            pp.addresses.Cluster,
 		}
@@ -912,7 +912,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 		pp.log.Errorf("Could not fetch resource service name:%v", err)
 	}
 
-	addresses := make(map[ID]Address)
+	addresses := make(map[ID]*Address)
 	for _, endpoint := range es.Endpoints {
 		if endpoint.Hostname != nil {
 			if pp.hostname != "" && pp.hostname != *endpoint.Hostname {
@@ -939,7 +939,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					copy(zones, endpoint.Hints.ForZones)
 					address.ForZones = zones
 				}
-				addresses[id] = address
+				addresses[id] = &address
 			}
 			continue
 		}
@@ -968,7 +968,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					copy(zones, endpoint.Hints.ForZones)
 					address.ForZones = zones
 				}
-				addresses[id] = address
+				addresses[id] = &address
 			}
 		}
 
@@ -993,7 +993,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					address.ForZones = zones
 				}
 
-				addresses[id] = address
+				addresses[id] = &address
 			}
 
 		}
@@ -1063,7 +1063,7 @@ func (pp *portPublisher) endpointSliceToIDs(es *discovery.EndpointSlice) []ID {
 }
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {
-	addresses := make(map[ID]Address)
+	addresses := make(map[ID]*Address)
 	for _, subset := range endpoints.Subsets {
 		resolvedPort := pp.resolveTargetPort(subset)
 		if resolvedPort == undefinedEndpointPort {
@@ -1084,7 +1084,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 				address, id := pp.newServiceRefAddress(resolvedPort, endpoint.IP, endpoints.Name, endpoints.Namespace)
 				address.Identity, address.AuthorityOverride = identity, authorityOverride
 
-				addresses[id] = address
+				addresses[id] = &address
 				continue
 			}
 
@@ -1104,7 +1104,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 				}
-				addresses[id] = address
+				addresses[id] = &address
 			}
 		}
 	}
@@ -1310,7 +1310,7 @@ func (pp *portPublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 	}
 }
 
-func (pp *portPublisher) isAddressSelected(address Address, server *v1beta3.Server) bool {
+func (pp *portPublisher) isAddressSelected(address *Address, server *v1beta3.Server) bool {
 	if server == nil {
 		return false
 	}

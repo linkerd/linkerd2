@@ -243,7 +243,7 @@ func (sv *endpointView) buildFilteredUpdatesLocked() []*pb.Update {
 // When IPv6 is enabled, it prefers IPv6 addresses over IPv4. When disabled, only IPv4 addresses
 // are returned.
 func (sv *endpointView) selectAddressFamily(addresses watcher.AddressSet) watcher.AddressSet {
-	filtered := make(map[watcher.ID]watcher.Address)
+	filtered := make(map[watcher.ID]*watcher.Address)
 	for id, addr := range addresses.Addresses {
 		if id.IPFamily == corev1.IPv6Protocol && !sv.cfg.enableIPv6 {
 			continue
@@ -277,7 +277,7 @@ func (sv *endpointView) selectAddressFamily(addresses watcher.AddressSet) watche
 // when service.spec.internalTrafficPolicy is set to local, Topology Aware
 // Hints are not used.
 func (sv *endpointView) filterAddresses(available *watcher.AddressSet) watcher.AddressSet {
-	filtered := make(map[watcher.ID]watcher.Address)
+	filtered := make(map[watcher.ID]*watcher.Address)
 
 	// If endpoint filtering is disabled globally or unsupported by the data
 	// source, return all available addresses.
@@ -365,8 +365,8 @@ func (sv *endpointView) filterAddresses(available *watcher.AddressSet) watcher.A
 // endpoints in the current (Add/Remove) operation and the snapshot of
 // previously filtered endpoints.
 func (sv *endpointView) diffEndpoints(previous watcher.AddressSet, filtered watcher.AddressSet) (watcher.AddressSet, watcher.AddressSet) {
-	add := make(map[watcher.ID]watcher.Address)
-	remove := make(map[watcher.ID]watcher.Address)
+	add := make(map[watcher.ID]*watcher.Address)
+	remove := make(map[watcher.ID]*watcher.Address)
 
 	for id, new := range filtered.Addresses {
 		old, ok := previous.Addresses[id]

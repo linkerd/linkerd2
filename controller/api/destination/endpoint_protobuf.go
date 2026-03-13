@@ -68,7 +68,7 @@ func defaultBuildClientRemove(log *logging.Entry, set watcher.AddressSet) *pb.Up
 
 // buildWeightedAddrFromConfig converts a watcher.Address to a protobuf WeightedAddr using endpointViewConfig.
 // It dispatches to the appropriate builder based on address type (Pod, ExternalWorkload, or bare address).
-func buildWeightedAddrFromConfig(cfg *endpointViewConfig, address watcher.Address) (*pb.WeightedAddr, error) {
+func buildWeightedAddrFromConfig(cfg *endpointViewConfig, address *watcher.Address) (*pb.WeightedAddr, error) {
 	switch {
 	case address.Pod != nil:
 		opaquePorts := watcher.GetAnnotatedOpaquePorts(address.Pod, cfg.defaultOpaquePorts)

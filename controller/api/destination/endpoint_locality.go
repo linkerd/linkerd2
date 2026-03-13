@@ -11,7 +11,7 @@ import (
 
 // defaultEnhanceAddr adds zone locality metric labels to weighted addresses.
 // This is the OSS implementation that provides observability without weight modification.
-func defaultEnhanceAddr(cfg *endpointViewConfig, address watcher.Address, wa *pb.WeightedAddr) {
+func defaultEnhanceAddr(cfg *endpointViewConfig, address *watcher.Address, wa *pb.WeightedAddr) {
 	if wa.MetricLabels == nil {
 		wa.MetricLabels = map[string]string{}
 	}

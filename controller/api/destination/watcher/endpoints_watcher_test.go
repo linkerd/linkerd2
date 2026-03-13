@@ -25,7 +25,7 @@ type bufferingEndpointListener struct {
 	localTrafficPolicy bool
 	noEndpointsCalled  bool
 	noEndpointsExist   bool
-	state              map[ID]Address
+	state              map[ID]*Address
 	sync.Mutex
 }
 
@@ -33,7 +33,7 @@ func newBufferingEndpointListener() *bufferingEndpointListener {
 	return &bufferingEndpointListener{
 		added:   []string{},
 		removed: []string{},
-		state:   make(map[ID]Address),
+		state:   make(map[ID]*Address),
 		Mutex:   sync.Mutex{},
 	}
 }
@@ -50,7 +50,7 @@ func (bel *bufferingEndpointListener) ProcessEvent(topic *endpointTopic) {
 	}
 }
 
-func addressString(address Address) string {
+func addressString(address *Address) string {
 	addressString := fmt.Sprintf("%s:%d", address.IP, address.Port)
 	if address.Identity != "" {
 		addressString = fmt.Sprintf("%s/%s", addressString, address.Identity)
@@ -61,7 +61,7 @@ func addressString(address Address) string {
 	return addressString
 }
 
-func addressChanged(oldAddress, newAddress Address) bool {
+func addressChanged(oldAddress, newAddress *Address) bool {
 	if oldAddress.Identity != newAddress.Identity {
 		return true
 	}
@@ -136,7 +136,7 @@ func (bel *bufferingEndpointListener) update(snapshot AddressSnapshot) {
 		}
 	}
 
-	bel.state = make(map[ID]Address, len(set.Addresses))
+	bel.state = make(map[ID]*Address, len(set.Addresses))
 	for id, address := range set.Addresses {
 		bel.state[id] = address
 	}
@@ -153,13 +153,13 @@ func (bel *bufferingEndpointListener) noEndpoints(exists bool) {
 	for _, address := range bel.state {
 		bel.removed = append(bel.removed, addressString(address))
 	}
-	bel.state = make(map[ID]Address)
+	bel.state = make(map[ID]*Address)
 }
 
 type bufferingEndpointListenerWithResVersion struct {
 	added   []string
 	removed []string
-	state   map[ID]Address
+	state   map[ID]*Address
 	sync.Mutex
 }
 
@@ -167,12 +167,12 @@ func newBufferingEndpointListenerWithResVersion() *bufferingEndpointListenerWith
 	return &bufferingEndpointListenerWithResVersion{
 		added:   []string{},
 		removed: []string{},
-		state:   make(map[ID]Address),
+		state:   make(map[ID]*Address),
 		Mutex:   sync.Mutex{},
 	}
 }
 
-func addressStringWithResVersion(address Address) string {
+func addressStringWithResVersion(address *Address) string {
 	return fmt.Sprintf("%s:%d:%s", address.IP, address.Port, address.Pod.ResourceVersion)
 }
 
@@ -222,7 +222,7 @@ func (bel *bufferingEndpointListenerWithResVersion) Update(snapshot AddressSnaps
 		}
 	}
 
-	bel.state = make(map[ID]Address, len(set.Addresses))
+	bel.state = make(map[ID]*Address, len(set.Addresses))
 	for id, address := range set.Addresses {
 		bel.state[id] = address
 	}
@@ -231,7 +231,7 @@ func (bel *bufferingEndpointListenerWithResVersion) Update(snapshot AddressSnaps
 func (bel *bufferingEndpointListenerWithResVersion) NoEndpoints(exists bool) {
 	bel.Lock()
 	defer bel.Unlock()
-	bel.state = make(map[ID]Address)
+	bel.state = make(map[ID]*Address)
 }
 
 type snapshotCaptureListener struct {
@@ -838,7 +838,7 @@ func TestPortPublisherSnapshotImmutability(t *testing.T) {
 	pp := &portPublisher{
 		topic: newEndpointTopic(),
 		addresses: AddressSet{
-			Addresses: map[ID]Address{
+			Addresses: map[ID]*Address{
 				ServiceID{Name: "svc-1", Namespace: "ns"}: {
 					IP:   "10.0.0.1",
 					Port: 8080,
@@ -888,7 +888,7 @@ func TestPortPublisherSnapshotVersionMonotonic(t *testing.T) {
 	defer cancel()
 
 	pp.addresses = AddressSet{
-		Addresses: map[ID]Address{
+		Addresses: map[ID]*Address{
 			ServiceID{Name: "svc-1", Namespace: "ns"}: {IP: "10.0.0.1", Port: 8080},
 		},
 	}
@@ -896,7 +896,7 @@ func TestPortPublisherSnapshotVersionMonotonic(t *testing.T) {
 	time.Sleep(50 * time.Millisecond) // Give time for event delivery
 
 	pp.addresses = AddressSet{
-		Addresses: map[ID]Address{
+		Addresses: map[ID]*Address{
 			ServiceID{Name: "svc-1", Namespace: "ns"}: {IP: "10.0.0.2", Port: 8080},
 		},
 	}
@@ -919,7 +919,7 @@ func TestSnapshotTopicInitialDelivery(t *testing.T) {
 	pp := &portPublisher{
 		topic: newEndpointTopic(),
 		addresses: AddressSet{
-			Addresses: map[ID]Address{
+			Addresses: map[ID]*Address{
 				ServiceID{Name: "svc-1", Namespace: "ns"}: {IP: "10.0.0.1", Port: 8080},
 			},
 		},

@@ -679,9 +679,9 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		sort.Slice(addressesAdded, func(i, j int) bool {
 			return addressesAdded[i].GetAddr().Port < addressesAdded[j].GetAddr().Port
 		})
-		checkAddressAndWeight(t, addressesAdded[0], pod1, defaultWeight)
-		checkAddressAndWeight(t, addressesAdded[1], pod2, defaultWeight)
-		checkAddress(t, addressesRemoved[0], pod3)
+		checkAddressAndWeight(t, addressesAdded[0], &pod1, defaultWeight)
+		checkAddressAndWeight(t, addressesAdded[1], &pod2, defaultWeight)
+		checkAddress(t, addressesRemoved[0], &pod3)
 	})
 
 	t.Run("Sends addresses with opaque transport", func(t *testing.T) {
@@ -895,9 +895,9 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 		sort.Slice(addressesAdded, func(i, j int) bool {
 			return addressesAdded[i].GetAddr().Port < addressesAdded[j].GetAddr().Port
 		})
-		checkAddressAndWeight(t, addressesAdded[0], ew1, defaultWeight)
-		checkAddressAndWeight(t, addressesAdded[1], ew2, defaultWeight)
-		checkAddress(t, addressesRemoved[0], ew3)
+		checkAddressAndWeight(t, addressesAdded[0], &ew1, defaultWeight)
+		checkAddressAndWeight(t, addressesAdded[1], &ew2, defaultWeight)
+		checkAddress(t, addressesRemoved[0], &ew3)
 	})
 
 	t.Run("Sends metric labels with added addresses", func(t *testing.T) {
@@ -1072,8 +1072,8 @@ func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 		sort.Slice(addrs, func(i, j int) bool {
 			return addrs[i].GetAddr().Port < addrs[j].GetAddr().Port
 		})
-		checkAddressAndWeight(t, addrs[0], addrA, defaultWeight)
-		checkAddressAndWeight(t, addrs[1], addrB, defaultWeight)
+		checkAddressAndWeight(t, addrs[0], &addrA, defaultWeight)
+		checkAddressAndWeight(t, addrs[1], &addrB, defaultWeight)
 	})
 
 	t.Run("Applies weights", func(t *testing.T) {
@@ -1089,8 +1089,8 @@ func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 		sort.Slice(addrs, func(i, j int) bool {
 			return addrs[i].GetAddr().Port < addrs[j].GetAddr().Port
 		})
-		checkAddressAndWeight(t, addrs[0], addrA, defaultWeight*10)
-		checkAddressAndWeight(t, addrs[1], addrB, defaultWeight)
+		checkAddressAndWeight(t, addrs[0], &addrA, defaultWeight*10)
+		checkAddressAndWeight(t, addrs[1], &addrB, defaultWeight)
 	})
 }
 
@@ -1122,7 +1122,7 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 		<-mockGetServer.updatesReceived // Add
 
 		set := watcher.AddressSet{
-			Addresses:          make(map[watcher.ServiceID]watcher.Address),
+			Addresses:          make(map[watcher.ServiceID]*watcher.Address),
 			Labels:             map[string]string{"service": "service-name", "namespace": "service-ns"},
 			LocalTrafficPolicy: true,
 			Cluster:            "local",
@@ -1190,7 +1190,7 @@ func TestGetInboundPort(t *testing.T) {
 
 func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.ServiceID]watcher.Address),
+		Addresses: make(map[watcher.ServiceID]*watcher.Address),
 		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 		Cluster:   "local",
 	}
@@ -1203,7 +1203,7 @@ func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.Addres
 				fmt.Sprint(a.Port),
 			}, "-"),
 		}
-		set.Addresses[id] = a
+		set.Addresses[id] = &a
 	}
 	return set
 }
@@ -1212,7 +1212,7 @@ func mkAddressSetForPods(t *testing.T, podAddresses ...watcher.Address) watcher.
 	t.Helper()
 
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.PodID]watcher.Address),
+		Addresses: make(map[watcher.PodID]*watcher.Address),
 		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 		Cluster:   "local",
 	}
@@ -1233,25 +1233,25 @@ func mkAddressSetForPods(t *testing.T, podAddresses ...watcher.Address) watcher.
 			Namespace: p.Pod.Namespace,
 			IPFamily:  fam,
 		}
-		set.Addresses[id] = p
+		set.Addresses[id] = &p
 	}
 	return set
 }
 
 func mkAddressSetForExternalWorkloads(ewAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.PodID]watcher.Address),
+		Addresses: make(map[watcher.PodID]*watcher.Address),
 		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 		Cluster:   "local",
 	}
 	for _, ew := range ewAddresses {
 		id := watcher.ExternalWorkloadID{Name: ew.ExternalWorkload.Name, Namespace: ew.ExternalWorkload.Namespace}
-		set.Addresses[id] = ew
+		set.Addresses[id] = &ew
 	}
 	return set
 }
 
-func checkAddressAndWeight(t *testing.T, actual *pb.WeightedAddr, expected watcher.Address, weight uint32) {
+func checkAddressAndWeight(t *testing.T, actual *pb.WeightedAddr, expected *watcher.Address, weight uint32) {
 	t.Helper()
 
 	checkAddress(t, actual.GetAddr(), expected)
@@ -1260,7 +1260,7 @@ func checkAddressAndWeight(t *testing.T, actual *pb.WeightedAddr, expected watch
 	}
 }
 
-func checkAddress(t *testing.T, actual *net.TcpAddress, expected watcher.Address) {
+func checkAddress(t *testing.T, actual *net.TcpAddress, expected *watcher.Address) {
 	t.Helper()
 
 	expectedAddr, err := addr.ParseProxyIP(expected.IP)

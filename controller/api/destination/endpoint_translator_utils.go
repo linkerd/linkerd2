@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func toAddr(address watcher.Address) (*net.TcpAddress, error) {
+func toAddr(address *watcher.Address) (*net.TcpAddress, error) {
 	ip, err := addr.ParseProxyIP(address.IP)
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 }
 
 func createWeightedAddrForExternalWorkload(
-	address watcher.Address,
+	address *watcher.Address,
 	forceOpaqueTransport bool,
 	opaquePorts map[uint32]struct{},
 	http2 *pb.Http2ClientParams,
@@ -97,7 +97,7 @@ func createWeightedAddrForExternalWorkload(
 }
 
 func createWeightedAddr(
-	address watcher.Address,
+	address *watcher.Address,
 	opaquePorts map[uint32]struct{},
 	forceOpaqueTransport bool,
 	enableH2Upgrade bool,
@@ -211,7 +211,7 @@ func getNodeTopologyZone(k8sAPI *k8s.MetadataAPI, srcNode string) (string, error
 
 func newEmptyAddressSet() watcher.AddressSet {
 	return watcher.AddressSet{
-		Addresses: make(map[watcher.ID]watcher.Address),
+		Addresses: make(map[watcher.ID]*watcher.Address),
 		Labels:    make(map[string]string),
 		Cluster:   "",
 	}

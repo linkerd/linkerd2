@@ -46,7 +46,7 @@ type endpointViewConfig struct {
 	BuildClientRemove func(log *logging.Entry, set watcher.AddressSet) *pb.Update
 
 	// EnhanceAddr allows post-processing of WeightedAddr (e.g., zone locality)
-	EnhanceAddr func(cfg *endpointViewConfig, address watcher.Address, wa *pb.WeightedAddr)
+	EnhanceAddr func(cfg *endpointViewConfig, address *watcher.Address, wa *pb.WeightedAddr)
 }
 
 // newEndpointViewConfig creates an endpointViewConfig from common server config
