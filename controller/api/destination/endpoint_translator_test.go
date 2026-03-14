@@ -876,6 +876,49 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 			t.Fatalf("Expected to receive no more messages, received [%d]", updates)
 		}
 	})
+
+	t.Run("Resends selected endpoints when watcher reports an updated address for the same ID", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForPods(t, pod1))
+		<-mockGetServer.updatesReceived
+
+		updated := pod1
+		updated.Pod = updated.Pod.DeepCopy()
+		updated.Pod.ResourceVersion = "rv-2"
+
+		translator.Add(mkAddressSetForPods(t, updated))
+
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] updated address returned, got %v", addrs)
+		}
+		checkAddressAndWeight(t, addrs[0], updated, defaultWeight)
+	})
+
+	t.Run("NoEndpoints removes previously selected endpoints", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForPods(t, pod1, pod2))
+		<-mockGetServer.updatesReceived
+
+		translator.NoEndpoints(true)
+
+		removed := (<-mockGetServer.updatesReceived).GetRemove().GetAddrs()
+		if len(removed) != 2 {
+			t.Fatalf("Expected [2] removed addresses, got %v", removed)
+		}
+
+		sort.Slice(removed, func(i, j int) bool {
+			return removed[i].Port < removed[j].Port
+		})
+		checkAddress(t, removed[0], pod1)
+		checkAddress(t, removed[1], pod2)
+	})
 }
 
 func TestEndpointTranslatorExternalWorkloads(t *testing.T) {

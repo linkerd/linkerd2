@@ -3,7 +3,6 @@ package destination
 import (
 	"fmt"
 	"net/netip"
-	"reflect"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -33,6 +32,8 @@ const (
 // endpointTranslator satisfies EndpointUpdateListener and translates updates
 // into Destination.Get messages.
 type (
+	endpointFilterMode uint8
+
 	endpointTranslator struct {
 		controllerNS        string
 		identityTrustDomain string
@@ -50,7 +51,7 @@ type (
 		meshedHTTP2ClientParams *pb.Http2ClientParams
 
 		availableEndpoints watcher.AddressSet
-		filteredSnapshot   watcher.AddressSet
+		filteredSnapshot   map[watcher.ID]struct{}
 		stream             pb.Destination_GetServer
 		endStream          chan struct{}
 		log                *logging.Entry
@@ -71,6 +72,12 @@ type (
 	noEndpointsUpdate struct {
 		exists bool
 	}
+)
+
+const (
+	endpointFilterModeAll endpointFilterMode = iota
+	endpointFilterModeZone
+	endpointFilterModeLocal
 )
 
 var updatesQueueOverflowCounter = promauto.NewCounterVec(
@@ -112,8 +119,6 @@ func newEndpointTranslator(
 	}
 	availableEndpoints := newEmptyAddressSet()
 
-	filteredSnapshot := newEmptyAddressSet()
-
 	counter, err := updatesQueueOverflowCounter.GetMetricWith(prometheus.Labels{"service": service})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create updates queue overflow counter: %w", err)
@@ -133,7 +138,7 @@ func newEndpointTranslator(
 		meshedHTTP2ClientParams,
 
 		availableEndpoints,
-		filteredSnapshot,
+		make(map[watcher.ID]struct{}),
 		stream,
 		endStream,
 		log,
@@ -230,7 +235,7 @@ func (et *endpointTranslator) add(set watcher.AddressSet) {
 	et.availableEndpoints.Labels = set.Labels
 	et.availableEndpoints.LocalTrafficPolicy = set.LocalTrafficPolicy
 
-	et.sendFilteredUpdate()
+	et.sendFilteredUpdate(set, watcher.AddressSet{})
 }
 
 func (et *endpointTranslator) remove(set watcher.AddressSet) {
@@ -238,175 +243,138 @@ func (et *endpointTranslator) remove(set watcher.AddressSet) {
 		delete(et.availableEndpoints.Addresses, id)
 	}
 
-	et.sendFilteredUpdate()
+	et.sendFilteredUpdate(watcher.AddressSet{}, set)
 }
 
 func (et *endpointTranslator) noEndpoints(exists bool) {
 	et.log.Debugf("NoEndpoints(%+v)", exists)
 
+	removed := et.availableEndpoints
 	et.availableEndpoints.Addresses = map[watcher.ID]*watcher.Address{}
 
-	et.sendFilteredUpdate()
+	et.sendFilteredUpdate(watcher.AddressSet{}, removed)
 }
 
-func (et *endpointTranslator) sendFilteredUpdate() {
-	filtered := et.filterAddresses()
-	filtered = et.selectAddressFamily(filtered)
-	diffAdd, diffRemove := et.diffEndpoints(filtered)
+func (et *endpointTranslator) sendFilteredUpdate(added watcher.AddressSet, removed watcher.AddressSet) {
+	filtered := et.filteredAddresses()
+	nextSnapshot := make(map[watcher.ID]struct{}, len(filtered))
 
-	if len(diffAdd.Addresses) > 0 {
-		et.sendClientAdd(diffAdd)
+	addrsToAdd := watcher.AddressSet{
+		Addresses: make(map[watcher.ID]*watcher.Address),
+		Labels:    et.availableEndpoints.Labels,
 	}
-	if len(diffRemove.Addresses) > 0 {
-		et.sendClientRemove(diffRemove)
+	for id, address := range filtered {
+		nextSnapshot[id] = struct{}{}
+		if _, ok := et.filteredSnapshot[id]; !ok {
+			addrsToAdd.Addresses[id] = address
+			continue
+		}
+		if _, ok := added.Addresses[id]; ok {
+			addrsToAdd.Addresses[id] = address
+		}
 	}
 
-	et.filteredSnapshot = filtered
+	addrsToRemove := watcher.AddressSet{
+		Addresses: make(map[watcher.ID]*watcher.Address),
+	}
+	for id := range et.filteredSnapshot {
+		if _, ok := nextSnapshot[id]; ok {
+			continue
+		}
+		if address, ok := et.availableEndpoints.Addresses[id]; ok {
+			addrsToRemove.Addresses[id] = address
+			continue
+		}
+		if address, ok := removed.Addresses[id]; ok {
+			addrsToRemove.Addresses[id] = address
+		}
+	}
+
+	if len(addrsToAdd.Addresses) > 0 {
+		et.sendClientAdd(addrsToAdd)
+	}
+	if len(addrsToRemove.Addresses) > 0 {
+		et.sendClientRemove(addrsToRemove)
+	}
+
+	et.filteredSnapshot = nextSnapshot
 }
 
-func (et *endpointTranslator) selectAddressFamily(addresses watcher.AddressSet) watcher.AddressSet {
+func (et *endpointTranslator) filteredAddresses() map[watcher.ID]*watcher.Address {
+	mode := et.filterMode()
+	if mode == endpointFilterModeZone && !et.hasZoneFilteredAddresses() {
+		mode = endpointFilterModeAll
+	}
+
 	filtered := make(map[watcher.ID]*watcher.Address)
-	for id, addr := range addresses.Addresses {
+	for id, address := range et.availableEndpoints.Addresses {
+		if !et.shouldIncludeAddress(id, address, mode) {
+			continue
+		}
 		if id.IPFamily == corev1.IPv6Protocol && !et.enableIPv6 {
 			continue
 		}
-
 		if id.IPFamily == corev1.IPv4Protocol && et.enableIPv6 {
-			// Only consider IPv4 address for which there's not already an IPv6
-			// alternative
+			// Only consider IPv4 addresses for which there isn't already an IPv6
+			// alternative selected by the same filtering mode.
 			altID := id
 			altID.IPFamily = corev1.IPv6Protocol
-			if _, ok := addresses.Addresses[altID]; ok {
+			if altAddr, ok := et.availableEndpoints.Addresses[altID]; ok && et.shouldIncludeAddress(altID, altAddr, mode) {
 				continue
 			}
 		}
-
-		filtered[id] = addr
+		filtered[id] = address
 	}
 
-	return watcher.AddressSet{
-		Addresses:          filtered,
-		Labels:             addresses.Labels,
-		LocalTrafficPolicy: addresses.LocalTrafficPolicy,
-	}
+	return filtered
 }
 
-// filterAddresses is responsible for filtering endpoints based on the node's
-// topology zone. The client will only receive endpoints with the same
-// consumption zone as the node. An endpoints consumption zone is set
-// by its Hints field and can be different than its actual Topology zone.
-// when service.spec.internalTrafficPolicy is set to local, Topology Aware
-// Hints are not used.
-func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
-	filtered := make(map[watcher.ID]*watcher.Address)
-
-	// If endpoint filtering is disabled, return all available addresses.
+func (et *endpointTranslator) filterMode() endpointFilterMode {
 	if !et.enableEndpointFiltering {
-		for k, v := range et.availableEndpoints.Addresses {
-			filtered[k] = v
-		}
-		return watcher.AddressSet{
-			Addresses: filtered,
-			Labels:    et.availableEndpoints.Labels,
-		}
+		return endpointFilterModeAll
 	}
-
-	// If service.spec.internalTrafficPolicy is set to local, filter and return the addresses
-	// for local node only
 	if et.availableEndpoints.LocalTrafficPolicy {
 		et.log.Debugf("Filtering through addresses that should be consumed by node %s", et.nodeName)
-		for id, address := range et.availableEndpoints.Addresses {
-			if address.Pod != nil && address.Pod.Spec.NodeName == et.nodeName {
-				filtered[id] = address
-			}
-		}
-		et.log.Debugf("Filtered from %d to %d addresses", len(et.availableEndpoints.Addresses), len(filtered))
-		return watcher.AddressSet{
-			Addresses:          filtered,
-			Labels:             et.availableEndpoints.Labels,
-			LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
-		}
+		return endpointFilterModeLocal
 	}
-	// If any address does not have a hint, then all hints are ignored and all
-	// available addresses are returned. This replicates kube-proxy behavior
-	// documented in the KEP: https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/2433-topology-aware-hints/README.md#kube-proxy
 	for _, address := range et.availableEndpoints.Addresses {
 		if len(address.ForZones) == 0 {
-			for k, v := range et.availableEndpoints.Addresses {
-				filtered[k] = v
-			}
 			et.log.Debugf("Hints not available on endpointslice. Zone Filtering disabled. Falling back to routing to all pods")
-			return watcher.AddressSet{
-				Addresses:          filtered,
-				Labels:             et.availableEndpoints.Labels,
-				LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
-			}
+			return endpointFilterModeAll
 		}
 	}
-
-	// Each address that has a hint matching the node's zone should be added
-	// to the set of addresses that will be returned.
 	et.log.Debugf("Filtering through addresses that should be consumed by zone %s", et.nodeTopologyZone)
-	for id, address := range et.availableEndpoints.Addresses {
-		for _, zone := range address.ForZones {
-			if zone.Name == et.nodeTopologyZone {
-				filtered[id] = address
-			}
-		}
-	}
-	if len(filtered) > 0 {
-		et.log.Debugf("Filtered from %d to %d addresses", len(et.availableEndpoints.Addresses), len(filtered))
-		return watcher.AddressSet{
-			Addresses:          filtered,
-			Labels:             et.availableEndpoints.Labels,
-			LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
-		}
-	}
-
-	// If there were no filtered addresses, then fall to using endpoints from
-	// all zones.
-	for k, v := range et.availableEndpoints.Addresses {
-		filtered[k] = v
-	}
-	return watcher.AddressSet{
-		Addresses:          filtered,
-		Labels:             et.availableEndpoints.Labels,
-		LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
-	}
+	return endpointFilterModeZone
 }
 
-// diffEndpoints calculates the difference between the filtered set of
-// endpoints in the current (Add/Remove) operation and the snapshot of
-// previously filtered endpoints. This diff allows the client to receive only
-// the endpoints that match the topological zone, by adding new endpoints and
-// removing stale ones.
-func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watcher.AddressSet, watcher.AddressSet) {
-	add := make(map[watcher.ID]*watcher.Address)
-	remove := make(map[watcher.ID]*watcher.Address)
-
-	for id, new := range filtered.Addresses {
-		old, ok := et.filteredSnapshot.Addresses[id]
-		if !ok {
-			add[id] = new
-		} else if !reflect.DeepEqual(old, new) {
-			add[id] = new
+func (et *endpointTranslator) hasZoneFilteredAddresses() bool {
+	for _, address := range et.availableEndpoints.Addresses {
+		for _, zone := range address.ForZones {
+			if zone.Name == et.nodeTopologyZone {
+				return true
+			}
 		}
 	}
+	return false
+}
 
-	for id, address := range et.filteredSnapshot.Addresses {
-		if _, ok := filtered.Addresses[id]; !ok {
-			remove[id] = address
+func (et *endpointTranslator) shouldIncludeAddress(id watcher.ID, address *watcher.Address, mode endpointFilterMode) bool {
+	switch mode {
+	case endpointFilterModeAll:
+		return true
+	case endpointFilterModeLocal:
+		return address.Pod != nil && address.Pod.Spec.NodeName == et.nodeName
+	case endpointFilterModeZone:
+		for _, zone := range address.ForZones {
+			if zone.Name == et.nodeTopologyZone {
+				return true
+			}
 		}
+		return false
+	default:
+		et.log.Errorf("Unexpected endpoint filter mode %d for %s", mode, id)
+		return false
 	}
-
-	return watcher.AddressSet{
-			Addresses: add,
-			Labels:    filtered.Labels,
-		},
-		watcher.AddressSet{
-			Addresses: remove,
-			Labels:    filtered.Labels,
-		}
 }
 
 func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
