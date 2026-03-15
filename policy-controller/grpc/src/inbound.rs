@@ -13,8 +13,9 @@ use linkerd2_proxy_api::{
 };
 use linkerd_policy_controller_core::{
     inbound::{
-        AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
-        InboundServer, InboundServerStream, ProxyProtocol, RateLimit, ServerRef,
+        AuthorizationRef, ClientAuthentication, ClientAuthorization, ConcurrencyLimit,
+        DiscoverInboundServer, InboundServer, InboundServerStream, ProxyProtocol, RateLimit,
+        ServerRef,
     },
     IdentityMatch, IpNet, NetworkMatch,
 };
@@ -192,18 +193,30 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     timeout: timeout.try_into().map_err(|error| tracing::warn!(%error, "Failed to convert protocol detect timeout to protobuf")).ok(),
                     http_routes: http::to_route_list(&srv.http_routes, cluster_networks),
                     http_local_rate_limit: srv.ratelimit.as_ref().map(to_rate_limit),
+                    http_local_concurrency_limit: srv
+                        .concurrency_limit
+                        .as_ref()
+                        .map(to_concurrency_limit),
                 },
             )),
             ProxyProtocol::Http1 => Some(proto::proxy_protocol::Kind::Http1(
                 proto::proxy_protocol::Http1 {
                     routes: http::to_route_list(&srv.http_routes, cluster_networks),
                     local_rate_limit: srv.ratelimit.as_ref().map(to_rate_limit),
+                    local_concurrency_limit: srv
+                        .concurrency_limit
+                        .as_ref()
+                        .map(to_concurrency_limit),
                 },
             )),
             ProxyProtocol::Http2 => Some(proto::proxy_protocol::Kind::Http2(
                 proto::proxy_protocol::Http2 {
                     routes: http::to_route_list(&srv.http_routes, cluster_networks),
                     local_rate_limit: srv.ratelimit.as_ref().map(to_rate_limit),
+                    local_concurrency_limit: srv
+                        .concurrency_limit
+                        .as_ref()
+                        .map(to_concurrency_limit),
                 },
             )),
             ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(
@@ -417,5 +430,21 @@ fn to_rate_limit(rl: &RateLimit) -> proto::HttpLocalRateLimit {
                 }),
             })
             .collect(),
+    }
+}
+
+fn to_concurrency_limit(cl: &ConcurrencyLimit) -> proto::HttpLocalConcurrencyLimit {
+    let meta = Metadata {
+        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+            group: "policy.linkerd.io".to_string(),
+            kind: "HTTPLocalConcurrencyLimitPolicy".to_string(),
+            name: cl.name.to_string(),
+            ..Default::default()
+        })),
+    };
+
+    proto::HttpLocalConcurrencyLimit {
+        metadata: Some(meta),
+        max_in_flight_requests: cl.max_in_flight_requests,
     }
 }

@@ -115,6 +115,7 @@ fn authenticated_annotated() {
                 reference: ServerRef::Default(policy.as_str()),
                 authorizations: mk_default_policy(policy, test.cluster.networks),
                 ratelimit: None,
+                concurrency_limit: None,
                 protocol: ProxyProtocol::Detect {
                     timeout: test.detect_timeout,
                 },

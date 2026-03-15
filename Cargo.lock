@@ -535,7 +535,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1524,8 +1524,7 @@ dependencies = [
 [[package]]
 name = "linkerd2-proxy-api"
 version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba9e3b341ca4992feaf43a4d2bdbfe2081aa3e2b9a503753544ce55242af6342"
+source = "git+https://github.com/zeptonow/linkerd2-proxy-api?rev=da0d99bf8814729e774f473952e61823dc258b46#da0d99bf8814729e774f473952e61823dc258b46"
 dependencies = [
  "http",
  "ipnet",

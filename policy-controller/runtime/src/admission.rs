@@ -1,10 +1,10 @@
 use super::validation;
 use crate::k8s::policy::{
-    httproute, AuthorizationPolicy, AuthorizationPolicySpec, EgressNetwork, EgressNetworkSpec,
-    HttpLocalRateLimitPolicy, HttpRoute, HttpRouteSpec, MeshTLSAuthentication,
-    MeshTLSAuthenticationSpec, NamespacedTargetRef, Network, NetworkAuthentication,
-    NetworkAuthenticationSpec, RateLimitPolicySpec, Server, ServerAuthorization,
-    ServerAuthorizationSpec, ServerSpec,
+    httproute, AuthorizationPolicy, AuthorizationPolicySpec, ConcurrencyLimitPolicySpec,
+    EgressNetwork, EgressNetworkSpec, HttpLocalConcurrencyLimitPolicy, HttpLocalRateLimitPolicy,
+    HttpRoute, HttpRouteSpec, MeshTLSAuthentication, MeshTLSAuthenticationSpec,
+    NamespacedTargetRef, Network, NetworkAuthentication, NetworkAuthenticationSpec,
+    RateLimitPolicySpec, Server, ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
 };
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use futures::future;
@@ -155,6 +155,10 @@ impl Admission {
 
         if is_kind::<HttpLocalRateLimitPolicy>(&req) {
             return self.admit_spec::<RateLimitPolicySpec>(req).await;
+        }
+
+        if is_kind::<HttpLocalConcurrencyLimitPolicy>(&req) {
+            return self.admit_spec::<ConcurrencyLimitPolicySpec>(req).await;
         }
 
         AdmissionResponse::invalid(format_args!(
@@ -821,6 +825,30 @@ impl Validate<RateLimitPolicySpec> for Admission {
                     bail!("overrides.clientRefs must target a ServiceAccount");
                 }
             }
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<ConcurrencyLimitPolicySpec> for Admission {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: ConcurrencyLimitPolicySpec,
+    ) -> Result<()> {
+        if !spec.target_ref.targets_kind::<Server>() {
+            bail!(
+                "invalid targetRef kind: {}",
+                spec.target_ref.canonical_kind()
+            );
+        }
+
+        if spec.max_in_flight_requests == 0 {
+            bail!("maxInFlightRequests must be greater than 0");
         }
 
         Ok(())
