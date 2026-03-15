@@ -509,6 +509,11 @@ identity:
 disableHeartBeat: false
 # -- Config for the heartbeat cronjob
 # heartbeatSchedule: "0 0 * * *"
+heartbeat:
+  # -- Number of successful job runs to retain
+  successfulJobsHistoryLimit: 0
+  # -- Number of failed job runs to retain
+  failedJobsHistoryLimit: 1
 
 # proxy injector configuration
 proxyInjector:
