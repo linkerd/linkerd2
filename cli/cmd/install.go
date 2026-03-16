@@ -389,7 +389,6 @@ func updateDefaultValues(installed GatewayAPICRDs, defaultValues map[string]inte
 
 	return defaultValues
 }
-
 func validateFinalValues(installed GatewayAPICRDs, finalValues map[string]interface{}) error {
 	installing := false
 
@@ -403,21 +402,14 @@ func validateFinalValues(installed GatewayAPICRDs, finalValues map[string]interf
 
 	if installed == Absent {
 		if !installing {
-			// if we are not installing GW API Resources and they are not present, error
-			return errors.New(`The Gateway API CRDs must be installed prior to installing Linkerd. Run:
-
-kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/standard-install.yaml
-
-or see https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api for more options.`)
+			return nil
 		}
 	} else if installed == Linkerd {
 		if !installing {
-			// if they are installed and managed by Linkerd, we cannot uninstall them
 			return errors.New("Linkerd is providing GW API, but your current install configuration will remove it")
 		}
 	} else if installed == External {
 		if installing {
-			// if they are installed but are external, we cannot be installing as well
 			return errors.New("Linkerd cannot install the Gateway API CRDs because they are already installed by an external source. Please set `installGatewayAPI` to `false`.")
 		}
 	}

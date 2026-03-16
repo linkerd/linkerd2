@@ -454,10 +454,22 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 	return hc
 }
 
+func (hc *HealthChecker) checkGatewayAPIInstalled(ctx context.Context) error {
+	crds := hc.kubeAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions()
+
+	_, err := crds.Get(ctx, "httproutes.gateway.networking.k8s.io", metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func NewWithCoreChecks(options *Options) *HealthChecker {
 	checks := []CategoryID{KubernetesAPIChecks, LinkerdControlPlaneExistenceChecks}
 	return NewHealthChecker(checks, options)
 }
+
 
 // InitializeKubeAPIClient creates a client for the HealthChecker. It avoids
 // having to require the KubernetesAPIChecks check to run in order for the
@@ -630,6 +642,13 @@ func (hc *HealthChecker) allCategories() []*Category {
 					warning:     true,
 					check: func(ctx context.Context) error {
 						return hc.checkClockSkew(ctx)
+					},
+				},
+				{
+					description: "Gateway API CRDs are installed",
+					hintAnchor:  "pre-gateway-api",
+					check: func(ctx context.Context) error {
+						return hc.checkGatewayAPIInstalled(ctx)
 					},
 				},
 			},

@@ -780,6 +780,21 @@ func TestValidate(t *testing.T) {
 			t.Fatalf("Expected error string \"%s\", got \"%s\"", expected, err)
 		}
 	})
+	t.Run("Allows install when Gateway API CRDs are absent and not installing them", func(t *testing.T) {
+	_, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+
+	// simulate Absent state
+	err = validateFinalValues(Absent, map[string]interface{}{
+		"installGatewayAPI": false,
+	})
+
+	if err != nil {
+		t.Fatalf("Expected no error when gateway API is absent, got: %v", err)
+	}
+})
 }
 
 func fakeHeartbeatSchedule() string {
