@@ -396,12 +396,12 @@ func validateFinalValues(installed GatewayAPICRDs, finalValues map[string]interf
 
 	// Check if installGatewayAPI flag is set
 	if installGatewayAPI, ok := finalValues["installGatewayAPI"]; ok {
-		installing = installGatewayAPI == true
+	installing = installGatewayAPI == true
 	}
 
 	// Check if HTTPRoutes are enabled (also implies Gateway API usage)
 	if enableHttpRoutes, ok := finalValues["enableHttpRoutes"]; ok {
-		installing = enableHttpRoutes == true
+	installing = installing || enableHttpRoutes == true
 	}
 
 	// If CRDs are not installed
