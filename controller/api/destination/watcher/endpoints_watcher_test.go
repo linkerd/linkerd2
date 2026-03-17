@@ -84,6 +84,10 @@ func (bel *bufferingEndpointListener) Add(set AddressSet) {
 	bel.localTrafficPolicy = set.LocalTrafficPolicy
 }
 
+func (bel *bufferingEndpointListener) AddFiltered(set AddressSet) {
+	bel.Add(set)
+}
+
 func (bel *bufferingEndpointListener) Remove(set AddressSet) {
 	bel.Lock()
 	defer bel.Unlock()
@@ -93,11 +97,31 @@ func (bel *bufferingEndpointListener) Remove(set AddressSet) {
 	bel.localTrafficPolicy = set.LocalTrafficPolicy
 }
 
+func (bel *bufferingEndpointListener) RemoveFiltered(set AddressSet) {
+	bel.Remove(set)
+}
+
 func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
 	bel.Lock()
 	defer bel.Unlock()
 	bel.noEndpointsCalled = true
 	bel.noEndpointsExist = exists
+}
+
+func (bel *bufferingEndpointListener) NodeName() string {
+	return ""
+}
+
+func (bel *bufferingEndpointListener) NodeTopologyZone() string {
+	return ""
+}
+
+func (bel *bufferingEndpointListener) EnableEndpointFiltering() bool {
+	return false
+}
+
+func (bel *bufferingEndpointListener) EnableIPv6() bool {
+	return false
 }
 
 type bufferingEndpointListenerWithResVersion struct {
@@ -140,6 +164,10 @@ func (bel *bufferingEndpointListenerWithResVersion) Add(set AddressSet) {
 	}
 }
 
+func (bel *bufferingEndpointListenerWithResVersion) AddFiltered(set AddressSet) {
+	bel.Add(set)
+}
+
 func (bel *bufferingEndpointListenerWithResVersion) Remove(set AddressSet) {
 	bel.Lock()
 	defer bel.Unlock()
@@ -148,7 +176,27 @@ func (bel *bufferingEndpointListenerWithResVersion) Remove(set AddressSet) {
 	}
 }
 
+func (bel *bufferingEndpointListenerWithResVersion) RemoveFiltered(set AddressSet) {
+	bel.Remove(set)
+}
+
 func (bel *bufferingEndpointListenerWithResVersion) NoEndpoints(exists bool) {}
+
+func (bel *bufferingEndpointListenerWithResVersion) NodeName() string {
+	return ""
+}
+
+func (bel *bufferingEndpointListenerWithResVersion) NodeTopologyZone() string {
+	return ""
+}
+
+func (bel *bufferingEndpointListenerWithResVersion) EnableEndpointFiltering() bool {
+	return false
+}
+
+func (bel *bufferingEndpointListenerWithResVersion) EnableIPv6() bool {
+	return false
+}
 
 func TestEndpointsWatcher(t *testing.T) {
 	for _, tt := range []struct {

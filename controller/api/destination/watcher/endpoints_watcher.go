@@ -77,6 +77,19 @@ type (
 		hostname string
 	}
 
+	filterKey struct {
+		nodeName                string
+		nodeTopologyZone        string
+		enableEndpointFiltering bool
+		enableIPv6              bool
+	}
+
+	filteredListenerGroup struct {
+		key       filterKey
+		snapshot  AddressSet
+		listeners []EndpointUpdateListener
+	}
+
 	// EndpointsWatcher watches all endpoints and services in the Kubernetes
 	// cluster.  Listeners can subscribe to a particular service and port and
 	// EndpointsWatcher will publish the address set and all future changes for
@@ -143,16 +156,19 @@ type (
 		enableEndpointSlices bool
 		exists               bool
 		addresses            AddressSet
-		listeners            []EndpointUpdateListener
+		filteredListeners    map[filterKey]*filteredListenerGroup
 		metrics              endpointsMetrics
 		localTrafficPolicy   bool
 	}
 
-	// EndpointUpdateListener is the interface that subscribers must implement.
 	EndpointUpdateListener interface {
 		Add(set AddressSet)
 		Remove(set AddressSet)
 		NoEndpoints(exists bool)
+		NodeName() string
+		NodeTopologyZone() string
+		EnableEndpointFiltering() bool
+		EnableIPv6() bool
 	}
 )
 
@@ -690,7 +706,7 @@ func (sp *servicePublisher) unsubscribe(srcPort Port, hostname string, listener 
 	port, ok := sp.ports[key]
 	if ok {
 		port.unsubscribe(listener)
-		if len(port.listeners) == 0 {
+		if port.totalListeners() == 0 {
 			endpointsVecs.unregister(sp.metricsLabels(srcPort, hostname))
 			delete(sp.ports, key)
 		}
@@ -716,7 +732,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) (*po
 		return nil, err
 	}
 	port := &portPublisher{
-		listeners:            []EndpointUpdateListener{},
+		filteredListeners:    map[filterKey]*filteredListenerGroup{},
 		targetPort:           targetPort,
 		srcPort:              srcPort,
 		hostname:             hostname,
@@ -779,19 +795,9 @@ func (sp *servicePublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	newAddressSet := pp.endpointsToAddresses(endpoints)
 	if len(newAddressSet.Addresses) == 0 {
-		for _, listener := range pp.listeners {
-			listener.NoEndpoints(true)
-		}
+		pp.publishNoEndpoints(true)
 	} else {
-		add, remove := diffAddresses(pp.addresses, newAddressSet)
-		for _, listener := range pp.listeners {
-			if len(remove.Addresses) > 0 {
-				listener.Remove(remove)
-			}
-			if len(add.Addresses) > 0 {
-				listener.Add(add)
-			}
-		}
+		pp.publishAddressChange(newAddressSet)
 	}
 	pp.addresses = newAddressSet
 	pp.exists = true
@@ -808,12 +814,7 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 		}
 	}
 
-	add, _ := diffAddresses(pp.addresses, newAddressSet)
-	if len(add.Addresses) > 0 {
-		for _, listener := range pp.listeners {
-			listener.Add(add)
-		}
-	}
+	pp.publishAddressChange(newAddressSet)
 
 	// even if the ES doesn't have addresses yet we need to create a new
 	// pp.addresses entry with the appropriate Labels and LocalTrafficPolicy,
@@ -847,15 +848,7 @@ func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, 
 		updatedAddressSet.Addresses[id] = address
 	}
 
-	add, remove := diffAddresses(pp.addresses, updatedAddressSet)
-	for _, listener := range pp.listeners {
-		if len(remove.Addresses) > 0 {
-			listener.Remove(remove)
-		}
-		if len(add.Addresses) > 0 {
-			listener.Add(add)
-		}
-	}
+	pp.publishAddressChange(updatedAddressSet)
 
 	pp.addresses = updatedAddressSet
 	pp.exists = true
@@ -1226,9 +1219,7 @@ func (pp *portPublisher) resolveTargetPort(subset corev1.EndpointSubset) Port {
 func (pp *portPublisher) updateLocalTrafficPolicy(localTrafficPolicy bool) {
 	pp.localTrafficPolicy = localTrafficPolicy
 	pp.addresses.LocalTrafficPolicy = localTrafficPolicy
-	for _, listener := range pp.listeners {
-		listener.Add(pp.addresses.shallowCopy())
-	}
+	pp.publishFilteredSnapshots()
 }
 
 func (pp *portPublisher) updatePort(targetPort namedPort) {
@@ -1258,14 +1249,22 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 }
 
 func (pp *portPublisher) deleteEndpointSlice(es *discovery.EndpointSlice) {
-	addrSet := pp.endpointSliceToAddresses(es)
-	for id := range addrSet.Addresses {
-		delete(pp.addresses.Addresses, id)
+	updatedAddressSet := AddressSet{
+		Addresses:          make(map[ID]*Address),
+		Labels:             pp.addresses.Labels,
+		LocalTrafficPolicy: pp.localTrafficPolicy,
+	}
+	for id, address := range pp.addresses.Addresses {
+		updatedAddressSet.Addresses[id] = address
 	}
 
-	for _, listener := range pp.listeners {
-		listener.Remove(addrSet)
+	addrSet := pp.endpointSliceToAddresses(es)
+	for id := range addrSet.Addresses {
+		delete(updatedAddressSet.Addresses, id)
 	}
+
+	pp.publishAddressChange(updatedAddressSet)
+	pp.addresses = updatedAddressSet
 
 	if len(pp.addresses.Addresses) == 0 {
 		pp.noEndpoints(false)
@@ -1280,9 +1279,7 @@ func (pp *portPublisher) deleteEndpointSlice(es *discovery.EndpointSlice) {
 func (pp *portPublisher) noEndpoints(exists bool) {
 	pp.exists = exists
 	pp.addresses = AddressSet{}
-	for _, listener := range pp.listeners {
-		listener.NoEndpoints(exists)
-	}
+	pp.publishNoEndpoints(exists)
 
 	pp.metrics.incUpdates()
 	pp.metrics.setExists(exists)
@@ -1290,32 +1287,43 @@ func (pp *portPublisher) noEndpoints(exists bool) {
 }
 
 func (pp *portPublisher) subscribe(listener EndpointUpdateListener) {
+	group := pp.filteredListenerGroup(listener)
 	if pp.exists {
 		if len(pp.addresses.Addresses) > 0 {
-			listener.Add(pp.addresses.shallowCopy())
+			filteredSet := group.filterAddresses(pp.addresses)
+			group.snapshot = filteredSet
+			if len(filteredSet.Addresses) > 0 {
+				listener.Add(filteredSet.shallowCopy())
+			}
 		} else {
 			listener.NoEndpoints(true)
 		}
 	} else {
 		listener.NoEndpoints(false)
 	}
-	pp.listeners = append(pp.listeners, listener)
+	group.listeners = append(group.listeners, listener)
 
-	pp.metrics.setSubscribers(len(pp.listeners))
+	pp.metrics.setSubscribers(pp.totalListeners())
 }
 
 func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
-	for i, e := range pp.listeners {
-		if e == listener {
-			n := len(pp.listeners)
-			pp.listeners[i] = pp.listeners[n-1]
-			pp.listeners[n-1] = nil
-			pp.listeners = pp.listeners[:n-1]
-			break
+	key := makeFilterKey(listener)
+	group, ok := pp.filteredListeners[key]
+	if ok {
+		for i, existing := range group.listeners {
+			if existing == listener {
+				n := len(group.listeners)
+				group.listeners[i] = group.listeners[n-1]
+				group.listeners[n-1] = nil
+				group.listeners = group.listeners[:n-1]
+				break
+			}
+		}
+		if len(group.listeners) == 0 {
+			delete(pp.filteredListeners, key)
 		}
 	}
-
-	pp.metrics.setSubscribers(len(pp.listeners))
+	pp.metrics.setSubscribers(pp.totalListeners())
 }
 func (pp *portPublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 	updated := false
@@ -1334,10 +1342,170 @@ func (pp *portPublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 		}
 	}
 	if updated {
-		for _, listener := range pp.listeners {
-			listener.Add(pp.addresses.shallowCopy())
-		}
+		pp.publishFilteredSnapshots()
 		pp.metrics.incUpdates()
+	}
+}
+
+func makeFilterKey(listener EndpointUpdateListener) filterKey {
+	return filterKey{
+		nodeName:                listener.NodeName(),
+		nodeTopologyZone:        listener.NodeTopologyZone(),
+		enableEndpointFiltering: listener.EnableEndpointFiltering(),
+		enableIPv6:              listener.EnableIPv6(),
+	}
+}
+
+func (pp *portPublisher) filteredListenerGroup(listener EndpointUpdateListener) *filteredListenerGroup {
+	key := makeFilterKey(listener)
+	group, ok := pp.filteredListeners[key]
+	if !ok {
+		group = &filteredListenerGroup{
+			key:      key,
+			snapshot: AddressSet{Addresses: make(map[ID]*Address)},
+		}
+		pp.filteredListeners[key] = group
+	}
+	return group
+}
+
+func (pp *portPublisher) totalListeners() int {
+	total := 0
+	for _, group := range pp.filteredListeners {
+		total += len(group.listeners)
+	}
+	return total
+}
+
+func (pp *portPublisher) publishAddressChange(newAddressSet AddressSet) {
+	for _, group := range pp.filteredListeners {
+		group.publishDiff(newAddressSet)
+	}
+}
+
+func (pp *portPublisher) publishFilteredSnapshots() {
+	for _, group := range pp.filteredListeners {
+		group.publishDiff(pp.addresses)
+	}
+}
+
+func (pp *portPublisher) publishNoEndpoints(exists bool) {
+	for _, group := range pp.filteredListeners {
+		group.publishNoEndpoints(exists)
+	}
+}
+
+func (group *filteredListenerGroup) publishDiff(addresses AddressSet) {
+	filtered := group.filterAddresses(addresses)
+	add, remove := diffAddresses(group.snapshot, filtered)
+	group.snapshot = filtered
+
+	for _, listener := range group.listeners {
+		if len(remove.Addresses) > 0 {
+			listener.Remove(remove)
+		}
+		if len(add.Addresses) > 0 {
+			listener.Add(add)
+		}
+	}
+}
+
+func (group *filteredListenerGroup) publishNoEndpoints(exists bool) {
+	remove := group.snapshot
+	group.snapshot = AddressSet{Addresses: make(map[ID]*Address)}
+
+	for _, listener := range group.listeners {
+		if len(remove.Addresses) > 0 {
+			listener.Remove(remove)
+		}
+		listener.NoEndpoints(exists)
+	}
+}
+
+func (group *filteredListenerGroup) filterAddresses(addresses AddressSet) AddressSet {
+	filtered := make(map[ID]*Address)
+
+	if !group.key.enableEndpointFiltering {
+		for k, v := range addresses.Addresses {
+			filtered[k] = v
+		}
+		return selectAddressFamily(AddressSet{
+			Addresses:          filtered,
+			Labels:             addresses.Labels,
+			LocalTrafficPolicy: addresses.LocalTrafficPolicy,
+		}, group.key.enableIPv6)
+	}
+
+	if addresses.LocalTrafficPolicy {
+		for id, address := range addresses.Addresses {
+			if address.Pod != nil && address.Pod.Spec.NodeName == group.key.nodeName {
+				filtered[id] = address
+			}
+		}
+		return selectAddressFamily(AddressSet{
+			Addresses:          filtered,
+			Labels:             addresses.Labels,
+			LocalTrafficPolicy: addresses.LocalTrafficPolicy,
+		}, group.key.enableIPv6)
+	}
+
+	for _, address := range addresses.Addresses {
+		if len(address.ForZones) == 0 {
+			for k, v := range addresses.Addresses {
+				filtered[k] = v
+			}
+			return selectAddressFamily(AddressSet{
+				Addresses:          filtered,
+				Labels:             addresses.Labels,
+				LocalTrafficPolicy: addresses.LocalTrafficPolicy,
+			}, group.key.enableIPv6)
+		}
+	}
+
+	for id, address := range addresses.Addresses {
+		for _, zone := range address.ForZones {
+			if zone.Name == group.key.nodeTopologyZone {
+				filtered[id] = address
+				break
+			}
+		}
+	}
+
+	if len(filtered) == 0 {
+		for k, v := range addresses.Addresses {
+			filtered[k] = v
+		}
+	}
+
+	return selectAddressFamily(AddressSet{
+		Addresses:          filtered,
+		Labels:             addresses.Labels,
+		LocalTrafficPolicy: addresses.LocalTrafficPolicy,
+	}, group.key.enableIPv6)
+}
+
+func selectAddressFamily(addresses AddressSet, enableIPv6 bool) AddressSet {
+	filtered := make(map[ID]*Address)
+	for id, addr := range addresses.Addresses {
+		if id.IPFamily == corev1.IPv6Protocol && !enableIPv6 {
+			continue
+		}
+
+		if id.IPFamily == corev1.IPv4Protocol && enableIPv6 {
+			altID := id
+			altID.IPFamily = corev1.IPv6Protocol
+			if _, ok := addresses.Addresses[altID]; ok {
+				continue
+			}
+		}
+
+		filtered[id] = addr
+	}
+
+	return AddressSet{
+		Addresses:          filtered,
+		Labels:             addresses.Labels,
+		LocalTrafficPolicy: addresses.LocalTrafficPolicy,
 	}
 }
 
