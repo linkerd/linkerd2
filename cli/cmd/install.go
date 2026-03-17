@@ -389,26 +389,36 @@ func updateDefaultValues(installed GatewayAPICRDs, defaultValues map[string]inte
 
 	return defaultValues
 }
+
 func validateFinalValues(installed GatewayAPICRDs, finalValues map[string]interface{}) error {
+	// Track whether Gateway API CRDs are being installed via current config
 	installing := false
 
+	// Check if installGatewayAPI flag is set
 	if installGatewayAPI, ok := finalValues["installGatewayAPI"]; ok {
 		installing = installGatewayAPI == true
 	}
 
+	// Check if HTTPRoutes are enabled (also implies Gateway API usage)
 	if enableHttpRoutes, ok := finalValues["enableHttpRoutes"]; ok {
 		installing = enableHttpRoutes == true
 	}
 
+	// If CRDs are not installed
 	if installed == Absent {
+		// No CRDs installed and not installing → valid state
 		if !installing {
 			return nil
 		}
+	// If CRDs are installed and managed by Linkerd
 	} else if installed == Linkerd {
+		// If user disables installation, it would remove existing CRDs → not allowed
 		if !installing {
 			return errors.New("Linkerd is providing GW API, but your current install configuration will remove it")
 		}
+	// If CRDs are installed externally (not managed by Linkerd)
 	} else if installed == External {
+		// If user tries to install again → conflict
 		if installing {
 			return errors.New("Linkerd cannot install the Gateway API CRDs because they are already installed by an external source. Please set `installGatewayAPI` to `false`.")
 		}
