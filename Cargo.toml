@@ -49,3 +49,8 @@ default-features = false
 [workspace.dependencies.linkerd2-proxy-api]
 version = "0.18.0"
 features = ["inbound", "outbound"]
+
+[patch.crates-io]
+gateway-api = { path = "./gateway-api-patched" }
+
+
