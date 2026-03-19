@@ -110,6 +110,7 @@ pub(crate) struct RouteRef<S> {
     pub(crate) parents: Vec<routes::ParentReference>,
     pub(crate) backends: Vec<routes::BackendReference>,
     pub(crate) statuses: Vec<S>,
+    pub(crate) generation: Option<i64>,
 }
 
 pub(crate) type HTTPRouteRef = RouteRef<gateway::HTTPRouteStatus>;
@@ -948,6 +949,7 @@ impl Index {
 
         let status = gateway::HTTPRouteStatus {
             parents: all_statuses,
+            observed_generation: route.generation,
         };
 
         make_patch(id, status)
@@ -1367,6 +1369,7 @@ impl kubert::index::IndexNamespacedResource<policy::HttpRoute> for Index {
             parents,
             backends,
             statuses: vec![gateway::HTTPRouteStatus { parents: statuses }],
+            generation: resource.metadata.generation,
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1437,6 +1440,7 @@ impl kubert::index::IndexNamespacedResource<gateway::HTTPRoute> for Index {
             parents,
             backends,
             statuses: vec![gateway::HTTPRouteStatus { parents: statuses }],
+            generation: resource.metadata.generation,
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1507,6 +1511,7 @@ impl kubert::index::IndexNamespacedResource<gateway::GRPCRoute> for Index {
             parents,
             backends,
             statuses: vec![gateway::GRPCRouteStatus { parents: statuses }],
+            generation: resource.metadata.generation,
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
@@ -1575,6 +1580,7 @@ impl kubert::index::IndexNamespacedResource<gateway::TLSRoute> for Index {
         let route = RouteRef {
             parents,
             backends,
+            generation: resource.metadata.generation,
             statuses: vec![gateway::TLSRouteStatus { parents: statuses }],
         };
         tracing::trace!(?route);
@@ -1645,6 +1651,7 @@ impl kubert::index::IndexNamespacedResource<gateway::TCPRoute> for Index {
             parents,
             backends,
             statuses: vec![gateway::TCPRouteStatus { parents: statuses }],
+            generation: resource.metadata.generation,
         };
         tracing::trace!(?route);
         // Insert into the index; if the route is already in the index, and it hasn't
