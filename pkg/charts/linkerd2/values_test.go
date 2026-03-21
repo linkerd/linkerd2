@@ -88,8 +88,8 @@ func TestNewValues(t *testing.T) {
   - linkerd-viz
 `,
 			},
-			ServiceMirror: &PodMonitorComponent{Enabled: true},
-			Proxy:         &PodMonitorComponent{Enabled: true},
+			ServiceMirror: &PodMonitorComponent{Enabled: true, HonorTimestamps: func() *bool { b := false; return &b }()},
+			Proxy:         &PodMonitorComponent{Enabled: true, HonorTimestamps: func() *bool { b := false; return &b }()},
 		},
 		DestinationController: &DestinationController{
 			MeshedHttp2ClientProtobuf: map[string]interface{}{
