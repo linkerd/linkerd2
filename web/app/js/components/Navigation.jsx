@@ -15,7 +15,7 @@ import MenuItem from '@material-ui/core/MenuItem';
 import MenuList from '@material-ui/core/MenuList';
 import PropTypes from 'prop-types';
 import React from 'react';
-import ReactRouterPropTypes from 'react-router-prop-types';
+
 import TextField from '@material-ui/core/TextField';
 import Toolbar from '@material-ui/core/Toolbar';
 import { Trans } from '@lingui/macro';
@@ -473,7 +473,7 @@ class NavigationBase extends React.Component {
 
     const drawer = (
       <div>
-        { !mobileSidebarOpen &&
+        {!mobileSidebarOpen &&
           <div className={classes.navToolbar}>
             <div className={classes.linkerdNavLogo}>
               <Link to="/namespaces">{linkerdWordLogo}</Link>
@@ -485,19 +485,19 @@ class NavigationBase extends React.Component {
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
             <Trans>sidebarHeadingCluster</Trans>
           </Typography>
-          { this.menuItem('/namespaces', <Trans>menuItemNamespaces</Trans>, namespaceIcon) }
+          {this.menuItem('/namespaces', <Trans>menuItemNamespaces</Trans>, namespaceIcon)}
 
-          { this.menuItem(
+          {this.menuItem(
             '/controlplane',
             <Trans>menuItemControlPlane</Trans>,
             <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />,
-          ) }
+          )}
 
-          { showGatewayLink && this.menuItem(
+          {showGatewayLink && this.menuItem(
             '/gateways',
             <Trans>menuItemGateway</Trans>,
             <FontAwesomeIcon icon={faDungeon} className={classes.shrinkIcon} />,
-          ) }
+          )}
 
         </MenuList>
 
@@ -541,23 +541,23 @@ class NavigationBase extends React.Component {
             <Trans>sidebarHeadingWorkloads</Trans>
           </Typography>
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/cronjobs`, <Trans>menuItemCronJobs</Trans>, cronJobIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/cronjobs`, <Trans>menuItemCronJobs</Trans>, cronJobIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, <Trans>menuItemDaemonSets</Trans>, daemonsetIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, <Trans>menuItemDaemonSets</Trans>, daemonsetIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/deployments`, <Trans>menuItemDeployments</Trans>, deploymentIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/deployments`, <Trans>menuItemDeployments</Trans>, deploymentIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/services`, <Trans>menuItemServices</Trans>, serviceIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/services`, <Trans>menuItemServices</Trans>, serviceIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/jobs`, <Trans>menuItemJobs</Trans>, jobIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/jobs`, <Trans>menuItemJobs</Trans>, jobIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/pods`, <Trans>menuItemPods</Trans>, podIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/pods`, <Trans>menuItemPods</Trans>, podIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/replicasets`, <Trans>menuItemReplicaSets</Trans>, replicaSetIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/replicasets`, <Trans>menuItemReplicaSets</Trans>, replicaSetIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/replicationcontrollers`, <Trans>menuItemReplicationControllers</Trans>, replicaSetIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/replicationcontrollers`, <Trans>menuItemReplicationControllers</Trans>, replicaSetIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/statefulsets`, <Trans>menuItemStatefulSets</Trans>, statefulSetIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/statefulsets`, <Trans>menuItemStatefulSets</Trans>, statefulSetIcon)}
         </MenuList>
 
         <Divider />
@@ -566,14 +566,14 @@ class NavigationBase extends React.Component {
             <Trans>sidebarHeadingTools</Trans>
           </Typography>
 
-          { this.menuItem('/tap', <Trans>menuItemTap</Trans>, <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
-          { this.menuItem('/top', <Trans>menuItemTop</Trans>, <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />) }
-          { this.menuItem('/routes', <Trans>menuItemRoutes</Trans>, <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />) }
+          {this.menuItem('/tap', <Trans>menuItemTap</Trans>, <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />)}
+          {this.menuItem('/top', <Trans>menuItemTop</Trans>, <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />)}
+          {this.menuItem('/routes', <Trans>menuItemRoutes</Trans>, <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />)}
 
         </MenuList>
         <Divider />
         <MenuList>
-          { this.menuItem(
+          {this.menuItem(
             '/community',
             <Trans>menuItemCommunity</Trans>,
             <Badge
@@ -583,9 +583,9 @@ class NavigationBase extends React.Component {
               <FontAwesomeIcon icon={faSmile} className={classes.shrinkIcon} />
             </Badge>,
             this.handleCommunityClick,
-          ) }
+          )}
 
-          { this.menuItem(
+          {this.menuItem(
             '/extensions',
             <Trans>menuItemExtension</Trans>,
             <Badge classes={{ badge: classes.badge }}><FontAwesomeIcon icon={faPuzzlePiece} className={classes.shrinkIcon} /></Badge>,
@@ -653,7 +653,7 @@ class NavigationBase extends React.Component {
               <div className={classes.linkerdMobileLogo}>
                 {linkerdWordLogo}
               </div>
-              { !mobileSidebarOpen && // mobile view but no sidebar
+              {!mobileSidebarOpen && // mobile view but no sidebar
                 <IconButton onClick={this.handleDrawerClick} className={classes.bars}>
                   <FontAwesomeIcon icon={faBars} />
                 </IconButton>
@@ -682,6 +682,8 @@ class NavigationBase extends React.Component {
   }
 }
 
+import { withRouter } from './util/withRouter.jsx';
+
 NavigationBase.propTypes = {
   api: PropTypes.shape({}).isRequired,
   checkNamespaceMatch: PropTypes.func.isRequired,
@@ -690,8 +692,8 @@ NavigationBase.propTypes = {
     PropTypes.object,
   ]).isRequired,
   isPageVisible: PropTypes.bool.isRequired,
-  history: ReactRouterPropTypes.history.isRequired,
-  location: ReactRouterPropTypes.location.isRequired,
+  history: PropTypes.shape({}).isRequired,
+  location: PropTypes.shape({}).isRequired,
   pathPrefix: PropTypes.string.isRequired,
   releaseVersion: PropTypes.string.isRequired,
   selectedNamespace: PropTypes.string.isRequired,
@@ -700,4 +702,4 @@ NavigationBase.propTypes = {
   uuid: PropTypes.string.isRequired,
 };
 
-export default withPageVisibility(withContext(withStyles(styles, { withTheme: true })(NavigationBase)));
+export default withRouter(withPageVisibility(withContext(withStyles(styles, { withTheme: true })(NavigationBase))));
