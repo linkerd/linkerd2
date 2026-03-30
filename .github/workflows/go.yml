@@ -32,7 +32,7 @@ jobs:
     container: ghcr.io/linkerd/dev:v48-go
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
         with:
           go-version-file: go.mod
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -46,7 +46,7 @@ jobs:
     container: ghcr.io/linkerd/dev:v48-go
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
         with:
           go-version-file: go.mod
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
@@ -60,7 +60,7 @@ jobs:
     container: ghcr.io/linkerd/dev:v48-go
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
         with:
           go-version-file: go.mod
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
