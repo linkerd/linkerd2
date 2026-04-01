@@ -21,7 +21,7 @@ COPY multicluster multicluster
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/controller -tags prod -mod=readonly -ldflags "-s -w" ./controller/cmd
 
-FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v48-rust-musl AS policy
+FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v49-rust-musl AS policy
 ARG BUILD_TYPE="release"
 WORKDIR /build
 RUN mkdir -p target/bin
