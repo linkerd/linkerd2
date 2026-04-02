@@ -11,7 +11,10 @@ use futures::future;
 use http_body_util::BodyExt;
 use hyper::{http, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
-use kube::{core::DynamicObject, Resource, ResourceExt};
+use kube::{
+    core::{DeserializeGuard, DynamicObject},
+    Resource, ResourceExt,
+};
 use linkerd_policy_controller_k8s_api::gateway;
 use linkerd_policy_controller_k8s_index::{self as index, outbound::index as outbound_index};
 use serde::de::DeserializeOwned;
@@ -138,19 +141,39 @@ impl Admission {
         }
 
         if is_kind::<gateway::HTTPRoute>(&req) {
-            return self.admit_spec::<gateway::HTTPRouteSpec>(req).await;
+            return self
+                .admit_guarded_resource::<gateway::HTTPRoute, gateway::HTTPRouteSpec, _>(
+                    req,
+                    |route| route.spec,
+                )
+                .await;
         }
 
         if is_kind::<gateway::GRPCRoute>(&req) {
-            return self.admit_spec::<gateway::GRPCRouteSpec>(req).await;
+            return self
+                .admit_guarded_resource::<gateway::GRPCRoute, gateway::GRPCRouteSpec, _>(
+                    req,
+                    |route| route.spec,
+                )
+                .await;
         }
 
         if is_kind::<gateway::TLSRoute>(&req) {
-            return self.admit_spec::<gateway::TLSRouteSpec>(req).await;
+            return self
+                .admit_guarded_resource::<gateway::TLSRoute, gateway::TLSRouteSpec, _>(
+                    req,
+                    |route| route.spec,
+                )
+                .await;
         }
 
         if is_kind::<gateway::TCPRoute>(&req) {
-            return self.admit_spec::<gateway::TCPRouteSpec>(req).await;
+            return self
+                .admit_guarded_resource::<gateway::TCPRoute, gateway::TCPRouteSpec, _>(
+                    req,
+                    |route| route.spec,
+                )
+                .await;
         }
 
         if is_kind::<HttpLocalRateLimitPolicy>(&req) {
@@ -184,6 +207,56 @@ impl Admission {
         let annotations = obj.annotations();
 
         if let Err(error) = self.validate(&ns, &name, annotations, spec).await {
+            info!(%error, %ns, %name, %kind, "Denied");
+            return rsp.deny(error);
+        }
+
+        rsp
+    }
+
+    async fn admit_guarded_resource<R, T, F>(
+        self,
+        req: AdmissionRequest,
+        get_spec: F,
+    ) -> AdmissionResponse
+    where
+        R: DeserializeOwned + Resource + ResourceExt,
+        F: FnOnce(R) -> T,
+        Self: Validate<T>,
+    {
+        let rsp = AdmissionResponse::from(&req);
+
+        let kind = req.kind.kind.clone();
+        let obj = match parse_resource::<R>(req) {
+            Ok(obj) => obj,
+            Err(error) => {
+                info!(%error, "Failed to parse {} resource", kind);
+                return rsp.deny(error);
+            }
+        };
+
+        let obj = match obj.0 {
+            Ok(obj) => obj,
+            Err(error) => {
+                let ns = error.metadata.namespace.clone().unwrap_or_default();
+                let name = error.metadata.name.clone().unwrap_or_default();
+                info!(
+                    error = %error,
+                    %ns,
+                    %name,
+                    %kind,
+                    "Skipping validation for resource with unsupported fields"
+                );
+                return rsp;
+            }
+        };
+
+        let ns = obj.namespace().unwrap_or_default();
+        let name = obj.name_any();
+        let annotations = obj.annotations().clone();
+        let spec = get_spec(obj);
+
+        if let Err(error) = self.validate(&ns, &name, &annotations, spec).await {
             info!(%error, %ns, %name, %kind, "Denied");
             return rsp.deny(error);
         }
@@ -226,6 +299,17 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(DynamicObje
     };
 
     Ok((obj, spec))
+}
+
+fn parse_resource<R>(req: AdmissionRequest) -> Result<DeserializeGuard<R>>
+where
+    R: DeserializeOwned + Resource,
+{
+    let obj = req
+        .object
+        .ok_or_else(|| anyhow!("admission request missing 'object"))?;
+
+    Ok(obj.try_parse::<DeserializeGuard<R>>()?)
 }
 
 #[async_trait::async_trait]
@@ -824,5 +908,60 @@ impl Validate<RateLimitPolicySpec> for Admission {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn accepts_gateway_http_route_with_unsupported_filter() {
+        let review: Review = serde_json::from_value(json!({
+            "apiVersion": "admission.k8s.io/v1",
+            "kind": "AdmissionReview",
+            "request": {
+                "uid": "test-uid",
+                "kind": {
+                    "group": "gateway.networking.k8s.io",
+                    "version": "v1",
+                    "kind": "HTTPRoute"
+                },
+                "resource": {
+                    "group": "gateway.networking.k8s.io",
+                    "version": "v1",
+                    "resource": "httproutes"
+                },
+                "name": "test-route",
+                "namespace": "test-ns",
+                "operation": "CREATE",
+                "userInfo": {
+                    "username": "test-user",
+                    "groups": []
+                },
+                "object": {
+                    "apiVersion": "gateway.networking.k8s.io/v1",
+                    "kind": "HTTPRoute",
+                    "metadata": {
+                        "name": "test-route",
+                        "namespace": "test-ns"
+                    },
+                    "spec": {
+                        "rules": [{
+                            "filters": [{
+                                "type": "CORS"
+                            }]
+                        }]
+                    }
+                }
+            }
+        }))
+        .expect("admission review must parse");
+
+        let req: AdmissionRequest = review.try_into().expect("request must parse");
+        let rsp = Admission::new().admit(req).await;
+
+        assert!(rsp.allowed, "unsupported filters should be admitted");
     }
 }
