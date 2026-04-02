@@ -621,7 +621,11 @@ data:
       - source_labels:
         - __meta_kubernetes_pod_container_port_name
         action: keep
-        regex: admin
+        regex: .*admin$
+      - source_labels:
+        - __meta_kubernetes_pod_container_port_name
+        action: drop
+        regex: linkerd-admin
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: component
@@ -634,7 +638,11 @@ data:
         - __meta_kubernetes_pod_label_component
         - __meta_kubernetes_pod_container_port_name
         action: keep
-        regex: (linkerd-service-mirror|controller);admin$
+        regex: (linkerd-service-mirror|controller);.*-admin$
+      - source_labels:
+        - __meta_kubernetes_pod_container_port_name
+        action: drop
+        regex: linkerd-admin
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: component
