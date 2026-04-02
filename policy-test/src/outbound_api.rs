@@ -74,7 +74,7 @@ pub fn http1_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound
     {
         routes
     } else {
-        panic!("proxy protocol must be Grpc; actually got:\n{kind:#?}")
+        panic!("proxy protocol must be Http1; actually got:\n{kind:#?}")
     }
 }
 
@@ -94,7 +94,7 @@ pub fn http2_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound
     {
         routes
     } else {
-        panic!("proxy protocol must be Grpc; actually got:\n{kind:#?}")
+        panic!("proxy protocol must be Http2; actually got:\n{kind:#?}")
     }
 }
 
