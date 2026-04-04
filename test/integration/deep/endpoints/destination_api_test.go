@@ -14,6 +14,7 @@ import (
 
 	destinationpb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination"
+	pkgaddr "github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -25,6 +26,8 @@ func TestDestinationAPIStreamTracksRolloutEndpoints(t *testing.T) {
 		const deployName = "rollout-echo"
 		const serviceName = "rollout-echo"
 
+		// Create a simple meshed workload and service, then wait for rollout so we
+		// don't race destination watches against Kubernetes scheduling.
 		applyDeploymentAndService(t, ns, deployName, serviceName, 1)
 		TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
 			deployName: {
@@ -37,11 +40,15 @@ func TestDestinationAPIStreamTracksRolloutEndpoints(t *testing.T) {
 		client, conn := newDestinationClient(t, ctx)
 		defer conn.Close()
 
+		// Start a long-lived destination stream and verify it converges on the
+		// same initial endpoint set reported by Kubernetes Endpoints.
 		sub := newSubscriber(t, client, authority, "")
 
-		initialEndpoints := waitForServiceEndpoints(t, ns, serviceName, 90*time.Second)
-		sub.WaitForExact(t, initialEndpoints, 90*time.Second)
+		initialEndpoints := waitForServiceEndpoints(t, ns, serviceName, 60*time.Second)
+		sub.WaitForExact(t, initialEndpoints, 60*time.Second)
 
+		// Trigger a rollout and assert the same stream eventually delivers the
+		// new endpoint set, including Add/Remove updates as pods change.
 		if _, err := TestHelper.Kubectl("", "-n", ns, "rollout", "restart", "deployment", deployName); err != nil {
 			testutil.AnnotatedFatalf(t, "failed to restart deployment", "failed to restart deployment %s: %v", deployName, err)
 		}
@@ -52,8 +59,8 @@ func TestDestinationAPIStreamTracksRolloutEndpoints(t *testing.T) {
 			},
 		})
 
-		updatedEndpoints := waitForChangedServiceEndpoints(t, ns, serviceName, initialEndpoints, 2*time.Minute)
-		sub.WaitForExact(t, updatedEndpoints, 2*time.Minute)
+		updatedEndpoints := waitForChangedServiceEndpoints(t, ns, serviceName, initialEndpoints, 60*time.Second)
+		sub.WaitForExact(t, updatedEndpoints, 60*time.Second)
 	})
 }
 
@@ -87,18 +94,20 @@ func TestDestinationAPIConcurrentSubscribers(t *testing.T) {
 		client, conn := newDestinationClient(t, ctx)
 		defer conn.Close()
 
+		// Create multiple concurrent subscribers to the same authority and one
+		// subscriber for a different authority.
 		subA1 := newSubscriber(t, client, authorityA, "")
 		subA2 := newSubscriber(t, client, authorityA, "")
 		subA3 := newSubscriber(t, client, authorityA, "")
 		subB := newSubscriber(t, client, authorityB, "")
 
-		expectedA := waitForServiceEndpoints(t, ns, serviceA, 90*time.Second)
-		expectedB := waitForServiceEndpoints(t, ns, serviceB, 90*time.Second)
+		expectedA := waitForServiceEndpoints(t, ns, serviceA, 60*time.Second)
+		expectedB := waitForServiceEndpoints(t, ns, serviceB, 60*time.Second)
 
-		subA1.WaitForExact(t, expectedA, 90*time.Second)
-		subA2.WaitForExact(t, expectedA, 90*time.Second)
-		subA3.WaitForExact(t, expectedA, 90*time.Second)
-		subB.WaitForExact(t, expectedB, 90*time.Second)
+		subA1.WaitForExact(t, expectedA, 60*time.Second)
+		subA2.WaitForExact(t, expectedA, 60*time.Second)
+		subA3.WaitForExact(t, expectedA, 60*time.Second)
+		subB.WaitForExact(t, expectedB, 60*time.Second)
 
 		if _, err := TestHelper.Kubectl("", "-n", ns, "scale", "deployment", deployA, "--replicas=3"); err != nil {
 			testutil.AnnotatedFatalf(t, "failed to scale deployment", "failed to scale deployment %s: %v", deployA, err)
@@ -110,11 +119,13 @@ func TestDestinationAPIConcurrentSubscribers(t *testing.T) {
 			},
 		})
 
-		expectedAAfterScale := waitForChangedServiceEndpoints(t, ns, serviceA, expectedA, 2*time.Minute)
-		subA1.WaitForExact(t, expectedAAfterScale, 2*time.Minute)
-		subA2.WaitForExact(t, expectedAAfterScale, 2*time.Minute)
-		subA3.WaitForExact(t, expectedAAfterScale, 2*time.Minute)
+		expectedAAfterScale := waitForChangedServiceEndpoints(t, ns, serviceA, expectedA, 60*time.Second)
+		subA1.WaitForExact(t, expectedAAfterScale, 60*time.Second)
+		subA2.WaitForExact(t, expectedAAfterScale, 60*time.Second)
+		subA3.WaitForExact(t, expectedAAfterScale, 60*time.Second)
 
+		// The unrelated authority should remain stable and not receive updates
+		// caused by changes to service A.
 		subB.WaitForExact(t, expectedB, 60*time.Second)
 	})
 }
@@ -136,11 +147,13 @@ func TestDestinationAPIForZonesSourceNodeFiltering(t *testing.T) {
 			},
 		})
 
-		pods := waitForPods(t, ns, "app="+appName, 2, 90*time.Second)
+		pods := waitForPods(t, ns, "app="+appName, 2, 60*time.Second)
 		sort.Slice(pods, func(i, j int) bool {
 			return pods[i].Name < pods[j].Name
 		})
 
+		// Use the first pod's node as the source node and ensure it has a zone
+		// label; if absent, add one for this test and clean it up afterwards.
 		nodeName := pods[0].NodeName
 		localZone, labelCleanup := ensureNodeZoneLabel(t, nodeName)
 		if labelCleanup != nil {
@@ -167,8 +180,10 @@ func TestDestinationAPIForZonesSourceNodeFiltering(t *testing.T) {
 			fmt.Sprintf("%s:%d", pods[1].IP, port): {},
 		}
 
-		filteredSub.WaitForExact(t, expectedFiltered, 90*time.Second)
-		allSub.WaitForExact(t, expectedAll, 90*time.Second)
+		// Subscriber with a source-node context token should see only local-zone
+		// endpoints; subscriber without token should receive all endpoints.
+		filteredSub.WaitForExact(t, expectedFiltered, 60*time.Second)
+		allSub.WaitForExact(t, expectedAll, 60*time.Second)
 	})
 }
 
@@ -208,10 +223,16 @@ func newSubscriber(t *testing.T, client destinationpb.DestinationClient, authori
 func (s *subscriber) readUpdates(stream destinationpb.Destination_GetClient) {
 	for {
 		update, err := stream.Recv()
-		if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
-			return
-		}
 		if err != nil {
+			// A canceled stream context is expected during test cleanup.
+			if errors.Is(stream.Context().Err(), context.Canceled) || errors.Is(err, context.Canceled) {
+				return
+			}
+			// EOF without cancellation means the server closed the stream
+			// unexpectedly before the test reached a terminal assertion.
+			if errors.Is(err, io.EOF) {
+				err = fmt.Errorf("destination stream closed unexpectedly: %w", err)
+			}
 			select {
 			case s.errCh <- err:
 			default:
@@ -222,12 +243,14 @@ func (s *subscriber) readUpdates(stream destinationpb.Destination_GetClient) {
 		s.mu.Lock()
 		if add := update.GetAdd(); add != nil {
 			for _, addr := range add.GetAddrs() {
-				s.endpoints[addr.GetAddr().String()] = struct{}{}
+				addrStr := pkgaddr.ProxyAddressToString(addr.Addr)
+				s.endpoints[addrStr] = struct{}{}
 			}
 		}
 		if remove := update.GetRemove(); remove != nil {
 			for _, addr := range remove.GetAddrs() {
-				delete(s.endpoints, addr.String())
+				addrStr := pkgaddr.ProxyAddressToString(addr)
+				delete(s.endpoints, addrStr)
 			}
 		}
 		s.mu.Unlock()
@@ -242,6 +265,7 @@ func (s *subscriber) readUpdates(stream destinationpb.Destination_GetClient) {
 func (s *subscriber) WaitForExact(t *testing.T, expected map[string]struct{}, timeout time.Duration) {
 	t.Helper()
 
+	// Fast path for already-converged state.
 	if exactSetEqual(expected, s.snapshot()) {
 		return
 	}
@@ -254,6 +278,8 @@ func (s *subscriber) WaitForExact(t *testing.T, expected map[string]struct{}, ti
 		case err := <-s.errCh:
 			testutil.AnnotatedFatalf(t, "destination stream failed", "destination stream failed: %v", err)
 		case <-s.events:
+			// The stream can emit multiple incremental updates; keep waiting until
+			// the complete expected set is observed.
 			if exactSetEqual(expected, s.snapshot()) {
 				return
 			}
@@ -541,6 +567,8 @@ func waitForServiceEndpoints(t *testing.T, namespace, service string, timeout ti
 	t.Helper()
 
 	var endpoints map[string]struct{}
+	// Poll Endpoints until at least one address is present. This avoids races
+	// where the service exists but endpoint publication is still in flight.
 	err := testutil.RetryFor(timeout, func() error {
 		out, err := TestHelper.Kubectl("", "-n", namespace, "get", "endpoints", service, "-o", "json")
 		if err != nil {
@@ -568,8 +596,10 @@ func waitForChangedServiceEndpoints(t *testing.T, namespace, service string, old
 	t.Helper()
 
 	var updated map[string]struct{}
+	// Poll until the endpoint set differs from the old set, accounting for
+	// eventual consistency during rollouts.
 	err := testutil.RetryFor(timeout, func() error {
-		set := waitForServiceEndpoints(t, namespace, service, 15*time.Second)
+		set := waitForServiceEndpoints(t, namespace, service, timeout)
 		if exactSetEqual(old, set) {
 			return fmt.Errorf("service endpoints have not changed yet")
 		}
