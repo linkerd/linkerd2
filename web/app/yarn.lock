@@ -2092,10 +2092,10 @@
   dependencies:
     "@sinonjs/commons" "^3.0.1"
 
-"@sinonjs/samsam@^9.0.2":
-  version "9.0.2"
-  resolved "https://registry.yarnpkg.com/@sinonjs/samsam/-/samsam-9.0.2.tgz#ff0ad0e50e41942891588989615fbc4df569b76b"
-  integrity sha512-H/JSxa4GNKZuuU41E3b8Y3tbSEx8y4uq4UH1C56ONQac16HblReJomIvv3Ud7ANQHQmkeSowY49Ij972e/pGxQ==
+"@sinonjs/samsam@^9.0.3":
+  version "9.0.3"
+  resolved "https://registry.yarnpkg.com/@sinonjs/samsam/-/samsam-9.0.3.tgz#da4cad6ee24ca0c9c205da16676f7d540df71f12"
+  integrity sha512-ZgYY7Dc2RW+OUdnZ1DEHg00lhRt+9BjymPKHog4PRFzr1U3MbK57+djmscWyKxzO1qfunHqs4N45WWyKIFKpiQ==
   dependencies:
     "@sinonjs/commons" "^3.0.1"
     type-detect "^4.1.0"
@@ -9235,14 +9235,14 @@ sinon-stub-promise@4.0.0:
   resolved "https://registry.yarnpkg.com/sinon-stub-promise/-/sinon-stub-promise-4.0.0.tgz#6d498ba1198557cd01e3466af92dc7df725192c2"
   integrity sha1-bUmLoRmFV80B40Zq+S3H33JRksI=
 
-sinon@21.0.2:
-  version "21.0.2"
-  resolved "https://registry.yarnpkg.com/sinon/-/sinon-21.0.2.tgz#2dca6fc59eca5288d9f2284925e9ae586085f917"
-  integrity sha512-VHV4UaoxIe5jrMd89Y9duI76T5g3Lp+ET+ctLhLDaZtSznDPah1KKpRElbdBV4RwqWSw2vadFiVs9Del7MbVeQ==
+sinon@21.0.3:
+  version "21.0.3"
+  resolved "https://registry.yarnpkg.com/sinon/-/sinon-21.0.3.tgz#fd3a2387ffe4fdbbfbbf3a0858f18d46c4acb34e"
+  integrity sha512-0x8TQFr8EjADhSME01u1ZK31yv2+bd6Z5NrBCHVM+n4qL1wFqbxftmeyi3bwlr49FbbzRfrqSFOpyHCOh/YmYA==
   dependencies:
     "@sinonjs/commons" "^3.0.1"
     "@sinonjs/fake-timers" "^15.1.1"
-    "@sinonjs/samsam" "^9.0.2"
+    "@sinonjs/samsam" "^9.0.3"
     diff "^8.0.3"
     supports-color "^7.2.0"
 
