@@ -38,6 +38,13 @@ type AdmissionReview = kube::core::admission::AdmissionReview<DynamicObject>;
 
 #[async_trait::async_trait]
 trait Validate<T> {
+    // If true, parse failures are admitted with a warning instead of denied.
+    // Used for Gateway API types, where interoperability with other controllers
+    // takes precedence over strict schema enforcement.
+    fn lenient() -> bool {
+        false
+    }
+
     async fn validate(
         self,
         ns: &str,
@@ -174,6 +181,10 @@ impl Admission {
         let (obj, spec) = match parse_spec::<T>(req) {
             Ok(spec) => spec,
             Err(error) => {
+                if <Self as Validate<T>>::lenient() {
+                    warn!(%error, "Failed to parse {} spec; admitting anyway", kind);
+                    return rsp;
+                }
                 info!(%error, "Failed to parse {} spec", kind);
                 return rsp.deny(error);
             }
@@ -589,6 +600,10 @@ fn validate_grpc_backend_if_service(br: &gateway::GRPCRouteRulesBackendRefs) -> 
 
 #[async_trait::async_trait]
 impl Validate<gateway::HTTPRouteSpec> for Admission {
+    fn lenient() -> bool {
+        true
+    }
+
     async fn validate(
         self,
         _ns: &str,
@@ -655,6 +670,10 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
 
 #[async_trait::async_trait]
 impl Validate<gateway::GRPCRouteSpec> for Admission {
+    fn lenient() -> bool {
+        true
+    }
+
     async fn validate(
         self,
         _ns: &str,
@@ -723,6 +742,10 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
 
 #[async_trait::async_trait]
 impl Validate<gateway::TLSRouteSpec> for Admission {
+    fn lenient() -> bool {
+        true
+    }
+
     async fn validate(
         self,
         _ns: &str,
@@ -748,6 +771,10 @@ impl Validate<gateway::TLSRouteSpec> for Admission {
 
 #[async_trait::async_trait]
 impl Validate<gateway::TCPRouteSpec> for Admission {
+    fn lenient() -> bool {
+        true
+    }
+
     async fn validate(
         self,
         _ns: &str,
