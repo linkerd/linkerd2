@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -288,7 +290,8 @@ func (s *subscriber) WaitForExact(t *testing.T, expected map[string]struct{}, ti
 			testutil.AnnotatedFatalf(t,
 				"timed out waiting for destination state",
 				"timed out waiting for destination state\nexpected: %v\nactual:   %v",
-				sortedSet(expected), sortedSet(actual),
+				slices.Sorted(maps.Keys(expected)),
+				slices.Sorted(maps.Keys(actual)),
 			)
 		}
 	}
@@ -611,8 +614,8 @@ func waitForChangedServiceEndpoints(t *testing.T, namespace, service string, old
 			"service endpoints did not change",
 			"service %s endpoints did not change within timeout; old=%v new=%v err=%v",
 			service,
-			sortedSet(old),
-			sortedSet(updated),
+			slices.Sorted(maps.Keys(old)),
+			slices.Sorted(maps.Keys(updated)),
 			err,
 		)
 	}
@@ -647,13 +650,4 @@ func exactSetEqual(a, b map[string]struct{}) bool {
 		}
 	}
 	return true
-}
-
-func sortedSet(set map[string]struct{}) []string {
-	values := make([]string, 0, len(set))
-	for endpoint := range set {
-		values = append(values, endpoint)
-	}
-	sort.Strings(values)
-	return values
 }
