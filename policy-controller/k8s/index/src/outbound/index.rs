@@ -979,7 +979,7 @@ impl Namespace {
             } else {
                 continue;
             };
-            let route_namespace = route.namespace().expect("GrpcRoute must have a namespace");
+            let route_namespace = route.namespace().expect("TlsRoute must have a namespace");
             let parent_namespace = parent_ref.namespace.as_ref().unwrap_or(&route_namespace);
             if *parent_namespace != *self.namespace {
                 continue;
@@ -1078,7 +1078,7 @@ impl Namespace {
             } else {
                 continue;
             };
-            let route_namespace = route.namespace().expect("GrpcRoute must have a namespace");
+            let route_namespace = route.namespace().expect("TcpRoute must have a namespace");
             let parent_namespace = parent_ref.namespace.as_ref().unwrap_or(&route_namespace);
             if *parent_namespace != *self.namespace {
                 continue;
