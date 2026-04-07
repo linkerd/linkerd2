@@ -1,9 +1,7 @@
-extern crate http as http_crate;
-
 use crate::metrics::{self, GrpcServerMetricsFamily, GrpcServerRPCMetrics};
 use crate::workload;
+use ::http::uri::Authority;
 use futures::{prelude::*, StreamExt};
-use http_crate::uri::Authority;
 use linkerd2_proxy_api::{
     self as api, destination,
     meta::{metadata, Metadata, Resource},

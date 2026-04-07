@@ -56,7 +56,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: Set tag
         run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
-      - uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
+      - uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
         with:
           registry: ghcr.io
           username: ${{ secrets.DOCKER_GHCR_USERNAME }}
@@ -104,7 +104,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
         with:
           go-version-file: go.mod
       - uses: ./.github/actions/cli-setup
@@ -131,13 +131,13 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           artifact-ids: ${{ needs.cli.outputs.artifact-id }}
           path: cli
       - name: Create release
         id: create_release
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe
         with:
           name: "${{ needs.tag.outputs.tag }}"
           generate_release_notes: true

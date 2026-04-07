@@ -5,8 +5,6 @@ The Linkerd maintainers are:
 * Alex Leong <alex@buoyant.io> @adleong
 * Alejandro Pedraza <alejandro@buoyant.io> @alpeb
 * katelyn martin <kate@buoyant.io> @cratelyn
-* Oliver Gould <ver@buoyant.io> @olix0r
-* Scott Fleener <scott@buoyant.io> @sfleen
 * Zahari Dichev <zahari@buoyant.io> @zaharidichev
 
 ## Directors
@@ -33,10 +31,12 @@ Former maintainers include:
 * Kevin Leimkuhler @kleimkuhler
 * Kevin Ingleman <ki@buoyant.io> @klingerf
 * Matei David @mateiidavid
+* Oliver Gould <linkerd@olix0r.net> @olix0r
 * Tarun Pothulapati <tarun@buoyant.io> @pothulapati
 * Risha Mars <mars@buoyant.io> @rmars
 * Andrew Seigner <siggy@buoyant.io> @siggy
 * Steve Jenson @stevej
+* Scott Fleener <scott@buoyant.io> @sfleen
 
 <!--
 # Adding a new maintainer
