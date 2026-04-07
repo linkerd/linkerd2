@@ -229,7 +229,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                         .filter_map(|port| {
                             port.app_protocol.as_ref().and_then(|p| {
                                 Some((
-                                    NonZeroU16::new(port.port as u16)?,
+                                    port.port.try_into().ok().and_then(NonZeroU16::new)?,
                                     AppProtocol::from_str(p.as_str()).expect("Infalliable"),
                                 ))
                             })
