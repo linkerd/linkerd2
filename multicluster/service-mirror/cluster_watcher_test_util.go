@@ -65,9 +65,9 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.TypedRateLimiti
 		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:             watcherQueue,
 		requeueLimit:            0,
-		gatewayAlive:            true,
 		headlessServicesEnabled: true,
 	}
+	watcher.setGatewayAlive(true)
 
 	for _, ev := range te.events {
 		watcherQueue.Add(ev)
