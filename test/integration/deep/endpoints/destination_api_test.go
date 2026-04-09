@@ -573,7 +573,8 @@ func waitForServiceEndpoints(t *testing.T, namespace, service string, timeout ti
 	// Poll Endpoints until at least one address is present. This avoids races
 	// where the service exists but endpoint publication is still in flight.
 	err := testutil.RetryFor(timeout, func() error {
-		out, err := TestHelper.Kubectl("", "-n", namespace, "get", "endpoints", service, "-o", "json")
+		// in k8s 1.35+ this call returns a warning about Endpoints being deprecated, that we ignore here
+		out, _, err := TestHelper.KubectlRun("", "-n", namespace, "get", "endpoints", service, "-o", "json")
 		if err != nil {
 			return err
 		}
