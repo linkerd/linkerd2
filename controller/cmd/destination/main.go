@@ -168,7 +168,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize Kubernetes metadata API: %s", err)
 	}
 
-	clusterStore, err := watcher.NewClusterStore(k8Client, *controllerNamespace, *enableEndpointSlices)
+	clusterStore, err := watcher.NewClusterStore(k8Client, *controllerNamespace, *enableEndpointSlices, *enableIPv6)
 	if err != nil {
 		log.Fatalf("Failed to initialize Cluster Store: %s", err)
 	}

@@ -36,13 +36,10 @@ type (
 		controllerNS        string
 		identityTrustDomain string
 		nodeTopologyZone    string
-		nodeName            string
 		defaultOpaquePorts  map[uint32]struct{}
 
 		forceOpaqueTransport,
 		enableH2Upgrade,
-		enableEndpointFiltering,
-		enableIPv6,
 
 		extEndpointZoneWeights bool
 
@@ -64,10 +61,6 @@ type (
 	removeUpdate struct {
 		set watcher.AddressSet
 	}
-
-	noEndpointsUpdate struct {
-		exists bool
-	}
 )
 
 var updatesQueueOverflowCounter = promauto.NewCounterVec(
@@ -85,8 +78,6 @@ func newEndpointTranslator(
 	identityTrustDomain string,
 	forceOpaqueTransport,
 	enableH2Upgrade,
-	enableEndpointFiltering,
-	enableIPv6,
 	extEndpointZoneWeights bool,
 	meshedHTTP2ClientParams *pb.Http2ClientParams,
 	service string,
@@ -117,12 +108,9 @@ func newEndpointTranslator(
 		controllerNS,
 		identityTrustDomain,
 		nodeTopologyZone,
-		srcNodeName,
 		defaultOpaquePorts,
 		forceOpaqueTransport,
 		enableH2Upgrade,
-		enableEndpointFiltering,
-		enableIPv6,
 		extEndpointZoneWeights,
 		meshedHTTP2ClientParams,
 
@@ -139,28 +127,8 @@ func (et *endpointTranslator) Add(set watcher.AddressSet) {
 	et.enqueueUpdate(&addUpdate{set})
 }
 
-func (et *endpointTranslator) NodeName() string {
-	return et.nodeName
-}
-
-func (et *endpointTranslator) NodeTopologyZone() string {
-	return et.nodeTopologyZone
-}
-
-func (et *endpointTranslator) EnableEndpointFiltering() bool {
-	return et.enableEndpointFiltering
-}
-
-func (et *endpointTranslator) EnableIPv6() bool {
-	return et.enableIPv6
-}
-
 func (et *endpointTranslator) Remove(set watcher.AddressSet) {
 	et.enqueueUpdate(&removeUpdate{set})
-}
-
-func (et *endpointTranslator) NoEndpoints(exists bool) {
-	et.enqueueUpdate(&noEndpointsUpdate{exists})
 }
 
 // Add, Remove, and NoEndpoints are called from a client-go informer callback
@@ -225,41 +193,6 @@ func (et *endpointTranslator) processUpdate(update interface{}) {
 		et.sendClientAdd(update.set)
 	case *removeUpdate:
 		et.sendClientRemove(update.set)
-	case *noEndpointsUpdate:
-		et.noEndpoints(update.exists)
-	}
-}
-
-func (et *endpointTranslator) noEndpoints(exists bool) {
-	et.log.Debugf("NoEndpoints(%+v)", exists)
-
-	//et.sendFilteredUpdate()
-}
-
-func (et *endpointTranslator) selectAddressFamily(addresses watcher.AddressSet) watcher.AddressSet {
-	filtered := make(map[watcher.ID]*watcher.Address)
-	for id, addr := range addresses.Addresses {
-		if id.IPFamily == corev1.IPv6Protocol && !et.enableIPv6 {
-			continue
-		}
-
-		if id.IPFamily == corev1.IPv4Protocol && et.enableIPv6 {
-			// Only consider IPv4 address for which there's not already an IPv6
-			// alternative
-			altID := id
-			altID.IPFamily = corev1.IPv6Protocol
-			if _, ok := addresses.Addresses[altID]; ok {
-				continue
-			}
-		}
-
-		filtered[id] = addr
-	}
-
-	return watcher.AddressSet{
-		Addresses:          filtered,
-		Labels:             addresses.Labels,
-		LocalTrafficPolicy: addresses.LocalTrafficPolicy,
 	}
 }
 
