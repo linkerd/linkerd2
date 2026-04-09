@@ -162,12 +162,19 @@ func (h *KubernetesHelper) KubectlApplyWithArgs(stdin string, cmdArgs ...string)
 }
 
 // Kubectl executes an arbitrary Kubectl command
+// Deprecated, use KubectlRun instead
 func (h *KubernetesHelper) Kubectl(stdin string, arg ...string) (string, error) {
 	withContext := append([]string{"--context=" + h.k8sContext}, arg...)
 	cmd := exec.Command("kubectl", withContext...)
 	cmd.Stdin = strings.NewReader(stdin)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
+}
+
+// KubectlRun executes an arbitrary kubectl command and returns stdout and stderr separately
+func (h *KubernetesHelper) KubectlRun(stdin string, arg ...string) (string, string, error) {
+	withContext := append([]string{"--context=" + h.k8sContext}, arg...)
+	return combinedOutput(stdin, "kubectl", withContext...)
 }
 
 // KubectlApplyWithContext applies a given configuration with the given flags
