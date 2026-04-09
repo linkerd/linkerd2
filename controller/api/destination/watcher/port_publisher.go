@@ -177,7 +177,11 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 				}
 
 				identity := es.Annotations[consts.RemoteGatewayIdentity]
-				address, id := pp.newServiceRefAddress(resolvedPort, IPAddr, *endpoint.Hostname, serviceID.Name, es.Namespace)
+				hostname := ""
+				if endpoint.Hostname != nil {
+					hostname = *endpoint.Hostname
+				}
+				address, id := pp.newServiceRefAddress(resolvedPort, IPAddr, hostname, serviceID.Name, es.Namespace)
 				address.Identity, address.AuthorityOverride = identity, authorityOverride
 
 				if endpoint.Hints != nil {
@@ -192,11 +196,15 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 		if endpoint.TargetRef.Kind == endpointTargetRefPod {
 			for _, IPAddr := range endpoint.Addresses {
+				hostname := ""
+				if endpoint.Hostname != nil {
+					hostname = *endpoint.Hostname
+				}
 				address, id, err := pp.newPodRefAddress(
 					resolvedPort,
 					es.AddressType,
 					IPAddr,
-					*endpoint.Hostname,
+					hostname,
 					endpoint.TargetRef.Name,
 					endpoint.TargetRef.Namespace,
 				)
@@ -221,7 +229,11 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 		if endpoint.TargetRef.Kind == endpointTargetRefExternalWorkload {
 			for _, IPAddr := range endpoint.Addresses {
-				address, id, err := pp.newExtRefAddress(resolvedPort, IPAddr, endpoint.TargetRef.Name, es.Namespace)
+				hostname := ""
+				if endpoint.Hostname != nil {
+					hostname = *endpoint.Hostname
+				}
+				address, id, err := pp.newExtRefAddress(resolvedPort, IPAddr, hostname, endpoint.TargetRef.Name, es.Namespace)
 				if err != nil {
 					pp.log.Errorf("Unable to create new address: %v", err)
 					continue
@@ -397,7 +409,13 @@ func (pp *portPublisher) newPodRefAddress(
 	return addr, id, nil
 }
 
-func (pp *portPublisher) newExtRefAddress(endpointPort Port, endpointIP, externalWorkloadName, externalWorkloadNamespace string) (Address, ExternalWorkloadID, error) {
+func (pp *portPublisher) newExtRefAddress(
+	endpointPort Port,
+	endpointIP,
+	hostname string,
+	externalWorkloadName,
+	externalWorkloadNamespace string,
+) (Address, ExternalWorkloadID, error) {
 	id := ExternalWorkloadID{
 		Name:      externalWorkloadName,
 		Namespace: externalWorkloadNamespace,
@@ -412,6 +430,7 @@ func (pp *portPublisher) newExtRefAddress(endpointPort Port, endpointIP, externa
 		IP:               endpointIP,
 		Port:             endpointPort,
 		ExternalWorkload: ew,
+		Hostname:         hostname,
 	}
 
 	ownerRefs := ew.GetOwnerReferences()

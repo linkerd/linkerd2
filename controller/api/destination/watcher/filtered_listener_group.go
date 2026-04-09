@@ -65,10 +65,8 @@ func (group *filteredListenerGroup) filterAddresses(addresses AddressSet) Addres
 	// If hostname filtering is specified, only include addresses that match the hostname.
 	// This filtering should be applied even if endpoint filtering is disabled.
 	for id, address := range addresses.Addresses {
-		if group.key.Hostname != "" {
-			if address.Hostname != group.key.Hostname {
-				continue
-			}
+		if group.key.Hostname != "" && address.Hostname != "" && address.Hostname != group.key.Hostname {
+			continue
 		}
 		candidates[id] = address
 	}
