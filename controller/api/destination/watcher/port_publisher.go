@@ -177,7 +177,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 				}
 
 				identity := es.Annotations[consts.RemoteGatewayIdentity]
-				address, id := pp.newServiceRefAddress(resolvedPort, IPAddr, serviceID.Name, es.Namespace)
+				address, id := pp.newServiceRefAddress(resolvedPort, IPAddr, *endpoint.Hostname, serviceID.Name, es.Namespace)
 				address.Identity, address.AuthorityOverride = identity, authorityOverride
 
 				if endpoint.Hints != nil {
@@ -196,6 +196,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					resolvedPort,
 					es.AddressType,
 					IPAddr,
+					*endpoint.Hostname,
 					endpoint.TargetRef.Name,
 					endpoint.TargetRef.Namespace,
 				)
@@ -316,7 +317,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 				}
 
 				identity := endpoints.Annotations[consts.RemoteGatewayIdentity]
-				address, id := pp.newServiceRefAddress(resolvedPort, endpoint.IP, endpoints.Name, endpoints.Namespace)
+				address, id := pp.newServiceRefAddress(resolvedPort, endpoint.IP, endpoint.Hostname, endpoints.Name, endpoints.Namespace)
 				address.Identity, address.AuthorityOverride = identity, authorityOverride
 
 				addresses[id] = &address
@@ -328,6 +329,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					resolvedPort,
 					"",
 					endpoint.IP,
+					endpoint.Hostname,
 					endpoint.TargetRef.Name,
 					endpoint.TargetRef.Namespace,
 				)
@@ -349,7 +351,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 	}
 }
 
-func (pp *portPublisher) newServiceRefAddress(endpointPort Port, endpointIP, serviceName, serviceNamespace string) (Address, ServiceID) {
+func (pp *portPublisher) newServiceRefAddress(endpointPort Port, endpointIP, hostname string, serviceName, serviceNamespace string) (Address, ServiceID) {
 	id := ServiceID{
 		Name: strings.Join([]string{
 			serviceName,
@@ -359,13 +361,14 @@ func (pp *portPublisher) newServiceRefAddress(endpointPort Port, endpointIP, ser
 		Namespace: serviceNamespace,
 	}
 
-	return Address{IP: endpointIP, Port: endpointPort}, id
+	return Address{IP: endpointIP, Port: endpointPort, Hostname: hostname}, id
 }
 
 func (pp *portPublisher) newPodRefAddress(
 	endpointPort Port,
 	ipFamily discovery.AddressType,
 	endpointIP,
+	hostname string,
 	podName,
 	podNamespace string,
 ) (Address, PodID, error) {
@@ -388,6 +391,7 @@ func (pp *portPublisher) newPodRefAddress(
 		Pod:       pod,
 		OwnerName: ownerName,
 		OwnerKind: ownerKind,
+		Hostname:  hostname,
 	}
 
 	return addr, id, nil
@@ -545,9 +549,9 @@ func (pp *portPublisher) subscribe(listener EndpointUpdateListener, filterKey Fi
 
 func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener, filterKey FilterKey) {
 	group, ok := pp.filteredListeners[filterKey]
-	listener.Remove(group.snapshot)
-
 	if ok {
+		listener.Remove(group.snapshot)
+
 		for i, existing := range group.listeners {
 			if existing == listener {
 				n := len(group.listeners)
@@ -568,12 +572,13 @@ func (pp *portPublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 	for id, address := range pp.addresses.Addresses {
 
 		if pp.isAddressSelected(address, oldServer) || pp.isAddressSelected(address, newServer) {
+			oldOpaque := address.OpaqueProtocol
 			if newServer != nil && pp.isAddressSelected(address, newServer) && newServer.Spec.ProxyProtocol == opaqueProtocol {
 				address.OpaqueProtocol = true
 			} else {
 				address.OpaqueProtocol = false
 			}
-			if pp.addresses.Addresses[id].OpaqueProtocol != address.OpaqueProtocol {
+			if oldOpaque != address.OpaqueProtocol {
 				pp.addresses.Addresses[id] = address
 				updated = true
 			}
