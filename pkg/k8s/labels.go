@@ -323,6 +323,10 @@ const (
 	// graceful shutdowns in the proxy.
 	ProxyShutdownGracePeriodAnnotation = ProxyConfigAnnotationsPrefix + "/shutdown-grace-period"
 
+	// ProxyAdditionalEnvAnnotation allows setting additional proxy environment
+	// variables via a JSON-encoded list of Kubernetes EnvVar objects.
+	ProxyAdditionalEnvAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-additional-env"
+
 	/*
 	 * Component Names
 	 */

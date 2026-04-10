@@ -11,6 +11,7 @@ import (
 	"net"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -201,7 +202,65 @@ func GetOverriddenValues(rc *ResourceConfig) (*l5dcharts.Values, error) {
 	}
 
 	ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), rc.GetLabelOverrides(), namedPorts)
+	MergeAdditionalEnv(copyValues, rc.GetNsAnnotations(), rc.GetWorkloadAnnotations())
 	return copyValues, nil
+}
+
+// parseAdditionalEnvAnnotation parses a JSON-encoded list of Kubernetes EnvVar
+// objects from the given annotation value. Returns nil if the value is empty.
+func parseAdditionalEnvAnnotation(value string) ([]corev1.EnvVar, error) {
+	if value == "" {
+		return nil, nil
+	}
+	var envVars []corev1.EnvVar
+	if err := json.Unmarshal([]byte(value), &envVars); err != nil {
+		return nil, fmt.Errorf("invalid JSON in %s annotation: %w", k8s.ProxyAdditionalEnvAnnotation, err)
+	}
+	return envVars, nil
+}
+
+// mergeEnvByName merges src into dst by env var name. Entries in src with
+// the same name as an entry in dst replace it; new entries are appended.
+func mergeEnvByName(dst, src []corev1.EnvVar) []corev1.EnvVar {
+	if len(src) == 0 {
+		return dst
+	}
+	result := slices.Clone(dst)
+	for _, s := range src {
+		if i := slices.IndexFunc(result, func(e corev1.EnvVar) bool { return e.Name == s.Name }); i >= 0 {
+			result[i] = s
+		} else {
+			result = append(result, s)
+		}
+	}
+	return result
+}
+
+// MergeAdditionalEnv merges proxy additional env vars from three layers:
+// 1. proxy.additionalEnv from Helm values (already in values.Proxy.AdditionalEnv)
+// 2. Namespace-level proxy-additional-env annotation
+// 3. Workload-level proxy-additional-env annotation
+// Higher-precedence layers override entries with the same env var name.
+func MergeAdditionalEnv(values *l5dcharts.Values, nsAnnotations map[string]string, workloadAnnotations map[string]string) {
+	nsEnvStr := nsAnnotations[k8s.ProxyAdditionalEnvAnnotation]
+	if nsEnvStr != "" {
+		nsEnv, err := parseAdditionalEnvAnnotation(nsEnvStr)
+		if err != nil {
+			log.Warnf("%s", err)
+		} else {
+			values.Proxy.AdditionalEnv = mergeEnvByName(values.Proxy.AdditionalEnv, nsEnv)
+		}
+	}
+
+	wlEnvStr := workloadAnnotations[k8s.ProxyAdditionalEnvAnnotation]
+	if wlEnvStr != "" {
+		wlEnv, err := parseAdditionalEnvAnnotation(wlEnvStr)
+		if err != nil {
+			log.Warnf("%s", err)
+		} else {
+			values.Proxy.AdditionalEnv = mergeEnvByName(values.Proxy.AdditionalEnv, wlEnv)
+		}
+	}
 }
 
 func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, labels map[string]string, namedPorts map[string]int32) {
