@@ -416,6 +416,7 @@ func (ew *EndpointsWatcher) getOrNewServicePublisher(id ServiceID) *servicePubli
 			cluster:              ew.cluster,
 			ports:                make(map[Port]*portPublisher),
 			enableEndpointSlices: ew.enableEndpointSlices,
+			enableIPv6:           ew.enableIPv6,
 		}
 		ew.publishers[id] = sp
 	}
@@ -535,6 +536,10 @@ func addressChanged(oldAddress Address, newAddress Address) bool {
 		if oldAddress.ForZones[k].Name != newAddress.ForZones[k].Name {
 			return true
 		}
+	}
+
+	if oldAddress.OpaqueProtocol != newAddress.OpaqueProtocol {
+		return true
 	}
 
 	if oldAddress.Pod != nil && newAddress.Pod != nil {
