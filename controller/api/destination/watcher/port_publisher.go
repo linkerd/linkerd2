@@ -310,6 +310,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 			continue
 		}
 		for _, endpoint := range subset.Addresses {
+			hostname := endpoint.Hostname
 			if endpoint.TargetRef == nil {
 				var authorityOverride string
 				if fqName, ok := endpoints.Annotations[consts.RemoteServiceFqName]; ok {
@@ -317,7 +318,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 				}
 
 				identity := endpoints.Annotations[consts.RemoteGatewayIdentity]
-				address, id := pp.newServiceRefAddress(resolvedPort, endpoint.IP, &endpoint.Hostname, endpoints.Name, endpoints.Namespace)
+				address, id := pp.newServiceRefAddress(resolvedPort, endpoint.IP, &hostname, endpoints.Name, endpoints.Namespace)
 				address.Identity, address.AuthorityOverride = identity, authorityOverride
 
 				addresses[id] = address
@@ -329,7 +330,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					resolvedPort,
 					"",
 					endpoint.IP,
-					&endpoint.Hostname,
+					&hostname,
 					endpoint.TargetRef.Name,
 					endpoint.TargetRef.Namespace,
 				)
