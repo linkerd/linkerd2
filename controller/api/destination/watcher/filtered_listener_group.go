@@ -34,11 +34,11 @@ func (group *filteredListenerGroup) publishDiff(addresses AddressSet) {
 	group.snapshot = filtered
 
 	for _, listener := range group.listeners {
-		if len(remove.Addresses) > 0 {
-			listener.Remove(remove)
-		}
 		if len(add.Addresses) > 0 {
 			listener.Add(add)
+		}
+		if len(remove.Addresses) > 0 {
+			listener.Remove(remove)
 		}
 	}
 }
@@ -65,8 +65,10 @@ func (group *filteredListenerGroup) filterAddresses(addresses AddressSet) Addres
 	// If hostname filtering is specified, only include addresses that match the hostname.
 	// This filtering should be applied even if endpoint filtering is disabled.
 	for id, address := range addresses.Addresses {
-		if group.key.Hostname != "" && address.Hostname != group.key.Hostname {
-			continue
+		if address.Hostname != nil {
+			if group.key.Hostname != "" && group.key.Hostname != *address.Hostname {
+				continue
+			}
 		}
 		candidates[id] = address
 	}

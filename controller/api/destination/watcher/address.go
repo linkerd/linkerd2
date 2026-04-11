@@ -24,7 +24,7 @@ type (
 		Zone              *string
 		ForZones          []discovery.ForZone
 		OpaqueProtocol    bool
-		Hostname          string
+		Hostname          *string
 	}
 
 	// AddressSet is a set of Address, indexed by ID.

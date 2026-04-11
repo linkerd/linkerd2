@@ -177,11 +177,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 				}
 
 				identity := es.Annotations[consts.RemoteGatewayIdentity]
-				hostname := ""
-				if endpoint.Hostname != nil {
-					hostname = *endpoint.Hostname
-				}
-				address, id := pp.newServiceRefAddress(resolvedPort, IPAddr, hostname, serviceID.Name, es.Namespace)
+				address, id := pp.newServiceRefAddress(resolvedPort, IPAddr, endpoint.Hostname, serviceID.Name, es.Namespace)
 				address.Identity, address.AuthorityOverride = identity, authorityOverride
 
 				if endpoint.Hints != nil {
@@ -196,15 +192,11 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 		if endpoint.TargetRef.Kind == endpointTargetRefPod {
 			for _, IPAddr := range endpoint.Addresses {
-				hostname := ""
-				if endpoint.Hostname != nil {
-					hostname = *endpoint.Hostname
-				}
 				address, id, err := pp.newPodRefAddress(
 					resolvedPort,
 					es.AddressType,
 					IPAddr,
-					hostname,
+					endpoint.Hostname,
 					endpoint.TargetRef.Name,
 					endpoint.TargetRef.Namespace,
 				)
@@ -229,11 +221,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 		if endpoint.TargetRef.Kind == endpointTargetRefExternalWorkload {
 			for _, IPAddr := range endpoint.Addresses {
-				hostname := ""
-				if endpoint.Hostname != nil {
-					hostname = *endpoint.Hostname
-				}
-				address, id, err := pp.newExtRefAddress(resolvedPort, IPAddr, hostname, endpoint.TargetRef.Name, es.Namespace)
+				address, id, err := pp.newExtRefAddress(resolvedPort, IPAddr, endpoint.Hostname, endpoint.TargetRef.Name, es.Namespace)
 				if err != nil {
 					pp.log.Errorf("Unable to create new address: %v", err)
 					continue
@@ -329,7 +317,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 				}
 
 				identity := endpoints.Annotations[consts.RemoteGatewayIdentity]
-				address, id := pp.newServiceRefAddress(resolvedPort, endpoint.IP, endpoint.Hostname, endpoints.Name, endpoints.Namespace)
+				address, id := pp.newServiceRefAddress(resolvedPort, endpoint.IP, &endpoint.Hostname, endpoints.Name, endpoints.Namespace)
 				address.Identity, address.AuthorityOverride = identity, authorityOverride
 
 				addresses[id] = address
@@ -341,7 +329,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					resolvedPort,
 					"",
 					endpoint.IP,
-					endpoint.Hostname,
+					&endpoint.Hostname,
 					endpoint.TargetRef.Name,
 					endpoint.TargetRef.Namespace,
 				)
@@ -363,7 +351,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 	}
 }
 
-func (pp *portPublisher) newServiceRefAddress(endpointPort Port, endpointIP, hostname string, serviceName, serviceNamespace string) (Address, ServiceID) {
+func (pp *portPublisher) newServiceRefAddress(endpointPort Port, endpointIP string, hostname *string, serviceName, serviceNamespace string) (Address, ServiceID) {
 	id := ServiceID{
 		Name: strings.Join([]string{
 			serviceName,
@@ -379,8 +367,8 @@ func (pp *portPublisher) newServiceRefAddress(endpointPort Port, endpointIP, hos
 func (pp *portPublisher) newPodRefAddress(
 	endpointPort Port,
 	ipFamily discovery.AddressType,
-	endpointIP,
-	hostname string,
+	endpointIP string,
+	hostname *string,
 	podName,
 	podNamespace string,
 ) (Address, PodID, error) {
@@ -411,8 +399,8 @@ func (pp *portPublisher) newPodRefAddress(
 
 func (pp *portPublisher) newExtRefAddress(
 	endpointPort Port,
-	endpointIP,
-	hostname string,
+	endpointIP string,
+	hostname *string,
 	externalWorkloadName,
 	externalWorkloadNamespace string,
 ) (Address, ExternalWorkloadID, error) {
