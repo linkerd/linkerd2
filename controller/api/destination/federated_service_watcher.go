@@ -277,7 +277,7 @@ func (fs *federatedService) delete() {
 				fs.log.Errorf("Failed to get remote cluster %s", id.cluster)
 				continue
 			}
-			remoteWatcher.Unsubscribe(id.service, subscriber.port, remoteFilterKey, translator)
+			remoteWatcher.Unsubscribe(id.service, subscriber.port, remoteFilterKey, translator, false)
 			translator.Stop()
 		}
 		localFilterKey := watcher.FilterKey{
@@ -286,7 +286,7 @@ func (fs *federatedService) delete() {
 			EnableEndpointFiltering: true, // Endpoint filtering is enabled for local discovery.
 		}
 		for localDiscovery, translator := range subscriber.localTranslators {
-			fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, localFilterKey, translator)
+			fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, localFilterKey, translator, false)
 			translator.Stop()
 		}
 		close(subscriber.endStream)
@@ -411,7 +411,7 @@ func (fs *federatedService) remoteDiscoveryUnsubscribe(
 		NodeName:                subscriber.nodeName,
 		EnableEndpointFiltering: false, // Endpoint filtering is disabled for remote discovery.
 	}
-	remoteWatcher.Unsubscribe(id.service, subscriber.port, filterKey, translator)
+	remoteWatcher.Unsubscribe(id.service, subscriber.port, filterKey, translator, true)
 	translator.DrainAndStop()
 	delete(subscriber.remoteTranslators, id)
 }
@@ -467,7 +467,7 @@ func (fs *federatedService) localDiscoveryUnsubscribe(
 			NodeName:                subscriber.nodeName,
 			EnableEndpointFiltering: true, // Endpoint filtering is enabled for local discovery.
 		}
-		fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, filterKey, translator)
+		fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, filterKey, translator, true)
 		translator.DrainAndStop()
 		delete(subscriber.localTranslators, localDiscovery)
 	}

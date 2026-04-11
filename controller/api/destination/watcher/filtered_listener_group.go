@@ -24,7 +24,7 @@ func newFilteredListenerGroup(key FilterKey, nodeTopologyZone string, enableIPv6
 		enableEndpointFiltering: key.EnableEndpointFiltering,
 		enableIPv6:              enableIPv6,
 		localTrafficPolicy:      localTrafficPolicy,
-		snapshot:                AddressSet{Addresses: make(map[ID]*Address)},
+		snapshot:                AddressSet{Addresses: make(map[ID]Address)},
 	}
 }
 
@@ -45,7 +45,7 @@ func (group *filteredListenerGroup) publishDiff(addresses AddressSet) {
 
 func (group *filteredListenerGroup) publishNoEndpoints() {
 	remove := group.snapshot
-	group.snapshot = AddressSet{Addresses: make(map[ID]*Address)}
+	group.snapshot = AddressSet{Addresses: make(map[ID]Address)}
 
 	for _, listener := range group.listeners {
 		if len(remove.Addresses) > 0 {
@@ -60,12 +60,12 @@ func (group *filteredListenerGroup) updateLocalTrafficPolicy(localTrafficPolicy 
 }
 
 func (group *filteredListenerGroup) filterAddresses(addresses AddressSet) AddressSet {
-	candidates := make(map[ID]*Address)
+	candidates := make(map[ID]Address)
 
 	// If hostname filtering is specified, only include addresses that match the hostname.
 	// This filtering should be applied even if endpoint filtering is disabled.
 	for id, address := range addresses.Addresses {
-		if group.key.Hostname != "" && address.Hostname != "" && address.Hostname != group.key.Hostname {
+		if group.key.Hostname != "" && address.Hostname != group.key.Hostname {
 			continue
 		}
 		candidates[id] = address
@@ -81,7 +81,7 @@ func (group *filteredListenerGroup) filterAddresses(addresses AddressSet) Addres
 
 	// If internalTrafficPolicy=Local, only keep pod endpoints on the same node.
 	if group.localTrafficPolicy {
-		filtered := make(map[ID]*Address)
+		filtered := make(map[ID]Address)
 		for id, address := range candidates {
 			if address.Pod != nil && address.Pod.Spec.NodeName == group.key.NodeName {
 				filtered[id] = address
@@ -104,7 +104,7 @@ func (group *filteredListenerGroup) filterAddresses(addresses AddressSet) Addres
 	}
 
 	// Otherwise, perform zone filtering:keep only endpoints whose hints include this node's zone.
-	filtered := make(map[ID]*Address)
+	filtered := make(map[ID]Address)
 	for id, address := range candidates {
 		if containsZone(address.ForZones, group.nodeTopologyZone) {
 			filtered[id] = address
@@ -132,7 +132,7 @@ func containsZone(zones []v1.ForZone, zone string) bool {
 }
 
 func selectAddressFamily(addresses AddressSet, enableIPv6 bool) AddressSet {
-	filtered := make(map[ID]*Address)
+	filtered := make(map[ID]Address)
 	for id, addr := range addresses.Addresses {
 		if id.IPFamily == corev1.IPv6Protocol && !enableIPv6 {
 			continue

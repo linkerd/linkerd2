@@ -136,13 +136,13 @@ func (sp *servicePublisher) subscribe(srcPort Port, listener EndpointUpdateListe
 	return nil
 }
 
-func (sp *servicePublisher) unsubscribe(srcPort Port, listener EndpointUpdateListener, filterKey FilterKey) {
+func (sp *servicePublisher) unsubscribe(srcPort Port, listener EndpointUpdateListener, filterKey FilterKey, withRemove bool) {
 	sp.Lock()
 	defer sp.Unlock()
 
 	publisher, ok := sp.ports[srcPort]
 	if ok {
-		publisher.unsubscribe(listener, filterKey)
+		publisher.unsubscribe(listener, filterKey, withRemove)
 		if publisher.totalListeners() == 0 {
 			endpointsVecs.unregister(sp.metricsLabels(srcPort))
 			delete(sp.ports, srcPort)

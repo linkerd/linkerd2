@@ -162,7 +162,7 @@ func (ew *EndpointsWatcher) Subscribe(id ServiceID, port Port, filterKey FilterK
 }
 
 // Unsubscribe removes a listener from the subscribers list for this authority.
-func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, filterKey FilterKey, listener EndpointUpdateListener) {
+func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, filterKey FilterKey, listener EndpointUpdateListener, withRemove bool) {
 	if filterKey.Hostname == "" {
 		ew.log.Debugf("Stopping watch on endpoint [%s:%d]", id, port)
 	} else {
@@ -174,7 +174,7 @@ func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, filterKey Filte
 		ew.log.Errorf("Cannot unsubscribe from unknown service [%s:%d]", id, port)
 		return
 	}
-	sp.unsubscribe(port, listener, filterKey)
+	sp.unsubscribe(port, listener, filterKey, withRemove)
 }
 
 // removeHandlers will de-register any event handlers used by the
@@ -506,7 +506,7 @@ func getTargetPort(service *corev1.Service, port Port) namedPort {
 	return targetPort
 }
 
-func addressChanged(oldAddress *Address, newAddress *Address) bool {
+func addressChanged(oldAddress Address, newAddress Address) bool {
 
 	if oldAddress.Identity != newAddress.Identity {
 		// in this case the identity could have changed; this can happen when for
@@ -548,8 +548,8 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 	// TODO: this detects pods which have been added or removed, but does not
 	// detect addresses which have been modified.  A modified address should trigger
 	// an add of the new version.
-	addAddresses := make(map[ID]*Address)
-	removeAddresses := make(map[ID]*Address)
+	addAddresses := make(map[ID]Address)
+	removeAddresses := make(map[ID]Address)
 	for id, newAddress := range newAddresses.Addresses {
 		if oldAddress, ok := oldAddresses.Addresses[id]; ok {
 			if addressChanged(oldAddress, newAddress) {

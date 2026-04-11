@@ -35,7 +35,7 @@ type (
 	// id.IPFamily refers to the ES AddressType (see newPodRefAddress).
 	// 3) A reference to an ExternalWorkload: id.Name refers to the EW's name.
 	AddressSet struct {
-		Addresses map[ID]*Address
+		Addresses map[ID]Address
 		Labels    map[string]string
 	}
 )
@@ -44,7 +44,7 @@ type (
 // ExternalWorkload fields of the Addresses map values still point to the
 // locations of the original variable
 func (addr AddressSet) shallowCopy() AddressSet {
-	addresses := make(map[ID]*Address)
+	addresses := make(map[ID]Address)
 	for k, v := range addr.Addresses {
 		addresses[k] = v
 	}

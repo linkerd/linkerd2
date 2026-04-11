@@ -130,7 +130,7 @@ func (ept *endpointProfileTranslator) update(address *watcher.Address) {
 	} else {
 		opaquePorts = watcher.GetAnnotatedOpaquePortsForExternalWorkload(address.ExternalWorkload, ept.defaultOpaquePorts)
 	}
-	endpoint, err := ept.createEndpoint(address, opaquePorts)
+	endpoint, err := ept.createEndpoint(*address, opaquePorts)
 	if err != nil {
 		ept.log.Errorf("Failed to create endpoint for %s:%d: %s",
 			address.IP, address.Port, err)
@@ -158,7 +158,7 @@ func (ept *endpointProfileTranslator) update(address *watcher.Address) {
 	ept.current = profile
 }
 
-func (ept *endpointProfileTranslator) createEndpoint(address *watcher.Address, opaquePorts map[uint32]struct{}) (*pb.WeightedAddr, error) {
+func (ept *endpointProfileTranslator) createEndpoint(address watcher.Address, opaquePorts map[uint32]struct{}) (*pb.WeightedAddr, error) {
 	var weightedAddr *pb.WeightedAddr
 	var err error
 	if address.ExternalWorkload != nil {

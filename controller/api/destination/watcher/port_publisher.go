@@ -87,7 +87,7 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
 	updatedAddressSet := AddressSet{
-		Addresses: make(map[ID]*Address),
+		Addresses: make(map[ID]Address),
 		Labels:    pp.addresses.Labels,
 	}
 
@@ -154,7 +154,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 	if resolvedPort == undefinedEndpointPort {
 		return AddressSet{
 			Labels:    metricLabels(es),
-			Addresses: make(map[ID]*Address),
+			Addresses: make(map[ID]Address),
 		}
 	}
 
@@ -163,7 +163,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 		pp.log.Errorf("Could not fetch resource service name:%v", err)
 	}
 
-	addresses := make(map[ID]*Address)
+	addresses := make(map[ID]Address)
 	for _, endpoint := range es.Endpoints {
 		if endpoint.Conditions.Ready != nil && !*endpoint.Conditions.Ready {
 			continue
@@ -189,7 +189,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					copy(zones, endpoint.Hints.ForZones)
 					address.ForZones = zones
 				}
-				addresses[id] = &address
+				addresses[id] = address
 			}
 			continue
 		}
@@ -223,7 +223,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					copy(zones, endpoint.Hints.ForZones)
 					address.ForZones = zones
 				}
-				addresses[id] = &address
+				addresses[id] = address
 			}
 		}
 
@@ -252,7 +252,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					address.ForZones = zones
 				}
 
-				addresses[id] = &address
+				addresses[id] = address
 			}
 
 		}
@@ -315,7 +315,7 @@ func (pp *portPublisher) endpointSliceToIDs(es *discovery.EndpointSlice) []ID {
 }
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {
-	addresses := make(map[ID]*Address)
+	addresses := make(map[ID]Address)
 	for _, subset := range endpoints.Subsets {
 		resolvedPort := pp.resolveTargetPort(subset)
 		if resolvedPort == undefinedEndpointPort {
@@ -332,7 +332,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 				address, id := pp.newServiceRefAddress(resolvedPort, endpoint.IP, endpoint.Hostname, endpoints.Name, endpoints.Namespace)
 				address.Identity, address.AuthorityOverride = identity, authorityOverride
 
-				addresses[id] = &address
+				addresses[id] = address
 				continue
 			}
 
@@ -353,7 +353,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 				}
-				addresses[id] = &address
+				addresses[id] = address
 			}
 		}
 	}
@@ -515,7 +515,7 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 
 func (pp *portPublisher) deleteEndpointSlice(es *discovery.EndpointSlice) {
 	updatedAddressSet := AddressSet{
-		Addresses: make(map[ID]*Address),
+		Addresses: make(map[ID]Address),
 		Labels:    pp.addresses.Labels,
 	}
 	for id, address := range pp.addresses.Addresses {
@@ -566,10 +566,12 @@ func (pp *portPublisher) subscribe(listener EndpointUpdateListener, filterKey Fi
 	pp.metrics.setSubscribers(pp.totalListeners())
 }
 
-func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener, filterKey FilterKey) {
+func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener, filterKey FilterKey, withRemove bool) {
 	group, ok := pp.filteredListeners[filterKey]
 	if ok {
-		listener.Remove(group.snapshot)
+		if withRemove {
+			listener.Remove(group.snapshot)
+		}
 
 		for i, existing := range group.listeners {
 			if existing == listener {
@@ -654,7 +656,7 @@ func (pp *portPublisher) publishNoEndpoints() {
 	}
 }
 
-func (pp *portPublisher) isAddressSelected(address *Address, server *v1beta3.Server) bool {
+func (pp *portPublisher) isAddressSelected(address Address, server *v1beta3.Server) bool {
 	if server == nil {
 		return false
 	}
