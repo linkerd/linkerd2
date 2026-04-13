@@ -338,8 +338,8 @@ jobs:
         cases:
         - {k8s: "v1.23", manage-controllers: false, install-gwapi: true}
         # for v1.34 onwards, gwapi gets installed by Traefik on the target cluster
-        - {k8s: "v1.34", manage-controllers: false, install-gwapi: false}
-        - {k8s: "v1.34", manage-controllers: true, install-gwapi: false}
+        - {k8s: "v1.35", manage-controllers: false, install-gwapi: false}
+        - {k8s: "v1.35", manage-controllers: true, install-gwapi: false}
     name: "test-multicluster(${{ matrix.cases.k8s }}, ${{ matrix.cases.manage-controllers && 'managed-controllers' || 'unmanaged-controllers' }})"
     steps:
       - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
