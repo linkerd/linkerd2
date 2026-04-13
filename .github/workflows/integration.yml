@@ -158,7 +158,7 @@ jobs:
         # Test the latest Kubernetes version with the latest Gateway API
         # version, as well as the vendored Gateway API CRDs.
         k8s:
-          - v1.34
+          - v1.35
         gateway-api:
           - version: linkerd
             channel: experimental
