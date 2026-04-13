@@ -131,7 +131,7 @@ func (et *endpointTranslator) Remove(set watcher.AddressSet) {
 	et.enqueueUpdate(&removeUpdate{set})
 }
 
-// Add, Remove, and NoEndpoints are called from a client-go informer callback
+// Add and Remove are called from a client-go informer callback
 // and therefore must not block. For each of these, we enqueue an update in
 // a channel so that it can be processed asyncronously. To ensure that enqueuing
 // does not block, we first check to see if there is capacity in the buffered

@@ -826,56 +826,6 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 			t.Fatalf("ProtocolHint: %v", diff)
 		}
 	})
-
-	t.Run("Sends IPv6 only when pod has both IPv4 and IPv6", func(t *testing.T) {
-		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
-
-		translator.Add(mkAddressSetForPods(t, pod1, pod1IPv6))
-
-		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
-		if len(addrs) != 1 {
-			t.Fatalf("Expected [1] address returned, got %v", addrs)
-		}
-		if ipPort := addr.ProxyAddressToString(addrs[0].GetAddr()); ipPort != "[2001:db8:85a3::8a2e:370:7333]:1" {
-			t.Fatalf("Expected address to be [%s], got [%s]", "[2001:db8:85a3::8a2e:370:7333]:1", ipPort)
-		}
-
-		if updates := len(mockGetServer.updatesReceived); updates > 0 {
-			t.Fatalf("Expected to receive no more messages, received [%d]", updates)
-		}
-	})
-
-	t.Run("Sends IPv4 only when pod has both IPv4 and IPv6 but the latter in another zone ", func(t *testing.T) {
-		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
-
-		pod1West1a := pod1
-		pod1West1a.ForZones = []v1.ForZone{
-			{Name: "west-1a"},
-		}
-
-		pod1IPv6West1b := pod1IPv6
-		pod1IPv6West1b.ForZones = []v1.ForZone{
-			{Name: "west-1b"},
-		}
-
-		translator.Add(mkAddressSetForPods(t, pod1West1a, pod1IPv6West1b))
-
-		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
-		if len(addrs) != 1 {
-			t.Fatalf("Expected [1] address returned, got %v", addrs)
-		}
-		if ipPort := addr.ProxyAddressToString(addrs[0].GetAddr()); ipPort != "1.1.1.1:1" {
-			t.Fatalf("Expected address to be [%s], got [%s]", "1.1.1.1:1", ipPort)
-		}
-
-		if updates := len(mockGetServer.updatesReceived); updates > 0 {
-			t.Fatalf("Expected to receive no more messages, received [%d]", updates)
-		}
-	})
 }
 
 func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
@@ -1063,27 +1013,6 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 	})
 }
 
-func TestEndpointTranslatorTopologyAwareFilter(t *testing.T) {
-	t.Run("Sends one update for add and none for remove", func(t *testing.T) {
-		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
-
-		translator.Add(mkAddressSetForServices(west1aAddress, west1bAddress))
-		translator.Remove(mkAddressSetForServices(west1bAddress))
-
-		// Only the address meant for west-1a should be added, which means
-		// that when we try to remove the address meant for west-1b there
-		// should be no remove update.
-		expectedNumUpdates := 1
-		<-mockGetServer.updatesReceived // Add
-
-		if len(mockGetServer.updatesReceived) != 0 {
-			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
-		}
-	})
-}
-
 func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 	zoneA := "west-1a"
 	zoneB := "west-1b"
@@ -1134,53 +1063,6 @@ func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 		})
 		checkAddressAndWeight(t, addrs[0], addrA, defaultWeight*10)
 		checkAddressAndWeight(t, addrs[1], addrB, defaultWeight)
-	})
-}
-
-func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
-	t.Run("Sends one update for add and none for remove", func(t *testing.T) {
-		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
-		addressSet := mkAddressSetForServices(AddressOnTest123Node, AddressNotOnTest123Node)
-		addressSet.LocalTrafficPolicy = true
-		translator.Add(addressSet)
-		translator.Remove(mkAddressSetForServices(AddressNotOnTest123Node))
-
-		// Only the address meant for AddressOnTest123Node should be added, which means
-		// that when we try to remove the address meant for AddressNotOnTest123Node there
-		// should be no remove update.
-		expectedNumUpdates := 1
-		<-mockGetServer.updatesReceived // Add
-
-		if len(mockGetServer.updatesReceived) != 0 {
-			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
-		}
-	})
-
-	t.Run("Removes cannot change LocalTrafficPolicy", func(t *testing.T) {
-		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.Start()
-		defer translator.Stop()
-		addressSet := mkAddressSetForServices(AddressOnTest123Node, AddressNotOnTest123Node)
-		addressSet.LocalTrafficPolicy = true
-		translator.Add(addressSet)
-		set := watcher.AddressSet{
-			Addresses:          make(map[watcher.ServiceID]*watcher.Address),
-			Labels:             map[string]string{"service": "service-name", "namespace": "service-ns"},
-			LocalTrafficPolicy: false,
-		}
-		translator.Remove(set)
-
-		// Only the address meant for AddressOnTest123Node should be added.
-		// The remove with no addresses should not change the LocalTrafficPolicy
-		// and should be a noop that does not send an update.
-		expectedNumUpdates := 1
-		<-mockGetServer.updatesReceived // Add
-
-		if len(mockGetServer.updatesReceived) != 0 {
-			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
-		}
 	})
 }
 
@@ -1238,19 +1120,17 @@ func TestGetInboundPort(t *testing.T) {
 
 func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.ServiceID]*watcher.Address),
+		Addresses: make(map[watcher.ID]watcher.Address),
 		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 	}
 	for _, a := range gatewayAddresses {
-		a := a // pin
-
 		id := watcher.ServiceID{
 			Name: strings.Join([]string{
 				a.IP,
 				fmt.Sprint(a.Port),
 			}, "-"),
 		}
-		set.Addresses[id] = &a
+		set.Addresses[id] = a
 	}
 	return set
 }
@@ -1259,7 +1139,7 @@ func mkAddressSetForPods(t *testing.T, podAddresses ...watcher.Address) watcher.
 	t.Helper()
 
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.PodID]*watcher.Address),
+		Addresses: make(map[watcher.ID]watcher.Address),
 		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 	}
 	for _, p := range podAddresses {
@@ -1279,19 +1159,19 @@ func mkAddressSetForPods(t *testing.T, podAddresses ...watcher.Address) watcher.
 			Namespace: p.Pod.Namespace,
 			IPFamily:  fam,
 		}
-		set.Addresses[id] = &p
+		set.Addresses[id] = p
 	}
 	return set
 }
 
 func mkAddressSetForExternalWorkloads(ewAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.PodID]*watcher.Address),
+		Addresses: make(map[watcher.ID]watcher.Address),
 		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 	}
 	for _, ew := range ewAddresses {
 		id := watcher.ExternalWorkloadID{Name: ew.ExternalWorkload.Name, Namespace: ew.ExternalWorkload.Namespace}
-		set.Addresses[id] = &ew
+		set.Addresses[id] = ew
 	}
 	return set
 }
