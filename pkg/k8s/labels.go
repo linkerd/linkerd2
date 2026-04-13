@@ -325,6 +325,12 @@ const (
 
 	// ProxyAdditionalEnvAnnotation allows setting additional proxy environment
 	// variables via a JSON-encoded list of Kubernetes EnvVar objects.
+	// Unlike other override annotations, this annotation is not inherited
+	// wholesale from the namespace. Instead, env vars are merged by name
+	// across three layers with increasing precedence:
+	// Helm proxy.additionalEnv < namespace annotation < workload annotation.
+	// Entries from higher-precedence layers override entries with the same
+	// env var name rather than replacing the entire list.
 	ProxyAdditionalEnvAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-additional-env"
 
 	/*
