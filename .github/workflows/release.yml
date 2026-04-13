@@ -137,7 +137,7 @@ jobs:
           path: cli
       - name: Create release
         id: create_release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
         with:
           name: "${{ needs.tag.outputs.tag }}"
           generate_release_notes: true
