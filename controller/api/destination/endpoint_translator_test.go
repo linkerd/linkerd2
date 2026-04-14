@@ -61,45 +61,6 @@ var (
 		OwnerName: "rc-name",
 	}
 
-	pod1IPv6 = watcher.Address{
-		IP:   "2001:0db8:85a3:0000:0000:8a2e:0370:7333",
-		Port: 1,
-		Pod: &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pod1",
-				Namespace: "ns",
-				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "linkerd",
-					k8s.ProxyDeploymentLabel: "deployment-name",
-				},
-			},
-			Spec: corev1.PodSpec{
-				ServiceAccountName: "serviceaccount-name",
-				Containers: []corev1.Container{
-					{
-						Name: k8s.ProxyContainerName,
-						Env: []corev1.EnvVar{
-							{
-								Name:  envInboundListenAddr,
-								Value: "[::]:4143",
-							},
-							{
-								Name:  envAdminListenAddr,
-								Value: "[::]:4191",
-							},
-							{
-								Name:  envControlListenAddr,
-								Value: "[::]:4190",
-							},
-						},
-					},
-				},
-			},
-		},
-		OwnerKind: "replicationcontroller",
-		OwnerName: "rc-name",
-	}
-
 	pod2 = watcher.Address{
 		IP:   "1.1.1.2",
 		Port: 2,

@@ -511,13 +511,6 @@ func getNodeTopologyZone(k8sAPI *k8s.MetadataAPI, srcNode string) (string, error
 	return "", nil
 }
 
-func newEmptyAddressSet() watcher.AddressSet {
-	return watcher.AddressSet{
-		Addresses: make(map[watcher.ID]watcher.Address),
-		Labels:    make(map[string]string),
-	}
-}
-
 // getInboundPort gets the inbound port from the proxy container's environment
 // variable.
 func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
