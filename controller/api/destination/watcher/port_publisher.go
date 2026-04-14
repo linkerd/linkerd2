@@ -540,7 +540,7 @@ func (pp *portPublisher) noEndpoints(exists bool) {
 }
 
 func (pp *portPublisher) subscribe(listener EndpointUpdateListener, filterKey FilterKey) {
-	group := pp.filteredListenerGroup(listener, filterKey)
+	group := pp.filteredListenerGroup(filterKey)
 	if pp.exists {
 		if len(pp.addresses.Addresses) > 0 {
 			filteredSet := group.filterAddresses(pp.addresses)
@@ -600,12 +600,12 @@ func (pp *portPublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 	}
 }
 
-func (pp *portPublisher) filteredListenerGroup(listener EndpointUpdateListener, filterKey FilterKey) *filteredListenerGroup {
+func (pp *portPublisher) filteredListenerGroup(filterKey FilterKey) *filteredListenerGroup {
 	group, ok := pp.filteredListeners[filterKey]
 	if !ok {
 		nodeTopologyZone := ""
-		if filterKey.NodeName != "" {
-			node, err := pp.k8sAPI.Node().Lister().Get(filterKey.NodeName)
+		if filterKey.EnableEndpointFiltering && filterKey.NodeName != "" {
+			node, err := pp.metadataAPI.Get(k8s.Node, filterKey.NodeName)
 			if err != nil {
 				pp.log.Errorf("Unable to get node %s: %s", filterKey.NodeName, err)
 			} else {
