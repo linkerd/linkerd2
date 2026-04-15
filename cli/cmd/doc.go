@@ -288,5 +288,9 @@ func generateAnnotationsDocs() []annotationDoc {
 			Name:        k8s.ProxyEnableNativeSidecarAnnotationBeta,
 			Description: "Enable KEP-753 native sidecars. This is a beta feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used.",
 		},
+		{
+			Name:        k8s.ProxyAdditionalEnvAnnotation,
+			Description: "Set additional proxy environment variables via a JSON-encoded list of Kubernetes EnvVar objects. Env vars are merged by name across three layers with increasing precedence: Helm proxy.additionalEnv < namespace annotation < workload annotation. Higher-precedence layers override entries with the same env var name rather than replacing the entire list.",
+		},
 	}
 }

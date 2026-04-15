@@ -222,6 +222,7 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 		k8s.ProxyInjectAnnotation:        k8s.ProxyInjectEnabled,
 		k8s.ProxyCPURequestAnnotation:    nsProxyCPUReq,
 		k8s.ProxyMemoryRequestAnnotation: nsProxyMemReq,
+		k8s.ProxyAdditionalEnvAnnotation: `[{"name":"NS_VAR","value":"ns_val"},{"name":"SHARED_VAR","value":"from_ns"}]`,
 	}
 
 	ctx := context.Background()
@@ -230,7 +231,8 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 		// Pod Level proxy configuration override
 		podProxyCPUReq := "600m"
 		podAnnotations := map[string]string{
-			k8s.ProxyCPURequestAnnotation: podProxyCPUReq,
+			k8s.ProxyCPURequestAnnotation:    podProxyCPUReq,
+			k8s.ProxyAdditionalEnvAnnotation: `[{"name":"POD_VAR","value":"pod_val"},{"name":"SHARED_VAR","value":"from_pod"}]`,
 		}
 
 		patchedYAML, err := testutil.PatchDeploy(injectYAML, deployName, podAnnotations)
@@ -266,6 +268,22 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 		// Match with proxy level override
 		if proxyContainer.Resources.Requests["cpu"] != resource.MustParse(podProxyCPUReq) {
 			testutil.Fatalf(t, "proxy cpu resource request failed to match with pod level override")
+		}
+
+		// Match proxy-additional-env merge semantics: ns sets NS_VAR+SHARED_VAR,
+		// pod sets POD_VAR+SHARED_VAR; pod takes precedence for SHARED_VAR
+		envMap := make(map[string]string)
+		for _, e := range proxyContainer.Env {
+			envMap[e.Name] = e.Value
+		}
+		if envMap["NS_VAR"] != "ns_val" {
+			testutil.Fatalf(t, "proxy NS_VAR failed to match namespace-level proxy-additional-env annotation")
+		}
+		if envMap["POD_VAR"] != "pod_val" {
+			testutil.Fatalf(t, "proxy POD_VAR failed to match pod-level proxy-additional-env annotation")
+		}
+		if envMap["SHARED_VAR"] != "from_pod" {
+			testutil.Fatalf(t, "proxy SHARED_VAR failed to be overridden by pod-level proxy-additional-env annotation")
 		}
 	})
 }
