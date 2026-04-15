@@ -69,5 +69,5 @@ func validLabelNames(labels []string) []string {
 }
 
 func validProxyConfigurationLabel(label string) string {
-	return strings.ReplaceAll(label[len(k8s.ProxyConfigAnnotationsPrefix)+1:], "-", "_")
+	return strings.ReplaceAll(label[strings.Index(label, "/")+1:], "-", "_")
 }
