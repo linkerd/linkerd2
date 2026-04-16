@@ -6,16 +6,20 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/go-openapi/testify/v2/assert"
 	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"helm.sh/helm/v3/pkg/cli/values"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -314,6 +318,213 @@ func TestRender(t *testing.T) {
 	}
 }
 
+// TestOverrideIssuer calls install control plane with the goal of testing
+// options overrides for initialize issuer credentials.
+func TestOverrideIssuer(t *testing.T) {
+	removeIssuerCrt := func() (*charts.Values, error) {
+		t.Helper()
+		values, err := testInstallOptionsFakeCerts()
+		if err != nil {
+			return nil, err
+		}
+		values.Identity.Issuer.TLS.CrtPEM = ""
+		return values, nil
+	}
+	removeIssuerKey := func() (*charts.Values, error) {
+		t.Helper()
+		values, err := testInstallOptionsFakeCerts()
+		if err != nil {
+			return nil, err
+		}
+		values.Identity.Issuer.TLS.KeyPEM = ""
+		return values, nil
+	}
+	removeTrustAnchor := func() (*charts.Values, error) {
+		t.Helper()
+		values, err := testInstallOptionsFakeCerts()
+		if err != nil {
+			return nil, err
+		}
+		values.IdentityTrustAnchorsPEM = ""
+		return values, nil
+	}
+	assert := assert.New(t)
+	read := func(filename string) []byte {
+		t.Helper()
+		data, err := os.ReadFile(path.Join("testdata", filename))
+		if assert.NoError(err, "cannot read-file filename=%s", filename) {
+			return data
+		}
+		return nil
+	}
+	// newK8S returns a test implementation of the k8s API; after setting the
+	// issuer trust anchor and tls crt+key as a secret.
+	newK8S := func(opts values.Options) *k8s.KubernetesAPI {
+		t.Helper()
+		buf := &bytes.Buffer{}
+		err := renderCRDs(context.Background(), nil, buf, opts, "yaml")
+		assert.NoError(err, "cannot render-crds for new-k8s-api opts=%+v", opts)
+		api, err := k8s.NewFakeAPIFromManifests([]io.Reader{buf})
+		if assert.NoError(err, "cannot create k8s api from manifests") {
+			_, err = api.CoreV1().Secrets(controlPlaneNamespace).Create(context.Background(),
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      k8s.IdentityIssuerSecretName,
+						Namespace: controlPlaneNamespace,
+					},
+					Data: map[string][]byte{
+						k8s.IdentityIssuerTrustAnchorsNameExternal: read("valid-trust-anchors.pem"),
+						corev1.TLSCertKey:                          read("valid-crt.pem"),
+						corev1.TLSPrivateKeyKey:                    read("valid-key.pem"),
+					}}, v1.CreateOptions{})
+			if assert.NoError(err, "cannot create secrets for new-k8s-api") {
+				return api
+			}
+		}
+		return nil
+	}
+	controlPlaneNamespace = defaultLinkerdNamespace
+	for i, test := range []struct {
+		options                values.Options
+		values                 func() (*charts.Values, error)
+		k8sAPI                 *k8s.KubernetesAPI
+		expErr                 string
+		expIdentityTrustAnchor bool
+		expIssuerCrt           bool
+		expIssuerKey           bool
+		expIssuerName          string
+	}{
+		{
+			// no options; no certs in values -> generated anchor; key + crt
+			options:                values.Options{},
+			values:                 testInstallValuesNoCertsNoHA,
+			k8sAPI:                 nil,
+			expIdentityTrustAnchor: true,
+			expIssuerKey:           true,
+			expIssuerCrt:           true,
+			expIssuerName: fmt.Sprintf("identity.%s.%s",
+				controlPlaneNamespace, "test-override-issuer"),
+		},
+		{
+			// no options; fake certs in values -> fake certs untouched
+			options:                values.Options{},
+			values:                 testInstallOptionsFakeCerts,
+			k8sAPI:                 nil,
+			expIdentityTrustAnchor: true,
+			expIssuerKey:           true,
+			expIssuerCrt:           true,
+			expIssuerName:          "identity.linkerd.cluster.local",
+		},
+		{
+			// issuer scheme in options; no certs in values; nil k8s api ->
+			// error trying to call k8s
+			options: values.Options{
+				Values: []string{"identity.issuer.scheme=kubernetes.io/tls"},
+			},
+			values:                 testInstallValuesNoCertsNoHA,
+			k8sAPI:                 nil,
+			expErr:                 "--ignore-cluster is not supported when --identity-external-issuer=true",
+			expIdentityTrustAnchor: false,
+			expIssuerKey:           false,
+			expIssuerCrt:           false,
+			expIssuerName:          "",
+		},
+		{
+			// issuer scheme in options; no certs in values; fake k8s api ->
+			// trust anchor is set
+			options: values.Options{
+				Values: []string{"identity.issuer.scheme=kubernetes.io/tls"},
+			},
+			values:                 testInstallValuesNoCertsNoHA,
+			k8sAPI:                 newK8S(values.Options{}),
+			expErr:                 "",
+			expIdentityTrustAnchor: true,
+			expIssuerKey:           false,
+			expIssuerCrt:           false,
+			expIssuerName:          "identity.linkerd.cluster.local",
+		},
+		{
+			// no options; fake certs in values; remove trust anchor -> err
+			options:                values.Options{},
+			values:                 removeTrustAnchor,
+			k8sAPI:                 nil,
+			expErr:                 "a trust anchors file must be specified if other credentials are provided",
+			expIdentityTrustAnchor: false,
+			expIssuerCrt:           true,
+			expIssuerKey:           true,
+			expIssuerName:          "identity.linkerd.cluster.local",
+		},
+		{
+			// no options; fake certs in values; remove issuer crt -> err
+			options:                values.Options{},
+			values:                 removeIssuerCrt,
+			k8sAPI:                 nil,
+			expErr:                 "a certificate file must be specified if other credentials are provided",
+			expIdentityTrustAnchor: true,
+			expIssuerCrt:           false,
+			expIssuerName:          "identity.linkerd.cluster.local",
+			expIssuerKey:           true,
+		},
+		{
+			// no options; fake certs in values; remove issuer key -> err
+			options:                values.Options{},
+			values:                 removeIssuerKey,
+			k8sAPI:                 nil,
+			expErr:                 "a private key file must be specified if other credentials are provided",
+			expIdentityTrustAnchor: true,
+			expIssuerCrt:           true,
+			expIssuerName:          "identity.linkerd.cluster.local",
+			expIssuerKey:           false,
+		},
+	} {
+		values, err := test.values()
+		assert.NoError(err, "%02d/test install options failed with an error", i)
+		values.IdentityTrustDomain = "test-override-issuer"
+		// ensure the install options created above meet expectations (we are
+		// testing the override not the values)
+		assert.Equal(k8s.IdentityIssuerSchemeLinkerd, values.Identity.Issuer.Scheme)
+		var buf bytes.Buffer
+		err = installControlPlane(context.Background(), test.k8sAPI, &buf, values, nil, test.options, "yaml")
+		if test.expErr != "" {
+			assert.EqualError(err, test.expErr, "%02d/install control plane returned incorrect error", i)
+		} else {
+			assert.NoError(err, "%02d/install control plane failed with an error", i)
+		}
+		if test.expIdentityTrustAnchor {
+			assert.NotEmpty(t, values.IdentityTrustAnchorsPEM, "%02d/identity trust anchor is not set", i)
+			crt, err := tls.DecodePEMCrt(values.IdentityTrustAnchorsPEM)
+			assert.NoError(err, "%02d/generated identity-trust-anchors-pem cannot be decoded", i)
+			assert.NotNil(crt, "%02d/generated identity-trust-anchors-pem cannot be decoded (nil)", i)
+			assert.NotNil(crt.Certificate, "%02d/generated identity-trust-anchors-pem certificate is invalid", i)
+			assert.Equal(
+				test.expIssuerName,
+				crt.Certificate.Issuer.CommonName,
+				"%02/generated identity-trust-anchors-pem certificate common-name is incorrect", i)
+		} else {
+			assert.Empty(values.IdentityTrustAnchorsPEM, "%02d/identity was incorrectly set", i)
+		}
+		if test.expIssuerCrt {
+			assert.NotEmpty(values.Identity.Issuer.TLS.CrtPEM, "%02d/identity issuer crt is not set", i)
+			assert.NotEmpty(values.Identity.Issuer.TLS.CrtPEM, "%02d/generated identity-issuer-tls-crt-pem is empty", i)
+			crt, err := tls.DecodePEMCrt(values.Identity.Issuer.TLS.CrtPEM)
+			assert.NoError(err, "%02d/generated identity-issuer-tls-crt-pem cannot be decoded", i)
+			assert.NotNil(crt, "%02d/generated identity-issuer-tls-crt-pem cannot be decoded (nil)", i)
+			assert.NotNil(crt.Certificate, "%02d/generated identity-issuer-tls-crt-pem certificate is invalid", i)
+		} else {
+			assert.Empty(values.Identity.Issuer.TLS.CrtPEM, "%02d/identity issuer crt was incorrectly set", i)
+		}
+		if test.expIssuerKey {
+			assert.NotEmpty(values.Identity.Issuer.TLS.KeyPEM, "%02d/identity issuer tls key is not set", i)
+			assert.NotEmpty(values.Identity.Issuer.TLS.KeyPEM, "%02d/generated identity-issuer-tls-key-pem is empty", i)
+			key, err := tls.DecodePEMKey(values.Identity.Issuer.TLS.KeyPEM)
+			assert.NoError(err, "%02d/generated identity-issuer-tls-key-pem cannot be decoded", i)
+			assert.NotNil(key, "%02d/generated identity-issuer-tls-key-pem cannot be decoded (nil)", i)
+		} else {
+			assert.Empty(values.Identity.Issuer.TLS.KeyPEM, "%02d/identity issuer tls key was incorrectly set", i)
+		}
+	}
+}
+
 func TestIgnoreCluster(t *testing.T) {
 	defaultValues, err := testInstallOptions()
 	if err != nil {
@@ -548,6 +759,10 @@ func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
 	return values, nil
+}
+
+func testInstallValuesNoCertsNoHA() (*charts.Values, error) {
+	return testInstallOptionsNoCerts(false)
 }
 
 func testInstallValues() (*charts.Values, error) {
