@@ -19,7 +19,6 @@ import (
 	"helm.sh/helm/v3/pkg/cli/values"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -376,7 +375,7 @@ func TestOverrideIssuer(t *testing.T) {
 						k8s.IdentityIssuerTrustAnchorsNameExternal: read("valid-trust-anchors.pem"),
 						corev1.TLSCertKey:                          read("valid-crt.pem"),
 						corev1.TLSPrivateKeyKey:                    read("valid-key.pem"),
-					}}, v1.CreateOptions{})
+					}}, metav1.CreateOptions{})
 			if assert.NoError(err, "cannot create secrets for new-k8s-api") {
 				return api
 			}
