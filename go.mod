@@ -14,7 +14,6 @@ require (
 	github.com/fatih/color v1.19.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-openapi/spec v0.22.4
-	github.com/go-openapi/testify/v2 v2.4.0
 	github.com/go-test/deep v1.1.1
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674

@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-openapi/testify/v2/assert"
 	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -347,14 +346,13 @@ func TestOverrideIssuer(t *testing.T) {
 		values.IdentityTrustAnchorsPEM = ""
 		return values, nil
 	}
-	assert := assert.New(t)
 	read := func(filename string) []byte {
 		t.Helper()
 		data, err := os.ReadFile(path.Join("testdata", filename))
-		if assert.NoError(err, "cannot read-file filename=%s", filename) {
-			return data
+		if err != nil {
+			t.Fatalf("cannot read filename=%s err=%v", filename, err)
 		}
-		return nil
+		return data
 	}
 	// newK8S returns a test implementation of the k8s API; after setting the
 	// issuer trust anchor and tls crt+key as a secret.
@@ -362,25 +360,29 @@ func TestOverrideIssuer(t *testing.T) {
 		t.Helper()
 		buf := &bytes.Buffer{}
 		err := renderCRDs(context.Background(), nil, buf, opts, "yaml")
-		assert.NoError(err, "cannot render-crds for new-k8s-api opts=%+v", opts)
-		api, err := k8s.NewFakeAPIFromManifests([]io.Reader{buf})
-		if assert.NoError(err, "cannot create k8s api from manifests") {
-			_, err = api.CoreV1().Secrets(controlPlaneNamespace).Create(context.Background(),
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      k8s.IdentityIssuerSecretName,
-						Namespace: controlPlaneNamespace,
-					},
-					Data: map[string][]byte{
-						k8s.IdentityIssuerTrustAnchorsNameExternal: read("valid-trust-anchors.pem"),
-						corev1.TLSCertKey:                          read("valid-crt.pem"),
-						corev1.TLSPrivateKeyKey:                    read("valid-key.pem"),
-					}}, metav1.CreateOptions{})
-			if assert.NoError(err, "cannot create secrets for new-k8s-api") {
-				return api
-			}
+		if err != nil {
+			t.Fatalf("cannot render-crds for new-k8s-api opts=%+v err=%v",
+				opts, err)
 		}
-		return nil
+		api, err := k8s.NewFakeAPIFromManifests([]io.Reader{buf})
+		if err != nil {
+			t.Fatalf("cannot create new fake-api from manifests err=%v", err)
+		}
+		_, err = api.CoreV1().Secrets(controlPlaneNamespace).Create(context.Background(),
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      k8s.IdentityIssuerSecretName,
+					Namespace: controlPlaneNamespace,
+				},
+				Data: map[string][]byte{
+					k8s.IdentityIssuerTrustAnchorsNameExternal: read("valid-trust-anchors.pem"),
+					corev1.TLSCertKey:                          read("valid-crt.pem"),
+					corev1.TLSPrivateKeyKey:                    read("valid-key.pem"),
+				}}, metav1.CreateOptions{})
+		if err != nil {
+			t.Fatalf("cannot create secret for new-k8s-api err=%v", err)
+		}
+		return api
 	}
 	controlPlaneNamespace = defaultLinkerdNamespace
 	for i, test := range []struct {
@@ -477,49 +479,79 @@ func TestOverrideIssuer(t *testing.T) {
 		},
 	} {
 		values, err := test.values()
-		assert.NoError(err, "%02d/test install options failed with an error", i)
+		if err != nil {
+			t.Fatalf("%02d/test install options failed with an error err=%v", i, err)
+		}
 		values.IdentityTrustDomain = "test-override-issuer"
 		// ensure the install options created above meet expectations (we are
 		// testing the override not the values)
-		assert.Equal(k8s.IdentityIssuerSchemeLinkerd, values.Identity.Issuer.Scheme)
+		if values.Identity.Issuer.Scheme != k8s.IdentityIssuerSchemeLinkerd {
+			t.Fatalf("%02d/identity issuer scheme is incorrect: %s != %s", i,
+				k8s.IdentityIssuerSchemeLinkerd, values.Identity.Issuer.Scheme)
+		}
 		var buf bytes.Buffer
 		err = installControlPlane(context.Background(), test.k8sAPI, &buf, values, nil, test.options, "yaml")
 		if test.expErr != "" {
-			assert.EqualError(err, test.expErr, "%02d/install control plane returned incorrect error", i)
+			if test.expErr != err.Error() {
+				t.Fatalf("%02d/install control plane returned incorrect error %s<>%v", i, test.expErr, err)
+			}
 		} else {
-			assert.NoError(err, "%02d/install control plane failed with an error", i)
+			if err != nil {
+				t.Fatalf("%02d/install control plane failed with an error=%v", i, err)
+			}
 		}
 		if test.expIdentityTrustAnchor {
-			assert.NotEmpty(t, values.IdentityTrustAnchorsPEM, "%02d/identity trust anchor is not set", i)
+			if values.IdentityTrustAnchorsPEM == "" {
+				t.Fatalf("%02d/identity trust-anchors-pem is empty", i)
+			}
 			crt, err := tls.DecodePEMCrt(values.IdentityTrustAnchorsPEM)
-			assert.NoError(err, "%02d/generated identity-trust-anchors-pem cannot be decoded", i)
-			assert.NotNil(crt, "%02d/generated identity-trust-anchors-pem cannot be decoded (nil)", i)
-			assert.NotNil(crt.Certificate, "%02d/generated identity-trust-anchors-pem certificate is invalid", i)
-			assert.Equal(
-				test.expIssuerName,
-				crt.Certificate.Issuer.CommonName,
-				"%02/generated identity-trust-anchors-pem certificate common-name is incorrect", i)
-		} else {
-			assert.Empty(values.IdentityTrustAnchorsPEM, "%02d/identity was incorrectly set", i)
+			if err != nil {
+				t.Fatalf("%02d/generated identity-trust-anchors-pem cannot be decoded", i)
+			}
+			if crt == nil {
+				t.Fatalf("%02d/generated identity-trust-anchors-pem cannot be decoded (nil)", i)
+			}
+			if crt.Certificate == nil {
+				t.Fatalf("%02d/generated identity-trust-anchors-pem certificate is invalid", i)
+			}
+			if test.expIssuerName != crt.Certificate.Issuer.CommonName {
+				t.Fatalf("%02d/generated identity-trust-anchors-pem certificate common-name is incorrect %s<>%s", i,
+					test.expIssuerName,
+					crt.Certificate.Issuer.CommonName)
+			}
+		} else if values.IdentityTrustAnchorsPEM != "" {
+			t.Fatalf("%02d/identity was incorrectly set pem=%s", i, values.IdentityTrustAnchorsPEM)
 		}
 		if test.expIssuerCrt {
-			assert.NotEmpty(values.Identity.Issuer.TLS.CrtPEM, "%02d/identity issuer crt is not set", i)
-			assert.NotEmpty(values.Identity.Issuer.TLS.CrtPEM, "%02d/generated identity-issuer-tls-crt-pem is empty", i)
+			if values.Identity.Issuer.TLS.CrtPEM == "" {
+				t.Fatalf("%02d/generated identity-issuer-tls-crt-pem is empty", i)
+			}
 			crt, err := tls.DecodePEMCrt(values.Identity.Issuer.TLS.CrtPEM)
-			assert.NoError(err, "%02d/generated identity-issuer-tls-crt-pem cannot be decoded", i)
-			assert.NotNil(crt, "%02d/generated identity-issuer-tls-crt-pem cannot be decoded (nil)", i)
-			assert.NotNil(crt.Certificate, "%02d/generated identity-issuer-tls-crt-pem certificate is invalid", i)
-		} else {
-			assert.Empty(values.Identity.Issuer.TLS.CrtPEM, "%02d/identity issuer crt was incorrectly set", i)
+			if err != nil {
+				t.Fatalf("%02d/generated identity-issuer-tls-crt-pem cannot be decoded err=%v", i, err)
+			}
+			if crt == nil {
+				t.Fatalf("%02d/generated identity-issuer-tls-crt-pem cannot be decoded (nil)", i)
+			}
+			if crt.Certificate == nil {
+				t.Fatalf("%02d/generated identity-issuer-tls-crt-pem certificate is invalid (nil)", i)
+			}
+		} else if values.Identity.Issuer.TLS.CrtPEM != "" {
+			t.Fatalf("%02d/identity issuer crt was incorrectly set pem=%s", i, values.Identity.Issuer.TLS.CrtPEM)
 		}
 		if test.expIssuerKey {
-			assert.NotEmpty(values.Identity.Issuer.TLS.KeyPEM, "%02d/identity issuer tls key is not set", i)
-			assert.NotEmpty(values.Identity.Issuer.TLS.KeyPEM, "%02d/generated identity-issuer-tls-key-pem is empty", i)
+			if values.Identity.Issuer.TLS.KeyPEM == "" {
+				t.Fatalf("%02d/generated identity-issuer-tls-key-pem is empty", i)
+			}
 			key, err := tls.DecodePEMKey(values.Identity.Issuer.TLS.KeyPEM)
-			assert.NoError(err, "%02d/generated identity-issuer-tls-key-pem cannot be decoded", i)
-			assert.NotNil(key, "%02d/generated identity-issuer-tls-key-pem cannot be decoded (nil)", i)
-		} else {
-			assert.Empty(values.Identity.Issuer.TLS.KeyPEM, "%02d/identity issuer tls key was incorrectly set", i)
+			if err != nil {
+				t.Fatalf("%02d/generated identity-issuer-tls-key-pem cannot be decoded err=%v", i, err)
+			}
+			if key == nil {
+				t.Fatalf("%02d/generated identity-issuer-tls-key-pem cannot be decoded (nil)", i)
+			}
+		} else if values.Identity.Issuer.TLS.KeyPEM != "" {
+			t.Fatalf("%02d/identity issuer tls key was incorrectly set pem=%s", i, values.Identity.Issuer.TLS.KeyPEM)
 		}
 	}
 }
