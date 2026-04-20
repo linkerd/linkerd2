@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+      - uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96
         id: core
         with:
           files: |
