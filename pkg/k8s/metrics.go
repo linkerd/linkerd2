@@ -37,7 +37,7 @@ func GetContainerMetrics(
 	return getResponse(metricsURL)
 }
 
-// getResponse makes a http Get request to the passed url and returns the response/error
+// getResponse makes an HTTP Get request to the passed url and returns the response/error
 func getResponse(url string) ([]byte, error) {
 	// url has been constructed by k8s.newPortForward and is not passed in by
 	// the user.

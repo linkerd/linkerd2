@@ -51,7 +51,7 @@ spec:
     # Each response class must define a condition.  All responses from this
     # route that match the condition will be classified as this response class.
     - condition:
-        # The simplest condition is a HTTP status code range.
+        # The simplest condition is an HTTP status code range.
         status:
           min: 500
           max: 599
