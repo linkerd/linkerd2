@@ -356,15 +356,9 @@ func TestOverrideIssuer(t *testing.T) {
 	}
 	// newK8S returns a test implementation of the k8s API; after setting the
 	// issuer trust anchor and tls crt+key as a secret.
-	newK8S := func(opts values.Options) *k8s.KubernetesAPI {
+	newK8S := func() *k8s.KubernetesAPI {
 		t.Helper()
-		buf := &bytes.Buffer{}
-		err := renderCRDs(context.Background(), nil, buf, opts, "yaml")
-		if err != nil {
-			t.Fatalf("cannot render-crds for new-k8s-api opts=%+v err=%v",
-				opts, err)
-		}
-		api, err := k8s.NewFakeAPIFromManifests([]io.Reader{buf})
+		api, err := k8s.NewFakeAPI()
 		if err != nil {
 			t.Fatalf("cannot create new fake-api from manifests err=%v", err)
 		}
@@ -437,7 +431,7 @@ func TestOverrideIssuer(t *testing.T) {
 				Values: []string{"identity.issuer.scheme=kubernetes.io/tls"},
 			},
 			values:                 testInstallValuesNoCertsNoHA,
-			k8sAPI:                 newK8S(values.Options{}),
+			k8sAPI:                 newK8S(),
 			expErr:                 "",
 			expIdentityTrustAnchor: true,
 			expIssuerKey:           false,
