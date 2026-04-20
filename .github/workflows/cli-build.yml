@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd
-      - uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
+      - uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f
         id: build
         with:
           build-args: |
@@ -32,7 +32,7 @@ jobs:
           push: false
           load: false
           outputs: type=local,dest=.
-      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         id: upload
         with:
           name: cli-bin-${{ inputs.version }}-${{ inputs.target }}
