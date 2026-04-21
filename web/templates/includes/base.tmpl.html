@@ -1,0 +1,19 @@
+{{ define "base" }}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Linkerd</title>
+    <meta name="description" content="Linkerd">
+    <meta name="keywords" content="Linkerd">
+    <link rel="icon" type="image/png" href="{{.Contents.PathPrefix}}dist/img/favicon.png">
+    <!-- material-ui uses Roboto -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400|Roboto+Mono" rel="stylesheet">
+    {{ template "script-tags" . }}
+  </head>
+  <body>
+    {{ template "content" .Contents }}
+  </body>
+</html>
+{{ end }}

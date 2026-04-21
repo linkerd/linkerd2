@@ -1,0 +1,91 @@
+#!/usr/bin/env sh
+
+# If the first argument to this script is "latest" or unset, it fetches the
+# latest proxy binary from the linkerd2-proxy github releases. If it's set to
+# a linkerd2-proxy version number (such as v2.76.0), it will fetch the binary
+# matching that version number instead.
+
+set -eu
+
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+builddir=$rootdir/target/proxy
+
+proxy_repo=${LINKERD2_PROXY_REPO:-}
+if [ -z "$proxy_repo" ]; then
+  proxy_repo=linkerd/linkerd2-proxy
+fi
+
+releases_url=https://api.github.com/repos/"$proxy_repo"/releases
+
+github_token=${GITHUB_TOKEN:-}
+if [ -z "$github_token" ] && [ -n "${GITHUB_TOKEN_FILE:-}" ] && [ -f "$GITHUB_TOKEN_FILE" ]; then
+  github_token=$(cat "$GITHUB_TOKEN_FILE")
+fi
+
+ghcurl() {
+  if [ -n "${github_token:-}" ]; then
+    "$bindir"/scurl -H "Authorization: Bearer ${github_token:-}" "$@"
+  else
+    "$bindir"/scurl "$@"
+  fi
+}
+
+mkdir -p "$builddir"
+cd "$builddir"
+
+version=${1:-latest}
+arch=${2:-amd64}
+
+if ! ghcurl "$releases_url" | jq '.[] | select(.name == "'"$version"'")' > release.json ; then
+  echo "Failed to fetch $releases_url" >&2
+  exit 1
+fi
+
+pkgname_legacy=linkerd2-proxy-${version}-${arch}
+pkgname_os=linkerd2-proxy-${version}-linux-${arch}
+
+# First try to find the Linux-specific package in the release assets
+if jq -e '.assets[] | select(.name == "'"${pkgname_os}.tar.gz"'")' release.json > /dev/null; then
+  pkgname=$pkgname_os
+else
+  # Fall back to the legacy package name
+  if jq -e '.assets[] | select(.name == "'"${pkgname_legacy}.tar.gz"'")' release.json > /dev/null; then
+    pkgname=$pkgname_legacy
+  else
+    echo "Neither ${pkgname_os}.tar.gz nor ${pkgname_legacy}.tar.gz found in release assets" >&2
+    exit 1
+  fi
+fi
+
+pkgfile=${pkgname}.tar.gz
+pkgurl=$(jq -r '.assets[] | select(.name == "'"$pkgfile"'") | .url' release.json)
+if ! ghcurl -H 'Accept: application/octet-stream' -o "$pkgfile" "$pkgurl" ; then
+  echo "Failed to fetch $pkgurl" >&2
+  exit 1
+fi
+
+shafile=${pkgname}.txt
+shaurl=$(jq -r '.assets[] | select(.name == "'"$shafile"'") | .url' release.json)
+if ! ghcurl -H 'Accept: application/octet-stream' -o "$shafile" "$shaurl" ; then
+  echo "Failed to fetch $shaurl" >&2
+  exit 1
+fi
+
+tar -zxvf "$pkgfile" >&2
+expected=$(awk '{print $1}' "$shafile")
+if [ "$(uname)" = "Darwin" ]; then
+  computed=$(openssl dgst -sha256 "$pkgfile" | awk '{print $2}')
+else
+  computed=$(sha256sum "$pkgfile" | awk '{print $1}')
+fi
+if [ "$computed" != "$expected" ]; then
+  echo 'sha mismatch' >&2
+  exit 1
+fi
+
+mv "$pkgname/LICENSE" .
+mv "$pkgname/linkerd2-proxy" .
+rm -r "$pkgfile" "$pkgname"
+mv linkerd2-proxy "$pkgname"
+echo "$builddir/$pkgname"

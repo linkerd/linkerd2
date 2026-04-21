@@ -1,0 +1,19 @@
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    dnsutils \
+    iptables \
+    jq \
+    nghttp2 \
+    tcpdump \
+    iproute2 \
+    lsof \
+    conntrack \
+    tshark && \
+    rm -rf /var/lib/apt/lists/*
+
+# We still rely on old iptables-legacy syntax.
+RUN update-alternatives --set iptables /usr/sbin/iptables-legacy \
+    && update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+
+ENTRYPOINT [ "tshark", "-i", "any" ]

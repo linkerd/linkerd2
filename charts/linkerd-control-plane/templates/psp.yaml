@@ -1,0 +1,119 @@
+{{ if .Values.enablePSP -}}
+---
+###
+### Control Plane PSP
+###
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: linkerd-{{.Release.Namespace}}-control-plane
+  annotations:
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: "runtime/default"
+  labels:
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+spec:
+  {{- if or .Values.proxyInit.closeWaitTimeoutSecs .Values.proxyInit.runAsRoot }}
+  allowPrivilegeEscalation: true
+  {{- else }}
+  allowPrivilegeEscalation: false
+  {{- end }}
+  readOnlyRootFilesystem: true
+  {{- if empty .Values.cniEnabled }}
+  allowedCapabilities:
+  - NET_ADMIN
+  - NET_RAW
+  {{- end}}
+  requiredDropCapabilities:
+  - ALL
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  seLinux:
+    rule: RunAsAny
+  runAsUser:
+    {{- if .Values.cniEnabled }}
+    rule: MustRunAsNonRoot
+    {{- else }}
+    rule: RunAsAny
+    {{- end }}
+  runAsGroup:
+    {{- if .Values.cniEnabled }}
+    rule: MustRunAs
+    ranges:
+    - min: 1000
+      max: 999999
+    {{- else }}
+    rule: RunAsAny
+    {{- end }}
+  supplementalGroups:
+    rule: MustRunAs
+    ranges:
+    {{- if .Values.cniEnabled }}
+    - min: 10001
+      max: 65535
+    {{- else }}
+    - min: 1
+      max: 65535
+    {{- end }}
+  fsGroup:
+    rule: MustRunAs
+    ranges:
+    {{- if .Values.cniEnabled }}
+    - min: 10001
+      max: 65535
+    {{- else }}
+    - min: 1
+      max: 65535
+    {{- end }}
+  volumes:
+  - configMap
+  - emptyDir
+  - secret
+  - projected
+  - downwardAPI
+  - persistentVolumeClaim
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: linkerd-psp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+rules:
+- apiGroups: ['policy', 'extensions']
+  resources: ['podsecuritypolicies']
+  verbs: ['use']
+  resourceNames:
+  - linkerd-{{.Release.Namespace}}-control-plane
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-psp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+roleRef:
+  kind: Role
+  name: linkerd-psp
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-destination
+  namespace: {{.Release.Namespace}}
+{{ if not .Values.disableHeartBeat -}}
+- kind: ServiceAccount
+  name: linkerd-heartbeat
+  namespace: {{.Release.Namespace}}
+{{ end -}}
+- kind: ServiceAccount
+  name: linkerd-identity
+  namespace: {{.Release.Namespace}}
+- kind: ServiceAccount
+  name: linkerd-proxy-injector
+  namespace: {{.Release.Namespace}}
+{{ end -}}

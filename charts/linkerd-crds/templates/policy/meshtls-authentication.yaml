@@ -1,0 +1,87 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: meshtlsauthentications.policy.linkerd.io
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+spec:
+  group: policy.linkerd.io
+  scope: Namespaced
+  names:
+    kind: MeshTLSAuthentication
+    plural: meshtlsauthentications
+    singular: meshtlsauthentication
+    shortNames: [meshtlsauthn]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                MeshTLSAuthentication defines a list of authenticated client IDs
+                to be referenced by an `AuthorizationPolicy`. If a client
+                connection has the mutually-authenticated identity that matches
+                ANY of the of the provided identities, the connection is
+                considered authenticated.
+              type: object
+              oneOf:
+                - required: [identities]
+                - required: [identityRefs]
+              properties:
+                identities:
+                  description: >-
+                    Authorizes clients with the provided proxy identity strings
+                    (as provided via MTLS)
+
+                    The `*` prefix can be used to match all identities in
+                    a domain. An identity string of `*` indicates that
+                    all authentication clients are authorized.
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                identityRefs:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required:
+                      - kind
+                    properties:
+                      group:
+                        description: >-
+                          Group is the group of the referent. When empty, the
+                          Kubernetes core API group is inferred."
+                        maxLength: 253
+                        pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                        type: string
+                      kind:
+                        description: >-
+                          Kind is the kind of the referent.
+                        maxLength: 63
+                        minLength: 1
+                        pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                        type: string
+                      name:
+                        description: >-
+                          Name is the name of the referent. When unspecified,
+                          this refers to all resources of the specified Group
+                          and Kind in the specified namespace.
+                        maxLength: 253
+                        minLength: 1
+                        type: string
+                      namespace:
+                        description: >-
+                          Name is the name of the referent. When unspecified,
+                          this authentication refers to the local namespace.
+                        maxLength: 253
+                        type: string

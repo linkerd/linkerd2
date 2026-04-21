@@ -1,0 +1,126 @@
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: cXVlIHBhcmFkYSBhdHJhc2FkYQ==
+    server: https://55.197.171.239
+  name: cluster1
+- cluster:
+    certificate-authority-data: cXVlIHBhcmFkYSBhdHJhc2FkYQ==
+    server: https://30.88.172.234
+  name: cluster2
+- cluster:
+    certificate-authority-data: cXVlIHBhcmFkYSBhdHJhc2FkYQ==
+    server: https://13.184.231.31
+  name: cluster3
+- cluster:
+    certificate-authority-data: cXVlIHBhcmFkYSBhdHJhc2FkYQ==
+    server: https://162.128.50.10
+  name: cluster4
+- cluster:
+    certificate-authority-data: cXVlIHBhcmFkYSBhdHJhc2FkYQ==
+    server: https://162.128.50.11/
+  name: clusterTrailingSlash
+- cluster:
+    certificate-authority-data: cXVlIHBhcmFkYSBhdHJhc2FkYQ==
+    server: https://162.128.50.12/k8s/clusters/c-fhjws
+  name: clusterWithPath
+contexts:
+- context:
+    cluster: cluster3
+    namespace: bobo-lab
+    user: cluster3
+  name: dev
+- context:
+    cluster: cluster1
+    user: cluster1
+  name: cluster1
+- context:
+    cluster: cluster2
+    user: cluster2
+  name: cluster2
+- context:
+    cluster: cluster3
+    user: cluster3
+  name: cluster3
+- context:
+    cluster: cluster4
+    user: cluster4
+  name: cluster4
+- context:
+    cluster: clusterTrailingSlash
+    user: clusterTrailingSlash
+  name: clusterTrailingSlash
+- context:
+    cluster: clusterWithPath
+    user: clusterWithPath
+  name: clusterWithPath
+current-context: cluster1
+kind: Config
+preferences: {}
+users:
+- name: cluster1
+  user:
+    auth-provider:
+      config:
+        access-token: 4cc3sspassatempo
+        cmd-args: config config-helper --format=json
+        cmd-path: /Users/bobojones/bin/google-cloud-sdk/bin/gcloud
+        expiry: 2017-10-11T06:30:02Z
+        expiry-key: '{.credential.token_expiry}'
+        token-key: '{.credential.access_token}'
+      name: gcp
+- name: cluster2
+  user:
+    auth-provider:
+      config:
+        access-token: 4cc3sspassatempo
+        cmd-args: config config-helper --format=json
+        cmd-path: /Users/bobojones/bin/google-cloud-sdk/bin/gcloud
+        expiry: 2017-12-14 06:30:02
+        expiry-key: '{.credential.token_expiry}'
+        token-key: '{.credential.access_token}'
+      name: gcp
+- name: cluster3
+  user:
+    auth-provider:
+      config:
+        access-token: 4cc3sspassatempo
+        cmd-args: config config-helper --format=json
+        cmd-path: /Users/bobojones/bin/google-cloud-sdk/bin/gcloud
+        expiry: 2017-10-17 18:40:01
+        expiry-key: '{.credential.token_expiry}'
+        token-key: '{.credential.access_token}'
+      name: gcp
+- name: cluster4
+  user:
+    auth-provider:
+      config:
+        access-token: 4cc3sspassatempoq
+        cmd-args: config config-helper --format=json
+        cmd-path: /Users/bobojones/bin/google-cloud-sdk/bin/gcloud
+        expiry: 2017-11-22 22:13:05
+        expiry-key: '{.credential.token_expiry}'
+        token-key: '{.credential.access_token}'
+      name: gcp
+- name: clusterTrailingSlash
+  user:
+    auth-provider:
+      config:
+        access-token: 4cc3sspassatempoq
+        cmd-args: config config-helper --format=json
+        cmd-path: /Users/bobojones/bin/google-cloud-sdk/bin/gcloud
+        expiry: 2017-11-22 22:13:05
+        expiry-key: '{.credential.token_expiry}'
+        token-key: '{.credential.access_token}'
+      name: gcp
+- name: clusterWithPath
+  user:
+    auth-provider:
+      config:
+        access-token: 4cc3sspassatempoq
+        cmd-args: config config-helper --format=json
+        cmd-path: /Users/bobojones/bin/google-cloud-sdk/bin/gcloud
+        expiry: 2017-11-22 22:13:05
+        expiry-key: '{.credential.token_expiry}'
+        token-key: '{.credential.access_token}'
+      name: gcp

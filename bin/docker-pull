@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -eu
+
+if [ $# -eq 1 ]; then
+    tag=${1:-}
+else
+    echo "usage: ${0##*/} tag" >&2
+    exit 64
+fi
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+
+# shellcheck source=_docker.sh
+. "$bindir"/_docker.sh
+
+for img in "${DOCKER_IMAGES[@]}"; do
+    docker_pull "$img" "$tag"
+done

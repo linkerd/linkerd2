@@ -1,0 +1,106 @@
+---
+###
+### Tap Injector RBAC
+###
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-tap-injector
+  labels:
+    linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-tap-injector
+  labels:
+    linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+subjects:
+- kind: ServiceAccount
+  name: tap-injector
+  namespace: {{.Release.Namespace}}
+roleRef:
+  kind: ClusterRole
+  name: linkerd-tap-injector
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: tap-injector
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
+---
+{{- $host := printf "tap-injector.%s.svc" .Release.Namespace }}
+{{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
+{{- if (not .Values.tapInjector.externalSecret) }}
+kind: Secret
+apiVersion: v1
+metadata:
+  name: tap-injector-k8s-tls
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.crtPEM)) (empty .Values.tapInjector.crtPEM) }}
+  tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.tapInjector.keyPEM)) (empty .Values.tapInjector.keyPEM) }}
+---
+{{- end }}
+{{- include "linkerd.webhook.validation" .Values.tapInjector }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-tap-injector-webhook-config
+  {{- if or (.Values.tapInjector.injectCaFrom) (.Values.tapInjector.injectCaFromSecret) }}
+  annotations:
+  {{- if .Values.tapInjector.injectCaFrom }}
+    cert-manager.io/inject-ca-from: {{ .Values.tapInjector.injectCaFrom }}
+  {{- end }}
+  {{- if .Values.tapInjector.injectCaFromSecret }}
+    cert-manager.io/inject-ca-from-secret: {{ .Values.tapInjector.injectCaFromSecret }}
+  {{- end }}
+  {{- end }}
+  labels:
+    linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+webhooks:
+- name: tap-injector.linkerd.io
+  {{- if .Values.tapInjector.namespaceSelector }}
+  namespaceSelector:
+{{ toYaml .Values.tapInjector.namespaceSelector | trim | indent 4 -}}
+  {{- end }}
+  {{- if .Values.tapInjector.objectSelector }}
+  objectSelector:
+{{ toYaml .Values.tapInjector.objectSelector | trim | indent 4 -}}
+  {{- end }}
+  clientConfig:
+    service:
+      name: tap-injector
+      namespace: {{ .Release.Namespace }}
+      path: "/"
+    {{- if and (empty .Values.tapInjector.injectCaFrom) (empty .Values.tapInjector.injectCaFromSecret) }}
+    caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.caBundle)) (empty .Values.tapInjector.caBundle) }}
+    {{- end }}
+  failurePolicy: {{.Values.tapInjector.failurePolicy}}
+  admissionReviewVersions: ["v1", "v1beta1"]
+  reinvocationPolicy: IfNeeded
+  rules:
+  - operations: [ "CREATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+    scope: "Namespaced"
+  sideEffects: None

@@ -1,0 +1,19 @@
+{
+  "plugins": [
+    "@babel/plugin-proposal-class-properties",
+    "babel-plugin-macros"
+  ],
+  "env": {
+    "production": {
+      "plugins": ["transform-react-remove-prop-types"]
+    }
+  },
+  "presets": [
+    ["@babel/preset-env",
+      { // Copied from https://newbedev.com/babel-7-referenceerror-regeneratorruntime-is-not-defined
+        "useBuiltIns": "entry",
+        "corejs": 3,
+        "targets": {"node": "current"}
+      }
+    ], "@babel/preset-react"]
+}

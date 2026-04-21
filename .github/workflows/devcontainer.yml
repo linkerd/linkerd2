@@ -1,0 +1,44 @@
+name: Devcontainer
+
+# When a pull request is opened that changes the Devcontainer configuration,
+# ensure that the container continues to build properly.
+on:
+  pull_request:
+    paths:
+      - .devcontainer/devcontainer.json
+      - .github/workflows/devcontainer.yml
+      - rust-toolchain
+
+permissions:
+  contents: read
+
+jobs:
+  rust-version:
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    container: ghcr.io/linkerd/dev:v49-rust
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - shell: bash
+        run: |
+          # Extract current Rust version from the toolchain file.
+          version_regex='channel = "([0-9]+\.[0-9]+\.[0-9]+)"'
+          toolchain=$(cat rust-toolchain.toml)
+          if [[ $toolchain =~ $version_regex ]]; then
+            tc=${BASH_REMATCH[1]}
+          else
+            echo "::error file=rust-toolchain.toml::failed to parse rust-toolchain.toml"
+            exit 1
+          fi
+
+          dev=$(cargo version | cut -d' ' -f2)
+          if [ "$dev" != "$tc" ]; then
+            echo "::error file=rust-toolchain.toml,line=2::rust-toolchain ($tc) does not match devcontainer ($dev)"
+            exit 1
+          fi
+
+  devcontainer-image:
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - uses: linkerd/dev/actions/setup-tools@v48
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - run: just-dev pull-dev-image

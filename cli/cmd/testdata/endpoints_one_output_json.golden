@@ -1,0 +1,24 @@
+[
+  {
+    "namespace": "emojivoto",
+    "ip": "1.2.3.4",
+    "port": 8080,
+    "pod": "emoji-6bf9f47bd5-jjcrl",
+    "service": "emoji-svc.emojivoto",
+    "weight": 0,
+    "labels": {
+      "pod": "emoji-6bf9f47bd5-jjcrl"
+    }
+  },
+  {
+    "namespace": "emojivoto",
+    "ip": "5.6.7.8",
+    "port": 8080,
+    "pod": "voting-7bf9f47bd5-jjdrl",
+    "service": "voting-svc.emojivoto",
+    "weight": 0,
+    "labels": {
+      "pod": "voting-7bf9f47bd5-jjdrl"
+    }
+  }
+]

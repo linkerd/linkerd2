@@ -1,0 +1,18 @@
+{{ if .Values.gateway.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: probe-gateway-{{.Values.targetClusterName}}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/extension: multicluster
+    mirror.linkerd.io/mirrored-gateway: "true"
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+spec:
+  ports:
+  - name: mc-probe
+    port: {{.Values.gateway.probe.port}}
+    protocol: TCP
+{{ end -}}

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+set -u
+
+while IFS= read -r line; do dirs+=("$line"); done <<< "$(go list -f \{\{.Dir\}\} ./...)"
+
+# go list will list all subdirectories and goimports acts recursively.  This
+# results in certain files being reported multiple time.  Therefore, we must
+# dedup them. We also ignore protobuf auto-generated code.
+files=()
+while IFS= read -r line; do files+=("$line"); done <<< "$(bin/goimports -l "${dirs[@]}" | sort -u | grep -v pb.go | grep -v gogen.go | grep -v /controller/gen )"
+
+if [[ ${files[*]} ]]; then
+  for file in "${files[@]}"; do
+    bin/goimports -d "$@" "$file"
+  done
+  exit 64
+fi

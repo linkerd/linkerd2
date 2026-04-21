@@ -1,0 +1,25 @@
+apiVersion: "v2"
+# this version will be updated by the CI before publishing the Helm tarball
+appVersion: edge-XX.X.X
+description: |
+  Linkerd gives you observability, reliability, and security
+  for your microservices — with no code change required.
+type: application
+home: https://linkerd.io
+keywords:
+  - service-mesh
+kubeVersion: ">=1.23.0-0"
+name: "linkerd-control-plane"
+sources:
+  - https://github.com/linkerd/linkerd2/
+dependencies:
+  - name: partials
+    version: 0.1.0
+    repository: file://../partials
+# this version will be updated by the CI before publishing the Helm tarball
+version: 0.0.0-undefined
+icon: https://linkerd.io/images/logo-only-200h.png
+maintainers:
+  - name: Linkerd authors
+    email: cncf-linkerd-dev@lists.cncf.io
+    url: https://linkerd.io/

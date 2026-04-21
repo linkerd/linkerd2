@@ -1,0 +1,20 @@
+apiVersion: "v1"
+# this version will be updated by the CI before publishing the Helm tarball
+appVersion: edge-XX.X.X
+description: |
+  The Linkerd-Multicluster extension contains resources to support multicluster
+  linking to remote clusters
+home: https://linkerd.io
+keywords:
+  - service-mesh
+kubeVersion: ">=1.23.0-0"
+name: "linkerd-multicluster"
+sources:
+  - https://github.com/linkerd/linkerd2/
+# this version will be updated by the CI before publishing the Helm tarball
+version: 0.0.0-undefined
+icon: https://linkerd.io/images/logo-only-200h.png
+maintainers:
+  - name: Linkerd authors
+    email: cncf-linkerd-dev@lists.cncf.io
+    url: https://linkerd.io/

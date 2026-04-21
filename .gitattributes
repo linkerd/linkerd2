@@ -1,0 +1,8 @@
+# Expand these files in PRs:
+go.sum linguist-generated=false
+**/Cargo.lock linguist-generated=false
+# Collapse these files in PRs:
+controller/gen/**/*.pb.go linguist-generated=true
+**/*.golden linguist-generated=true
+**/*.golden.yml linguist-generated=true
+controller/proxy-injector/fake/data/* linguist-generated=true

@@ -1,0 +1,101 @@
+{{ if not .Values.disableHeartBeat -}}
+---
+###
+### Heartbeat
+###
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: linkerd-heartbeat
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: heartbeat
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{.Values.linkerdVersion}}
+    linkerd.io/control-plane-component: heartbeat
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  concurrencyPolicy: Replace
+  {{ if .Values.heartbeatSchedule -}}
+  schedule: "{{.Values.heartbeatSchedule}}"
+  {{ else -}}
+  schedule: "{{ dateInZone "04 15 * * *" (now | mustDateModify "+10m") "UTC"}}"
+  {{ end -}}
+  successfulJobsHistoryLimit: 0
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            linkerd.io/control-plane-component: heartbeat
+            linkerd.io/workload-ns: {{.Release.Namespace}}
+            {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 12 }}{{- end }}
+          annotations:
+            {{ include "partials.annotations.created-by" . }}
+            {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 12 }}{{- end }}
+        spec:
+          {{- if .Values.priorityClassName }}
+          priorityClassName: {{ .Values.priorityClassName }}
+          {{- end -}}
+          {{- with .Values.runtimeClassName }}
+          runtimeClassName: {{ . | quote }}
+          {{- end }}
+          {{- if .Values.tolerations -}}
+          {{- include "linkerd.tolerations" . | nindent 10 }}
+          {{- end -}}
+          {{- include "linkerd.node-selector" . | nindent 10 }}
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+          serviceAccountName: linkerd-heartbeat
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          containers:
+          - name: heartbeat
+            image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
+            imagePullPolicy: {{.Values.imagePullPolicy}}
+            env:
+            - name: LINKERD_DISABLED
+              value: "the heartbeat controller does not use the proxy"
+            {{- with (.Values.heartbeat).additionalEnv }}
+            {{- toYaml . | nindent 12 -}}
+            {{- end }}
+            {{- with (.Values.heartbeat).experimentalEnv }}
+            {{- toYaml . | nindent 12 -}}
+            {{- end }}
+            args:
+            - "heartbeat"
+            - "-controller-namespace={{.Release.Namespace}}"
+            - "-log-level={{.Values.controllerLogLevel}}"
+            - "-log-format={{.Values.controllerLogFormat}}"
+            {{- if .Values.prometheusUrl }}
+            - "-prometheus-url={{.Values.prometheusUrl}}"
+            {{- else }}
+            - "-prometheus-url=http://prometheus.linkerd-viz.svc.{{.Values.clusterDomain}}:9090"
+            {{- end }}
+            {{- if .Values.heartbeatResources -}}
+            {{- include "partials.resources" .Values.heartbeatResources | nindent 12 }}
+            {{- end }}
+            securityContext:
+              capabilities:
+                drop:
+                - ALL
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: {{.Values.controllerUID}}
+              {{- if ge (int .Values.controllerGID) 0 }}
+              runAsGroup: {{.Values.controllerGID}}
+              {{- end }}
+              allowPrivilegeEscalation: false
+              seccompProfile:
+                type: RuntimeDefault
+            volumeMounts:
+            - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              name: kube-api-access
+              readOnly: true
+          volumes:
+          - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 12 | trimPrefix (repeat 11 " ") }}
+{{- end }}

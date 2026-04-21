@@ -1,0 +1,5 @@
+
+‼ "linkerd.io/inject: disabled" annotation set on deployment/web
+
+deployment "web" skipped
+

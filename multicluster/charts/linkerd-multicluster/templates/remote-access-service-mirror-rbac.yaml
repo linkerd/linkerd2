@@ -1,0 +1,84 @@
+{{if .Values.remoteMirrorServiceAccount -}}
+{{- $names := .Values.remoteMirrorServiceAccountName -}}
+{{- if not (kindIs "slice" .Values.remoteMirrorServiceAccountName) -}}
+  {{- $names = splitList "," .Values.remoteMirrorServiceAccountName -}}
+{{- end -}}
+{{- range $names -}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{.}}
+  labels:
+    linkerd.io/extension: multicluster
+    {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" $ }}
+rules:
+- apiGroups: ["apps"]
+  resources: ["replicasets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "endpoints", "services"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["policy.linkerd.io"]
+  resources: ["servers"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{.}}
+  namespace: {{$.Release.Namespace}}
+  labels:
+    linkerd.io/extension: multicluster
+    {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" $ }}
+{{- include "partials.image-pull-secrets" $.Values.imagePullSecrets }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.}}-token
+  namespace: {{$.Release.Namespace}}
+  labels:
+    linkerd.io/extension: multicluster
+    {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    kubernetes.io/service-account.name: {{.}}
+    {{ include "partials.annotations.created-by" $ }}
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{.}}
+  labels:
+    linkerd.io/extension: multicluster
+    {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" $ }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{.}}
+subjects:
+- kind: ServiceAccount
+  name: {{.}}
+  namespace: {{$.Release.Namespace}}
+{{end -}}
+{{end -}}

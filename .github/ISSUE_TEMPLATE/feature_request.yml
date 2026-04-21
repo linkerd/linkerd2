@@ -1,0 +1,46 @@
+name: "💡 Feature Request"
+description: If you have a suggestion for how to improve Linkerd
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest a new feature! Please fill out this form as completely as possible.
+
+        Please search to see if an issue already exists for the feature you are suggesting.
+
+  - type: textarea
+    attributes:
+      label: What problem are you trying to solve?
+      description: A concise description of what the problem is.
+      placeholder: I have an issue when [...]
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: How should the problem be solved?
+      description: What do you want to happen? Add any considered drawbacks.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Any alternatives you've considered?
+      description: Is there another way to solve this problem that isn't as good a solution?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: How would users interact with this feature?
+      description: If you can, explain how users will be able to use this. Maybe come sample CLI output?
+
+  - type: dropdown
+    attributes:
+      label: Would you like to work on this feature?
+      description: We are more than happy to help you through the process.
+      options:
+        - "yes"
+        - "no"
+        - "maybe"

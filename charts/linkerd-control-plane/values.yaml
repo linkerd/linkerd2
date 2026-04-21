@@ -1,0 +1,744 @@
+# Default values for linkerd.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# -- Kubernetes DNS Domain name to use
+clusterDomain: cluster.local
+
+# -- The cluster networks for which service discovery is performed. This should
+# include the pod and service networks, but need not include the node network.
+#
+# By default, all IPv4 private networks and all accepted IPv6 ULAs are
+# specified so that resolution works in typical Kubernetes environments.
+clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8"
+# -- Docker image pull policy
+imagePullPolicy: IfNotPresent
+# -- Specifies the number of old ReplicaSets to retain to allow rollback.
+revisionHistoryLimit: 10
+# -- Log level for the control plane components
+controllerLogLevel: info
+# -- Log format for the control plane components
+controllerLogFormat: plain
+# -- control plane version. See Proxy section for proxy version
+linkerdVersion: linkerdVersionValue
+# -- default kubernetes deployment strategy
+deploymentStrategy:
+  rollingUpdate:
+    maxUnavailable: 25%
+    maxSurge: 25%
+# -- enables the use of EndpointSlice informers for the destination service;
+# enableEndpointSlices should be set to true only if EndpointSlice K8s feature
+# gate is on
+enableEndpointSlices: true
+# -- enables pod anti affinity creation on deployments for high availability
+enablePodAntiAffinity: false
+# -- enables the use of pprof endpoints on control plane component's admin
+# servers
+enablePprof: false
+# -- enables the creation of pod disruption budgets for control plane components
+enablePodDisruptionBudget: false
+# -- disables routing IPv6 traffic in addition to IPv4 traffic through the
+# proxy (IPv6 routing only available as of proxy-init v2.3.0 and linkerd-cni
+# v1.4.0)
+disableIPv6: true
+
+controller:
+  # -- sets pod disruption budget parameter for all deployments
+  podDisruptionBudget:
+    # -- Maximum number of pods that can be unavailable during disruption
+    maxUnavailable: 1
+  # Configures tracing in the controllers and how traces are exported
+  tracing:
+    # -- Enables trace collection and export in the proxy
+    enabled: false
+    collector:
+      # -- The collector endpoint to send traces to. Required if tracing is
+      # enabled. If this is unset and `proxy.tracing.collector.endpoint` is set,
+      # that endpoint will be re-used here.
+      endpoint: ""
+# -- enabling this omits the NET_ADMIN capability in the PSP
+# and the proxy-init container when injecting the proxy;
+# requires the linkerd-cni plugin to already be installed
+cniEnabled: false
+# -- Trust root certificate (ECDSA). It must be provided during install.
+identityTrustAnchorsPEM: |
+# -- Trust domain used for identity
+# @default -- clusterDomain
+identityTrustDomain: ""
+kubeAPI: &kubeapi
+  # -- Maximum QPS sent to the kube-apiserver before throttling.
+  # See [token bucket rate limiter
+  # implementation](https://github.com/kubernetes/client-go/blob/v12.0.0/util/flowcontrol/throttle.go)
+  clientQPS: 100
+  # -- Burst value over clientQPS
+  clientBurst: 200
+# -- Additional annotations to add to all pods
+podAnnotations: {}
+# -- Additional labels to add to all pods
+podLabels: {}
+# -- Labels to apply to all resources
+commonLabels: {}
+# -- Kubernetes priorityClassName for the Linkerd Pods
+priorityClassName: ""
+# -- Runtime Class Name for all the pods
+runtimeClassName: ""
+
+# policy controller configuration
+policyController:
+  # `image` has been removed.
+
+  # -- Log level for the policy controller
+  logLevel: info
+
+  # -- The networks from which probes are performed.
+  #
+  # By default, all networks are allowed so that all probes are authorized.
+  probeNetworks:
+    - 0.0.0.0/0
+    - "::/0"
+
+  # -- policy controller resource requests & limits
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the policy controller can use
+      limit: ""
+      # -- Amount of CPU units that the policy controller requests
+      request: ""
+    memory:
+      # -- Maximum amount of memory that the policy controller can use
+      limit: ""
+      # -- Maximum amount of memory that the policy controller requests
+      request: ""
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the policy controller can use
+      limit: ""
+      # -- Amount of ephemeral storage that the policy controller requests
+      request: ""
+
+  livenessProbe:
+    timeoutSeconds: 1
+  readinessProbe:
+    timeoutSeconds: 1
+
+# proxy configuration
+proxy:
+  # -- Enable service profiles for non-Kubernetes services
+  enableExternalProfiles: false
+  # -- Maximum time allowed for the proxy to establish an outbound TCP
+  # connection
+  outboundConnectTimeout: 1000ms
+  # -- Maximum time allowed for the proxy to establish an inbound TCP
+  # connection
+  inboundConnectTimeout: 100ms
+  # -- Maximum time allowed before an unused outbound discovery result
+  # is evicted from the cache
+  outboundDiscoveryCacheUnusedTimeout: "5s"
+  # -- Maximum time allowed before an unused inbound discovery result
+  # is evicted from the cache
+  inboundDiscoveryCacheUnusedTimeout: "90s"
+  # -- When set to true, disables the protocol detection timeout on the
+  # outbound side of the proxy by setting it to a very high value
+  disableOutboundProtocolDetectTimeout: false
+  # -- When set to true, disables the protocol detection timeout on the inbound
+  # side of the proxy by setting it to a very high value
+  disableInboundProtocolDetectTimeout: false
+  image:
+    # -- Docker image for the proxy
+    name: cr.l5d.io/linkerd/proxy
+    # -- Pull policy for the proxy container image
+    # @default -- imagePullPolicy
+    pullPolicy: ""
+    # -- Tag for the proxy container image
+    # @default -- linkerdVersion
+    version: ""
+  # -- Enables the proxy's /shutdown admin endpoint
+  enableShutdownEndpoint: false
+  # -- Log level for the proxy
+  logLevel: warn,linkerd=info,hickory=error
+  # -- Log format (`plain` or `json`) for the proxy
+  logFormat: plain
+  # -- (`off` or `insecure`) If set to `off`, will prevent the proxy from
+  # logging HTTP headers. If set to `insecure`, HTTP headers may be logged
+  # verbatim. Note that setting this to `insecure` is not alone sufficient to
+  # log HTTP headers; the proxy logLevel must also be set to debug.
+  logHTTPHeaders: "off"
+  ports:
+    # -- Admin port for the proxy container
+    admin: 4191
+    # -- Control port for the proxy container
+    control: 4190
+    # -- Inbound port for the proxy container
+    inbound: 4143
+    # -- Outbound port for the proxy container
+    outbound: 4140
+
+  # -- Deprecated: use runtime.workers.minimum
+  cores:
+
+  runtime:
+    # -- Worker threadpool configuration. The minimum will be automatically
+    # derived from workload proxy CPU requests, when they are configured by
+    # annotation. A cluster-level maximum may be configured here (and a
+    # workload-level annotation is supported as well).
+    workers:
+      # -- Maximum number of worker threads that the proxy can use, by ratio of
+      # the number of available CPUs. A value of 1.0 allocates a worker thread
+      # for all available CPUs. A value of 0.1 allocates a worker thread for
+      # 10% of the available CPUs.
+      maximumCPURatio:
+
+      # -- Configures a lower bound on the number of worker threads that the
+      # proxy can use. When maximumCPURatio is not set, this value
+      # is used.
+      minimum: 1
+
+  resources:
+    # -- CPU configuration, when specified globally in Helm values, should be
+    # kept in sync with the above runtime.workers.minimum configuration. The
+    # minimum should reflect _at least_ the CPU request. When a limit is set,
+    # the minimum should match the limit (and the maximumCPURatio should be
+    # unset).
+    cpu:
+      # -- Maximum amount of CPU units that the proxy can use
+      limit: ""
+      # -- Amount of CPU units that the proxy requests
+      request: ""
+
+    memory:
+      # -- Maximum amount of memory that the proxy can use
+      limit: ""
+      # -- Maximum amount of memory that the proxy requests
+      request: ""
+
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the proxy can use
+      limit: ""
+      # -- Amount of ephemeral storage that the proxy requests
+      request: ""
+
+  # -- User id under which the proxy runs
+  uid: 2102
+  # -- (int) Optional customisation of the group id under which the proxy runs (the group ID will be omitted if lower than 0)
+  gid: -1
+  # -- Optional custom security context for the proxy container.
+  securityContext: {}
+
+  # -- If set the injected proxy sidecars in the data plane will stay alive for
+  # at least the given period before receiving the SIGTERM signal from
+  # Kubernetes but no longer than the pod's `terminationGracePeriodSeconds`.
+  # See [Lifecycle
+  # hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks)
+  # for more info on container lifecycle hooks.
+  waitBeforeExitSeconds: 0
+  # -- If set, the application container will not start until the proxy is
+  # ready
+  await: true
+  requireIdentityOnInboundPorts: ""
+  # -- Default set of opaque ports
+  # - SMTP (25,587) server-first
+  # - MYSQL (3306) server-first
+  # - Galera (4444) server-first
+  # - PostgreSQL (5432) server-first
+  # - Redis (6379) server-first
+  # - ElasticSearch (9300) server-first
+  # - Memcached (11211) clients do not issue any preamble, which breaks detection
+  opaquePorts: "25,587,3306,4444,5432,6379,9300,11211"
+  # -- Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections.
+  shutdownGracePeriod: ""
+  # -- The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated",
+  # "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny", "audit"
+  # @default -- "all-unauthenticated"
+  defaultInboundPolicy: "all-unauthenticated"
+  # -- Configures the outbound transport mode. Valid values are "transport-header" and "transparent"
+  outboundTransportMode: transport-header
+  # -- Enable KEP-753 native sidecars
+  # This is a beta feature. It requires Kubernetes >= 1.29.
+  # If enabled, .proxy.waitBeforeExitSeconds should not be used.
+  nativeSidecar: false
+  # -- Native sidecar proxy startup probe parameters.
+  # -- LivenessProbe timeout and delay configuration
+  livenessProbe:
+    initialDelaySeconds: 10
+    timeoutSeconds: 1
+  # -- ReadinessProbe timeout and delay configuration
+  readinessProbe:
+    initialDelaySeconds: 2
+    timeoutSeconds: 1
+  startupProbe:
+    initialDelaySeconds: 0
+    periodSeconds: 1
+    failureThreshold: 120
+  # Configures general properties of the proxy's control plane clients.
+  control:
+    # Configures limits on API response streams.
+    streams:
+      # -- The timeout for the first update from the control plane.
+      initialTimeout: "3s"
+      # -- The timeout between consecutive updates from the control plane.
+      idleTimeout: "5m"
+      # -- The maximum duration for a response stream (i.e. before it will be
+      # reinitialized).
+      lifetime: "1h"
+  # Configures proxy metrics
+  metrics:
+      # -- Whether or not to export hostname labels in outbound request metrics.
+      hostnameLabels: false
+  # Configures tracing in the proxy and how they are exported
+  tracing:
+    # -- Enables trace collection and export in the proxy
+    enabled: false
+    traceServiceName: linkerd-proxy
+    # -- Additional labels to add to the traces emitted by the proxy.
+    # These should generally not be set globally, and instead overridden on
+    # individual workloads via `resource.opentelemetry.io/<label>` annotations.
+    labels:
+      k8s.pod.ip: "$(_pod_ip)"
+      k8s.pod.uid: "$(_pod_uid)"
+      k8s.container.name: "$(_pod_containerName)"
+    collector:
+      # -- The collector endpoint to send traces to.
+      endpoint: ""
+      # -- The identity of the collector in the linkerd mesh.
+      meshIdentity:
+        # -- Mesh identity name for the trace collector. This should be set to
+        # the name of the service account attached to the collector. If
+        # there's no explicitly set service account, this will probably be
+        # "default".
+        serviceAccountName: ""
+        # -- Mesh identity namespace for the trace collector. This should be
+        # set to the namespace of the service account attached to the
+        # collector. If there's no explicitly set service account, this is the
+        # namespace of the collector.
+        namespace: ""
+  inbound:
+    server:
+      http2:
+        # -- The interval at which PINGs are issued to remote HTTP/2 clients.
+        keepAliveInterval: "10s"
+        # -- The timeout within which keep-alive PINGs must be acknowledged on inbound HTTP/2 connections.
+        keepAliveTimeout: "3s"
+  outbound:
+    server:
+      http2:
+        # -- The interval at which PINGs are issued to local application HTTP/2 clients.
+        keepAliveInterval: "10s"
+        # -- The timeout within which keep-alive PINGs must be acknowledged on outbound HTTP/2 connections.
+        keepAliveTimeout: "3s"
+
+# proxy-init configuration
+proxyInit:
+  # -- Variant of iptables that will be used to configure routing. Currently,
+  # proxy-init can be run either in 'nft' or in 'legacy' mode. The mode will
+  # control which utility binary will be called. The host must support
+  # whichever mode will be used
+  iptablesMode: "nft"
+  # -- Default set of inbound ports to skip via iptables
+  # - Galera (4567,4568)
+  ignoreInboundPorts: "4567,4568"
+  # -- Default set of outbound ports to skip via iptables
+  # - Galera (4567,4568)
+  ignoreOutboundPorts: "4567,4568"
+  # -- Default set of ports to skip via iptables for control plane
+  # components so they can communicate with the Kubernetes API Server
+  kubeAPIServerPorts: "443,6443"
+  # -- Comma-separated list of subnets in valid CIDR format that should be skipped by the proxy
+  skipSubnets: ""
+  # -- Log level for the proxy-init
+  # @default -- info
+  logLevel: ""
+  # -- Log format (`plain` or `json`) for the proxy-init
+  # @default -- plain
+  logFormat: ""
+  # -- Changes the default value for the nf_conntrack_tcp_timeout_close_wait
+  # kernel parameter. If used, runAsRoot needs to be true.
+  closeWaitTimeoutSecs: 0
+  # -- Privileged mode allows the container processes to inherit all security
+  # capabilities and bypass any security limitations enforced by the kubelet.
+  # When used with 'runAsRoot: true', the container will behave exactly as if
+  # it was running as root on the host. May escape cgroup limits and see other
+  # processes and devices on the host.
+  # @default -- false
+  privileged: false
+  # -- Allow overriding the runAsNonRoot behaviour (<https://github.com/linkerd/linkerd2/issues/7308>)
+  runAsRoot: false
+  # -- This value is used only if runAsRoot is false; otherwise runAsUser will be 0
+  runAsUser: 65534
+  # -- This value is used only if runAsRoot is false; otherwise runAsGroup will be 0
+  runAsGroup: 65534
+  xtMountPath:
+    mountPath: /run
+    name: linkerd-proxy-init-xtables-lock
+
+# network validator configuration
+# This runs on a host that uses iptables to reroute network traffic. The validator
+# ensures that iptables is correctly routing requests before we start linkerd.
+networkValidator:
+  # -- Log level for the network-validator
+  # @default -- debug
+  logLevel: debug
+  # -- Log format (`plain` or `json`) for network-validator
+  # @default -- plain
+  logFormat: plain
+  # -- Address to which the network-validator will attempt to connect. This should be an IP
+  # that the cluster is expected to be able to reach but a port it should not, e.g., a public IP
+  # for public clusters and a private IP for air-gapped clusters with a port like 20001.
+  # If empty, defaults to 1.1.1.1:20001 and [fd00::1]:20001 for IPv4 and IPv6 respectively.
+  connectAddr: ""
+  # -- Address to which network-validator listens to requests from itself.
+  # If empty, defaults to 0.0.0.0:4140 and [::]:4140 for IPv4 and IPv6 respectively.
+  listenAddr: ""
+  # -- Timeout before network-validator fails to validate the pod's network connectivity
+  timeout: "10s"
+  # -- The securityContext in the network-validator pod spec
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: true
+    runAsGroup: 65534
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
+
+# -- For Private docker registries, authentication is needed.
+#  Registry secrets are applied to the respective service accounts
+imagePullSecrets: []
+# - name: my-private-docker-registry-login-secret
+
+# -- Allow proxies to perform transparent HTTP/2 upgrading
+enableH2Upgrade: true
+
+# -- Add a PSP resource and bind it to the control plane ServiceAccounts. Note
+# PSP has been deprecated since k8s v1.21
+enablePSP: false
+
+# -- Failure policy for the proxy injector
+webhookFailurePolicy: Ignore
+
+# controllerImage -- Docker image for the destination and identity components
+controllerImage: cr.l5d.io/linkerd/controller
+# -- Optionally allow a specific container image Tag (or SHA) to be specified for the controllerImage.
+controllerImageVersion: ""
+
+# -- Number of replicas for each control plane pod
+controllerReplicas: 1
+# -- User ID for the control plane components
+controllerUID: 2103
+# -- (int) Optional customisation of the group ID for the control plane components (the group ID will be omitted if lower than 0)
+controllerGID: -1
+
+# destination configuration
+# set resources for the sp-validator and its linkerd proxy respectively
+# see proxy.resources for details.
+# destinationResources -- CPU, Memory and Ephemeral Storage resources required by destination (see `proxy.resources` for sub-fields)
+#destinationResources:
+# destinationProxyResources -- CPU, Memory and Ephemeral Storage resources required by proxy injected into destination pod (see `proxy.resources` for sub-fields)
+#destinationProxyResources:
+
+destinationController:
+  meshedHttp2ClientProtobuf:
+    keep_alive:
+      interval:
+        seconds: 10
+      timeout:
+        seconds: 3
+      while_idle: true
+  # -- Additional annotations to add to destination pods
+  podAnnotations: {}
+  livenessProbe:
+    timeoutSeconds: 1
+  readinessProbe:
+    timeoutSeconds: 1
+
+# debug configuration
+debugContainer:
+  image:
+    # -- Docker image for the debug container
+    name: cr.l5d.io/linkerd/debug
+    # -- Pull policy for the debug container image
+    # @default -- imagePullPolicy
+    pullPolicy: ""
+    # -- Tag for the debug container image
+    # @default -- linkerdVersion
+    version: ""
+
+identity:
+  # -- If the linkerd-identity-trust-roots ConfigMap has already been created
+  externalCA: false
+
+  # -- Use [Service Account token Volume projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection) for pod validation instead of the default token
+  serviceAccountTokenProjection: true
+
+  issuer:
+    scheme: linkerd.io/tls
+
+    # -- Amount of time to allow for clock skew within a Linkerd cluster
+    clockSkewAllowance: 20s
+
+    # -- Amount of time for which the Identity issuer should certify identity
+    issuanceLifetime: 24h0m0s
+
+    # -- Which scheme is used for the identity issuer secret format
+    tls:
+      # -- Issuer certificate (ECDSA). It must be provided during install.
+      crtPEM: |
+
+      # -- Key for the issuer certificate (ECDSA). It must be provided during
+      # install
+      keyPEM: |
+
+  kubeAPI: *kubeapi
+
+  # -- Additional annotations to add to identity pods
+  podAnnotations: {}
+
+  livenessProbe:
+    timeoutSeconds: 1
+  readinessProbe:
+    timeoutSeconds: 1
+
+# -|- CPU, Memory and Ephemeral Storage resources required by the identity controller (see `proxy.resources` for sub-fields)
+#identityResources:
+# -|- CPU, Memory and Ephemeral Storage resources required by proxy injected into identity pod (see `proxy.resources` for sub-fields)
+#identityProxyResources:
+
+# heartbeat configuration
+# disableHeartBeat -- Set to true to not start the heartbeat cronjob
+disableHeartBeat: false
+# -- Config for the heartbeat cronjob
+# heartbeatSchedule: "0 0 * * *"
+
+# proxy injector configuration
+proxyInjector:
+  # -- Timeout in seconds before the API Server cancels a request to the proxy
+  # injector. If timeout is exceeded, the webhookfailurePolicy is used.
+  timeoutSeconds: 10
+  # -- Do not create a secret resource for the proxyInjector webhook.
+  # If this is set to `true`, the value `proxyInjector.caBundle` must be set
+  # or the ca bundle must injected with cert-manager ca injector using
+  # `proxyInjector.injectCaFrom` or `proxyInjector.injectCaFromSecret` (see below).
+  externalSecret: false
+
+  # -- Namespace selector used by admission webhook.
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
+      - cert-manager
+
+  # -- Object selector used by admission webhook.
+  objectSelector:
+    matchExpressions:
+    - key: linkerd.io/control-plane-component
+      operator: DoesNotExist
+    - key: linkerd.io/cni-resource
+      operator: DoesNotExist
+
+  # -- Certificate for the proxy injector. If not provided and not using an external secret
+  # then Helm will generate one.
+  crtPEM: |
+
+  # -- Certificate key for the proxy injector. If not provided and not using an external secret
+  # then Helm will generate one.
+  keyPEM: |
+
+  # -- Bundle of CA certificates for proxy injector.
+  # If not provided nor injected with cert-manager,
+  # then Helm will use the certificate generated for `proxyInjector.crtPEM`.
+  # If `proxyInjector.externalSecret` is set to true, this value, injectCaFrom, or
+  # injectCaFromSecret must be set, as no certificate will be generated.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information.
+  caBundle: |
+
+  # -- Inject the CA bundle from a cert-manager Certificate.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource)
+  # for more information.
+  injectCaFrom: ""
+
+  # -- Inject the CA bundle from a Secret.
+  # If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook.
+  # The Secret must have the CA Bundle stored in the `ca.crt` key and have
+  # the `cert-manager.io/allow-direct-injection` annotation set to `true`.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource)
+  # for more information.
+  injectCaFromSecret: ""
+
+  # -- Additional annotations to add to proxy-injector pods
+  podAnnotations: {}
+
+  livenessProbe:
+    timeoutSeconds: 1
+  readinessProbe:
+    timeoutSeconds: 1
+
+# -|- CPU, Memory and Ephemeral Storage resources required by the proxy injector (see
+#`proxy.resources` for sub-fields)
+#proxyInjectorResources:
+#-|- CPU, Memory and Ephemeral Storage resources required by proxy injected into the proxy injector
+#pod (see `proxy.resources` for sub-fields)
+#proxyInjectorProxyResources:
+
+# service profile validator configuration
+profileValidator:
+  # -- Do not create a secret resource for the profileValidator webhook.
+  # If this is set to `true`, the value `proxyInjector.caBundle` must be set
+  # or the ca bundle must injected with cert-manager ca injector using
+  # `proxyInjector.injectCaFrom` or `proxyInjector.injectCaFromSecret` (see below).
+  externalSecret: false
+
+  # -- Namespace selector used by admission webhook
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+
+  # -- Certificate for the service profile validator. If not provided and not using an external secret
+  # then Helm will generate one.
+  crtPEM: |
+
+  # -- Certificate key for the service profile validator. If not provided and not using an external secret
+  # then Helm will generate one.
+  keyPEM: |
+
+  # -- Bundle of CA certificates for proxy injector.
+  # If not provided nor injected with cert-manager,
+  # then Helm will use the certificate generated for `profileValidator.crtPEM`.
+  # If `profileValidator.externalSecret` is set to true, this value, injectCaFrom, or
+  # injectCaFromSecret must be set, as no certificate will be generated.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information.
+  caBundle: |
+
+  # -- Inject the CA bundle from a cert-manager Certificate.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource)
+  # for more information.
+  injectCaFrom: ""
+
+  # -- Inject the CA bundle from a Secret.
+  # If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook.
+  # The Secret must have the CA Bundle stored in the `ca.crt` key and have
+  # the `cert-manager.io/allow-direct-injection` annotation set to `true`.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource)
+  # for more information.
+  injectCaFromSecret: ""
+
+# policy validator configuration
+policyValidator:
+  # -- Do not create a secret resource for the policyValidator webhook.
+  # If this is set to `true`, the value `policyValidator.caBundle` must be set
+  # or the ca bundle must injected with cert-manager ca injector using
+  # `policyValidator.injectCaFrom` or `policyValidator.injectCaFromSecret` (see below).
+  externalSecret: false
+
+  # -- Namespace selector used by admission webhook
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+
+  # -- Certificate for the policy validator. If not provided and not using an external secret
+  # then Helm will generate one.
+  crtPEM: |
+
+  # -- Certificate key for the policy validator. If not provided and not using an external secret
+  # then Helm will generate one.
+  keyPEM: |
+
+  # -- Bundle of CA certificates for proxy injector.
+  # If not provided nor injected with cert-manager,
+  # then Helm will use the certificate generated for `policyValidator.crtPEM`.
+  # If `policyValidator.externalSecret` is set to true, this value, injectCaFrom, or
+  # injectCaFromSecret must be set, as no certificate will be generated.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information.
+  caBundle: |
+
+  # -- Inject the CA bundle from a cert-manager Certificate.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource)
+  # for more information.
+  injectCaFrom: ""
+
+  # -- Inject the CA bundle from a Secret.
+  # If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook.
+  # The Secret must have the CA Bundle stored in the `ca.crt` key and have
+  # the `cert-manager.io/allow-direct-injection` annotation set to `true`.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource)
+  # for more information.
+  injectCaFromSecret: ""
+
+# -- NodeSelector section, See the [K8S
+# documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)
+# for more information
+nodeSelector:
+  kubernetes.io/os: linux
+
+# -- SP validator configuration
+spValidator:
+  livenessProbe:
+    timeoutSeconds: 1
+  readinessProbe:
+    timeoutSeconds: 1
+
+# -|- CPU, Memory and Ephemeral Storage resources required by the SP validator (see
+#`proxy.resources` for sub-fields)
+#spValidatorResources:
+
+# -|- Tolerations section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+# for more information
+#tolerations:
+
+# -|- NodeAffinity section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
+# for more information
+#nodeAffinity:
+
+# -- url of external prometheus instance (used for the heartbeat)
+prometheusUrl: ""
+
+# Prometheus Operator PodMonitor configuration
+podMonitor:
+  # -- Enables the creation of Prometheus Operator [PodMonitor](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.PodMonitor)
+  enabled: false
+  # -- Interval at which metrics should be scraped
+  scrapeInterval: 10s
+  # -- Iimeout after which the scrape is ended
+  scrapeTimeout: 10s
+  # -- Labels to apply to all pod Monitors
+  labels: {}
+  controller:
+    # -- Enables the creation of PodMonitor for the control-plane
+    enabled: true
+    # -- Selector to select which namespaces the Endpoints objects are discovered from
+    namespaceSelector: |
+      matchNames:
+        - {{ .Release.Namespace }}
+        - linkerd-viz
+  serviceMirror:
+    # -- Enables the creation of PodMonitor for the Service Mirror component
+    enabled: true
+  proxy:
+    # -- Enables the creation of PodMonitor for the data-plane
+    enabled: true
+
+
+# Egress related configuration
+egress:
+  # -- The namespace that is used to store egress configuration that affects all client workloads in the cluster
+  globalEgressNetworkNamespace: linkerd-egress
+
+# -- List of additional service accounts with read access to the linkerd-config
+# ConfigMap
+configReaders:
+#- name:
+#  namespace:

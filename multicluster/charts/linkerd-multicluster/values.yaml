@@ -1,0 +1,220 @@
+gateway:
+  # -- If the gateway component should be installed
+  enabled: true
+  # -- Number of replicas for the gateway pod
+  replicas: 1
+  # -- The name of the gateway that will be installed
+  name: linkerd-gateway
+  # -- The port on which all the gateway will accept incoming traffic
+  port: 4143
+  # -- Service Type of gateway Service
+  serviceType: LoadBalancer
+  # nodePort -- Set the gateway nodePort (for LoadBalancer or NodePort) to a specific value
+  # nodePort:
+  probe:
+    # -- The path that will be used by remote clusters for determining whether the
+    # gateway is alive
+    path: /ready
+    # -- The port used for liveliness probing
+    port: 4191
+    # nodePort -- Set the probe nodePort (for LoadBalancer or NodePort) to a specific value
+    # nodePort:
+    # -- The interval (in seconds) between liveness probes
+    seconds: 3
+  # -- Annotations to add to the gateway service
+  serviceAnnotations: {}
+  # -- Set externalTrafficPolicy on gateway service
+  serviceExternalTrafficPolicy: ""
+  # -- Annotations to add to the gateway deployment
+  deploymentAnnotations: {}
+  # -- Set loadBalancerClass on gateway service
+  loadBalancerClass: ""
+  # -- Set loadBalancerIP on gateway service
+  loadBalancerIP: ""
+  # -- Set loadBalancerSourceRanges on gateway service
+  loadBalancerSourceRanges: []
+  # -- Set terminationGracePeriodSeconds on gateway deployment
+  terminationGracePeriodSeconds: ""
+  # -- Node selectors for the gateway pod
+  nodeSelector: {}
+  # -- Tolerations for the gateway pod
+  tolerations: []
+
+  # -- The pause container to use
+  pauseImage: "registry.k8s.io/pause:3.2"
+
+  # -- User id under which the gateway shall be ran
+  UID: 2103
+
+  # -- Group id under which the gateway shall be ran
+  GID: 2103
+
+# -- Control plane version
+linkerdVersion: linkerdVersionValue
+# -- Additional annotations to add to all pods
+podAnnotations: {}
+# -- Additional labels to add to all pods
+podLabels: {}
+# -- Labels to apply to all resources
+commonLabels: {}
+# -- Docker imagePullPolicy for all multicluster components
+imagePullPolicy: IfNotPresent
+# -- For Private docker registries, authentication is needed.
+#  Registry secrets are applied to the respective service accounts
+imagePullSecrets: []
+# - name: my-private-docker-registry-login-secret
+# -- The port on which the proxy accepts outbound traffic
+proxyOutboundPort: 4140
+# -- If the remote mirror service account should be installed
+remoteMirrorServiceAccount: true
+# -- The name of the service account used to allow remote clusters to mirror
+# local services
+remoteMirrorServiceAccountName: linkerd-service-mirror-remote-access-default
+# -- Namespace of linkerd installation
+linkerdNamespace: linkerd
+# -- Identity Trust Domain of the certificate authority
+identityTrustDomain: cluster.local
+
+namespaceMetadata:
+  image:
+    # -- Docker registry for the namespace-metadata instance
+    registry: cr.l5d.io/linkerd
+    # -- Docker image name for the namespace-metadata instance
+    name: extension-init
+    # -- Docker image tag for the namespace-metadata instance
+    tag: v0.1.10
+    # -- Pull policy for the namespace-metadata instance
+    # @default -- imagePullPolicy
+    pullPolicy: ""
+
+  # -- Node selectors for the namespace-metadata instance
+  nodeSelector: {}
+  # -- Tolerations for the namespace-metadata instance
+  tolerations: []
+
+# -- Create Roles and RoleBindings to associate this extension's
+# ServiceAccounts to the control plane PSP resource. This requires that
+# `enabledPSP` is set to true on the control plane install. Note PSP has been
+# deprecated since k8s v1.21
+enablePSP: false
+
+# -- Toggle support for creating namespaces for mirror services when necessary
+enableNamespaceCreation: false
+
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
+enablePodAntiAffinity: false
+
+# -- NodeAffinity section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
+# for more information
+# nodeAffinity:
+
+# -- Creates a Job that adds necessary metadata to the extension's namespace
+# during install; disable if lack of privileges require doing this manually
+createNamespaceMetadataJob: true
+
+# -- Specifies the number of old ReplicaSets to retain to allow rollback.
+revisionHistoryLimit: 10
+
+localServiceMirror:
+  # -- Number of times local service mirror updates are allowed to be requeued
+  # (retried)
+  serviceMirrorRetryLimit: 3
+
+  # -- Label selector for federated service members in the local cluster.
+  federatedServiceSelector: "mirror.linkerd.io/federated=member"
+
+  # -- Labels that should not be copied from the local service to the mirror
+  # service.
+  excludedLabels: ""
+
+  # -- Annotations that should not be copied from the local service to the
+  # mirror service.
+  excludedAnnotations: ""
+
+  # -- Number of local service mirror replicas to run
+  replicas: 1
+
+  image:
+    # -- Docker image for the Service mirror component (uses the Linkerd controller
+    # image)
+    name: cr.l5d.io/linkerd/controller
+    # -- Pull policy for the Service mirror container image
+    # @default -- imagePullPolicy
+    pullPolicy: ""
+    # -- Tag for the Service mirror container image
+    # @default -- linkerdVersion
+    version: linkerdVersionValue
+
+  # -- Log level for the Multicluster components
+  logLevel: info
+
+  # -- Log format (`plain` or `json`)
+  logFormat: plain
+
+  # -- enables the use of pprof endpoints on control plane component's admin
+  # servers
+  enablePprof: false
+
+  # -- User id under which the Service Mirror shall be ran
+  UID: 2103
+  # -- Group id under which the Service Mirror shall be ran
+  GID: 2103
+
+  # -- Resources for the Service mirror container
+  resources: {}
+
+# -- List of service mirror controllers.
+# References to the Links deployed in the cluster, each of which will have a
+# corresponding service mirror controller deployed.
+# Only `link.ref.name` is required for each entry.
+# Example (all the missing values take their values from controllerDefaults):
+# controllers:
+# - link:
+#     ref:
+#       name: target1
+#   logLevel: debug
+# - link:
+#     ref:
+#       name: target2
+#   gateway:
+#     enabled: false
+#   replicas: 2
+controllers: []
+
+controllerDefaults:
+  # -- Number of service mirror replicas for a given Link
+  replicas: 1
+  image:
+    name: cr.l5d.io/linkerd/controller
+    # @default -- imagePullPolicy
+    pullPolicy: ""
+    # @default -- linkerdVersion
+    version: linkerdVersionValue
+  gateway:
+    # -- Enables a probe service for the gateway
+    enabled: true
+    probe:
+      # -- Port used for liveliness probing
+      port: 4191
+  # -- Log level (`error`, `warn`, `info`, `debug` or `trace`)
+  logLevel: info
+  # -- Log format (`plain` or `json`)
+  logFormat: plain
+  # -- Toggle support for mirroring headless services
+  enableHeadlessServices: false
+  # -- Enables the use of pprof endpoints for the controller
+  enablePprof: false
+  UID: 2103
+  GID: 2103
+  # -- Number of times service mirror updates are allowed to be requeued (retried)
+  retryLimit: 3
+  # -- Resources to assign to the controller.
+  # See `policyController.resources` in the linkerd-control-plane chart for the expected format
+  resources: {}
+  nodeSelector: {}
+  tolerations: {}
+  enablePodAntiAffinity: false
+  nodeAffinity: {}

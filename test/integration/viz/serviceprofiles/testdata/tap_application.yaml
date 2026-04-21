@@ -1,0 +1,186 @@
+# /slow_cooker/slow_cooker --http-> gateway --grpc-> t1
+#                              --grpc-> t2 always-error
+#                              --http-> t3
+#
+
+### t1 terminates gRPC requests
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: t1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: t1
+  template:
+    metadata:
+      labels:
+        app: t1
+    spec:
+      containers:
+      - name: t1
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--grpc-server-port=9090"
+        - "--response-text=t1"
+        ports:
+        - containerPort: 9090
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: t1-svc
+spec:
+  selector:
+    app: t1
+  ports:
+  - name: grpc
+    port: 9090
+    targetPort: 9090
+
+### t2 terminates gRPC requests and always fails
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: t2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: t2
+  template:
+    metadata:
+      labels:
+        app: t2
+    spec:
+      containers:
+      - name: t2
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--grpc-server-port=9090"
+        - "--response-text=t2"
+        - "--percent-failure=100"
+        ports:
+        - containerPort: 9090
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: t2-svc
+spec:
+  selector:
+    app: t2
+  ports:
+  - name: grpc
+    port: 9090
+    targetPort: 9090
+
+# t3 terminates HTTP/1.1 requests
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: t3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: t3
+  template:
+    metadata:
+      labels:
+        app: t3
+    spec:
+      containers:
+      - name: t3
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--percent-failure=50"
+        - "--response-text=t3"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: t3-svc
+spec:
+  selector:
+    app: t3
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+
+### gateway broadcasts requests to t1, t2, and t3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      containers:
+      - name: gateway
+        image: buoyantio/bb:v0.0.6
+        args:
+        - broadcast-channel
+        - "--h1-server-port=8080"
+        - "--grpc-downstream-server=t1-svc:9090"
+        - "--grpc-downstream-server=t2-svc:9090"
+        - "--h1-downstream-server=http://t3-svc:8080/testpath"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-svc
+spec:
+  selector:
+    app: gateway
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+
+### slow-cooker sends requests to the gateway
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: slow-cooker
+spec:
+  template:
+    metadata:
+      labels:
+        app: slow-cooker
+    spec:
+      containers:
+      - name: slow-cooker
+        image: buoyantio/slow_cooker:1.3.0
+        command:
+        - "/bin/sh"
+        args:
+        - "-c"
+        - |
+          sleep 15 # wait for pods to start
+          /slow_cooker/slow_cooker -metric-addr 0.0.0.0:9999 http://gateway-svc:8080
+        ports:
+        - containerPort: 9999
+      restartPolicy: OnFailure

@@ -1,0 +1,27 @@
+[package]
+name = "linkerd-policy-controller-grpc"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+async-stream = "0.3"
+async-trait = "0.1"
+drain = "0.2"
+futures = { version = "0.3", default-features = false }
+http = { workspace = true }
+maplit = "1"
+prometheus-client = { workspace = true }
+prost-types = "0.14"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "time"] }
+tonic = { workspace = true }
+tracing = "0.1"
+
+linkerd-policy-controller-core = { workspace = true }
+
+[dependencies.linkerd2-proxy-api]
+workspace = true
+features = ["inbound", "outbound"]

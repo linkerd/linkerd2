@@ -1,0 +1,17 @@
+name: Helm publish
+description: Helm chart creation and uploading
+runs:
+  using: composite
+  steps:
+  - name: Set up Cloud SDK
+    uses: 'google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db'
+  - uses: linkerd/dev/actions/setup-tools@v48
+  - shell: bash
+    run: |
+      mkdir -p target/helm
+      gsutil cp gs://helm.linkerd.io/edge/index.yaml target/helm/index-pre.yaml
+      bin/compute-edge-version update-charts
+      helm-docs
+      bin/helm-build package
+      cp charts/artifacthub-repo-edge.yml target/helm/artifacthub-repo.yml
+      gsutil rsync target/helm gs://helm.linkerd.io/edge

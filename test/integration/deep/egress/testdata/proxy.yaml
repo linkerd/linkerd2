@@ -1,0 +1,18 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: egress-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: egress-test
+  template:
+    metadata:
+      labels:
+        app: egress-test
+    spec:
+      containers:
+      - name: http-egress
+        image: cr.l5d.io/linkerd/debug:edge-20.9.2

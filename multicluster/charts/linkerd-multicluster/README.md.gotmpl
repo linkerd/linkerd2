@@ -1,0 +1,58 @@
+{{ template "chart.header" . }}
+{{ template "chart.description" . }}
+
+{{ template "chart.versionBadge" . }}
+{{ template "chart.typeBadge" . }}
+{{ template "chart.appVersionBadge" . }}
+
+{{ template "chart.homepageLine" . }}
+
+## Quickstart and documentation
+
+You can run Linkerd on any Kubernetes cluster in a matter of seconds. See the
+[Linkerd Getting Started Guide][getting-started] for how.
+
+For more comprehensive documentation, start with the [Linkerd
+docs][linkerd-docs].
+
+## Prerequisite: Linkerd Core Control-Plane
+
+Before installing the Linkerd Multicluster extension, The core control-plane has
+to be installed first by following the [Linkerd Install
+Guide](https://linkerd.io/2/tasks/install/).
+
+## Adding Linkerd's Helm repository
+
+```bash
+# To add the repo for Linkerd edge releases:
+helm repo add linkerd https://helm.linkerd.io/edge
+```
+
+## Installing the Multicluster Extension Chart
+
+```bash
+helm install linkerd-multicluster -n linkerd-multicluster --create-namespace linkerd/linkerd-multicluster
+```
+
+## Get involved
+
+* Check out Linkerd's source code at [GitHub][linkerd2].
+* Join Linkerd's [user mailing list][linkerd-users], [developer mailing
+  list][linkerd-dev], and [announcements mailing list][linkerd-announce].
+* Follow [@linkerd][twitter] on Twitter.
+* Join the [Linkerd Slack][slack].
+
+[getting-started]: https://linkerd.io/2/getting-started/
+[linkerd2]: https://github.com/linkerd/linkerd2
+[linkerd-announce]: https://lists.cncf.io/g/cncf-linkerd-announce
+[linkerd-dev]: https://lists.cncf.io/g/cncf-linkerd-dev
+[linkerd-docs]: https://linkerd.io/2/overview/
+[linkerd-users]: https://lists.cncf.io/g/cncf-linkerd-users
+[slack]: http://slack.linkerd.io
+[twitter]: https://twitter.com/linkerd
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}

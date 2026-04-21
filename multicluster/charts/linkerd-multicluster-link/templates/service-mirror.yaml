@@ -1,0 +1,217 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+rules:
+- apiGroups: [""]
+  resources: ["endpoints", "services"]
+  verbs: ["list", "get", "watch", "create", "delete", "update"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list", "get", "watch"]
+{{- if .Values.enableNamespaceCreation }}
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["create"]
+{{- end}}
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
+subjects:
+- kind: ServiceAccount
+  name: linkerd-service-mirror-{{.Values.targetClusterName}}
+  namespace: {{.Release.Namespace}}
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["cluster-credentials-{{.Values.targetClusterName}}"]
+    verbs: ["list", "get", "watch"]
+  - apiGroups: ["multicluster.linkerd.io"]
+    resources: ["links"]
+    verbs: ["list", "get", "watch"]
+  - apiGroups: ["multicluster.linkerd.io"]
+    resources: ["links/status"]
+    verbs: ["update", "patch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["create", "get", "update", "patch"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
+subjects:
+  - kind: ServiceAccount
+    name: linkerd-service-mirror-{{.Values.targetClusterName}}
+    namespace: {{.Release.Namespace}}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-service-mirror-{{.Values.targetClusterName}}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  name: linkerd-service-mirror-{{.Values.targetClusterName}}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicas }}
+  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
+  selector:
+    matchLabels:
+      component: linkerd-service-mirror
+      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+  {{- if .Values.enablePodAntiAffinity }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  {{- end }}
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
+        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+      labels:
+        linkerd.io/extension: multicluster
+        component: linkerd-service-mirror
+        mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    spec:
+    {{- if .Values.enablePodAntiAffinity}}
+    {{- with $tree := deepCopy . }}
+    {{- $_ := set $tree "component" .Values.targetClusterName -}}
+    {{- $_ := set $tree "label" "mirror.linkerd.io/cluster-name" -}}
+    {{- include "linkerd.affinity" $tree | nindent 6 }}
+    {{- end }}
+    {{- end }}
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - service-mirror
+        - -log-level={{.Values.logLevel}}
+        - -log-format={{.Values.logFormat}}
+        - -event-requeue-limit={{.Values.serviceMirrorRetryLimit}}
+        - -namespace={{.Release.Namespace}}
+        {{- if .Values.enableHeadlessServices }}
+        - -enable-headless-services
+        {{- end }}
+        {{- if .Values.enableNamespaceCreation }}
+        - -enable-namespace-creation
+        {{- end }}
+        - -enable-pprof={{.Values.enablePprof | default false}}
+        - -probe-service=probe-gateway-{{.Values.targetClusterName}}
+        - {{.Values.targetClusterName}}
+        {{- if or .Values.serviceMirrorAdditionalEnv .Values.serviceMirrorExperimentalEnv }}
+        env:
+        {{- with .Values.serviceMirrorAdditionalEnv }}
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
+        {{- with .Values.serviceMirrorExperimentalEnv }}
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
+        {{- end }}
+        image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}
+        name: service-mirror
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: {{.Values.serviceMirrorUID}}
+          runAsGroup: {{.Values.serviceMirrorGID}}
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
+        ports:
+        - containerPort: 9999
+          name: svcmi-admin
+        {{- with .Values.resources }}
+        resources: {{ toYaml . | nindent 10 }}
+        {{- end }}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: linkerd-service-mirror-{{.Values.targetClusterName}}
+      volumes:
+      - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{ toYaml . | nindent 6 }}
+      {{- end }}
+{{- if .Values.enablePodAntiAffinity }}
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1
+metadata:
+  name: linkerd-service-mirror-{{.Values.targetClusterName}}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    component: linkerd-service-mirror
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      component: linkerd-service-mirror
+      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+{{- end}}

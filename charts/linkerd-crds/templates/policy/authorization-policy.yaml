@@ -1,0 +1,99 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: authorizationpolicies.policy.linkerd.io
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+spec:
+  group: policy.linkerd.io
+  scope: Namespaced
+  names:
+    kind: AuthorizationPolicy
+    plural: authorizationpolicies
+    singular: authorizationpolicy
+    shortNames: [authzpolicy]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                Authorizes clients to communicate with Linkerd-proxied server
+                resources.
+              type: object
+              required: [targetRef, requiredAuthenticationRefs]
+              properties:
+                targetRef:
+                  description: >-
+                    TargetRef references a resource to which the authorization
+                    policy applies.
+                  type: object
+                  required: [kind, name]
+                  # Modified from the gateway API.
+                  # Copyright 2020 The Kubernetes Authors
+                  properties:
+                    group:
+                      description: >-
+                        Group is the group of the referent. When empty, the
+                        Kubernetes core API group is inferred.
+                      maxLength: 253
+                      pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                    kind:
+                      description: >-
+                        Kind is the kind of the referent.
+                      maxLength: 63
+                      minLength: 1
+                      pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                      type: string
+                    name:
+                      description: Name is the name of the referent.
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                requiredAuthenticationRefs:
+                  description: >-
+                    RequiredAuthenticationRefs enumerates a set of required
+                    authentications. ALL authentications must be satisfied for
+                    the authorization to apply. If any of the referred objects
+                    cannot be found, the authorization will be ignored.
+                  type: array
+                  items:
+                    type: object
+                    required: [kind, name]
+                    properties:
+                      group:
+                        description: >-
+                          Group is the group of the referent. When empty, the
+                          Kubernetes core API group is inferred."
+                        maxLength: 253
+                        pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                        type: string
+                      kind:
+                        description: >-
+                          Kind is the kind of the referent.
+                        maxLength: 63
+                        minLength: 1
+                        pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                        type: string
+                      name:
+                        description: >-
+                          Name is the name of the referent.
+                        maxLength: 253
+                        minLength: 1
+                        type: string
+                      namespace:
+                        description: >-
+                          Name is the name of the referent. When unspecified,
+                          this authentication refers to the local namespace.
+                        maxLength: 253
+                        type: string

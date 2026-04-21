@@ -1,0 +1,303 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: externalworkloads.workload.linkerd.io
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+spec:
+  group: workload.linkerd.io
+  names:
+    categories:
+    - external
+    kind: ExternalWorkload
+    listKind: ExternalWorkloadList
+    plural: externalworkloads
+    singular: externalworkload
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: false
+    schema:
+      openAPIV3Schema:
+        description: >-
+          An ExternalWorkload describes a single workload (i.e. a deployable unit) external
+          to the cluster that should be enrolled in the mesh.
+        type: object
+        required: [spec]
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              meshTls:
+                description: meshTls describes TLS settings associated with an
+                  external workload.
+                properties:
+                  identity:
+                    type: string
+                    description: identity of the workload. Corresponds to the
+                      identity used in the workload's certificate. It is used
+                      by peers to perform verification in the mTLS handshake.
+                    minLength: 1
+                    maxLength: 253
+                  serverName:
+                    type: string
+                    description: serverName is the name of the workload in DNS
+                      format. It is used by the workload to terminate TLS using
+                      SNI.
+                    minLength: 1
+                    maxLength: 253
+                type: object
+                required:
+                - identity
+                - serverName
+              ports:
+                type: array
+                description: ports describes a list of ports exposed by the
+                  workload
+                items:
+                  properties:
+                    name:
+                      type: string
+                      description: name must be an IANA_SVC_NAME and unique
+                        within the ports set. Each named port can be referred
+                        to by services.
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    protocol:
+                      description: protocol exposed by the port. Must be UDP or
+                        TCP. Defaults to TCP.
+                      type: string
+                      default: "TCP"
+                  type: object
+                  required:
+                  - port
+              workloadIPs:
+                type: array
+                description: workloadIPs contains a list of IP addresses that
+                  can be used to send traffic to the workload.
+                items:
+                  type: object
+                  properties:
+                    ip:
+                      type: string
+                # TODO: relax this in the future when ipv6 is supported
+                # an external workload (like a pod) should only
+                # support 2 interfaces
+                maxItems: 1
+            type: object
+            required:
+            - meshTls
+          status:
+            type: object
+            properties:
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    lastProbeTime:
+                      description: lastProbeTime is the last time the
+                        healthcheck endpoint was probed.
+                      format: date-time
+                      type: string
+                    lastTransitionTime:
+                      description: lastTransitionTime is the last time the
+                        condition transitioned from one status to another.
+                      format: date-time
+                      type: string
+                    status:
+                      description: status of the condition (one of True, False, Unknown)
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of the condition in CamelCase or in
+                        foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                    reason:
+                      description: reason contains a programmatic identifier
+                        indicating the reason for the condition's last
+                        transition. Producers of specific condition types may
+                        define expected values and meanings for this field, and
+                        whether the values are considered a guaranteed API. The
+                        value should be a CamelCase string. This field may not
+                        be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    message:
+                      description: message is a human readable message
+                        indicating details about the transition. This may be an
+                        empty string.
+                      maxLength: 32768
+                      type: string
+                required:
+                - status
+                - type
+    additionalPrinterColumns:
+    - jsonPath: .spec.meshTls.identity
+      name: Identity
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: {}
+    schema:
+      openAPIV3Schema:
+        description: >-
+          An ExternalWorkload describes a single workload (i.e. a deployable unit) external
+          to the cluster that should be enrolled in the mesh.
+        type: object
+        required: [spec]
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              meshTLS:
+                description: meshTLS describes TLS settings associated with an
+                  external workload.
+                properties:
+                  identity:
+                    type: string
+                    description: identity of the workload. Corresponds to the
+                      identity used in the workload's certificate. It is used
+                      by peers to perform verification in the mTLS handshake.
+                    minLength: 1
+                    maxLength: 253
+                  serverName:
+                    type: string
+                    description: serverName is the name of the workload in DNS
+                      format. It is used by the workload to terminate TLS using
+                      SNI.
+                    minLength: 1
+                    maxLength: 253
+                type: object
+                required:
+                - identity
+                - serverName
+              ports:
+                type: array
+                description: ports describes a list of ports exposed by the
+                  workload
+                items:
+                  properties:
+                    name:
+                      type: string
+                      description: name must be an IANA_SVC_NAME and unique
+                        within the ports set. Each named port can be referred
+                        to by services.
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    protocol:
+                      description: protocol exposed by the port. Must be UDP or
+                        TCP. Defaults to TCP.
+                      type: string
+                      default: "TCP"
+                  type: object
+                  required:
+                  - port
+              workloadIPs:
+                type: array
+                description: workloadIPs contains a list of IP addresses that
+                  can be used to send traffic to the workload. This field may
+                  hold a maximum of two entries. If one entry, it can be an
+                  IPv4 or IPv6 address; if two entries it should contain one
+                  IPv4 address and one IPv6 address.
+                items:
+                  type: object
+                  properties:
+                    ip:
+                      type: string
+                maxItems: 2
+            type: object
+            required:
+            - meshTLS
+          status:
+            type: object
+            properties:
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    lastProbeTime:
+                      description: lastProbeTime is the last time the
+                        healthcheck endpoint was probed.
+                      format: date-time
+                      type: string
+                    lastTransitionTime:
+                      description: lastTransitionTime is the last time the
+                        condition transitioned from one status to another.
+                      format: date-time
+                      type: string
+                    status:
+                      description: status of the condition (one of True, False, Unknown)
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of the condition in CamelCase or in
+                        foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                    reason:
+                      description: reason contains a programmatic identifier
+                        indicating the reason for the condition's last
+                        transition. Producers of specific condition types may
+                        define expected values and meanings for this field, and
+                        whether the values are considered a guaranteed API. The
+                        value should be a CamelCase string. This field may not
+                        be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    message:
+                      description: message is a human readable message
+                        indicating details about the transition. This may be an
+                        empty string.
+                      maxLength: 32768
+                      type: string
+                required:
+                - status
+                - type
+    additionalPrinterColumns:
+    - jsonPath: .spec.meshTLS.identity
+      name: Identity
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date

@@ -1,0 +1,71 @@
+{
+  "source": {
+    "ip": "0.0.0.1",
+    "port": 0,
+    "metadata": null
+  },
+  "destination": {
+    "ip": "ff01::1",
+    "port": 0,
+    "metadata": {
+      "pod": "my-pod",
+      "tls": "true"
+    }
+  },
+  "routeMeta": null,
+  "proxyDirection": "OUTBOUND",
+  "requestInitEvent": {
+    "id": {
+      "base": 1,
+      "stream": 0
+    },
+    "method": "GET",
+    "scheme": "HTTPS",
+    "authority": "localhost",
+    "path": "/some/path",
+    "headers": [
+      {
+        "name": "header-name-1",
+        "valueStr": "header-value-str-1"
+      },
+      {
+        "name": "header-name-2",
+        "valueBin": "aGVhZGVyLXZhbHVlLWJpbi0y"
+      }
+    ]
+  }
+}
+{
+  "source": {
+    "ip": "0.0.0.1",
+    "port": 0,
+    "metadata": null
+  },
+  "destination": {
+    "ip": "ff01::1",
+    "port": 0,
+    "metadata": null
+  },
+  "routeMeta": null,
+  "proxyDirection": "OUTBOUND",
+  "responseEndEvent": {
+    "id": {
+      "base": 1,
+      "stream": 0
+    },
+    "sinceRequestInit": {
+      "seconds": 10
+    },
+    "sinceResponseInit": {
+      "seconds": 100
+    },
+    "responseBytes": 1337,
+    "trailers": [
+      {
+        "name": "trailer-name",
+        "valueBin": "aGVhZGVyLXZhbHVlLWJpbg=="
+      }
+    ],
+    "grpcStatusCode": 666
+  }
+}

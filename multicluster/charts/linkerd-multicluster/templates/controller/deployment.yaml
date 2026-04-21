@@ -1,0 +1,107 @@
+{{- range .Values.controllers }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    linkerd.io/extension: multicluster
+    component: controller
+    mirror.linkerd.io/cluster-name: {{.link.ref.name}}
+    {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  name: controller-{{.link.ref.name}}
+  namespace: {{ $.Release.Namespace }}
+spec:
+  replicas: {{ dig "replicas" $.Values.controllerDefaults.replicas . }}
+  revisionHistoryLimit: {{$.Values.revisionHistoryLimit}}
+  selector:
+    matchLabels:
+      component: controller
+      mirror.linkerd.io/cluster-name: {{.link.ref.name}}
+  {{- if dig "enablePodAntiAffinity" $.Values.controllerDefaults.enablePodAntiAffinity . }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  {{- end }}
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
+        {{- with $.Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+      labels:
+        linkerd.io/extension: multicluster
+        component: controller
+        mirror.linkerd.io/cluster-name: {{.link.ref.name}}
+        {{- with $.Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    spec:
+    {{- $tree := deepCopy $ }}
+    {{- $_ := set $tree.Values "enablePodAntiAffinity" (dig "enablePodAntiAffinity" $.Values.controllerDefaults.enablePodAntiAffinity .) -}}
+    {{- $_ := set $tree.Values "nodeAffinity" (dig "nodeAffinity" $.Values.controllerDefaults.nodeAffinity .) -}}
+    {{- $_ := set $tree "component" .link.ref.name -}}
+    {{- $_ := set $tree "label" "mirror.linkerd.io/cluster-name" -}}
+    {{- with include "linkerd.affinity" $tree }}
+    {{- . | nindent 6 }}
+    {{- end }}
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - service-mirror
+        - -log-level={{ dig "logLevel" $.Values.controllerDefaults.logLevel . }}
+        - -log-format={{ dig "logFormat" $.Values.controllerDefaults.logFormat . }}
+        - -event-requeue-limit={{ dig "retryLimit" $.Values.controllerDefaults.retryLimit . }}
+        - -namespace={{$.Release.Namespace}}
+        {{- if dig "enableHeadlessServices" $.Values.controllerDefaults.enableHeadlessServices . }}
+        - -enable-headless-services
+        {{- end }}
+        {{- if $.Values.enableNamespaceCreation }}
+        - -enable-namespace-creation
+        {{- end }}
+        - -enable-pprof={{ dig "enablePprof" $.Values.controllerDefaults.enablePprof . }}
+        - -probe-service=probe-{{.link.ref.name}}
+        - {{.link.ref.name}}
+        {{- if or $.Values.serviceMirrorAdditionalEnv $.Values.serviceMirrorExperimentalEnv }}
+        env:
+        {{- with $.Values.serviceMirrorAdditionalEnv }}
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
+        {{- with $.Values.serviceMirrorExperimentalEnv }}
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
+        {{- end }}
+        image: {{ dig "image" "name" $.Values.controllerDefaults.image.name . }}:{{ dig "image" "version" $.Values.controllerDefaults.image.version . }}
+        name: controller
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: {{ dig "UID" $.Values.controllerDefaults.UID . }}
+          runAsGroup: {{ dig "GID" $.Values.controllerDefaults.GID . }}
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
+        ports:
+        - containerPort: 9999
+          name: ctrl-admin
+        {{- with dig "resources" $.Values.controllerDefaults.resources . }}
+        resources: {{ toYaml . | nindent 10 }}
+        {{- end }}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: controller-{{.link.ref.name}}
+      volumes:
+      - {{- include "partials.volumes.manual-mount-service-account-token" $ | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- with dig "nodeSelector" $.Values.controllerDefaults.nodeSelector . }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with dig "tolerations" $.Values.controllerDefaults.tolerations . }}
+      tolerations: {{ toYaml . | nindent 6 }}
+      {{- end }}
+{{- end}}

@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: inject-pod-test-terminus
+  labels:
+    app: inject-pod-test-terminus
+spec:
+  containers:
+  - name: bb-terminus
+    image: buoyantio/bb:v0.0.6
+    args: ["terminus", "--grpc-server-port", "9090", "--response-text", "BANANA"]
+    ports:
+    - containerPort: 9090
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: inject-opaque-pod-test-terminus
+  annotations:
+    config.linkerd.io/opaque-ports: "22122"
+  labels:
+    app: inject-opaque-pod-test-terminus
+spec:
+  containers:
+  - name: bb-terminus
+    image: buoyantio/bb:v0.0.6
+    args: ["terminus", "--grpc-server-port", "9090", "--response-text", "BANANA"]
+    ports:
+    - containerPort: 9090

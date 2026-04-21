@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -eu
+
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+
+scripts() {
+    find "$rootdir" -name '*.sh' \
+        -not -path "$rootdir/.git/*" \
+        -not -path "$rootdir/target/*" \
+        -not -path "$rootdir/web/app/node_modules/*"
+}
+
+# Make sure all files with the .sh extension are shellscripts and have a
+# proper shebang
+shebangpattern='#!/usr/bin/env (bash|sh)'
+while IFS= read -r file ; do
+    head -1 "$file" | grep -qE "$shebangpattern\$" || {
+        echo "ERROR: No valid '$shebangpattern' shebang found in '$file'" >&2
+        exit 1
+    }
+done < <(scripts)
+
+# For more information on shellcheck failures:
+# https://github.com/koalaman/shellcheck/wiki/Checks
+
+# We want the word splitting for the shellcheck arguments
+# shellcheck disable=SC2046
+"$bindir"/shellcheck -x -P "$bindir" $(scripts |xargs)

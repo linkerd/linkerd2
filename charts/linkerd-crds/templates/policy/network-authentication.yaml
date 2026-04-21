@@ -1,0 +1,53 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: networkauthentications.policy.linkerd.io
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+spec:
+  group: policy.linkerd.io
+  scope: Namespaced
+  names:
+    kind: NetworkAuthentication
+    plural: networkauthentications
+    singular: networkauthentication
+    shortNames: [netauthn, networkauthn]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                NetworkAuthentication defines a list of authenticated client
+                networks to be referenced by an `AuthorizationPolicy`. If a
+                client connection originates from ANY of the of the provided
+                networks, the connection is considered authenticated.
+              type: object
+              required: [networks]
+              properties:
+                networks:
+                  type: array
+                  items:
+                    type: object
+                    required: [cidr]
+                    properties:
+                      cidr:
+                        description: >-
+                          The CIDR of the network to be authorized.
+                        type: string
+                      except:
+                        description: >-
+                          A list of IP networks/addresses not to be included in
+                          the above `cidr`.
+                        type: array
+                        items:
+                          type: string

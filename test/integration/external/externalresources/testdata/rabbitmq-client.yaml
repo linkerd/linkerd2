@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: rabbitmq-client
+  name: rabbitmq-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq-client
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-client
+    spec:
+      containers:
+        - image: ghcr.io/barkardk/rabbitmq-client:1.2.3
+          name: rabbitmq-client
+          env:
+            - name: RABBITMQ_AMQP_CONN_STR
+              value: "amqp://guest:guest@rabbitmq:5672/"
+          command:
+            - "/bin/sh"
+          args:
+            - "-c"
+            - |
+              sleep 20 # wait for pods to start
+              ./mq_test
+      restartPolicy: Always
+

@@ -1,0 +1,159 @@
+---
+###
+### Tap Injector
+###
+kind: Service
+apiVersion: v1
+metadata:
+  name: tap-injector
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/extension: viz
+    component: tap-injector
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+    {{- with .Values.tapInjector.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    linkerd.io/inject: enabled
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/extension: viz
+    component: tap-injector
+  ports:
+  - name: tap-injector
+    port: 443
+    targetPort: tap-injector
+---
+{{- $tree := deepCopy . }}
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
+  labels:
+    linkerd.io/extension: viz
+    app.kubernetes.io/name: tap-injector
+    app.kubernetes.io/part-of: Linkerd
+    component: tap-injector
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  name: tap-injector
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{.Values.tapInjector.replicas}}
+  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
+  selector:
+    matchLabels:
+      component: tap-injector
+  {{- if .Values.enablePodAntiAffinity }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  {{- end }}
+  template:
+    metadata:
+      annotations:
+        {{- if empty .Values.cliVersion }}
+        checksum/config: {{ include (print $.Template.BasePath "/tap-injector-rbac.yaml") . | sha256sum }}
+        {{- end }}
+        {{ include "partials.annotations.created-by" . }}
+        {{- with .Values.tapInjector.proxy }}
+        {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        linkerd.io/inject: enabled
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+      labels:
+        linkerd.io/extension: viz
+        component: tap-injector
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    spec:
+      {{- if .Values.tolerations -}}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end -}}
+      {{- include "linkerd.node-selector" . | nindent 6 }}
+      {{- $_ := set $tree "component" "tap-injector" -}}
+      {{- $_ := set $tree "label" "component" -}}
+      {{- with include "linkerd.affinity" $tree }}
+      {{- . | nindent 6 }}
+      {{- end }}
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - injector
+        - -tap-service-name=tap.{{.Release.Namespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain | default .Values.clusterDomain}}
+        - -log-level={{.Values.tapInjector.logLevel | default .Values.defaultLogLevel}}
+        - -log-format={{.Values.tapInjector.logFormat | default .Values.defaultLogFormat}}
+        - -enable-pprof={{.Values.enablePprof | default false}}
+        image: {{.Values.tapInjector.image.registry | default .Values.defaultRegistry}}/{{.Values.tapInjector.image.name}}:{{.Values.tapInjector.image.tag | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.tapInjector.image.pullPolicy | default .Values.defaultImagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        name: tap-injector
+        ports:
+        - containerPort: 8443
+          name: tap-injector
+        - containerPort: 9995
+          name: admin
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
+        {{- if .Values.tapInjector.resources -}}
+        {{- include "partials.resources" .Values.tapInjector.resources | nindent 8 }}
+        {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: {{.Values.tapInjector.UID | default .Values.defaultUID}}
+          runAsGroup: {{.Values.tapInjector.GID | default .Values.defaultGID}}
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: tap-injector
+      volumes:
+      - name: tls
+        secret:
+          secretName: tap-injector-k8s-tls
+      - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
+{{- if and .Values.enablePodDisruptionBudget (gt (int .Values.tapInjector.replicas) 1) }}
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1
+metadata:
+  name: tap-injector
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/extension: viz
+    component: tap-injector
+    namespace: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      linkerd.io/extension: viz
+      component: tap-injector
+{{- end }}

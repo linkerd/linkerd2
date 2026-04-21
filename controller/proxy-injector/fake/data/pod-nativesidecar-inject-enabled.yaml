@@ -1,0 +1,28 @@
+kind: Pod
+apiVersion: apps/v1
+metadata:
+  name: nginx
+  namespace: kube-public
+  annotations:
+    linkerd.io/inject: enabled
+    config.linkerd.io/opaque-ports: memcached
+  labels:
+    app: nginx
+spec:
+  initContainers:
+  - name: memcached
+    image: memcached
+    restartPolicy: Always
+    ports:
+    - containerPort: 11211
+      name: memcached
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - name: http
+      containerPort: 80
+    readinessProbe:
+      httpGet:
+        path: /metrics
+        port: 9090

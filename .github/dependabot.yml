@@ -1,0 +1,123 @@
+# Dependabot are scheduled to avoid contention with normal workday CI usage. We
+# start running updates at 3AM UTC (7PM PST, 8AM IST) and stagger each
+# subsequent update by 30m.
+#
+# JS updates are run weekly.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: daily
+      time: "03:00"
+      timezone: Etc/UTC
+    ignore:
+      # TODO(ver): Remove this once we update our Gateway API dependencies.
+      - dependency-name: sigs.k8s.io/gateway-api
+        update-types: [version-update:semver-major, version-update:semver-minor]
+    groups:
+      kube:
+        patterns:
+          - k8s.io/*
+
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: daily
+      time: "03:30"
+      timezone: Etc/UTC
+    allow:
+      - dependency-type: all
+    ignore:
+      # These dependencies are for platforms that we don't support:
+      - dependency-name: redox*
+      - dependency-name: js-sys
+      - dependency-name: wasm-bindgen
+      - dependency-name: web-sys
+      # These dependencies are updated via kubert, so only accept patch updates.
+      - dependency-name: clap
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: clap_*
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: kube
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: kube-*
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: k8s-openapi
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      # These dependencies are updated via linkerd2-proxy-api, so only accept patch updates.
+      - dependency-name: prost
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: prost-*
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: tonic
+        update-types: [version-update:semver-major, version-update:semver-minor]
+    groups:
+      clap:
+        patterns:
+          - clap
+          - clap_*
+        update-types: [minor, patch]
+      futures:
+        patterns:
+          - futures
+          - futures-*
+      kube-patch:
+        patterns:
+          - k8s-openapi
+          - kube
+          - kube-*
+          - gateway-api
+        update-types: [patch]
+      kube:
+        patterns:
+          - kubert
+          - kubert-*
+          - k8s-openapi
+          - kube
+          - kube-*
+          - gateway-api
+        update-types: [major, minor]
+      grpc:
+        patterns:
+          - prost
+          - prost-*
+          - tonic
+        update-types: [patch]
+      tracing:
+        patterns:
+          - tracing
+          - tracing-*
+      serde:
+        patterns:
+          - serde
+          - serde_*
+      pest:
+        patterns:
+          - pest
+          - pest_*
+
+  - package-ecosystem: "github-actions"
+    directories:
+    - "/"
+    - ".github/actions/*"
+    schedule:
+      interval: "daily"
+      time: "04:00"
+      timezone: Etc/UTC
+
+  - package-ecosystem: "npm"
+    directory: "/web/app"
+    schedule:
+      # JS dependencies tend to be pretty noisy, so only check once per week.
+      interval: "weekly"
+      day: "sunday"
+    ignore:
+      # v6 is backwards-incompatible and requires lots of changes.
+      # A compatibility layer should come out at some point
+      # see https://reactrouter.com/docs/en/v6/upgrading/v5
+      - dependency-name: "react-router-dom"
+        update-types: ["version-update:semver-major"]
+      # bumps beyound our current version (v3) are breaking
+      - dependency-name: "@lingui/*"
+        update-types: ["version-update:semver-major"]

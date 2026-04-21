@@ -1,0 +1,206 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "edge-*"
+
+permissions:
+  contents: read
+
+env:
+  GH_ANNOTATION: true
+  DOCKER_REGISTRY: ghcr.io/linkerd
+  K3D_VERSION: v5.8.3
+  LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO }}
+
+jobs:
+  # TODO(ver) We should stop relying so heavily on the environment,
+  # especially the TAG variable. And it would be great to stop relying
+  # on the root-tag script altogether.
+  tag:
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
+        id: tag
+      - name: Validate edge version
+        run: bin/compute-edge-version
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+
+  docker_build:
+    name: Docker build
+    needs: [tag]
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    permissions:
+      contents: read
+      packages: write # for docker/login-action
+      id-token: write # for cosign
+    services:
+      registry:
+        image: registry:3
+        ports:
+          - 5000:5000
+    strategy:
+      matrix:
+        component:
+          - controller
+          - debug
+          - metrics-api
+          - proxy
+          - tap
+          - web
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Set tag
+        run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
+      - uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.DOCKER_GHCR_USERNAME }}
+          password: ${{ secrets.DOCKER_GHCR_PAT }}
+      - uses: ./.github/actions/docker-build
+        id: build
+        with:
+          docker-registry: ${{ env.DOCKER_REGISTRY }}
+          docker-target: multi-arch
+          docker-push: 1
+          component: ${{ matrix.component }}
+          tag: ${{ needs.tag.outputs.tag }}
+        env:
+          LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN }}
+      - uses: sigstore/cosign-installer@v3
+      - run: cosign sign '${{ steps.build.outputs.digest }}'
+        env:
+          COSIGN_YES: true
+
+  cli:
+    needs: tag
+    uses: ./.github/workflows/cli-build.yml
+    with:
+      version: ${{ needs.tag.outputs.tag }}
+
+  integration_tests:
+    name: Integration tests
+    needs: [tag, cli, docker_build]
+    strategy:
+      matrix:
+        integration_test:
+          - cluster-domain
+          - cni-calico-deep
+          - deep
+          - viz
+          - tracing
+          - default-policy-deny
+          - external
+          - rsa-ca
+          - helm-upgrade
+          - uninstall
+          - upgrade-edge
+    timeout-minutes: 60
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+        with:
+          go-version-file: go.mod
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
+      - run: echo TAG="${{ needs.tag.outputs.tag }}" >> "$GITHUB_ENV"
+      - name: Validate the CLI version matches the current build tag.
+        run: |
+          [[ "$TAG" == "$(${{ runner.temp }}/linkerd version --short --client)" ]]
+      - run: bin/tests --images preload --name ${{ matrix.integration_test }} "${{ runner.temp }}/linkerd"
+        env:
+          LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+
+  gh_release:
+    name: Create GH release
+    needs:
+      - tag
+      - cli
+      - integration_tests
+    timeout-minutes: 30
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: ${{ needs.cli.outputs.artifact-id }}
+          path: cli
+      - name: Create release
+        id: create_release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
+        with:
+          name: "${{ needs.tag.outputs.tag }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            ./cli/linkerd2-cli-*
+
+  website_publish:
+    name: Linkerd website publish
+    needs: [chart_deploy]
+    if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
+    timeout-minutes: 30
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Create linkerd/website repository dispatch event
+        uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          repository: linkerd/website
+          event-type: release
+
+  website_publish_check:
+    name: Linkerd website publish check
+    needs: [tag, website_publish]
+    timeout-minutes: 30
+    if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Set install target for stable
+        if: startsWith(github.ref, 'refs/tags/stable')
+        run: echo "INSTALL=install" >> "$GITHUB_ENV"
+      - name: Set install target for edge
+        if: startsWith(github.ref, 'refs/tags/edge')
+        run: echo "INSTALL=install-edge" >> "$GITHUB_ENV"
+      - name: Check published version
+        shell: bash
+        run: |
+          TAG='${{ needs.tag.outputs.tag }}'
+          until RES=$(bin/scurl "https://run.linkerd.io/$INSTALL" | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
+            || (( count++ >= 10 ))
+          do
+            sleep 30
+          done
+          if [[ -z "$RES" ]]; then
+            echo "::error::The version '$TAG' was NOT found published in the website"
+            exit 1
+          fi
+
+  chart_deploy:
+    name: Helm chart deploy
+    needs: [gh_release]
+    timeout-minutes: 30
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Log into GCP
+        uses: "google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093"
+        with:
+          credentials_json: ${{ secrets.LINKERD_SITE_TOKEN }}
+      - name: Edge Helm chart creation and upload
+        uses: ./.github/actions/helm-publish

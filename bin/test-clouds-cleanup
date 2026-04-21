@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+#
+# Cleans up integration tests from 4 cloud providers:
+# - Amazon (EKS)
+# - DigitalOcean (DO)
+# - Google (GKE)
+# - Microsoft (AKS)
+#
+# This script assumes you have a working Kubernetes cluster set up on each Cloud
+# provider, and that Kubernetes contexts are configured via environment
+# variables.
+
+set -e
+
+if [ $# -ne 1 ]; then
+  echo "Error: accepts 1 argument
+Usage:
+  ${0##*/} /path/to/linkerd"
+  exit 1
+fi
+
+for CLUSTER in 'AKS' 'DO' 'EKS' 'GKE'; do
+  if [ -z "${!CLUSTER}" ]; then
+    echo "\$$CLUSTER not set" >&2
+    exit 64
+  fi
+done
+
+for CLUSTER in $AKS $DO $EKS $GKE
+do
+  printf '\n%s\n' "$CLUSTER"
+  bin/test-cleanup --context "$CLUSTER" "$1"
+done

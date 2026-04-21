@@ -1,0 +1,21 @@
+name: Shell
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/shell.yml
+      - "**/*.sh"
+
+permissions:
+  contents: read
+
+jobs:
+  # For more information on shellcheck failures:
+  # https://github.com/koalaman/shellcheck/wiki/Checks
+  shellcheck:
+    timeout-minutes: 10
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - uses: linkerd/dev/actions/setup-tools@v48
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - run: just sh-lint

@@ -1,0 +1,63 @@
+# This values.yaml file contains the values needed to enable HA mode.
+# Usage:
+#   helm install -f values-ha.yaml
+
+# -- Create PodDisruptionBudget resources for each control plane workload
+enablePodDisruptionBudget: true
+
+controller:
+  # -- sets pod disruption budget parameter for all deployments
+  podDisruptionBudget:
+    # -- Maximum number of pods that can be unavailable during disruption
+    maxUnavailable: 1
+
+# -- Specify a deployment strategy for each control plane workload
+deploymentStrategy:
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 25%
+
+# -- add PodAntiAffinity to each control plane workload
+enablePodAntiAffinity: true
+
+# nodeAffinity:
+
+# proxy configuration
+proxy:
+  resources:
+    cpu:
+      request: 100m
+    memory:
+      limit: 250Mi
+      request: 20Mi
+
+# controller configuration
+controllerReplicas: 3
+controllerResources: &controller_resources
+  cpu: &controller_resources_cpu
+    limit: ""
+    request: 100m
+  memory:
+    limit: 250Mi
+    request: 50Mi
+destinationResources: *controller_resources
+
+# identity configuration
+identityResources:
+  cpu: *controller_resources_cpu
+  memory:
+    limit: 250Mi
+    request: 10Mi
+
+# heartbeat configuration
+heartbeatResources: *controller_resources
+
+# proxy injector configuration
+proxyInjectorResources: *controller_resources
+webhookFailurePolicy: Fail
+
+# service profile validator configuration
+spValidatorResources: *controller_resources
+
+# flag for linkerd check
+highAvailability: true

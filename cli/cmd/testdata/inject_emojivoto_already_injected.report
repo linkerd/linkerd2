@@ -1,0 +1,6 @@
+
+deployment "web1" injected
+deployment "web2" injected
+deployment "web3" injected
+deployment "web4" injected
+

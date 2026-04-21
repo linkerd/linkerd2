@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+
+set -eu
+
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+# shellcheck source=_os.sh
+. "$bindir"/_os.sh
+
+bin=$rootdir/target/cli/$(os)/linkerd
+
+# Always rebuild the linkerd CLI binary before running it. This should be
+# relatively fast (<2s) if nothing has changed.
+"$bindir"/build-cli-bin >/dev/null
+
+exec "$bin" "$@"

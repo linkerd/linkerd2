@@ -1,0 +1,77 @@
+[graph]
+targets = [
+    { triple = "x86_64-unknown-linux-gnu" },
+    { triple = "aarch64-unknown-linux-gnu" },
+]
+
+[advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+ignore = [
+]
+
+[licenses]
+allow = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.8
+exceptions = [
+    { allow = [
+        "ISC",
+        "MIT",
+        "OpenSSL",
+    ], name = "ring", version = "*" },
+    { allow = [
+        "ISC",
+        "MIT",
+        "OpenSSL",
+    ], name = "aws-lc-sys", version = "*" },
+    { allow = [
+        "ISC",
+        "MIT",
+        "OpenSSL",
+    ], name = "aws-lc-fips-sys", version = "*" },
+]
+
+[[licenses.clarify]]
+name = "ring"
+version = "*"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
+
+[bans]
+multiple-versions = "deny"
+# Wildcard dependencies are used for all workspace-local crates.
+wildcards = "allow"
+highlight = "all"
+skip = []
+skip-tree = [
+    # `serde_json` and `h2` depend on diverged versions of `indexmap` (2.0.x and
+    # 1.9.x, respectively)
+    { name = "indexmap" },
+    # thiserror v2 is still making its way through the ecosystem
+    { name = "thiserror", version = "1" },
+    # getrandom v0.3 is still making its way through the ecosystem
+    { name = "getrandom", version = "0.2" },
+    # rand v0.10 is still making its way through the ecosystem. it uses a
+    # newer version of `cpufeatures` as well.
+    { name = "rand", version = "0.9" },
+    { name = "cpufeatures", version = "0.2" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
+
+[sources.allow-org]
+github = [
+    "linkerd",
+]

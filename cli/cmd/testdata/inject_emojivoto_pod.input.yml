@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: vote-bot
+  name: vote-bot
+  namespace: emojivoto
+spec:
+  containers:
+  - command:
+    - emojivoto-vote-bot
+    env:
+    - name: WEB_HOST
+      value: web-svc.emojivoto:80
+    image: buoyantio/emojivoto-web:v10
+    name: vote-bot
+---

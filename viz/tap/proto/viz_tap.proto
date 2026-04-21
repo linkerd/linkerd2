@@ -1,0 +1,172 @@
+syntax = "proto3";
+
+package linkerd2.tap;
+
+import "google/protobuf/duration.proto";
+import "common/net.proto";
+import "viz.proto";
+
+option go_package = "github.com/linkerd/linkerd2/viz/tap/gen/tap";
+
+message TapRequest {
+  option deprecated = true;
+
+  oneof target {
+    string pod = 1;
+    string deployment = 2;
+  }
+  // validation of these fields happens on the server
+  float maxRps = 3;
+  uint32 toPort = 4;
+  string toIP = 5;
+  uint32 fromPort = 6;
+  string fromIP = 7;
+  string scheme = 8;
+  string method = 9;
+  string authority = 10;
+  string path = 11;
+}
+
+// A tap request over kubernetes resources.
+//
+// This is used only by the tap APIServer.
+message TapByResourceRequest {
+  // Describes the kubernetes pods that should be tapped.
+  viz.ResourceSelection target = 1;
+
+  // Selects over events to be reported.
+  Match match = 2;
+
+  // Limits the number of events to be inspected.
+  float maxRps = 3;
+
+  message Match {
+    oneof match {
+      // If empty, matches all messages.
+      Seq all = 1;
+
+      // If empty, matches no messages.
+      Seq any = 2;
+
+      // Inverts the inner match.
+      Match not = 3;
+
+      // Matches events being sent to any of the selected destinations.
+      viz.ResourceSelection destinations = 4;
+
+      // Matches HTTP requests by their metadata.
+      Http http = 5;
+    }
+
+    message Seq {
+      repeated Match matches = 1;
+    }
+
+    message Http {
+      oneof match {
+        string scheme = 1;
+        string method = 2;
+        string authority = 3;
+        string path = 4;
+      }
+    }
+  }
+
+  // Conditionally extracts components from requests and responses to include
+  // in tap events
+  Extract extract = 4;
+
+  message Extract {
+    oneof extract {
+      Http http = 1;
+    }
+
+    message Http {
+      oneof extract {
+        Headers headers = 1;
+      }
+
+      message Headers {}
+    }
+  }
+}
+
+// This is used only by the tap APIServer.
+message TapEvent {
+  linkerd2.common.net.TcpAddress source = 1;
+  EndpointMeta source_meta = 5;
+
+  linkerd2.common.net.TcpAddress   destination      = 2;
+  EndpointMeta destination_meta = 4;
+
+  RouteMeta route_meta = 7;
+
+  ProxyDirection proxy_direction = 6;
+  enum ProxyDirection {
+    UNKNOWN = 0;
+    INBOUND = 1;
+    OUTBOUND = 2;
+  }
+
+  oneof event {
+    Http http = 3;
+  }
+
+  message EndpointMeta {
+    map<string, string> labels = 1;
+  }
+
+  message RouteMeta {
+    map<string, string> labels = 1;
+  }
+
+  message Http {
+    oneof event {
+      RequestInit  request_init  = 1;
+      ResponseInit response_init = 2;
+      ResponseEnd  response_end  = 3;
+    }
+
+    message StreamId {
+      // A randomized base (stable across a process's runtime)
+      uint32 base = 1;
+
+      // A stream id unique within the lifetime of `base`.
+      uint64 stream = 2;
+    }
+
+    message RequestInit {
+      StreamId id = 1;
+      viz.HttpMethod method =  2;
+      viz.Scheme scheme = 3;
+      string authority = 4;
+      string path = 5;
+      viz.Headers headers = 6;
+    }
+
+    message ResponseInit {
+      StreamId id = 1;
+
+      google.protobuf.Duration since_request_init = 2;
+
+      uint32 http_status = 3;
+      viz.Headers headers = 4;
+    }
+
+    message ResponseEnd {
+      StreamId id = 1;
+
+      google.protobuf.Duration since_request_init = 2;
+      google.protobuf.Duration since_response_init = 3;
+      uint64 response_bytes = 4;
+
+      viz.Eos eos = 5;
+      viz.Headers trailers = 6;
+    }
+  }
+}
+
+service Tap {
+  rpc Tap(TapRequest) returns (stream TapEvent) { option deprecated = true; }
+  rpc TapByResource(TapByResourceRequest) returns (stream TapEvent) { option deprecated = true; }
+}

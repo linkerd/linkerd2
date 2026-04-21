@@ -1,0 +1,58 @@
+# -- Docker image for the Service mirror component (uses the Linkerd controller
+# image)
+controllerImage: cr.l5d.io/linkerd/controller
+# -- Tag for the Service Mirror container Docker image
+controllerImageVersion: linkerdVersionValue
+# -- For Private docker registries, authentication is needed.
+#  Registry secrets are applied to the respective service accounts
+imagePullSecrets: []
+# -- Additional annotations to add to all pods
+podAnnotations: {}
+# -- Additional labels to add to all pods
+podLabels: {}
+# -- Labels to apply to all resources
+commonLabels: {}
+# -- Toggle support for mirroring headless services
+enableHeadlessServices: false
+# -- Toggle support for creating namespaces for mirror services when necessary
+enableNamespaceCreation: false
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
+enablePodAntiAffinity: false
+gateway:
+  # -- Controls whether link will create a probe service for the gateway
+  enabled: true
+  probe:
+    # -- The port used for liveliness probing
+    port: 4191
+# -- Log level for the Multicluster components
+logLevel: info
+# -- Log format (`plain` or `json`)
+logFormat: plain
+# -- Node selectors for the Service mirror pod
+nodeSelector: {}
+# -- Number of service mirror replicas to run
+replicas: 1
+# -- Resources for the Service mirror container
+resources: {}
+# -- Number of times update from the remote cluster is allowed to be requeued
+# (retried)
+serviceMirrorRetryLimit: 3
+# -- User id under which the Service Mirror shall be ran
+serviceMirrorUID: 2103
+# -- Group id under which the Service Mirror shall be ran
+serviceMirrorGID: 2103
+# -- Name of the target cluster that's going to be linked
+targetClusterName: ""
+# -- Tolerations for the Service mirror pod
+tolerations: {}
+
+# -- Create RoleBindings to associate ServiceAccount of target cluster Service
+# Mirror to the control plane PSP resource. This requires that `enabledPSP` is
+# set to true on the extension and control plane install. Note PSP has been
+# deprecated since k8s v1.21
+enablePSP: false
+
+# -- Specifies the number of old ReplicaSets to retain to allow rollback.
+revisionHistoryLimit: 10

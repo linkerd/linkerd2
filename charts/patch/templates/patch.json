@@ -1,0 +1,146 @@
+{{ $prefix := .Values.pathPrefix -}}
+{{/*
+$initIndex represents the patch insertion index of the next initContainer when
+proxy.nativeSidecar is true. If enabled, the proxy-init or network-validator
+should run first, immediately followed by the proxy. This ordering allows us
+to proxy traffic in subsequent initContainers.
+
+Note: dig is not used directly on .Values because it rejects chartutil.Values
+structs.
+*/}}
+{{- $initIndex := ternary "0" "-" (.Values.proxy | default (dict) | dig "nativeSidecar" false) -}}
+[
+  {{- if .Values.addRootMetadata }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/metadata",
+    "value": {}
+  },
+  {{- end }}
+  {{- if .Values.addRootAnnotations }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/metadata/annotations",
+    "value": {}
+  },
+  {{- end }}
+  {{- range $label, $value := .Values.annotations }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/metadata/annotations/{{$label | replace "/" "~1"}}",
+    "value": "{{$value}}"
+  },
+  {{- end }}
+  {{- if .Values.addRootLabels }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/metadata/labels",
+    "value": {}
+  },
+  {{- end }}
+  {{- range $label, $value := .Values.labels }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/metadata/labels/{{$label | replace "/" "~1"}}",
+    "value": "{{$value}}"
+  },
+  {{- end }}
+  {{- if or .Values.proxyInit .Values.proxy }}
+  {{- if .Values.addRootVolumes }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/volumes",
+    "value": []
+  },
+  {{- end }}
+  {{- end}}
+  {{- if .Values.addRootInitContainers }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/initContainers",
+    "value": []
+  },
+  {{- end}}
+  {{- if and .Values.proxyInit (not .Values.cniEnabled) }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/volumes/-",
+    "value": {
+      "emptyDir": {},
+      "name": "linkerd-proxy-init-xtables-lock"
+    }
+  },
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/initContainers/{{$initIndex}}{{$initIndex = add1 $initIndex}}",
+    "value":
+      {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
+  },
+  {{- else if and .Values.proxy .Values.cniEnabled }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/initContainers/{{$initIndex}}{{$initIndex = add1 $initIndex}}",
+    "value":
+      {{- include "partials.network-validator" . | fromYaml | toPrettyJson | nindent 6 }}
+  },
+  {{- end }}
+  {{- if .Values.debugContainer }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/containers/-",
+    "value":
+      {{- include "partials.debug" . | fromYaml | toPrettyJson | nindent 6 }}
+  },
+  {{- end }}
+  {{- if .Values.proxy }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/volumes/-",
+    "value": {
+      "name": "linkerd-identity-end-entity",
+      "emptyDir": {
+        "medium": "Memory"
+      }
+    }
+  },
+  {{- if .Values.proxy.tracing | default (dict) | dig "enabled" false }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/volumes/-",
+    "value": {
+       "downwardAPI": {
+         "items": [
+            {
+              "fieldRef": {
+                "fieldPath": "metadata.labels"
+              },
+              "path": "labels"
+            }
+          ]
+       },
+       "name": "linkerd-podinfo"
+     }
+  },
+  {{- end }}
+  {{- if .Values.identity.serviceAccountTokenProjection}}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/volumes/-",
+    "value":
+      {{- include "partials.proxy.volumes.service-account-token" . | fromYaml | toPrettyJson | nindent 6 }}
+  },
+  {{- end }}
+  {
+    "op": "add",
+  {{- if .Values.proxy.nativeSidecar }}
+    "path": "{{$prefix}}/spec/initContainers/{{$initIndex}}",
+  {{- else if .Values.proxy.await }}
+    "path": "{{$prefix}}/spec/containers/0",
+  {{- else }}
+    "path": "{{$prefix}}/spec/containers/-",
+  {{- end }}
+    "value":
+      {{- include "partials.proxy" . | fromYaml | toPrettyJson | nindent 6 }}
+  },
+  {{- end }}
+]

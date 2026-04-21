@@ -1,0 +1,79 @@
+{{if .Values.gateway.enabled -}}
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: linkerd-gateway
+  labels:
+    linkerd.io/extension: multicluster
+    app: {{.Values.gateway.name}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{.Values.gateway.name}}
+  port: linkerd-proxy
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: linkerd-gateway
+  labels:
+    linkerd.io/extension: multicluster
+    app: {{.Values.gateway.name}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: linkerd-gateway
+  requiredAuthenticationRefs:
+    - group: policy.linkerd.io
+      kind: MeshTLSAuthentication
+      name: any-meshed
+      namespace: {{ .Release.Namespace }}
+    - group: policy.linkerd.io
+      kind: NetworkAuthentication
+      name: source-cluster
+      namespace: {{ .Release.Namespace }}
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: any-meshed
+  labels:
+    linkerd.io/extension: multicluster
+    app: {{.Values.gateway.name}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  identities:
+  - '*'
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: source-cluster
+  labels:
+    linkerd.io/extension: multicluster
+    app: {{.Values.gateway.name}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  networks:
+    # Change this to the source cluster cidrs pointing to this gateway.
+    # Note that the source IP in some providers (e.g. GKE) will be the local
+    # node's IP and not the source cluster's
+  - cidr: "0.0.0.0/0"
+  - cidr: "::/0"
+{{end -}}

@@ -1,0 +1,20 @@
+{{if .Values.enablePSP -}}
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-multicluster-link-psp-{{.Values.targetClusterName}}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/extension: multicluster
+    namespace: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: psp
+subjects:
+- kind: ServiceAccount
+  name: linkerd-service-mirror-{{.Values.targetClusterName}}
+  namespace: {{.Release.Namespace}}
+{{ end -}}

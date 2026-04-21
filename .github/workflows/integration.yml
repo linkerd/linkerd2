@@ -1,0 +1,443 @@
+name: Integration tests
+
+on: pull_request
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CARGO_NEXTEST_VERSION: 0.9.100
+  DOCKER_REGISTRY: ghcr.io/linkerd
+  GH_ANNOTATION: true
+  K3D_VERSION: v5.8.3
+  RUST_BACKTRACE: short
+  RUSTUP_MAX_RETRIES: 10
+  YQ_VERSION: v4.44.5
+  LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO || 'linkerd/linkerd2-proxy' }}
+  LINKERD2_PROXY_RELEASE_PREFIX: ${{ vars.LINKERD2_PROXY_RELEASE_PREFIX || 'release/' }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  meta:
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - id: tag
+        run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
+      - uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96
+        id: core
+        with:
+          files: |
+            .github/workflows/integration.yml
+            .proxy-version
+            go.sum
+            **/*.go
+            **/*.rs
+            **/Dockerfile*
+            charts/**
+            multicluster/charts/**
+            justfile
+            bin/fetch-proxy
+            bin/_test-helper.sh
+          files_ignore: |
+            .devcontainer/**
+            **/Chart.yaml
+            **/README*
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      changed: ${{ steps.core.outputs.any_changed }}
+
+  info:
+    needs: meta
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 2
+    steps:
+      - name: Info
+        run: |
+          echo "tag=${{ needs.meta.outputs.tag }}"
+          echo "changed=${{ needs.meta.outputs.changed }}"
+
+  build-cli:
+    needs: meta
+    if: needs.meta.outputs.changed == 'true'
+    uses: ./.github/workflows/cli-build.yml
+    with:
+      version: ${{ needs.meta.outputs.tag }}
+      target: linux-amd64
+
+  ##
+  ## Core: Test the core control plane
+  ##
+  ## TODO(ver) CNI configurations should be tested separately.
+  ##
+
+  build-core:
+    needs: meta
+    if: needs.meta.outputs.changed == 'true'
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    services:
+      registry:
+        image: registry:3
+        ports:
+          - 5000:5000
+    strategy:
+      matrix:
+        component:
+          - controller
+          - proxy
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: ./.github/actions/docker-build
+        id: build
+        env:
+          LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
+        with:
+          docker-registry: ${{ env.DOCKER_REGISTRY }}
+          docker-target: linux-amd64
+          component: ${{ matrix.component }}
+          tag: ${{ needs.meta.outputs.tag }}
+      - name: Run docker save
+        run: |
+          mkdir -p /home/runner/archives
+          docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: image-archives-${{ matrix.component }}
+          path: /home/runner/archives
+
+  test-core:
+    needs: [meta, build-cli, build-core]
+    if: needs.meta.outputs.changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - cni-calico-deep
+          - deep
+          - deep-native-sidecar
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: image-archives-*
+          path: image-archives
+          merge-multiple: true
+      - run: find image-archives -ls
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} ${{ runner.temp }}/linkerd
+        env:
+          LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+          TAG: ${{ needs.meta.outputs.tag }}
+
+  ##
+  ## Policy: Only run policy tests when the policy controller or proxy changes
+  ##
+
+  test-policy:
+    needs: [meta, build-cli, build-core]
+    if: needs.meta.outputs.changed == 'true'
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Test the latest Kubernetes version with the latest Gateway API
+        # version, as well as the vendored Gateway API CRDs.
+        k8s:
+          - v1.35
+        gateway-api:
+          - version: linkerd
+            channel: experimental
+          - version: v1.4.0
+            channel: experimental
+        # Also test the Minimum Supported Kubernetes Version with the Minimum
+        # Supported Gateway API version.
+        include:
+          - k8s: v1.23
+            gateway-api:
+              version: v1.1.1
+              channel: standard
+    env:
+      GATEWAY_API_VERSION: ${{ matrix.gateway-api.version }}
+      GATEWAY_API_CHANNEL: ${{ matrix.gateway-api.channel }}
+    steps:
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: image-archives-*
+          path: image-archives
+          merge-multiple: true
+      - run: find image-archives -ls
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
+      - name: Setup deps
+        shell: bash
+        run: |
+          rm -rf "$HOME/.cargo"
+          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(./bin/rust-toolchain-version)"
+          # shellcheck disable=SC1090
+          source ~/.cargo/env
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
+          bin/scurl -vo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" && chmod +x /usr/local/bin/yq
+          bin/scurl -v "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/cargo-nextest-${CARGO_NEXTEST_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o nextest.tar.gz
+          tar -xzf nextest.tar.gz
+          mv cargo-nextest ~/.cargo/bin/
+          chmod +x ~/.cargo/bin/cargo-nextest
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+      - run: just policy-test-build
+      - run: just k3d-k8s='${{ matrix.k8s }}' k3d-create
+      - run: docker load <image-archives/controller.tar
+      - run: docker load <image-archives/proxy.tar
+      - run: docker image ls
+      - run: just linkerd-tag='${{ needs.meta.outputs.tag }}' linkerd-exec="${{ runner.temp }}/linkerd" linkerd-install
+      - name: Load images
+        run: |
+          # Image loading is flakey in CI, so retry!
+          for _ in {1..6} ; do
+            if just linkerd-tag='${{ needs.meta.outputs.tag }}' policy-test-deps-load ; then exit 0 ; fi
+            sleep 10
+            echo retrying...
+          done
+          exit 1
+      - run: just policy-test-run --jobs=1
+        env:
+          # https://nexte.st/book/retries.html
+          NEXTEST_RETRIES: 3
+
+  ##
+  ## Ext: Run tests that require non-core components.
+  ##
+
+  build-ext:
+    needs: meta
+    if: needs.meta.outputs.changed == 'true'
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    strategy:
+      matrix:
+        component:
+          - metrics-api
+          - tap
+          - web
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: ./.github/actions/docker-build
+        id: build
+        with:
+          docker-registry: ${{ env.DOCKER_REGISTRY }}
+          docker-target: linux-amd64
+          component: ${{ matrix.component }}
+          tag: ${{ needs.meta.outputs.tag }}
+      - name: Run docker save
+        run: |
+          mkdir -p /home/runner/archives
+          docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: image-archives-${{ matrix.component }}
+          path: /home/runner/archives
+
+  # These tests exercise core functionality, but need the viz extension.
+  test-ext:
+    needs: [meta, build-cli, build-core, build-ext]
+    if: needs.meta.outputs.changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        integration_test:
+          - cluster-domain
+          - default-policy-deny
+          - external
+          - rsa-ca
+          - tracing
+          - helm-upgrade
+          - uninstall
+          - upgrade-edge
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: image-archives-*
+          path: image-archives
+          merge-multiple: true
+      - run: find image-archives -ls
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name '${{ matrix.integration_test }}' ${{ runner.temp }}/linkerd
+        env:
+          LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+
+  ##
+  ## Viz: Run the (flakey) `viz` suite only when the `viz` extension is updated.
+  ##
+
+  test-viz:
+    needs: [meta, build-cli, build-core, build-ext]
+    if: needs.meta.outputs.changed == 'true'
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: image-archives-*
+          path: image-archives
+          merge-multiple: true
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name viz ${{ runner.temp }}/linkerd
+        env:
+          LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+
+  ##
+  ## Multicluster: Run 'multicluster' suite only when the 'multicluster' extension is updated.
+  ##               Tests are run on min and max k8s versions
+  ##
+
+  test-multicluster:
+    needs: [meta, build-cli, build-core, build-ext]
+    if: needs.meta.outputs.changed == 'true'
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        cases:
+        - {k8s: "v1.23", manage-controllers: false, install-gwapi: true}
+        # for v1.34 onwards, gwapi gets installed by Traefik on the target cluster
+        - {k8s: "v1.35", manage-controllers: false, install-gwapi: false}
+        - {k8s: "v1.35", manage-controllers: true, install-gwapi: false}
+    name: "test-multicluster(${{ matrix.cases.k8s }}, ${{ matrix.cases.manage-controllers && 'managed-controllers' || 'unmanaged-controllers' }})"
+    steps:
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: image-archives-*
+          path: image-archives
+          merge-multiple: true
+      - run: find image-archives -ls
+      - uses: ./.github/actions/cli-setup
+        with:
+          artifact-id: ${{ needs.build-cli.outputs.artifact-id }}
+          target: ${{ runner.temp }}/linkerd
+      - name: Setup deps
+        shell: bash
+        run: |
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
+      - name: Load docker images
+        run: |
+          for img in controller proxy; do
+            docker load <"image-archives/${img}.tar"
+          done
+      - run: docker image ls
+      - run: just mc-test-build
+      - name: Run just mc-load
+        run: |
+          just linkerd-tag='${{ needs.meta.outputs.tag }}' \
+              k3d-k8s='${{ matrix.cases.k8s }}' \
+              mc-load
+      - run: just mc-install-gwapi
+      - name: Run just mc-target-load
+        run: |
+          just linkerd-tag='${{ needs.meta.outputs.tag }}' \
+              k3d-k8s='${{ matrix.cases.k8s }}' \
+              mc-target-load
+      - name: Run just mc-install-gwapi
+        if: ${{ matrix.cases.install-gwapi }}
+        run: just k3d-name='l5d-test-target' mc-install-gwapi
+      - run: just mc-flat-network-init
+      - name: Run just mc-test-run
+        run: |
+          just linkerd-tag='${{ needs.meta.outputs.tag }}' \
+              k3d-k8s='${{ matrix.cases.k8s }}' \
+              mc-test-run -multicluster-manage-controllers=${{ matrix.cases.manage-controllers }}
+
+  build-ok:
+    needs: [build-cli, build-core, build-ext]
+    if: always()
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - name: Results
+        run: |
+          echo 'needs.build-cli.result: ${{ needs.build-cli.result }}'
+          echo 'needs.build-core.result: ${{ needs.build-core.result }}'
+          echo 'needs.build-ext.result: ${{ needs.build-ext.result }}'
+      - name: Verify jobs
+        # All jobs must succeed or be skipped.
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+
+  # Try to re-run the integration tests if they fail, but only up to 3 times.
+  integrations-retry:
+    needs:
+      [build-ok, test-core, test-policy, test-ext, test-viz, test-multicluster]
+    if: failure() && fromJSON(github.run_attempt) < 3 && needs.build-ok.result == 'success'
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    permissions:
+      actions: write
+    env:
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      GH_DEBUG: api
+      REF: ${{ github.head_ref }}
+    steps:
+      - run: gh workflow run rerun.yml -F 'run_id=${{ github.run_id }}' --ref "$REF"
+
+  integrations-ok:
+    needs:
+      [build-ok, test-core, test-policy, test-ext, test-viz, test-multicluster]
+    if: always()
+    runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - name: Results
+        run: |
+          echo 'needs.build-ok.result: ${{ needs.build-ok.result }}'
+          echo 'needs.test-core.result: ${{ needs.test-core.result }}'
+          echo 'needs.test-policy.result: ${{ needs.test-policy.result }}'
+          echo 'needs.test-ext.result: ${{ needs.test-ext.result }}'
+          echo 'needs.test-viz.result: ${{ needs.test-viz.result }}'
+          echo 'needs.test-multicluster.result: ${{ needs.test-multicluster.result }}'
+      - name: Verify jobs
+        # All jobs must succeed or be skipped.
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

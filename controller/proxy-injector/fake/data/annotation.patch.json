@@ -1,0 +1,12 @@
+[
+    {
+        "op": "add",
+        "path": "/metadata/annotations",
+        "value": {}
+    },
+    {
+        "op": "add",
+        "path": "/metadata/annotations/config.linkerd.io~1opaque-ports",
+        "value": "3306"
+    }
+]

@@ -1,0 +1,18 @@
+{{- if eq .Release.Service "CLI" -}}
+---
+###
+### Linkerd Namespace
+###
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: {{ .Release.Namespace }}
+  annotations:
+    linkerd.io/inject: disabled
+  labels:
+    linkerd.io/is-control-plane: "true"
+    config.linkerd.io/admission-webhooks: disabled
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- /* linkerd-init requires extended capabilities and so requires priviledged mode */}}
+    pod-security.kubernetes.io/enforce: {{ ternary "restricted" "privileged" .Values.cniEnabled }}
+{{ end -}}
