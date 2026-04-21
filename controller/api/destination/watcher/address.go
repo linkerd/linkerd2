@@ -1,6 +1,8 @@
 package watcher
 
 import (
+	"maps"
+
 	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	discovery "k8s.io/api/discovery/v1"
@@ -45,14 +47,10 @@ type (
 // locations of the original variable
 func (addr AddressSet) shallowCopy() AddressSet {
 	addresses := make(map[ID]Address)
-	for k, v := range addr.Addresses {
-		addresses[k] = v
-	}
+	maps.Copy(addr.Addresses, addresses)
 
 	labels := make(map[string]string)
-	for k, v := range addr.Labels {
-		labels[k] = v
-	}
+	maps.Copy(addr.Labels, labels)
 
 	return AddressSet{
 		Addresses: addresses,

@@ -42,10 +42,6 @@ type (
 	}
 )
 
-////////////////////////
-/// servicePublisher ///
-////////////////////////
-
 func (sp *servicePublisher) updateEndpoints(newEndpoints *corev1.Endpoints) {
 	sp.Lock()
 	defer sp.Unlock()

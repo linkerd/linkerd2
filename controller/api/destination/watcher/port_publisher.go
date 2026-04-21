@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net"
 	"strings"
 
@@ -40,10 +41,6 @@ type (
 		localTrafficPolicy   bool
 	}
 )
-
-/////////////////////
-/// portPublisher ///
-/////////////////////
 
 // Note that portPublishers methods are generally NOT thread-safe.  You should
 // hold the parent servicePublisher's mutex before calling methods on a
@@ -90,20 +87,14 @@ func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, 
 		Addresses: make(map[ID]Address),
 		Labels:    pp.addresses.Labels,
 	}
-
-	for id, address := range pp.addresses.Addresses {
-		updatedAddressSet.Addresses[id] = address
-	}
+	maps.Copy(pp.addresses.Addresses, updatedAddressSet.Addresses)
 
 	for _, id := range pp.endpointSliceToIDs(oldSlice) {
 		delete(updatedAddressSet.Addresses, id)
 	}
 
 	newAddressSet := pp.endpointSliceToAddresses(newSlice)
-	for id, address := range newAddressSet.Addresses {
-		updatedAddressSet.Addresses[id] = address
-	}
-
+	maps.Copy(newAddressSet.Addresses, updatedAddressSet.Addresses)
 	pp.publishAddressChange(updatedAddressSet)
 
 	pp.addresses = updatedAddressSet
@@ -473,7 +464,6 @@ func (pp *portPublisher) updateLocalTrafficPolicy(localTrafficPolicy bool) {
 	for _, group := range pp.filteredListeners {
 		group.updateLocalTrafficPolicy(localTrafficPolicy)
 	}
-	pp.publishFilteredSnapshots()
 }
 
 func (pp *portPublisher) updatePort(targetPort namedPort) {
