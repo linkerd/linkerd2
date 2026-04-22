@@ -3361,3 +3361,412 @@ status:
 
 	listener.ExpectAdded([]string{"172.17.0.12:8989", "172.17.0.12:8989"}, t)
 }
+
+func TestEndpointSliceSelectsAddressFamilyAfterZoneFiltering(t *testing.T) {
+	nodeConfig := `
+apiVersion: v1
+kind: Node
+metadata:
+  name: node-1
+  labels:
+    topology.kubernetes.io/zone: west-1a`
+
+	for _, tc := range []struct {
+		name              string
+		ipv4Zone          string
+		ipv6Zone          string
+		expectedAddresses []string
+	}{
+		{
+			name:              "Sends IPv6 only when pod has both IPv4 and IPv6",
+			ipv4Zone:          "west-1a",
+			ipv6Zone:          "west-1a",
+			expectedAddresses: []string{"2001:db8:85a3::8a2e:370:7333:1"},
+		},
+		{
+			name:              "Sends IPv4 only when pod has both IPv4 and IPv6 but the latter in another zone",
+			ipv4Zone:          "west-1a",
+			ipv6Zone:          "west-1b",
+			expectedAddresses: []string{"1.1.1.1:1"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			k8sConfigsWithES := []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1
+resources:
+- name: endpointslices
+  singularName: endpointslice
+  namespaced: true
+  kind: EndpointSlice
+  verbs:
+    - delete
+    - deletecollection
+    - get
+    - list
+    - patch
+    - create
+    - update
+    - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 1`, fmt.Sprintf(`
+addressType: IPv4
+apiVersion: discovery.k8s.io/v1
+endpoints:
+- addresses:
+  - 1.1.1.1
+  conditions:
+    ready: true
+  hints:
+    forZones:
+    - name: %s
+  targetRef:
+    kind: Pod
+    name: name1-1
+    namespace: ns
+kind: EndpointSlice
+metadata:
+  labels:
+    kubernetes.io/service-name: name1
+  name: name1-ipv4
+  namespace: ns
+ports:
+- name: ""
+  port: 1`, tc.ipv4Zone), fmt.Sprintf(`
+addressType: IPv6
+apiVersion: discovery.k8s.io/v1
+endpoints:
+- addresses:
+  - 2001:db8:85a3::8a2e:370:7333
+  conditions:
+    ready: true
+  hints:
+    forZones:
+    - name: %s
+  targetRef:
+    kind: Pod
+    name: name1-1
+    namespace: ns
+kind: EndpointSlice
+metadata:
+  labels:
+    kubernetes.io/service-name: name1
+  name: name1-ipv6
+  namespace: ns
+ports:
+- name: ""
+  port: 1`, tc.ipv6Zone), `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+status:
+  phase: Running
+  podIP: 1.1.1.1`}
+
+			k8sAPI, err := k8s.NewFakeAPI(k8sConfigsWithES...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			metadataAPI, err := k8s.NewFakeMetadataAPI([]string{nodeConfig})
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, true, "local")
+			if err != nil {
+				t.Fatalf("can't create Endpoints watcher: %s", err)
+			}
+
+			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
+
+			listener := newBufferingEndpointListener()
+
+			err = watcher.Subscribe(ServiceID{Name: "name1", Namespace: "ns"}, 1, FilterKey{
+				EnableEndpointFiltering: true,
+				NodeName:                "node-1",
+			}, listener)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
+
+			listener.ExpectAdded(tc.expectedAddresses, t)
+			listener.ExpectRemoved([]string{}, t)
+		})
+	}
+}
+
+func TestEndpointSliceTopologyAwareFilter(t *testing.T) {
+	nodeConfig := `
+apiVersion: v1
+kind: Node
+metadata:
+  name: node-1
+  labels:
+    topology.kubernetes.io/zone: west-1a`
+
+	k8sConfigsWithES := []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1
+resources:
+- name: endpointslices
+  singularName: endpointslice
+  namespaced: true
+  kind: EndpointSlice
+  verbs:
+    - delete
+    - deletecollection
+    - get
+    - list
+    - patch
+    - create
+    - update
+    - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 1`, `
+addressType: IPv4
+apiVersion: discovery.k8s.io/v1
+endpoints:
+- addresses:
+  - 1.1.1.1
+  conditions:
+    ready: true
+  hints:
+    forZones:
+    - name: west-1a
+- addresses:
+  - 1.1.1.2
+  conditions:
+    ready: true
+  hints:
+    forZones:
+    - name: west-1b
+kind: EndpointSlice
+metadata:
+  labels:
+    kubernetes.io/service-name: name1
+  name: name1-es
+  namespace: ns
+ports:
+- name: ""
+  port: 1
+`}
+
+	k8sAPI, err := k8s.NewFakeAPI(k8sConfigsWithES...)
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+
+	metadataAPI, err := k8s.NewFakeMetadataAPI([]string{nodeConfig})
+	if err != nil {
+		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+	}
+
+	watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, false, "local")
+	if err != nil {
+		t.Fatalf("can't create Endpoints watcher: %s", err)
+	}
+
+	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
+
+	listener := newBufferingEndpointListener()
+
+	err = watcher.Subscribe(ServiceID{Name: "name1", Namespace: "ns"}, 1, FilterKey{
+		EnableEndpointFiltering: true,
+		NodeName:                "node-1",
+	}, listener)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
+
+	listener.ExpectAdded([]string{"1.1.1.1:1"}, t)
+	listener.ExpectRemoved([]string{}, t)
+
+	es, err := k8sAPI.Client.DiscoveryV1().EndpointSlices("ns").Get(context.Background(), "name1-es", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	es.Endpoints = es.Endpoints[:1]
+
+	_, err = k8sAPI.Client.DiscoveryV1().EndpointSlices("ns").Update(context.Background(), es, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
+
+	time.Sleep(50 * time.Millisecond)
+
+	listener.ExpectAdded([]string{"1.1.1.1:1"}, t)
+	listener.ExpectRemoved([]string{}, t)
+}
+
+func TestEndpointSliceLocalTrafficPolicyIgnoresRemovalOfUnfilteredEndpoint(t *testing.T) {
+	nodeConfig := `
+apiVersion: v1
+kind: Node
+metadata:
+  name: node-1`
+
+	k8sConfigsWithES := []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1
+resources:
+- name: endpointslices
+  singularName: endpointslice
+  namespaced: true
+  kind: EndpointSlice
+  verbs:
+    - delete
+    - deletecollection
+    - get
+    - list
+    - patch
+    - create
+    - update
+    - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  internalTrafficPolicy: Local
+  ports:
+  - port: 1`, `
+addressType: IPv4
+apiVersion: discovery.k8s.io/v1
+endpoints:
+- addresses:
+  - 1.1.1.1
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name1-1
+    namespace: ns
+- addresses:
+  - 1.1.1.2
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name1-2
+    namespace: ns
+kind: EndpointSlice
+metadata:
+  labels:
+    kubernetes.io/service-name: name1
+  name: name1-es
+  namespace: ns
+ports:
+- name: ""
+  port: 1`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+spec:
+  nodeName: node-1
+status:
+  phase: Running
+  podIP: 1.1.1.1`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-2
+  namespace: ns
+spec:
+  nodeName: node-2
+status:
+  phase: Running
+  podIP: 1.1.1.2`}
+
+	k8sAPI, err := k8s.NewFakeAPI(k8sConfigsWithES...)
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+
+	metadataAPI, err := k8s.NewFakeMetadataAPI([]string{nodeConfig})
+	if err != nil {
+		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+	}
+
+	watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, false, "local")
+	if err != nil {
+		t.Fatalf("can't create Endpoints watcher: %s", err)
+	}
+
+	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
+
+	listener := newBufferingEndpointListener()
+
+	err = watcher.Subscribe(ServiceID{Name: "name1", Namespace: "ns"}, 1, FilterKey{
+		EnableEndpointFiltering: true,
+		NodeName:                "node-1",
+	}, listener)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
+
+	listener.ExpectAdded([]string{"1.1.1.1:1"}, t)
+	listener.ExpectRemoved([]string{}, t)
+
+	es, err := k8sAPI.Client.DiscoveryV1().EndpointSlices("ns").Get(context.Background(), "name1-es", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	es.Endpoints = es.Endpoints[:1]
+
+	_, err = k8sAPI.Client.DiscoveryV1().EndpointSlices("ns").Update(context.Background(), es, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
+
+	time.Sleep(50 * time.Millisecond)
+
+	listener.ExpectAdded([]string{"1.1.1.1:1"}, t)
+	listener.ExpectRemoved([]string{}, t)
+}

@@ -47,10 +47,10 @@ type (
 // locations of the original variable
 func (addr AddressSet) shallowCopy() AddressSet {
 	addresses := make(map[ID]Address)
-	maps.Copy(addr.Addresses, addresses)
+	maps.Copy(addresses, addr.Addresses)
 
 	labels := make(map[string]string)
-	maps.Copy(addr.Labels, labels)
+	maps.Copy(labels, addr.Labels)
 
 	return AddressSet{
 		Addresses: addresses,

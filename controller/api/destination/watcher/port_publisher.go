@@ -87,14 +87,14 @@ func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, 
 		Addresses: make(map[ID]Address),
 		Labels:    pp.addresses.Labels,
 	}
-	maps.Copy(pp.addresses.Addresses, updatedAddressSet.Addresses)
+	maps.Copy(updatedAddressSet.Addresses, pp.addresses.Addresses)
 
 	for _, id := range pp.endpointSliceToIDs(oldSlice) {
 		delete(updatedAddressSet.Addresses, id)
 	}
 
 	newAddressSet := pp.endpointSliceToAddresses(newSlice)
-	maps.Copy(newAddressSet.Addresses, updatedAddressSet.Addresses)
+	maps.Copy(updatedAddressSet.Addresses, newAddressSet.Addresses)
 	pp.publishAddressChange(updatedAddressSet)
 
 	pp.addresses = updatedAddressSet
