@@ -133,6 +133,9 @@ func (sp *servicePublisher) unsubscribe(srcPort Port, listener EndpointUpdateLis
 	publisher, ok := sp.ports[srcPort]
 	if ok {
 		publisher.unsubscribe(listener, filterKey, withRemove)
+		if publisher.totalListeners() == 0 {
+			delete(sp.ports, srcPort)
+		}
 	}
 }
 

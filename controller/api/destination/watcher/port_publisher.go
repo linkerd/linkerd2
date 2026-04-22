@@ -519,6 +519,7 @@ func (pp *portPublisher) subscribe(listener EndpointUpdateListener, filterKey Fi
 	}
 	if pp.exists {
 		if len(pp.addresses.Addresses) > 0 {
+			group.availableEndpoints = pp.addresses
 			filteredSet := group.filterAddresses(pp.addresses)
 			group.snapshot = filteredSet
 			if len(filteredSet.Addresses) > 0 {
@@ -554,8 +555,9 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener, filterKey 
 			))
 			delete(pp.filteredListeners, filterKey)
 		}
+
+		group.metrics.setSubscribers(len(group.listeners))
 	}
-	group.metrics.setSubscribers(len(group.listeners))
 }
 func (pp *portPublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 	updated := false
@@ -676,4 +678,12 @@ func (pp *portPublisher) isAddressSelected(address Address, server *v1beta3.Serv
 		}
 	}
 	return false
+}
+
+func (pp *portPublisher) totalListeners() int {
+	total := 0
+	for _, group := range pp.filteredListeners {
+		total += len(group.listeners)
+	}
+	return total
 }
