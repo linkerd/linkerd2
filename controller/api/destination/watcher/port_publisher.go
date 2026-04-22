@@ -53,6 +53,7 @@ func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	} else {
 		pp.publishAddressChange(newAddressSet)
 	}
+	pp.exists = true
 	pp.addresses = newAddressSet
 }
 
@@ -259,7 +260,7 @@ func (pp *portPublisher) endpointSliceToIDs(es *discovery.EndpointSlice) []ID {
 					IPAddr,
 					fmt.Sprint(resolvedPort),
 				}
-				if endpoint.Hints != nil && *endpoint.Hostname != "" {
+				if endpoint.Hostname != nil && *endpoint.Hostname != "" {
 					nameParts = append(nameParts, *endpoint.Hostname)
 				}
 				ids = append(ids, ServiceID{
@@ -343,7 +344,7 @@ func (pp *portPublisher) newServiceRefAddress(endpointPort Port, endpointIP stri
 		endpointIP,
 		fmt.Sprint(endpointPort),
 	}
-	if hostname != nil {
+	if hostname != nil && *hostname != "" {
 		nameParts = append(nameParts, *hostname)
 	}
 
