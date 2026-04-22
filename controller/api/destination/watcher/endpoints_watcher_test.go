@@ -1904,7 +1904,6 @@ status:
 		serviceType      string
 		k8sConfigs       []string
 		id               ServiceID
-		hostname         string
 		port             Port
 		objectToDelete   interface{}
 		deletingServices bool
@@ -1915,7 +1914,6 @@ status:
 			k8sConfigs:     k8sConfigsWithES,
 			id:             ServiceID{Name: "name1", Namespace: "ns"},
 			port:           8989,
-			hostname:       "name1-1",
 			objectToDelete: createTestEndpointSlice(consts.PodKind),
 			hasSliceAccess: true,
 		},
@@ -1924,7 +1922,6 @@ status:
 			k8sConfigs:     k8sConfigsWithES,
 			id:             ServiceID{Name: "name1", Namespace: "ns"},
 			port:           8989,
-			hostname:       "name1-1",
 			objectToDelete: createTestEndpointSlice(consts.PodKind),
 			hasSliceAccess: true,
 		},
@@ -1933,7 +1930,6 @@ status:
 			k8sConfigs:     k8sConfigWithMultipleES,
 			id:             ServiceID{Name: "name1", Namespace: "ns"},
 			port:           8989,
-			hostname:       "name1-1",
 			objectToDelete: createTestEndpointSlice(consts.PodKind),
 			hasSliceAccess: true,
 		},
@@ -1960,7 +1956,7 @@ status:
 
 			listener := newBufferingEndpointListener()
 
-			err = watcher.Subscribe(tt.id, tt.port, testFilterKey(tt.hostname), listener)
+			err = watcher.Subscribe(tt.id, tt.port, testFilterKey(""), listener)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2067,7 +2063,6 @@ status:
 		serviceType      string
 		k8sConfigs       []string
 		id               ServiceID
-		hostname         string
 		port             Port
 		objectToDelete   interface{}
 		deletingServices bool
@@ -2078,7 +2073,6 @@ status:
 			k8sConfigs:     k8sConfigsWithES,
 			id:             ServiceID{Name: "name1", Namespace: "ns"},
 			port:           8989,
-			hostname:       "name1-1",
 			objectToDelete: createTestEndpointSlice(consts.ExtWorkloadKind),
 			hasSliceAccess: true,
 		},
@@ -2087,7 +2081,6 @@ status:
 			k8sConfigs:     k8sConfigsWithES,
 			id:             ServiceID{Name: "name1", Namespace: "ns"},
 			port:           8989,
-			hostname:       "name1-1",
 			objectToDelete: createTestEndpointSlice(consts.ExtWorkloadKind),
 			hasSliceAccess: true,
 		},
@@ -2096,7 +2089,6 @@ status:
 			k8sConfigs:     k8sConfigWithMultipleES,
 			id:             ServiceID{Name: "name1", Namespace: "ns"},
 			port:           8989,
-			hostname:       "name1-1",
 			objectToDelete: createTestEndpointSlice(consts.ExtWorkloadKind),
 			hasSliceAccess: true,
 		},
@@ -2123,7 +2115,7 @@ status:
 
 			listener := newBufferingEndpointListener()
 
-			err = watcher.Subscribe(tt.id, tt.port, testFilterKey(tt.hostname), listener)
+			err = watcher.Subscribe(tt.id, tt.port, testFilterKey(""), listener)
 			if err != nil {
 				t.Fatal(err)
 			}

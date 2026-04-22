@@ -254,12 +254,16 @@ func (pp *portPublisher) endpointSliceToIDs(es *discovery.EndpointSlice) []ID {
 
 		if endpoint.TargetRef == nil {
 			for _, IPAddr := range endpoint.Addresses {
+				nameParts := []string{
+					serviceID.Name,
+					IPAddr,
+					fmt.Sprint(resolvedPort),
+				}
+				if endpoint.Hints != nil && *endpoint.Hostname != "" {
+					nameParts = append(nameParts, *endpoint.Hostname)
+				}
 				ids = append(ids, ServiceID{
-					Name: strings.Join([]string{
-						serviceID.Name,
-						IPAddr,
-						fmt.Sprint(resolvedPort),
-					}, "-"),
+					Name:      strings.Join(nameParts, "-"),
 					Namespace: es.Namespace,
 				})
 			}
@@ -334,12 +338,17 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 }
 
 func (pp *portPublisher) newServiceRefAddress(endpointPort Port, endpointIP string, hostname *string, serviceName, serviceNamespace string) (Address, ServiceID) {
+	nameParts := []string{
+		serviceName,
+		endpointIP,
+		fmt.Sprint(endpointPort),
+	}
+	if hostname != nil {
+		nameParts = append(nameParts, *hostname)
+	}
+
 	id := ServiceID{
-		Name: strings.Join([]string{
-			serviceName,
-			endpointIP,
-			fmt.Sprint(endpointPort),
-		}, "-"),
+		Name:      strings.Join(nameParts, "-"),
 		Namespace: serviceNamespace,
 	}
 
