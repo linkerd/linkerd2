@@ -5,7 +5,7 @@
 set +e
 
 k8s_version_min='+v1.23'
-k8s_version_max='docker.io/rancher/k3s:v1.31.5-k3s1'
+k8s_version_max='docker.io/rancher/k3s:v1.35.3-k3s1'
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 testdir=$bindir/../test/integration

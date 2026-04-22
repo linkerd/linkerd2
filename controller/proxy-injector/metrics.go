@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/inject"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -69,5 +68,5 @@ func validLabelNames(labels []string) []string {
 }
 
 func validProxyConfigurationLabel(label string) string {
-	return strings.ReplaceAll(label[len(k8s.ProxyConfigAnnotationsPrefix)+1:], "-", "_")
+	return strings.ReplaceAll(label[strings.Index(label, "/")+1:], "-", "_")
 }

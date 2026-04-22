@@ -303,6 +303,21 @@ func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Wr
 		}
 	}
 
+	// in order to correctly initialize the issuer credentials the overrides
+	// (from above) need to be set/applied to the values themselves
+	// specifically identity issuer scheme, and trust values
+	//
+	// marshal+unmarshal here will only apply specific overrides to values and
+	// will not wipe out values that are not set.
+	data, err := yaml.Marshal(valuesOverrides)
+	if err != nil {
+		return err
+	}
+	err = yaml.Unmarshal(data, values)
+	if err != nil {
+		return err
+	}
+
 	err = initializeIssuerCredentials(ctx, k8sAPI, values)
 	if err != nil {
 		return err
