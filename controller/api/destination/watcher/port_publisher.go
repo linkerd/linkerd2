@@ -407,7 +407,7 @@ func (pp *portPublisher) newExtRefAddress(
 	if len(ownerRefs) == 1 {
 		parent := ownerRefs[0]
 		addr.OwnerName = parent.Name
-		addr.OwnerName = strings.ToLower(parent.Kind)
+		addr.OwnerKind = strings.ToLower(parent.Kind)
 	}
 
 	return addr, id, nil

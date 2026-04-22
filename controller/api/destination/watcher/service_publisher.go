@@ -151,6 +151,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port) *portPublisher {
 	log := sp.log.WithField("port", srcPort)
 
 	port := &portPublisher{
+		id:                sp.id,
 		filteredListeners: map[FilterKey]*filteredListenerGroup{},
 		targetPort:        targetPort,
 		srcPort:           srcPort,

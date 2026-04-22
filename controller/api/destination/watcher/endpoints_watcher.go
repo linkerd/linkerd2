@@ -550,9 +550,6 @@ func addressChanged(oldAddress Address, newAddress Address) bool {
 }
 
 func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSet) {
-	// TODO: this detects pods which have been added or removed, but does not
-	// detect addresses which have been modified.  A modified address should trigger
-	// an add of the new version.
 	addAddresses := make(map[ID]Address)
 	removeAddresses := make(map[ID]Address)
 	for id, newAddress := range newAddresses.Addresses {

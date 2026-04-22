@@ -12,6 +12,7 @@ type (
 		enableEndpointFiltering bool
 		enableIPv6              bool
 		localTrafficPolicy      bool
+		availableEndpoints      AddressSet
 		snapshot                AddressSet
 		listeners               []EndpointUpdateListener
 		metrics                 endpointsMetrics
@@ -26,12 +27,14 @@ func newFilteredListenerGroup(key FilterKey, nodeTopologyZone string, enableIPv6
 		enableIPv6:              enableIPv6,
 		localTrafficPolicy:      localTrafficPolicy,
 		metrics:                 metrics,
+		availableEndpoints:      AddressSet{Addresses: make(map[ID]Address)},
 		snapshot:                AddressSet{Addresses: make(map[ID]Address)},
 	}
 }
 
 func (group *filteredListenerGroup) publishDiff(addresses AddressSet) {
-	filtered := group.filterAddresses(addresses)
+	group.availableEndpoints = addresses.shallowCopy()
+	filtered := group.filterAddresses(group.availableEndpoints)
 	add, remove := diffAddresses(group.snapshot, filtered)
 	group.snapshot = filtered
 
@@ -51,6 +54,7 @@ func (group *filteredListenerGroup) publishDiff(addresses AddressSet) {
 
 func (group *filteredListenerGroup) publishNoEndpoints(exists bool) {
 	remove := group.snapshot
+	group.availableEndpoints = AddressSet{Addresses: make(map[ID]Address)}
 	group.snapshot = AddressSet{Addresses: make(map[ID]Address)}
 
 	for _, listener := range group.listeners {
@@ -66,7 +70,7 @@ func (group *filteredListenerGroup) publishNoEndpoints(exists bool) {
 
 func (group *filteredListenerGroup) updateLocalTrafficPolicy(localTrafficPolicy bool) {
 	group.localTrafficPolicy = localTrafficPolicy
-	group.publishDiff(group.snapshot)
+	group.publishDiff(group.availableEndpoints)
 }
 
 func (group *filteredListenerGroup) filterAddresses(addresses AddressSet) AddressSet {
