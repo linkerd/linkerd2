@@ -37,7 +37,7 @@ type (
 		exists               bool
 		addresses            AddressSet
 		filteredListeners    map[FilterKey]*filteredListenerGroup
-		metrics              endpointsMetrics
+		cluster              string
 		localTrafficPolicy   bool
 	}
 )
@@ -49,15 +49,11 @@ type (
 func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	newAddressSet := pp.endpointsToAddresses(endpoints)
 	if len(newAddressSet.Addresses) == 0 {
-		pp.publishNoEndpoints()
+		pp.publishNoEndpoints(true)
 	} else {
 		pp.publishAddressChange(newAddressSet)
 	}
 	pp.addresses = newAddressSet
-	pp.exists = true
-	pp.metrics.incUpdates()
-	pp.metrics.setPods(len(pp.addresses.Addresses))
-	pp.metrics.setExists(true)
 }
 
 func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
@@ -77,9 +73,6 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 
 	pp.addresses = newAddressSet
 	pp.exists = true
-	pp.metrics.incUpdates()
-	pp.metrics.setPods(len(pp.addresses.Addresses))
-	pp.metrics.setExists(true)
 }
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
@@ -99,9 +92,6 @@ func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, 
 
 	pp.addresses = updatedAddressSet
 	pp.exists = true
-	pp.metrics.incUpdates()
-	pp.metrics.setPods(len(pp.addresses.Addresses))
-	pp.metrics.setExists(true)
 }
 
 func metricLabels(resource interface{}) map[string]string {
@@ -513,24 +503,20 @@ func (pp *portPublisher) deleteEndpointSlice(es *discovery.EndpointSlice) {
 		pp.noEndpoints(false)
 	} else {
 		pp.exists = true
-		pp.metrics.incUpdates()
-		pp.metrics.setPods(len(pp.addresses.Addresses))
-		pp.metrics.setExists(true)
 	}
 }
 
 func (pp *portPublisher) noEndpoints(exists bool) {
 	pp.exists = exists
 	pp.addresses = AddressSet{}
-	pp.publishNoEndpoints()
-
-	pp.metrics.incUpdates()
-	pp.metrics.setExists(exists)
-	pp.metrics.setPods(0)
+	pp.publishNoEndpoints(exists)
 }
 
-func (pp *portPublisher) subscribe(listener EndpointUpdateListener, filterKey FilterKey) {
-	group := pp.filteredListenerGroup(filterKey)
+func (pp *portPublisher) subscribe(listener EndpointUpdateListener, filterKey FilterKey) error {
+	group, err := pp.filteredListenerGroup(filterKey)
+	if err != nil {
+		return err
+	}
 	if pp.exists {
 		if len(pp.addresses.Addresses) > 0 {
 			filteredSet := group.filterAddresses(pp.addresses)
@@ -541,8 +527,9 @@ func (pp *portPublisher) subscribe(listener EndpointUpdateListener, filterKey Fi
 		}
 	}
 	group.listeners = append(group.listeners, listener)
+	group.metrics.setSubscribers(len(group.listeners))
 
-	pp.metrics.setSubscribers(pp.totalListeners())
+	return nil
 }
 
 func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener, filterKey FilterKey, withRemove bool) {
@@ -562,10 +549,13 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener, filterKey 
 			}
 		}
 		if len(group.listeners) == 0 {
+			endpointsVecs.unregister(endpointsLabels(
+				pp.cluster, pp.id.Namespace, pp.id.Name, fmt.Sprintf("%d", pp.srcPort), filterKey.Hostname, filterKey.NodeName,
+			))
 			delete(pp.filteredListeners, filterKey)
 		}
 	}
-	pp.metrics.setSubscribers(pp.totalListeners())
+	group.metrics.setSubscribers(len(group.listeners))
 }
 func (pp *portPublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 	updated := false
@@ -586,11 +576,10 @@ func (pp *portPublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 	}
 	if updated {
 		pp.publishFilteredSnapshots()
-		pp.metrics.incUpdates()
 	}
 }
 
-func (pp *portPublisher) filteredListenerGroup(filterKey FilterKey) *filteredListenerGroup {
+func (pp *portPublisher) filteredListenerGroup(filterKey FilterKey) (*filteredListenerGroup, error) {
 	group, ok := pp.filteredListeners[filterKey]
 	if !ok {
 		nodeTopologyZone := ""
@@ -603,18 +592,14 @@ func (pp *portPublisher) filteredListenerGroup(filterKey FilterKey) *filteredLis
 			}
 		}
 
-		group = newFilteredListenerGroup(filterKey, nodeTopologyZone, pp.enableIPv6, pp.localTrafficPolicy)
+		metrics, err := endpointsVecs.newEndpointsMetrics(endpointsLabels(pp.cluster, pp.id.Namespace, pp.id.Name, fmt.Sprintf("%d", pp.srcPort), filterKey.Hostname, filterKey.NodeName))
+		if err != nil {
+			return nil, err
+		}
+		group = newFilteredListenerGroup(filterKey, nodeTopologyZone, pp.enableIPv6, pp.localTrafficPolicy, metrics)
 		pp.filteredListeners[filterKey] = group
 	}
-	return group
-}
-
-func (pp *portPublisher) totalListeners() int {
-	total := 0
-	for _, group := range pp.filteredListeners {
-		total += len(group.listeners)
-	}
-	return total
+	return group, nil
 }
 
 func (pp *portPublisher) publishAddressChange(newAddressSet AddressSet) {
@@ -629,9 +614,9 @@ func (pp *portPublisher) publishFilteredSnapshots() {
 	}
 }
 
-func (pp *portPublisher) publishNoEndpoints() {
+func (pp *portPublisher) publishNoEndpoints(exists bool) {
 	for _, group := range pp.filteredListeners {
-		group.publishNoEndpoints()
+		group.publishNoEndpoints(exists)
 	}
 }
 

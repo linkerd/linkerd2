@@ -14,16 +14,18 @@ type (
 		localTrafficPolicy      bool
 		snapshot                AddressSet
 		listeners               []EndpointUpdateListener
+		metrics                 endpointsMetrics
 	}
 )
 
-func newFilteredListenerGroup(key FilterKey, nodeTopologyZone string, enableIPv6 bool, localTrafficPolicy bool) *filteredListenerGroup {
+func newFilteredListenerGroup(key FilterKey, nodeTopologyZone string, enableIPv6 bool, localTrafficPolicy bool, metrics endpointsMetrics) *filteredListenerGroup {
 	return &filteredListenerGroup{
 		key:                     key,
 		nodeTopologyZone:        nodeTopologyZone,
 		enableEndpointFiltering: key.EnableEndpointFiltering,
 		enableIPv6:              enableIPv6,
 		localTrafficPolicy:      localTrafficPolicy,
+		metrics:                 metrics,
 		snapshot:                AddressSet{Addresses: make(map[ID]Address)},
 	}
 }
@@ -41,9 +43,13 @@ func (group *filteredListenerGroup) publishDiff(addresses AddressSet) {
 			listener.Remove(remove)
 		}
 	}
+
+	group.metrics.incUpdates()
+	group.metrics.setPods(len(group.snapshot.Addresses))
+	group.metrics.setExists(true)
 }
 
-func (group *filteredListenerGroup) publishNoEndpoints() {
+func (group *filteredListenerGroup) publishNoEndpoints(exists bool) {
 	remove := group.snapshot
 	group.snapshot = AddressSet{Addresses: make(map[ID]Address)}
 
@@ -52,6 +58,10 @@ func (group *filteredListenerGroup) publishNoEndpoints() {
 			listener.Remove(remove)
 		}
 	}
+
+	group.metrics.incUpdates()
+	group.metrics.setPods(0)
+	group.metrics.setExists(exists)
 }
 
 func (group *filteredListenerGroup) updateLocalTrafficPolicy(localTrafficPolicy bool) {

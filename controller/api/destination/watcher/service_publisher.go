@@ -1,12 +1,10 @@
 package watcher
 
 import (
-	"strconv"
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta3"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	discovery "k8s.io/api/discovery/v1"
@@ -121,15 +119,11 @@ func (sp *servicePublisher) subscribe(srcPort Port, listener EndpointUpdateListe
 
 	publisher, ok := sp.ports[srcPort]
 	if !ok {
-		var err error
-		publisher, err = sp.newPortPublisher(srcPort)
-		if err != nil {
-			return err
-		}
+		publisher = sp.newPortPublisher(srcPort)
 		sp.ports[srcPort] = publisher
 	}
-	publisher.subscribe(listener, filterKey)
-	return nil
+	err := publisher.subscribe(listener, filterKey)
+	return err
 }
 
 func (sp *servicePublisher) unsubscribe(srcPort Port, listener EndpointUpdateListener, filterKey FilterKey, withRemove bool) {
@@ -139,14 +133,10 @@ func (sp *servicePublisher) unsubscribe(srcPort Port, listener EndpointUpdateLis
 	publisher, ok := sp.ports[srcPort]
 	if ok {
 		publisher.unsubscribe(listener, filterKey, withRemove)
-		if publisher.totalListeners() == 0 {
-			endpointsVecs.unregister(sp.metricsLabels(srcPort))
-			delete(sp.ports, srcPort)
-		}
 	}
 }
 
-func (sp *servicePublisher) newPortPublisher(srcPort Port) (*portPublisher, error) {
+func (sp *servicePublisher) newPortPublisher(srcPort Port) *portPublisher {
 	targetPort := intstr.FromInt(int(srcPort))
 	svc, err := sp.k8sAPI.Svc().Lister().Services(sp.id.Namespace).Get(sp.id.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -160,19 +150,16 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port) (*portPublisher, erro
 
 	log := sp.log.WithField("port", srcPort)
 
-	metrics, err := endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort))
-	if err != nil {
-		return nil, err
-	}
 	port := &portPublisher{
-		filteredListeners:    map[FilterKey]*filteredListenerGroup{},
-		targetPort:           targetPort,
-		srcPort:              srcPort,
-		exists:               exists,
-		k8sAPI:               sp.k8sAPI,
-		metadataAPI:          sp.metadataAPI,
-		log:                  log,
-		metrics:              metrics,
+		filteredListeners: map[FilterKey]*filteredListenerGroup{},
+		targetPort:        targetPort,
+		srcPort:           srcPort,
+		exists:            exists,
+		k8sAPI:            sp.k8sAPI,
+		metadataAPI:       sp.metadataAPI,
+		log:               log,
+		cluster:           sp.cluster,
+
 		enableEndpointSlices: sp.enableEndpointSlices,
 		enableIPv6:           sp.enableIPv6,
 		localTrafficPolicy:   sp.localTrafficPolicy,
@@ -201,11 +188,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port) (*portPublisher, erro
 		}
 	}
 
-	return port, nil
-}
-
-func (sp *servicePublisher) metricsLabels(port Port) prometheus.Labels {
-	return endpointsLabels(sp.cluster, sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)))
+	return port
 }
 
 func (sp *servicePublisher) updateServer(oldServer, newServer *v1beta3.Server) {
