@@ -24,7 +24,8 @@ spec:
   {{ else -}}
   schedule: "{{ dateInZone "04 15 * * *" (now | mustDateModify "+10m") "UTC"}}"
   {{ end -}}
-  successfulJobsHistoryLimit: 0
+  successfulJobsHistoryLimit: {{ (.Values.heartbeat).successfulJobsHistoryLimit | default 0 }}
+  failedJobsHistoryLimit: {{ (.Values.heartbeat).failedJobsHistoryLimit | default 1 }}
   jobTemplate:
     spec:
       template:
