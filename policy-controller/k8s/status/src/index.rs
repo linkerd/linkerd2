@@ -107,6 +107,7 @@ pub struct IndexMetrics {
 
 #[derive(Clone, PartialEq, Debug)]
 pub(crate) struct RouteRef<S> {
+    pub(crate) generation: Option<i64>,
     pub(crate) parents: Vec<routes::ParentReference>,
     pub(crate) backends: Vec<routes::BackendReference>,
     pub(crate) statuses: Vec<S>,
@@ -119,6 +120,7 @@ pub(crate) type TCPRouteRef = RouteRef<gateway::TCPRouteStatus>;
 
 #[derive(Clone, PartialEq, Debug)]
 struct HttpLocalRateLimitPolicyRef {
+    generation: Option<i64>,
     creation_timestamp: Option<DateTime<Utc>>,
     target_ref: ratelimit::TargetReference,
     status_conditions: Vec<k8s::Condition>,
@@ -126,6 +128,7 @@ struct HttpLocalRateLimitPolicyRef {
 
 #[derive(Clone, PartialEq, Debug)]
 struct EgressNetworkRef {
+    generation: Option<i64>,
     networks: Vec<Network>,
     status_conditions: Vec<k8s::Condition>,
 }
@@ -591,15 +594,16 @@ impl Index {
         server: &ResourceId,
         id: &NamespaceGroupKindName,
         parent_ref: &routes::ParentReference,
+        generation: Option<i64>,
     ) -> k8s::Condition {
         if self.servers.contains(server) {
             if self.parent_has_conflicting_routes(parent_ref, &id.gkn.kind) {
-                route_conflicted()
+                route_conflicted(generation)
             } else {
-                accepted()
+                accepted(generation)
             }
         } else {
-            no_matching_parent()
+            no_matching_parent(generation)
         }
     }
 
@@ -608,18 +612,19 @@ impl Index {
         service: &ResourceId,
         id: &NamespaceGroupKindName,
         parent_ref: &routes::ParentReference,
+        generation: Option<i64>,
     ) -> k8s::Condition {
         // service is a valid parent if it exists and it has a cluster_ip.
         match self.services.get(service) {
             Some(svc) if svc.valid_parent_service() => {
                 if self.parent_has_conflicting_routes(parent_ref, &id.gkn.kind) {
-                    route_conflicted()
+                    route_conflicted(generation)
                 } else {
-                    accepted()
+                    accepted(generation)
                 }
             }
-            Some(_svc) => headless_parent(),
-            None => no_matching_parent(),
+            Some(_svc) => headless_parent(generation),
+            None => no_matching_parent(generation),
         }
     }
 
@@ -628,18 +633,19 @@ impl Index {
         egress_net: &ResourceId,
         id: &NamespaceGroupKindName,
         parent_ref: &routes::ParentReference,
+        generation: Option<i64>,
     ) -> k8s::Condition {
         // egress network is a valid parent if it exists and is accepted.
         match self.egress_networks.get(egress_net) {
             Some(egress_net) if egress_net.is_accepted() => {
                 if self.parent_has_conflicting_routes(parent_ref, &id.gkn.kind) {
-                    route_conflicted()
+                    route_conflicted(generation)
                 } else {
-                    accepted()
+                    accepted(generation)
                 }
             }
-            Some(_) => egress_net_not_accepted(),
-            None => no_matching_parent(),
+            Some(_) => egress_net_not_accepted(generation),
+            None => no_matching_parent(generation),
         }
     }
 
@@ -648,10 +654,11 @@ impl Index {
         id: &NamespaceGroupKindName,
         parent_ref: &routes::ParentReference,
         backend_condition: k8s::Condition,
+        generation: Option<i64>,
     ) -> Option<gateway::GRPCRouteStatusParents> {
         match parent_ref {
             routes::ParentReference::Server(server) => {
-                let condition = self.parent_condition_server(server, id, parent_ref);
+                let condition = self.parent_condition_server(server, id, parent_ref, generation);
                 Some(gateway::GRPCRouteStatusParents {
                     parent_ref: gateway::GRPCRouteStatusParentsParentRef {
                         group: Some(POLICY_API_GROUP.to_string()),
@@ -667,7 +674,7 @@ impl Index {
             }
 
             routes::ParentReference::Service(service, port) => {
-                let condition = self.parent_condition_service(service, id, parent_ref);
+                let condition = self.parent_condition_service(service, id, parent_ref, generation);
                 Some(gateway::GRPCRouteStatusParents {
                     parent_ref: gateway::GRPCRouteStatusParentsParentRef {
                         group: Some("core".to_string()),
@@ -683,7 +690,7 @@ impl Index {
             }
 
             routes::ParentReference::EgressNetwork(egress_net, port) => {
-                let condition = self.parent_condition_egress_network(egress_net, id, parent_ref);
+                let condition = self.parent_condition_egress_network(egress_net, id, parent_ref, generation);
                 Some(gateway::GRPCRouteStatusParents {
                     parent_ref: gateway::GRPCRouteStatusParentsParentRef {
                         group: Some("policy.linkerd.io".to_string()),
@@ -706,10 +713,11 @@ impl Index {
         id: &NamespaceGroupKindName,
         parent_ref: &routes::ParentReference,
         backend_condition: k8s::Condition,
+        generation: Option<i64>,
     ) -> Option<gateway::HTTPRouteStatusParents> {
         match parent_ref {
             routes::ParentReference::Server(server) => {
-                let condition = self.parent_condition_server(server, id, parent_ref);
+                let condition = self.parent_condition_server(server, id, parent_ref, generation);
                 Some(gateway::HTTPRouteStatusParents {
                     parent_ref: gateway::HTTPRouteStatusParentsParentRef {
                         group: Some(POLICY_API_GROUP.to_string()),
@@ -725,7 +733,7 @@ impl Index {
             }
 
             routes::ParentReference::Service(service, port) => {
-                let condition = self.parent_condition_service(service, id, parent_ref);
+                let condition = self.parent_condition_service(service, id, parent_ref, generation);
                 Some(gateway::HTTPRouteStatusParents {
                     parent_ref: gateway::HTTPRouteStatusParentsParentRef {
                         group: Some("core".to_string()),
@@ -741,7 +749,7 @@ impl Index {
             }
 
             routes::ParentReference::EgressNetwork(egress_net, port) => {
-                let condition = self.parent_condition_egress_network(egress_net, id, parent_ref);
+                let condition = self.parent_condition_egress_network(egress_net, id, parent_ref, generation);
                 Some(gateway::HTTPRouteStatusParents {
                     parent_ref: gateway::HTTPRouteStatusParentsParentRef {
                         group: Some("policy.linkerd.io".to_string()),
@@ -764,10 +772,11 @@ impl Index {
         id: &NamespaceGroupKindName,
         parent_ref: &routes::ParentReference,
         backend_condition: k8s::Condition,
+        generation: Option<i64>,
     ) -> Option<gateway::TLSRouteStatusParents> {
         match parent_ref {
             routes::ParentReference::Server(server) => {
-                let condition = self.parent_condition_server(server, id, parent_ref);
+                let condition = self.parent_condition_server(server, id, parent_ref, generation);
                 Some(gateway::TLSRouteStatusParents {
                     parent_ref: gateway::TLSRouteStatusParentsParentRef {
                         group: Some(POLICY_API_GROUP.to_string()),
@@ -783,7 +792,7 @@ impl Index {
             }
 
             routes::ParentReference::Service(service, port) => {
-                let condition = self.parent_condition_service(service, id, parent_ref);
+                let condition = self.parent_condition_service(service, id, parent_ref, generation);
                 Some(gateway::TLSRouteStatusParents {
                     parent_ref: gateway::TLSRouteStatusParentsParentRef {
                         group: Some("core".to_string()),
@@ -799,7 +808,7 @@ impl Index {
             }
 
             routes::ParentReference::EgressNetwork(egress_net, port) => {
-                let condition = self.parent_condition_egress_network(egress_net, id, parent_ref);
+                let condition = self.parent_condition_egress_network(egress_net, id, parent_ref, generation);
                 Some(gateway::TLSRouteStatusParents {
                     parent_ref: gateway::TLSRouteStatusParentsParentRef {
                         group: Some("policy.linkerd.io".to_string()),
@@ -822,10 +831,11 @@ impl Index {
         id: &NamespaceGroupKindName,
         parent_ref: &routes::ParentReference,
         backend_condition: k8s::Condition,
+        generation: Option<i64>,
     ) -> Option<gateway::TCPRouteStatusParents> {
         match parent_ref {
             routes::ParentReference::Server(server) => {
-                let condition = self.parent_condition_server(server, id, parent_ref);
+                let condition = self.parent_condition_server(server, id, parent_ref, generation);
                 Some(gateway::TCPRouteStatusParents {
                     parent_ref: gateway::TCPRouteStatusParentsParentRef {
                         group: Some(POLICY_API_GROUP.to_string()),
@@ -841,7 +851,7 @@ impl Index {
             }
 
             routes::ParentReference::Service(service, port) => {
-                let condition = self.parent_condition_service(service, id, parent_ref);
+                let condition = self.parent_condition_service(service, id, parent_ref, generation);
                 Some(gateway::TCPRouteStatusParents {
                     parent_ref: gateway::TCPRouteStatusParentsParentRef {
                         group: Some("core".to_string()),
@@ -857,7 +867,7 @@ impl Index {
             }
 
             routes::ParentReference::EgressNetwork(egress_net, port) => {
-                let condition = self.parent_condition_egress_network(egress_net, id, parent_ref);
+                let condition = self.parent_condition_egress_network(egress_net, id, parent_ref, generation);
                 Some(gateway::TCPRouteStatusParents {
                     parent_ref: gateway::TCPRouteStatusParentsParentRef {
                         group: Some("policy.linkerd.io".to_string()),
@@ -879,23 +889,24 @@ impl Index {
         &self,
         parent_ref: &routes::ParentReference,
         backend_refs: &[routes::BackendReference],
+        generation: Option<i64>,
     ) -> k8s::Condition {
         for backend_ref in backend_refs.iter() {
             match backend_ref {
                 routes::BackendReference::Unknown => {
                     // If even one backend has a reference to an unknown / unsupported
                     // reference, return invalid backend condition
-                    return invalid_backend_kind("");
+                    return invalid_backend_kind("", generation);
                 }
 
                 routes::BackendReference::Service(service) => {
                     if !self.services.contains_key(service) {
-                        return backend_not_found();
+                        return backend_not_found(generation);
                     }
                 }
                 routes::BackendReference::EgressNetwork(egress_net) => {
                     if !self.egress_networks.contains_key(egress_net) {
-                        return backend_not_found();
+                        return backend_not_found(generation);
                     }
 
                     match parent_ref {
@@ -907,14 +918,14 @@ impl Index {
                         _ => {
                             let message =
                             "EgressNetwork backend needs to be on a route that has an EgressNetwork parent";
-                            return invalid_backend_kind(message);
+                            return invalid_backend_kind(message, generation);
                         }
                     }
                 }
             }
         }
 
-        resolved_refs()
+        resolved_refs(generation)
     }
 
     fn make_http_route_patch(
@@ -932,8 +943,9 @@ impl Index {
 
         // Compute a status for each parent_ref which has a kind we support.
         let parent_statuses = route.parents.iter().filter_map(|parent_ref| {
-            let backend_condition = self.backend_condition(parent_ref, &route.backends);
-            self.http_parent_status(id, parent_ref, backend_condition.clone())
+            let backend_condition =
+                self.backend_condition(parent_ref, &route.backends, route.generation);
+            self.http_parent_status(id, parent_ref, backend_condition.clone(), route.generation)
         });
 
         let all_statuses = unowned_statuses.chain(parent_statuses).collect::<Vec<_>>();
@@ -968,8 +980,9 @@ impl Index {
 
         // Compute a status for each parent_ref which has a kind we support.
         let parent_statuses = route.parents.iter().filter_map(|parent_ref| {
-            let backend_condition = self.backend_condition(parent_ref, &route.backends);
-            self.grpc_parent_status(id, parent_ref, backend_condition.clone())
+            let backend_condition =
+                self.backend_condition(parent_ref, &route.backends, route.generation);
+            self.grpc_parent_status(id, parent_ref, backend_condition.clone(), route.generation)
         });
 
         let all_statuses = unowned_statuses.chain(parent_statuses).collect::<Vec<_>>();
@@ -1005,8 +1018,9 @@ impl Index {
 
         // Compute a status for each parent_ref which has a kind we support.
         let parent_statuses = route.parents.iter().filter_map(|parent_ref| {
-            let backend_condition = self.backend_condition(parent_ref, &route.backends);
-            self.tls_parent_status(id, parent_ref, backend_condition.clone())
+            let backend_condition =
+                self.backend_condition(parent_ref, &route.backends, route.generation);
+            self.tls_parent_status(id, parent_ref, backend_condition.clone(), route.generation)
         });
 
         let all_statuses = unowned_statuses.chain(parent_statuses).collect::<Vec<_>>();
@@ -1042,8 +1056,9 @@ impl Index {
 
         // Compute a status for each parent_ref which has a kind we support.
         let parent_statuses = route.parents.iter().filter_map(|parent_ref| {
-            let backend_condition = self.backend_condition(parent_ref, &route.backends);
-            self.tcp_parent_status(id, parent_ref, backend_condition.clone())
+            let backend_condition =
+                self.backend_condition(parent_ref, &route.backends, route.generation);
+            self.tcp_parent_status(id, parent_ref, backend_condition.clone(), route.generation)
         });
 
         let all_statuses = unowned_statuses.chain(parent_statuses).collect::<Vec<_>>();
@@ -1068,6 +1083,7 @@ impl Index {
         &self,
         id: &NamespaceGroupKindName,
         target_ref: &ratelimit::TargetReference,
+        generation: Option<i64>,
     ) -> Option<policy::HttpLocalRateLimitPolicyStatus> {
         match target_ref {
             ratelimit::TargetReference::Server(server) => {
@@ -1096,12 +1112,12 @@ impl Index {
                     };
 
                     if first_id.name == id.gkn.name {
-                        accepted()
+                        accepted(generation)
                     } else {
-                        ratelimit_already_exists()
+                        ratelimit_already_exists(generation)
                     }
                 } else {
-                    no_matching_target()
+                    no_matching_target(generation)
                 };
 
                 Some(policy::HttpLocalRateLimitPolicyStatus {
@@ -1122,7 +1138,7 @@ impl Index {
         id: &NamespaceGroupKindName,
         ratelimit: &HttpLocalRateLimitPolicyRef,
     ) -> Option<k8s::Patch<serde_json::Value>> {
-        let status = self.target_ref_status(id, &ratelimit.target_ref)?;
+        let status = self.target_ref_status(id, &ratelimit.target_ref, ratelimit.generation)?;
         if eq_time_insensitive_conditions(&status.conditions, &ratelimit.status_conditions) {
             return None;
         }
@@ -1134,12 +1150,12 @@ impl Index {
         for egress_network_block in &egress_net.networks {
             for cluster_network_block in &self.cluster_networks {
                 if egress_network_block.intersect(cluster_network_block) {
-                    return in_cluster_net_overlap();
+                    return in_cluster_net_overlap(egress_net.generation);
                 }
             }
         }
 
-        accepted()
+        accepted(egress_net.generation)
     }
 
     fn make_egress_net_patch(
@@ -1364,6 +1380,7 @@ impl kubert::index::IndexNamespacedResource<policy::HttpRoute> for Index {
         // Construct route and insert into the index; if the HTTPRoute is
         // already in the index, and it hasn't changed, skip creating a patch.
         let route = HTTPRouteRef {
+            generation: resource.metadata.generation,
             parents,
             backends,
             statuses: vec![gateway::HTTPRouteStatus { parents: statuses }],
@@ -1434,6 +1451,7 @@ impl kubert::index::IndexNamespacedResource<gateway::HTTPRoute> for Index {
         // Construct route and insert into the index; if the HTTPRoute is
         // already in the index, and it hasn't changed, skip creating a patch.
         let route = RouteRef {
+            generation: resource.metadata.generation,
             parents,
             backends,
             statuses: vec![gateway::HTTPRouteStatus { parents: statuses }],
@@ -1504,6 +1522,7 @@ impl kubert::index::IndexNamespacedResource<gateway::GRPCRoute> for Index {
         // Construct route and insert into the index; if the GRPCRoute is
         // already in the index and it hasn't changed, skip creating a patch.
         let route = RouteRef {
+            generation: resource.metadata.generation,
             parents,
             backends,
             statuses: vec![gateway::GRPCRouteStatus { parents: statuses }],
@@ -1573,6 +1592,7 @@ impl kubert::index::IndexNamespacedResource<gateway::TLSRoute> for Index {
         // Construct route and insert into the index; if the TLSRoute is
         // already in the index, and it hasn't changed, skip creating a patch.
         let route = RouteRef {
+            generation: resource.metadata.generation,
             parents,
             backends,
             statuses: vec![gateway::TLSRouteStatus { parents: statuses }],
@@ -1642,6 +1662,7 @@ impl kubert::index::IndexNamespacedResource<gateway::TCPRoute> for Index {
         // Construct route and insert into the index; if the TCPRoute is
         // already in the index, and it hasn't changed, skip creating a patch.
         let route = RouteRef {
+            generation: resource.metadata.generation,
             parents,
             backends,
             statuses: vec![gateway::TCPRouteStatus { parents: statuses }],
@@ -1725,6 +1746,7 @@ impl kubert::index::IndexNamespacedResource<policy::HttpLocalRateLimitPolicy> fo
         let target_ref = ratelimit::TargetReference::make_target_ref(&namespace, &resource.spec);
 
         let rl = HttpLocalRateLimitPolicyRef {
+            generation: resource.metadata.generation,
             creation_timestamp,
             target_ref,
             status_conditions,
@@ -1775,6 +1797,7 @@ impl kubert::index::IndexNamespacedResource<policy::EgressNetwork> for Index {
         let id = ResourceId::new(namespace, name);
 
         let net = EgressNetworkRef {
+            generation: resource.metadata.generation,
             status_conditions,
             networks,
         };
@@ -1822,121 +1845,121 @@ fn now() -> DateTime<Utc> {
     now
 }
 
-pub(crate) fn no_matching_parent() -> k8s::Condition {
+pub(crate) fn no_matching_parent(observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: reasons::NO_MATCHING_PARENT.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
     }
 }
 
-pub(crate) fn no_matching_target() -> k8s::Condition {
+pub(crate) fn no_matching_target(observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: reasons::NO_MATCHING_TARGET.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
     }
 }
 
-fn headless_parent() -> k8s::Condition {
+fn headless_parent(observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "parent service must have a ClusterIP".to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: reasons::NO_MATCHING_PARENT.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
     }
 }
 
-fn egress_net_not_accepted() -> k8s::Condition {
+fn egress_net_not_accepted(observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "EgressNetwork parent has not been accepted".to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: reasons::NO_MATCHING_PARENT.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
     }
 }
 
-pub(crate) fn route_conflicted() -> k8s::Condition {
+pub(crate) fn route_conflicted(observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: reasons::ROUTE_REASON_CONFLICTED.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
     }
 }
 
-pub(crate) fn ratelimit_already_exists() -> k8s::Condition {
+pub(crate) fn ratelimit_already_exists(observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: reasons::RATELIMIT_REASON_ALREADY_EXISTS.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
     }
 }
 
-pub(crate) fn accepted() -> k8s::Condition {
+pub(crate) fn accepted(observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: conditions::ACCEPTED.to_string(),
         status: cond_statuses::STATUS_TRUE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
     }
 }
 
-pub(crate) fn in_cluster_net_overlap() -> k8s::Condition {
+pub(crate) fn in_cluster_net_overlap(observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "networks overlap with clusterNetworks".to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: reasons::EGRESS_NET_REASON_OVERLAP.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
     }
 }
 
-pub(crate) fn resolved_refs() -> k8s::Condition {
+pub(crate) fn resolved_refs(observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: reasons::RESOLVED_REFS.to_string(),
         status: cond_statuses::STATUS_TRUE.to_string(),
         type_: conditions::RESOLVED_REFS.to_string(),
     }
 }
 
-pub(crate) fn backend_not_found() -> k8s::Condition {
+pub(crate) fn backend_not_found(observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: reasons::BACKEND_NOT_FOUND.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::RESOLVED_REFS.to_string(),
     }
 }
 
-pub(crate) fn invalid_backend_kind(message: &str) -> k8s::Condition {
+pub(crate) fn invalid_backend_kind(message: &str, observed_generation: Option<i64>) -> k8s::Condition {
     k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: message.to_string(),
-        observed_generation: None,
+        observed_generation,
         reason: reasons::INVALID_KIND.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::RESOLVED_REFS.to_string(),
