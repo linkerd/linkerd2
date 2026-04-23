@@ -229,7 +229,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                         .filter_map(|port| {
                             port.app_protocol.as_ref().and_then(|p| {
                                 Some((
-                                    NonZeroU16::new(port.port as u16)?,
+                                    port.port.try_into().ok().and_then(NonZeroU16::new)?,
                                     AppProtocol::from_str(p.as_str()).expect("Infalliable"),
                                 ))
                             })
@@ -979,7 +979,7 @@ impl Namespace {
             } else {
                 continue;
             };
-            let route_namespace = route.namespace().expect("GrpcRoute must have a namespace");
+            let route_namespace = route.namespace().expect("TlsRoute must have a namespace");
             let parent_namespace = parent_ref.namespace.as_ref().unwrap_or(&route_namespace);
             if *parent_namespace != *self.namespace {
                 continue;
@@ -1078,7 +1078,7 @@ impl Namespace {
             } else {
                 continue;
             };
-            let route_namespace = route.namespace().expect("GrpcRoute must have a namespace");
+            let route_namespace = route.namespace().expect("TcpRoute must have a namespace");
             let parent_namespace = parent_ref.namespace.as_ref().unwrap_or(&route_namespace);
             if *parent_namespace != *self.namespace {
                 continue;
