@@ -266,17 +266,27 @@ func (fs *federatedService) delete() {
 	defer fs.Unlock()
 
 	for _, subscriber := range fs.subscribers {
+		remoteFilterKey := watcher.FilterKey{
+			Hostname:                subscriber.instanceID,
+			NodeName:                subscriber.nodeName,
+			EnableEndpointFiltering: false,
+		}
 		for id, translator := range subscriber.remoteTranslators {
 			remoteWatcher, _, found := fs.clusterStore.Get(id.cluster)
 			if !found {
 				fs.log.Errorf("Failed to get remote cluster %s", id.cluster)
 				continue
 			}
-			remoteWatcher.Unsubscribe(id.service, subscriber.port, subscriber.instanceID, translator)
+			remoteWatcher.Unsubscribe(id.service, subscriber.port, remoteFilterKey, translator, false)
 			translator.Stop()
 		}
+		localFilterKey := watcher.FilterKey{
+			Hostname:                subscriber.instanceID,
+			NodeName:                subscriber.nodeName,
+			EnableEndpointFiltering: true, // Endpoint filtering is enabled for local discovery.
+		}
 		for localDiscovery, translator := range subscriber.localTranslators {
-			fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID, translator)
+			fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, localFilterKey, translator, false)
 			translator.Stop()
 		}
 		close(subscriber.endStream)
@@ -353,8 +363,6 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 		remoteConfig.TrustDomain,
 		fs.config.ForceOpaqueTransport,
 		fs.config.EnableH2Upgrade,
-		false, // Disable endpoint filtering for remote discovery.
-		fs.config.EnableIPv6,
 		fs.config.ExtEndpointZoneWeights,
 		fs.config.MeshedHttp2ClientParams,
 		fmt.Sprintf("%s.%s.svc.%s:%d", id.service, fs.namespace, remoteConfig.ClusterDomain, subscriber.port),
@@ -375,7 +383,12 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 	subscriber.remoteTranslators[id] = translator
 
 	fs.log.Debugf("Subscribing to remote discovery service %s in cluster %s", id.service, id.cluster)
-	err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: id.service.Namespace, Name: id.service.Name}, subscriber.port, subscriber.instanceID, translator)
+	filterKey := watcher.FilterKey{
+		Hostname:                subscriber.instanceID,
+		NodeName:                subscriber.nodeName,
+		EnableEndpointFiltering: false, // Endpoint filtering is disabled for remote discovery.
+	}
+	err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: id.service.Namespace, Name: id.service.Name}, subscriber.port, filterKey, translator)
 	if err != nil {
 		fs.log.Errorf("Failed to subscribe to remote discovery service %q in cluster %s: %s", id.service.Name, id.cluster, err)
 	}
@@ -393,8 +406,12 @@ func (fs *federatedService) remoteDiscoveryUnsubscribe(
 
 	translator := subscriber.remoteTranslators[id]
 	fs.log.Debugf("Unsubscribing from remote discovery service %s in cluster %s", id.service, id.cluster)
-	remoteWatcher.Unsubscribe(id.service, subscriber.port, subscriber.instanceID, translator)
-	translator.NoEndpoints(true)
+	filterKey := watcher.FilterKey{
+		Hostname:                subscriber.instanceID,
+		NodeName:                subscriber.nodeName,
+		EnableEndpointFiltering: false, // Endpoint filtering is disabled for remote discovery.
+	}
+	remoteWatcher.Unsubscribe(id.service, subscriber.port, filterKey, translator, true)
 	translator.DrainAndStop()
 	delete(subscriber.remoteTranslators, id)
 }
@@ -408,8 +425,6 @@ func (fs *federatedService) localDiscoverySubscribe(
 		fs.config.IdentityTrustDomain,
 		fs.config.ForceOpaqueTransport,
 		fs.config.EnableH2Upgrade,
-		true,
-		fs.config.EnableIPv6,
 		fs.config.ExtEndpointZoneWeights,
 		fs.config.MeshedHttp2ClientParams,
 		localDiscovery,
@@ -429,7 +444,12 @@ func (fs *federatedService) localDiscoverySubscribe(
 	subscriber.localTranslators[localDiscovery] = translator
 
 	fs.log.Debugf("Subscribing to local discovery service %s", localDiscovery)
-	err = fs.localEndpoints.Subscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID, translator)
+	filterKey := watcher.FilterKey{
+		Hostname:                subscriber.instanceID,
+		NodeName:                subscriber.nodeName,
+		EnableEndpointFiltering: true, // Endpoint filtering is enabled for local discovery.
+	}
+	err = fs.localEndpoints.Subscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, filterKey, translator)
 	if err != nil {
 		fs.log.Errorf("Failed to subscribe to %s: %s", localDiscovery, err)
 	}
@@ -442,8 +462,12 @@ func (fs *federatedService) localDiscoveryUnsubscribe(
 	translator, found := subscriber.localTranslators[localDiscovery]
 	if found {
 		fs.log.Debugf("Unsubscribing to local discovery service %s", localDiscovery)
-		fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, subscriber.instanceID, translator)
-		translator.NoEndpoints(true)
+		filterKey := watcher.FilterKey{
+			Hostname:                subscriber.instanceID,
+			NodeName:                subscriber.nodeName,
+			EnableEndpointFiltering: true, // Endpoint filtering is enabled for local discovery.
+		}
+		fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, filterKey, translator, true)
 		translator.DrainAndStop()
 		delete(subscriber.localTranslators, localDiscovery)
 	}

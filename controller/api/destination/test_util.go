@@ -1043,7 +1043,7 @@ spec:
 	if err != nil {
 		t.Fatalf("can't create Workloads watcher: %s", err)
 	}
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, true, "local")
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, true, true, "local")
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
 	}
@@ -1057,7 +1057,7 @@ spec:
 	}
 
 	prom := prometheus.NewRegistry()
-	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", true, watcher.CreateMockDecoder(exportedServiceResources...), prom)
+	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", true, true, watcher.CreateMockDecoder(exportedServiceResources...), prom)
 	if err != nil {
 		t.Fatalf("can't create cluster store: %s", err)
 	}
@@ -1181,8 +1181,6 @@ metadata:
 		"trust.domain",
 		forceOpaqueTransport,
 		true,  // enableH2Upgrade
-		true,  // enableEndpointFiltering
-		true,  // enableIPv6
 		false, // extEndpointZoneWeights
 		nil,   // meshedHttp2ClientParams
 		"service-name.service-ns",
