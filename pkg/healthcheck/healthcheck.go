@@ -27,6 +27,7 @@ import (
 	admissionRegistration "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -407,6 +408,7 @@ type Options struct {
 	InstallManifest       string
 	CRDManifest           string
 	ChartValues           *l5dcharts.Values
+	EnableEndpointSlices  bool
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -2369,7 +2371,12 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	// This is used instead of `hc.kubeAPI` to limit multiple k8s API requests
 	// and use the caching logic in the shared informers
 	// TODO: move the shared informer code out of `controller/`, and into `pkg` to simplify the dependency tree.
-	kubeAPI := controllerK8s.NewClusterScopedAPI(hc.kubeAPI.Interface, nil, nil, "local", controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
+	var kubeAPI *controllerK8s.API
+	if hc.EnableEndpointSlices {
+		kubeAPI = controllerK8s.NewClusterScopedAPI(hc.kubeAPI.Interface, nil, nil, "local", controllerK8s.ES, controllerK8s.Pod, controllerK8s.Svc)
+	} else {
+		kubeAPI = controllerK8s.NewClusterScopedAPI(hc.kubeAPI.Interface, nil, nil, "local", controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
+	}
 	kubeAPI.Sync(ctx.Done())
 
 	services, err := kubeAPI.Svc().Lister().Services(hc.DataPlaneNamespace).List(labels.Everything())
@@ -2384,12 +2391,16 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 			continue
 		}
 
-		endpoints, err := kubeAPI.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
-		if err != nil {
-			return err
+		var pods map[*corev1.Pod]struct{}
+		if hc.EnableEndpointSlices {
+			pods, err = getEndpointSlicePods(service, kubeAPI)
+		} else {
+			endpoints, endpointsErr := kubeAPI.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
+			if endpointsErr != nil {
+				return endpointsErr
+			}
+			pods, err = getEndpointsPods(endpoints, kubeAPI, service.Namespace)
 		}
-
-		pods, err := getEndpointsPods(endpoints, kubeAPI, service.Namespace)
 		if err != nil {
 			return err
 		}
@@ -2423,6 +2434,39 @@ func getEndpointsPods(endpoints *corev1.Endpoints, kubeAPI *controllerK8s.API, n
 				if _, ok := pods[pod]; !ok {
 					pods[pod] = struct{}{}
 				}
+			}
+		}
+	}
+	return pods, nil
+}
+
+// getEndpointSlicePods takes a service and returns the set of all pods that
+// are targeted by its EndpointSlices.
+func getEndpointSlicePods(svc *corev1.Service, kubeAPI *controllerK8s.API) (map[*corev1.Pod]struct{}, error) {
+	pods := make(map[*corev1.Pod]struct{})
+
+	matchLabels := map[string]string{discoveryv1.LabelServiceName: svc.Name}
+	selector := labels.Set(matchLabels).AsSelector()
+
+	slices, err := kubeAPI.ES().Lister().EndpointSlices(svc.Namespace).List(selector)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, slice := range slices {
+		for _, endpoint := range slice.Endpoints {
+			if endpoint.TargetRef == nil {
+				continue
+			}
+			if endpoint.TargetRef.Kind != "Pod" {
+				continue
+			}
+			pod, err := kubeAPI.Pod().Lister().Pods(svc.Namespace).Get(endpoint.TargetRef.Name)
+			if err != nil {
+				return nil, err
+			}
+			if _, ok := pods[pod]; !ok {
+				pods[pod] = struct{}{}
 			}
 		}
 	}
