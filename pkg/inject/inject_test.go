@@ -404,6 +404,118 @@ func TestApplyAnnotationOverridesInitializesTracingLabels(t *testing.T) {
 	}
 }
 
+func TestMergeAdditionalEnv(t *testing.T) {
+	testCases := []struct {
+		id                  string
+		helmAdditionalEnv   []corev1.EnvVar
+		nsAnnotations       map[string]string
+		workloadAnnotations map[string]string
+		expected            []corev1.EnvVar
+	}{
+		{
+			id: "no annotations, helm only",
+			helmAdditionalEnv: []corev1.EnvVar{
+				{Name: "FOO", Value: "helm"},
+			},
+			nsAnnotations:       map[string]string{},
+			workloadAnnotations: map[string]string{},
+			expected: []corev1.EnvVar{
+				{Name: "FOO", Value: "helm"},
+			},
+		},
+		{
+			id:                "namespace annotation adds env vars",
+			helmAdditionalEnv: nil,
+			nsAnnotations: map[string]string{
+				k8s.ProxyAdditionalEnvAnnotation: `[{"name":"BAR","value":"ns"}]`,
+			},
+			workloadAnnotations: map[string]string{},
+			expected: []corev1.EnvVar{
+				{Name: "BAR", Value: "ns"},
+			},
+		},
+		{
+			id:                "workload overrides namespace by name",
+			helmAdditionalEnv: nil,
+			nsAnnotations: map[string]string{
+				k8s.ProxyAdditionalEnvAnnotation: `[{"name":"BACKLOG","value":"4096"},{"name":"OTHER","value":"ns"}]`,
+			},
+			workloadAnnotations: map[string]string{
+				k8s.ProxyAdditionalEnvAnnotation: `[{"name":"BACKLOG","value":"8192"}]`,
+			},
+			expected: []corev1.EnvVar{
+				{Name: "BACKLOG", Value: "8192"},
+				{Name: "OTHER", Value: "ns"},
+			},
+		},
+		{
+			id: "three-layer merge: helm < namespace < workload",
+			helmAdditionalEnv: []corev1.EnvVar{
+				{Name: "A", Value: "helm"},
+				{Name: "B", Value: "helm"},
+			},
+			nsAnnotations: map[string]string{
+				k8s.ProxyAdditionalEnvAnnotation: `[{"name":"B","value":"ns"},{"name":"C","value":"ns"}]`,
+			},
+			workloadAnnotations: map[string]string{
+				k8s.ProxyAdditionalEnvAnnotation: `[{"name":"C","value":"wl"}]`,
+			},
+			expected: []corev1.EnvVar{
+				{Name: "A", Value: "helm"},
+				{Name: "B", Value: "ns"},
+				{Name: "C", Value: "wl"},
+			},
+		},
+		{
+			id:                "invalid JSON in namespace is skipped",
+			helmAdditionalEnv: nil,
+			nsAnnotations: map[string]string{
+				k8s.ProxyAdditionalEnvAnnotation: `not-json`,
+			},
+			workloadAnnotations: map[string]string{
+				k8s.ProxyAdditionalEnvAnnotation: `[{"name":"OK","value":"wl"}]`,
+			},
+			expected: []corev1.EnvVar{
+				{Name: "OK", Value: "wl"},
+			},
+		},
+		{
+			id:                "invalid JSON in workload is skipped",
+			helmAdditionalEnv: nil,
+			nsAnnotations: map[string]string{
+				k8s.ProxyAdditionalEnvAnnotation: `[{"name":"NS","value":"ok"}]`,
+			},
+			workloadAnnotations: map[string]string{
+				k8s.ProxyAdditionalEnvAnnotation: `{bad`,
+			},
+			expected: []corev1.EnvVar{
+				{Name: "NS", Value: "ok"},
+			},
+		},
+		{
+			id:                  "no annotations and no helm",
+			helmAdditionalEnv:   nil,
+			nsAnnotations:       map[string]string{},
+			workloadAnnotations: map[string]string{},
+			expected:            nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.id, func(t *testing.T) {
+			values := &l5dcharts.Values{
+				Proxy: &l5dcharts.Proxy{
+					AdditionalEnv: tc.helmAdditionalEnv,
+				},
+			}
+			MergeAdditionalEnv(values, tc.nsAnnotations, tc.workloadAnnotations)
+			if diff := deep.Equal(values.Proxy.AdditionalEnv, tc.expected); diff != nil {
+				t.Errorf("%+v", diff)
+			}
+		})
+	}
+}
+
 func TestWholeCPUCores(t *testing.T) {
 	for _, c := range []struct {
 		v string

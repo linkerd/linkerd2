@@ -101,7 +101,7 @@ func NewServer(
 	if err != nil {
 		return nil, err
 	}
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, config.EnableEndpointSlices, "local")
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, config.EnableEndpointSlices, config.EnableIPv6, "local")
 	if err != nil {
 		return nil, err
 	}
@@ -214,8 +214,6 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			remoteConfig.TrustDomain,
 			s.config.ForceOpaqueTransport,
 			s.config.EnableH2Upgrade,
-			false, // Disable endpoint filtering for remote discovery.
-			s.config.EnableIPv6,
 			s.config.ExtEndpointZoneWeights,
 			s.config.MeshedHttp2ClientParams,
 			fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port),
@@ -233,7 +231,13 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		translator.Start()
 		defer translator.Stop()
 
-		err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
+		filterKey := watcher.FilterKey{
+			Hostname:                instanceID,
+			NodeName:                token.NodeName,
+			EnableEndpointFiltering: false, // Disable endpoint filtering for remote discovery.
+		}
+
+		err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, filterKey, translator)
 		if err != nil {
 			var ise watcher.InvalidService
 			if errors.As(err, &ise) {
@@ -243,7 +247,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			log.Errorf("Failed to subscribe to remote discovery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
 			return err
 		}
-		defer remoteWatcher.Unsubscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
+		defer remoteWatcher.Unsubscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, filterKey, translator, false)
 
 	} else {
 		log.Debug("Local discovery service detected")
@@ -253,8 +257,6 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			s.config.IdentityTrustDomain,
 			s.config.ForceOpaqueTransport,
 			s.config.EnableH2Upgrade,
-			true,
-			s.config.EnableIPv6,
 			s.config.ExtEndpointZoneWeights,
 			s.config.MeshedHttp2ClientParams,
 			dest.GetPath(),
@@ -272,7 +274,13 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		translator.Start()
 		defer translator.Stop()
 
-		err = s.endpoints.Subscribe(service, port, instanceID, translator)
+		filterKey := watcher.FilterKey{
+			Hostname:                instanceID,
+			NodeName:                token.NodeName,
+			EnableEndpointFiltering: true, // Enable endpoint filtering for local discovery.
+		}
+
+		err = s.endpoints.Subscribe(service, port, filterKey, translator)
 		if err != nil {
 			var ise watcher.InvalidService
 			if errors.As(err, &ise) {
@@ -282,7 +290,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
 			return err
 		}
-		defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
+		defer s.endpoints.Unsubscribe(service, port, filterKey, translator, false)
 	}
 
 	select {
