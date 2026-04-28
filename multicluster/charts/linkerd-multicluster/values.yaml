@@ -11,6 +11,9 @@ gateway:
   serviceType: LoadBalancer
   # nodePort -- Set the gateway nodePort (for LoadBalancer or NodePort) to a specific value
   # nodePort:
+  # healthCheckNodePort -- Set the healthCheckNodePort on the gateway service 
+  # (only applicable when externalTrafficPolicy is set to Local and service type is LoadBalancer or NodePort)
+  # healthCheckNodePort:
   probe:
     # -- The path that will be used by remote clusters for determining whether the
     # gateway is alive
