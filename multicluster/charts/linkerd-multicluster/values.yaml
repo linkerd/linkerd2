@@ -11,7 +11,7 @@ gateway:
   serviceType: LoadBalancer
   # nodePort -- Set the gateway nodePort (for LoadBalancer or NodePort) to a specific value
   # nodePort:
-  # healthCheckNodePort -- Set the healthCheckNodePort on the gateway service 
+  # healthCheckNodePort -- Set the healthCheckNodePort on the gateway service
   # (only applicable when externalTrafficPolicy is set to Local and service type is LoadBalancer or NodePort)
   # healthCheckNodePort:
   probe:
@@ -85,7 +85,7 @@ namespaceMetadata:
     # -- Docker image name for the namespace-metadata instance
     name: extension-init
     # -- Docker image tag for the namespace-metadata instance
-    tag: v0.1.10
+    tag: v0.1.11
     # -- Pull policy for the namespace-metadata instance
     # @default -- imagePullPolicy
     pullPolicy: ""
