@@ -15,8 +15,17 @@ const KB = 1024
 const MB = KB * 1024
 
 // ParseScheme converts a scheme string to protobuf
-// TODO: validate scheme
 func ParseScheme(scheme string) *httpPb.Scheme {
+	// Validate and sanitize input
+	scheme = strings.TrimSpace(scheme)
+	if scheme == "" {
+		return &httpPb.Scheme{
+			Type: &httpPb.Scheme_Unregistered{
+				Unregistered: "",
+			},
+		}
+	}
+
 	value, ok := httpPb.Scheme_Registered_value[strings.ToUpper(scheme)]
 	if ok {
 		return &httpPb.Scheme{
@@ -33,8 +42,17 @@ func ParseScheme(scheme string) *httpPb.Scheme {
 }
 
 // ParseMethod converts a method string to protobuf
-// TODO: validate method
 func ParseMethod(method string) *httpPb.HttpMethod {
+	// Validate and sanitize input
+	method = strings.TrimSpace(method)
+	if method == "" {
+		return &httpPb.HttpMethod{
+			Type: &httpPb.HttpMethod_Unregistered{
+				Unregistered: "",
+			},
+		}
+	}
+
 	value, ok := httpPb.HttpMethod_Registered_value[strings.ToUpper(method)]
 	if ok {
 		return &httpPb.HttpMethod{

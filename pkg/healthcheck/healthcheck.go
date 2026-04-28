@@ -168,13 +168,11 @@ const (
 	keyKeyName                   = "tls.key"
 )
 
-// AllowedClockSkew sets the allowed skew in clock synchronization
+// DefaultAllowedClockSkew sets the allowed skew in clock synchronization
 // between the system running inject command and the node(s), being
 // based on assumed node's heartbeat interval (5 minutes) plus default TLS
 // clock skew allowance.
-//
-// TODO: Make this default value overridable, e.g. by CLI flag
-const AllowedClockSkew = 5*time.Minute + tls.DefaultClockSkewAllowance
+const DefaultAllowedClockSkew = 5*time.Minute + tls.DefaultClockSkewAllowance
 
 var linkerdHAControlPlaneComponents = []string{
 	"linkerd-destination",
@@ -393,6 +391,7 @@ func (c *Category) WithHintBaseURL(hintBaseURL string) *Category {
 // Options specifies configuration for a HealthChecker.
 type Options struct {
 	IsMainCheckCommand    bool
+	AllowedClockSkew      time.Duration
 	ControlPlaneNamespace string
 	CNINamespace          string
 	DataPlaneNamespace    string
@@ -437,6 +436,10 @@ type Runner interface {
 func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker {
 	hc := &HealthChecker{
 		Options: options,
+	}
+
+	if hc.Options != nil && hc.Options.AllowedClockSkew == 0 {
+		hc.Options.AllowedClockSkew = DefaultAllowedClockSkew
 	}
 
 	hc.categories = hc.allCategories()
@@ -2670,7 +2673,7 @@ func (hc *HealthChecker) checkClockSkew(ctx context.Context) error {
 			// we want to check only KubeletReady condition and only execute if the node is ready
 			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
 				since := time.Since(condition.LastHeartbeatTime.Time)
-				if (since > AllowedClockSkew) || (since < -AllowedClockSkew) {
+				if (since > hc.AllowedClockSkew) || (since < -hc.AllowedClockSkew) {
 					clockSkewNodes = append(clockSkewNodes, node.Name)
 				}
 			}
