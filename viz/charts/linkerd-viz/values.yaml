@@ -465,7 +465,7 @@ prometheus:
   # -- Command line options for Prometheus binary
   args:
     storage.tsdb.path: /data
-    storage.tsdb.retention.time: 6h
+    storage.tsdb.retention.time: 2h
     config.file: /etc/prometheus/prometheus.yml
   # -- The global configuration specifies parameters that are valid in all other
   # configuration contexts.
