@@ -2,7 +2,7 @@
 
 lint: action-lint action-dev-check md-lint sh-lint rs-fetch rs-clippy rs-check-fmt go-lint
 
-export GWAPI_VERSION := "v1.2.1"
+export GWAPI_VERSION := "v1.2.0"
 
 ##
 ## Go
@@ -472,8 +472,7 @@ _linkerd-viz-uninit:
 ## linkerd multicluster
 ##
 
-_mc-east-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*' --k3s-arg '--cluster-cidr=10.23.0.0/24@server:*'"
-_mc-north-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*' --k3s-arg '--cluster-cidr=10.24.0.0/24@server:*'"
+_mc-target-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*' --k3s-arg '--cluster-cidr=10.23.0.0/24@server:*'"
 
 linkerd-mc-install: _linkerd-init
     {{ _linkerd }} mc install --set='linkerdVersion={{ linkerd-tag }}' \
@@ -495,29 +494,14 @@ mc-target-k3d-delete:
 
 mc-load: _k3d-init linkerd-load
 
-mc-east-load:
+mc-target-load:
     @{{ just_executable() }} \
-        k3d-name='{{ k3d-name }}-east' \
+        k3d-name='{{ k3d-name }}-target' \
         k3d-k8s='{{ k3d-k8s }}' \
         k3d-agents='{{ k3d-agents }}' \
         k3d-servers='{{ k3d-servers }}' \
         k3d-network='{{ k3d-network }}' \
-        _k3d-flags='{{ _mc-east-k3d-flags }}' \
-        controller-image='{{ controller-image }}' \
-        proxy-image='{{ proxy-image }}' \
-        linkerd-exec='{{ linkerd-exec }}' \
-        linkerd-tag='{{ linkerd-tag }}' \
-        _pause-load \
-        mc-load
-
-mc-north-load:
-    @{{ just_executable() }} \
-        k3d-name='{{ k3d-name }}-north' \
-        k3d-k8s='{{ k3d-k8s }}' \
-        k3d-agents='{{ k3d-agents }}' \
-        k3d-servers='{{ k3d-servers }}' \
-        k3d-network='{{ k3d-network }}' \
-        _k3d-flags='{{ _mc-north-k3d-flags }}' \
+        _k3d-flags='{{ _mc-target-k3d-flags }}' \
         controller-image='{{ controller-image }}' \
         proxy-image='{{ proxy-image }}' \
         linkerd-exec='{{ linkerd-exec }}' \
@@ -536,20 +520,14 @@ k3d-source-server := "k3d-" + k3d-name + "-server-0"
 k3d-target-server := "k3d-" + k3d-name + "-target-server-0"
 
 _mc-route-output-fmt := "-o jsonpath='ip route add {.spec.podCIDR} via {.status.addresses[?(.type==\"InternalIP\")].address}'"
-_mc-print-north-route := "kubectl --context=k3d-l5d-test-north get node k3d-l5d-test-north-server-0" + " " + _mc-route-output-fmt
-_mc-print-east-route := "kubectl --context=k3d-l5d-test-east get node k3d-l5d-test-east-server-0" + " " + _mc-route-output-fmt
-_mc-print-west-route := "kubectl --context=k3d-l5d-test get node k3d-l5d-test-server-0" + " " + _mc-route-output-fmt
+_mc-print-source-route := _kubectl + " " + "get node " + k3d-source-server + " " + _mc-route-output-fmt
+_mc-print-target-route := "kubectl --context=k3d-" + k3d-name + "-target "+ "get node " + k3d-target-server + " " + _mc-route-output-fmt
 
 # Allow two k3d server nodes to participate in a flat network
 mc-flat-network-init:
-	@docker exec k3d-l5d-test-server-0 `{{_mc-print-east-route}}`
-	@docker exec k3d-l5d-test-server-0 `{{_mc-print-north-route}}`
+	@docker exec k3d-{{k3d-name}}-server-0 `{{_mc-print-target-route}}`
+	@docker exec k3d-{{k3d-name}}-target-server-0 `{{_mc-print-source-route}}`
 
-	@docker exec k3d-l5d-test-east-server-0 `{{_mc-print-west-route}}`
-	@docker exec k3d-l5d-test-east-server-0 `{{_mc-print-north-route}}`
-
-	@docker exec k3d-l5d-test-north-server-0 `{{_mc-print-east-route}}`
-	@docker exec k3d-l5d-test-north-server-0 `{{_mc-print-west-route}}`
 
 # Run the multicluster tests without any setup
 mc-test-run *flags:
