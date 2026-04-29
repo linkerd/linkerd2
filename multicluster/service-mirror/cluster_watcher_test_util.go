@@ -717,6 +717,122 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 		},
 	},
 }
+
+var multiNamespaceHeadlessMirrorEndpointsWithSameServiceName = &testEnvironment{
+	remoteResources: []string{
+		asYaml(gateway("gateway", "gateway-ns", "currentGatewayResVersion", "192.0.2.127", "mc-gateway", 888, "", defaultProbePort, defaultProbePath, defaultProbePeriod)),
+		asYaml(remoteHeadlessService("service-one", "ns1", "111", map[string]string{consts.DefaultExportedServiceSelector: "true"}, []corev1.ServicePort{
+			{Name: "port1", Protocol: "TCP", Port: 555},
+			{Name: "port2", Protocol: "TCP", Port: 666},
+		})),
+		asYaml(remoteHeadlessService("service-one", "ns2", "222", map[string]string{consts.DefaultExportedServiceSelector: "true"}, []corev1.ServicePort{
+			{Name: "port1", Protocol: "TCP", Port: 555},
+			{Name: "port2", Protocol: "TCP", Port: 666},
+		})),
+		asYaml(remoteHeadlessEndpoints("service-one", "ns1", "998", "192.0.0.1", []corev1.EndpointPort{
+			{Name: "port1", Protocol: "TCP", Port: 555},
+			{Name: "port2", Protocol: "TCP", Port: 666},
+		})),
+		asYaml(remoteHeadlessEndpointsUpdate("service-one", "ns2", "997", "192.0.0.2", []corev1.EndpointPort{
+			{Name: "port1", Protocol: "TCP", Port: 555},
+			{Name: "port2", Protocol: "TCP", Port: 666},
+		})),
+	},
+	localResources: []string{
+		asYaml(namespace("ns1")),
+		asYaml(namespace("ns2")),
+		asYaml(headlessMirrorService("service-one-remote", "ns1", "111", nil, []corev1.ServicePort{
+			{Name: "port1", Protocol: "TCP", Port: 555},
+			{Name: "port2", Protocol: "TCP", Port: 666},
+		})),
+		asYaml(endpointMirrorService("pod-0", "service-one-remote", "ns1", "333", nil, []corev1.ServicePort{
+			{Name: "port1", Protocol: "TCP", Port: 555},
+			{Name: "port2", Protocol: "TCP", Port: 666},
+		})),
+		asYaml(headlessMirrorEndpoints(
+			"service-one-remote",
+			"ns1",
+			nil,
+			"gateway-identity",
+			[]corev1.EndpointPort{
+				{Name: "port1", Protocol: "TCP", Port: 555},
+				{Name: "port2", Protocol: "TCP", Port: 666},
+			},
+		)),
+		asYaml(endpointMirrorEndpoints(
+			"service-one-remote",
+			"ns1",
+			nil,
+			"pod-0",
+			"192.0.2.127",
+			"gateway-identity",
+			[]corev1.EndpointPort{
+				{Name: "port1", Protocol: "TCP", Port: 888},
+				{Name: "port2", Protocol: "TCP", Port: 888},
+			},
+		)),
+		asYaml(headlessMirrorService("service-one-remote", "ns2", "222", nil, []corev1.ServicePort{
+			{Name: "port1", Protocol: "TCP", Port: 555},
+			{Name: "port2", Protocol: "TCP", Port: 666},
+		})),
+		asYaml(endpointMirrorService("pod-0", "service-one-remote", "ns2", "444", nil, []corev1.ServicePort{
+			{Name: "port1", Protocol: "TCP", Port: 555},
+			{Name: "port2", Protocol: "TCP", Port: 666},
+		})),
+		asYaml(endpointMirrorService("pod-1", "service-one-remote", "ns2", "555", nil, []corev1.ServicePort{
+			{Name: "port1", Protocol: "TCP", Port: 555},
+			{Name: "port2", Protocol: "TCP", Port: 666},
+		})),
+		asYaml(headlessMirrorEndpointsUpdated(
+			"service-one-remote",
+			"ns2",
+			[]string{"pod-0", "pod-1"},
+			[]string{"", ""},
+			"gateway-identity",
+			[]corev1.EndpointPort{
+				{Name: "port1", Protocol: "TCP", Port: 555},
+				{Name: "port2", Protocol: "TCP", Port: 666},
+			},
+		)),
+		asYaml(endpointMirrorEndpoints(
+			"service-one-remote",
+			"ns2",
+			nil,
+			"pod-0",
+			"192.0.2.127",
+			"gateway-identity",
+			[]corev1.EndpointPort{
+				{Name: "port1", Protocol: "TCP", Port: 888},
+				{Name: "port2", Protocol: "TCP", Port: 888},
+			},
+		)),
+		asYaml(endpointMirrorEndpoints(
+			"service-one-remote",
+			"ns2",
+			nil,
+			"pod-1",
+			"192.0.2.127",
+			"gateway-identity",
+			[]corev1.EndpointPort{
+				{Name: "port1", Protocol: "TCP", Port: 888},
+				{Name: "port2", Protocol: "TCP", Port: 888},
+			},
+		)),
+	},
+	link: v1alpha3.Link{
+		Spec: v1alpha3.LinkSpec{
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             "888",
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
+	},
+}
+
 var clusterUnregistered = &testEnvironment{
 	events: []interface{}{
 		&ClusterUnregistered{},
@@ -1043,6 +1159,7 @@ func remoteHeadlessService(name, namespace, resourceVersion string, labels map[s
 	}
 }
 
+//nolint:unparam
 func remoteHeadlessEndpoints(name, namespace, resourceVersion, address string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	return &corev1.Endpoints{
 		TypeMeta: metav1.TypeMeta{
@@ -1076,6 +1193,7 @@ func remoteHeadlessEndpoints(name, namespace, resourceVersion, address string, p
 	}
 }
 
+//nolint:unparam
 func remoteHeadlessEndpointsUpdate(name, namespace, resourceVersion, address string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	return &corev1.Endpoints{
 		TypeMeta: metav1.TypeMeta{
@@ -1375,6 +1493,7 @@ func headlessMirrorEndpoints(name, namespace string, labels map[string]string, g
 	return endpoints
 }
 
+//nolint:unparam
 func headlessMirrorEndpointsUpdated(name, namespace string, hostnames, hostIPs []string, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	endpoints := &corev1.Endpoints{
 		TypeMeta: metav1.TypeMeta{

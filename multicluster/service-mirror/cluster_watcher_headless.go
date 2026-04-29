@@ -142,7 +142,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 	}
 
 	// Fetch all Endpoint Mirror services that belong to the same Headless Mirror
-	endpointMirrorServices, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
+	endpointMirrorServices, err := rcsw.localAPIClient.Svc().Lister().Services(exportedService.Namespace).List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
 		return err
 	}

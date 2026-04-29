@@ -563,7 +563,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUnexported(ctx conte
 		matchLabels := map[string]string{
 			consts.MirroredHeadlessSvcNameLabel: localServiceName,
 		}
-		endpointMirrorServices, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
+		endpointMirrorServices, err := rcsw.localAPIClient.Svc().Lister().Services(ev.Namespace).List(labels.Set(matchLabels).AsSelector())
 		if err != nil {
 			if !kerrors.IsNotFound(err) {
 				errors = append(errors, fmt.Errorf("could not fetch endpoint mirrors for mirror service %s/%s: %w", ev.Namespace, localServiceName, err))
