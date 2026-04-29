@@ -167,7 +167,7 @@ jobs:
         # Also test the Minimum Supported Kubernetes Version with the Minimum
         # Supported Gateway API version.
         include:
-          - k8s: v1.23
+          - k8s: v1.31
             gateway-api:
               version: v1.1.1
               channel: standard
@@ -336,7 +336,7 @@ jobs:
       fail-fast: false
       matrix:
         cases:
-        - {k8s: "v1.23", manage-controllers: false, install-gwapi: true}
+        - {k8s: "v1.31", manage-controllers: false, install-gwapi: true}
         # for v1.34 onwards, gwapi gets installed by Traefik on the target cluster
         - {k8s: "v1.35", manage-controllers: false, install-gwapi: false}
         - {k8s: "v1.35", manage-controllers: true, install-gwapi: false}
