@@ -81,6 +81,9 @@ var (
 		k8s.ProxyDisableInboundProtocolDetectTimeout,
 		k8s.ProxyEnableNativeSidecarAnnotationBeta,
 		k8s.ProxyAdditionalEnvAnnotation,
+		k8s.DebugImageAnnotation,
+		k8s.DebugImageVersionAnnotation,
+		k8s.DebugImagePullPolicyAnnotation,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
 	// (config.alpha prefix) that can be applied to a pod or namespace.
