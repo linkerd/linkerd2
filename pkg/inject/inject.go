@@ -1218,11 +1218,23 @@ func (conf *ResourceConfig) injectPodSpec(values *podPatch) {
 
 		if debug {
 			log.Infof("inject debug container")
+			debugName := values.Values.DebugContainer.Image.Name
+			debugVersion := values.Values.DebugContainer.Image.Version
+			debugPullPolicy := values.Values.DebugContainer.Image.PullPolicy
+			if v, ok := conf.pod.meta.Annotations[k8s.DebugImageAnnotation]; ok && v != "" {
+				debugName = v
+			}
+			if v, ok := conf.pod.meta.Annotations[k8s.DebugImageVersionAnnotation]; ok && v != "" {
+				debugVersion = v
+			}
+			if v, ok := conf.pod.meta.Annotations[k8s.DebugImagePullPolicyAnnotation]; ok && v != "" {
+				debugPullPolicy = v
+			}
 			values.DebugContainer = &l5dcharts.DebugContainer{
 				Image: &l5dcharts.Image{
-					Name:       values.Values.DebugContainer.Image.Name,
-					Version:    values.Values.DebugContainer.Image.Version,
-					PullPolicy: values.Values.DebugContainer.Image.PullPolicy,
+					Name:       debugName,
+					Version:    debugVersion,
+					PullPolicy: debugPullPolicy,
 				},
 			}
 		}
