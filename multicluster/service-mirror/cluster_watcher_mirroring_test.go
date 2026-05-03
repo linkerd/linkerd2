@@ -967,6 +967,138 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 	}
 }
 
+func TestHeadlessEndpointMirrorCleanupRespectsNamespaces(t *testing.T) {
+	onUpdateEndpointsCalledEnv := *multiNamespaceHeadlessMirrorEndpointsWithSameServiceName
+	onUpdateEndpointsCalledEnv.events = []interface{}{
+		&OnUpdateEndpointsCalled{
+			ep: remoteHeadlessEndpoints(
+				"service-one",
+				"ns1",
+				"999",
+				"192.0.0.1",
+				[]corev1.EndpointPort{
+					{Name: "port1", Protocol: "TCP", Port: 555},
+					{Name: "port2", Protocol: "TCP", Port: 666},
+				},
+			),
+		},
+	}
+
+	remoteServiceUnexportedEnv := *multiNamespaceHeadlessMirrorEndpointsWithSameServiceName
+	remoteServiceUnexportedEnv.events = []interface{}{
+		&RemoteServiceUnexported{
+			Name:      "service-one",
+			Namespace: "ns1",
+		},
+	}
+
+	for _, tt := range []mirroringTestCase{
+		{
+			description: "OnUpdateEndpointsCalled headless endpoint mirror GC is scoped to the appropriate namespace",
+			environment: &onUpdateEndpointsCalledEnv,
+			expectedLocalServices: []*corev1.Service{
+				headlessMirrorService("service-one-remote", "ns1", "111", nil, []corev1.ServicePort{
+					{Name: "port1", Protocol: "TCP", Port: 555},
+					{Name: "port2", Protocol: "TCP", Port: 666},
+				}),
+				endpointMirrorService("pod-0", "service-one-remote", "ns1", "333", nil, []corev1.ServicePort{
+					{Name: "port1", Protocol: "TCP", Port: 555},
+					{Name: "port2", Protocol: "TCP", Port: 666},
+				}),
+				headlessMirrorService("service-one-remote", "ns2", "222", nil, []corev1.ServicePort{
+					{Name: "port1", Protocol: "TCP", Port: 555},
+					{Name: "port2", Protocol: "TCP", Port: 666},
+				}),
+				endpointMirrorService("pod-0", "service-one-remote", "ns2", "444", nil, []corev1.ServicePort{
+					{Name: "port1", Protocol: "TCP", Port: 555},
+					{Name: "port2", Protocol: "TCP", Port: 666},
+				}),
+				endpointMirrorService("pod-1", "service-one-remote", "ns2", "555", nil, []corev1.ServicePort{
+					{Name: "port1", Protocol: "TCP", Port: 555},
+					{Name: "port2", Protocol: "TCP", Port: 666},
+				}),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				headlessMirrorEndpoints(
+					"service-one-remote",
+					"ns1",
+					nil,
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{Name: "port1", Protocol: "TCP", Port: 555},
+						{Name: "port2", Protocol: "TCP", Port: 666},
+					},
+				),
+				endpointMirrorEndpoints("service-one-remote", "ns1", nil, "pod-0", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{
+					{Name: "port1", Protocol: "TCP", Port: 888},
+					{Name: "port2", Protocol: "TCP", Port: 888},
+				}),
+				headlessMirrorEndpointsUpdated(
+					"service-one-remote",
+					"ns2",
+					[]string{"pod-0", "pod-1"},
+					[]string{"", ""},
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{Name: "port1", Protocol: "TCP", Port: 555},
+						{Name: "port2", Protocol: "TCP", Port: 666},
+					},
+				),
+				endpointMirrorEndpoints("service-one-remote", "ns2", nil, "pod-0", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{
+					{Name: "port1", Protocol: "TCP", Port: 888},
+					{Name: "port2", Protocol: "TCP", Port: 888},
+				}),
+				endpointMirrorEndpoints("service-one-remote", "ns2", nil, "pod-1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{
+					{Name: "port1", Protocol: "TCP", Port: 888},
+					{Name: "port2", Protocol: "TCP", Port: 888},
+				}),
+			},
+		},
+		{
+			description: "RemoteServiceUnexported headless endpoint mirror GC is scoped to the appropriate namespace",
+			environment: &remoteServiceUnexportedEnv,
+			expectedLocalServices: []*corev1.Service{
+				headlessMirrorService("service-one-remote", "ns2", "222", nil, []corev1.ServicePort{
+					{Name: "port1", Protocol: "TCP", Port: 555},
+					{Name: "port2", Protocol: "TCP", Port: 666},
+				}),
+				endpointMirrorService("pod-0", "service-one-remote", "ns2", "444", nil, []corev1.ServicePort{
+					{Name: "port1", Protocol: "TCP", Port: 555},
+					{Name: "port2", Protocol: "TCP", Port: 666},
+				}),
+				endpointMirrorService("pod-1", "service-one-remote", "ns2", "555", nil, []corev1.ServicePort{
+					{Name: "port1", Protocol: "TCP", Port: 555},
+					{Name: "port2", Protocol: "TCP", Port: 666},
+				}),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				headlessMirrorEndpointsUpdated(
+					"service-one-remote",
+					"ns2",
+					[]string{"pod-0", "pod-1"},
+					[]string{"", ""},
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{Name: "port1", Protocol: "TCP", Port: 555},
+						{Name: "port2", Protocol: "TCP", Port: 666},
+					},
+				),
+				endpointMirrorEndpoints("service-one-remote", "ns2", nil, "pod-0", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{
+					{Name: "port1", Protocol: "TCP", Port: 888},
+					{Name: "port2", Protocol: "TCP", Port: 888},
+				}),
+				endpointMirrorEndpoints("service-one-remote", "ns2", nil, "pod-1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{
+					{Name: "port1", Protocol: "TCP", Port: 888},
+					{Name: "port2", Protocol: "TCP", Port: 888},
+				}),
+			},
+		},
+	} {
+		tc := tt // pin
+		tc.run(t)
+	}
+}
+
 func TestClusterUnregisteredMirroring(t *testing.T) {
 	for _, tt := range []mirroringTestCase{
 		{

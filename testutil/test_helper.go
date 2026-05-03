@@ -22,7 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const GATEWAY_API_VERSION = "v1.2.0"
+const GATEWAY_API_VERSION = "v1.2.1"
 
 // TestHelper provides helpers for running the linkerd integration tests.
 type TestHelper struct {
