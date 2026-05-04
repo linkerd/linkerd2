@@ -3054,6 +3054,228 @@ subsets:
 	}
 }
 
+func TestCheckOpaquePortAnnotationsWithEndpointSlices(t *testing.T) {
+	hc := NewHealthChecker(
+		[]CategoryID{LinkerdOpaquePortsDefinitionChecks},
+		&Options{
+			DataPlaneNamespace:   "test-ns",
+			EnableEndpointSlices: true,
+		},
+	)
+
+	var err error
+
+	var testCases = []struct {
+		description string
+		resources   []string
+		expected    error
+	}{
+		{
+			description: "matching opaque port annotations",
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  selector:
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  labels:
+    app: test
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  containers:
+  - name: test
+    image: test
+    ports:
+    - name: test
+      containerPort: 9200
+`,
+				`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: svc-abc
+  namespace: test-ns
+  labels:
+    kubernetes.io/service-name: svc
+addressType: IPv4
+endpoints:
+- addresses:
+  - "10.244.3.12"
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: pod
+    namespace: test-ns
+ports:
+- name: test
+  port: 9200
+  protocol: TCP
+`,
+			},
+		},
+		{
+			description: "missing opaque port annotation on service",
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+spec:
+  selector:
+    app: test
+  ports:
+  - name: http
+    port: 9200
+    targetPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  labels:
+    app: test
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  containers:
+  - name: test
+    image: test
+    ports:
+    - name: test
+      containerPort: 9200
+`,
+				`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: svc-abc
+  namespace: test-ns
+  labels:
+    kubernetes.io/service-name: svc
+addressType: IPv4
+endpoints:
+- addresses:
+  - "10.244.3.12"
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: pod
+    namespace: test-ns
+ports:
+- name: test
+  port: 9200
+  protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* service svc targets the opaque port 9200 through 9200; add 9200 to its config.linkerd.io/opaque-ports annotation"),
+		},
+		{
+			description: "missing opaque port annotation on pod",
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  selector:
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  labels:
+    app: test
+spec:
+  containers:
+  - name: test
+    image: test
+    ports:
+    - name: test
+      containerPort: 9200
+`,
+				`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: svc-abc
+  namespace: test-ns
+  labels:
+    kubernetes.io/service-name: svc
+addressType: IPv4
+endpoints:
+- addresses:
+  - "10.244.3.12"
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: pod
+    namespace: test-ns
+ports:
+- name: test
+  port: 9200
+  protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* service svc expects target port 9200 to be opaque; add it to pod pod config.linkerd.io/opaque-ports annotation"),
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // pin
+		t.Run(tc.description, func(t *testing.T) {
+			hc.kubeAPI, err = k8s.NewFakeAPI(tc.resources...)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			err = hc.checkMisconfiguredOpaquePortAnnotations(context.Background())
+			if err == nil && tc.expected != nil {
+				t.Fatalf("Expected check to fail with %s", tc.expected.Error())
+			}
+			if err != nil && tc.expected != nil {
+				if err.Error() != tc.expected.Error() {
+					t.Fatalf("Expected error: %s, received: %s", tc.expected, err)
+				}
+			}
+			if err != nil && tc.expected == nil {
+				t.Fatalf("Did not expect error but got: %s", err.Error())
+			}
+		})
+	}
+}
+
 type controlPlaneReplicaOptions struct {
 	destination   int
 	identity      int

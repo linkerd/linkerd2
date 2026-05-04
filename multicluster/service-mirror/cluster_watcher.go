@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -64,6 +65,7 @@ type (
 		liveness                 chan bool
 		headlessServicesEnabled  bool
 		namespaceCreationEnabled bool
+		enableEndpointSlices     bool
 
 		informerHandlers
 	}
@@ -71,6 +73,7 @@ type (
 	informerHandlers struct {
 		svcHandler cache.ResourceEventHandlerRegistration
 		epHandler  cache.ResourceEventHandlerRegistration
+		esHandler  cache.ResourceEventHandlerRegistration
 		nsHandler  cache.ResourceEventHandlerRegistration
 	}
 
@@ -156,6 +159,19 @@ type (
 	OnUpdateEndpointsCalled struct {
 		ep *corev1.Endpoints
 	}
+
+	// OnAddEndpointSliceCalled is issued when the onAdd function of the
+	// EndpointSlice shared informer is called
+	OnAddEndpointSliceCalled struct {
+		es *discoveryv1.EndpointSlice
+	}
+
+	// OnUpdateEndpointSliceCalled is issued when the onUpdate function of the
+	// EndpointSlice shared informer is called
+	OnUpdateEndpointSliceCalled struct {
+		es *discoveryv1.EndpointSlice
+	}
+
 	// OnDeleteCalled is issued when the onDelete function of the
 	// shared informer is called
 	OnDeleteCalled struct {
@@ -199,6 +215,7 @@ func NewRemoteClusterServiceWatcher(
 	liveness chan bool,
 	enableHeadlessSvc bool,
 	enableNamespaceCreation bool,
+	enableEndpointSlices bool,
 ) (*RemoteClusterServiceWatcher, error) {
 	_, err := remoteAPI.Client.Discovery().ServerVersion()
 	if err != nil {
@@ -235,6 +252,7 @@ func NewRemoteClusterServiceWatcher(
 		liveness:                 liveness,
 		headlessServicesEnabled:  enableHeadlessSvc,
 		namespaceCreationEnabled: enableNamespaceCreation,
+		enableEndpointSlices:     enableEndpointSlices,
 		// always instantiate the gatewayAlive=true to prevent unexpected service fail fast
 		gatewayAlive: true,
 	}, nil
@@ -1085,11 +1103,15 @@ func (rcsw *RemoteClusterServiceWatcher) handleLocalNamespaceAdded(ns *corev1.Na
 }
 
 // isEmptyService returns true if any of these conditions are true:
-// - svc's Endpoint is not found
-// - svc's Endpoint has no Subsets (happens when there's no associated Pod)
+// - svc's Endpoint/EndpointSlice is not found
+// - svc's Endpoint has no Subsets / EndpointSlice has no endpoints (happens when there's no associated Pod)
 // - svc's Endpoint has Subsets, but none have addresses (only notReadyAddresses,
-// when the pod is not ready yet)
+// when the pod is not ready yet) / EndpointSlice has no ready endpoints
 func (rcsw *RemoteClusterServiceWatcher) isEmptyService(svc *corev1.Service) (bool, error) {
+	if rcsw.enableEndpointSlices {
+		return rcsw.isEmptyServiceES(svc)
+	}
+
 	ep, err := rcsw.remoteAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
@@ -1118,6 +1140,71 @@ func (rcsw *RemoteClusterServiceWatcher) isEmptyEndpoints(ep *corev1.Endpoints) 
 		}
 	}
 	rcsw.log.Debugf("endpoint %s/%s has no ready addresses", ep.Namespace, ep.Name)
+	return true
+}
+
+// getEndpointSliceServiceID extracts the service name from an EndpointSlice
+// by checking the kubernetes.io/service-name label or OwnerReferences
+func getEndpointSliceServiceID(es *discoveryv1.EndpointSlice) (string, string, error) {
+	if svc, ok := es.Labels[discoveryv1.LabelServiceName]; ok {
+		return es.Namespace, svc, nil
+	}
+	for _, ref := range es.OwnerReferences {
+		if ref.Kind == "Service" && ref.Name != "" {
+			return es.Namespace, ref.Name, nil
+		}
+	}
+	return "", "", fmt.Errorf("EndpointSlice [%s/%s] has no service reference", es.Namespace, es.Name)
+}
+
+// isEmptyEndpointSlice returns true if the EndpointSlice has no ready endpoints
+func (rcsw *RemoteClusterServiceWatcher) isEmptyEndpointSlice(es *discoveryv1.EndpointSlice) bool {
+	if len(es.Endpoints) == 0 {
+		rcsw.log.Debugf("endpointslice %s/%s has no endpoints", es.Namespace, es.Name)
+		return true
+	}
+	for _, ep := range es.Endpoints {
+		if ep.Conditions.Ready != nil && *ep.Conditions.Ready {
+			return false
+		}
+	}
+	rcsw.log.Debugf("endpointslice %s/%s has no ready endpoints", es.Namespace, es.Name)
+	return true
+}
+
+// isEmptyServiceES checks if a service has any ready endpoints using EndpointSlices
+func (rcsw *RemoteClusterServiceWatcher) isEmptyServiceES(svc *corev1.Service) (bool, error) {
+	matchLabels := map[string]string{discoveryv1.LabelServiceName: svc.Name}
+	selector := labels.Set(matchLabels).AsSelector()
+
+	slices, err := rcsw.remoteAPIClient.ES().Lister().EndpointSlices(svc.Namespace).List(selector)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			rcsw.log.Debugf("no endpointslices found for service %s/%s", svc.Namespace, svc.Name)
+			return true, nil
+		}
+		return true, err
+	}
+
+	if len(slices) == 0 {
+		rcsw.log.Debugf("no endpointslices found for service %s/%s", svc.Namespace, svc.Name)
+		return true, nil
+	}
+
+	for _, slice := range slices {
+		if !rcsw.isEmptyEndpointSlice(slice) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// isHeadlessEndpointSlice checks if an EndpointSlice belongs to a headless service
+func isHeadlessEndpointSlice(es *discoveryv1.EndpointSlice, log *logging.Entry) bool {
+	if _, found := es.Labels[corev1.IsHeadlessService]; !found {
+		log.Debugf("skipped processing EndpointSlice %s/%s: missing %s label", es.Namespace, es.Name, corev1.IsHeadlessService)
+		return false
+	}
 	return true
 }
 
@@ -1296,10 +1383,14 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 		err = rcsw.createOrUpdateService(ev.svc)
 	case *OnAddEndpointsCalled:
 		err = rcsw.handleCreateOrUpdateEndpoints(ctx, ev.ep)
+	case *OnAddEndpointSliceCalled:
+		err = rcsw.handleCreateOrUpdateEndpointSlice(ctx, ev.es)
 	case *OnUpdateCalled:
 		err = rcsw.createOrUpdateService(ev.svc)
 	case *OnUpdateEndpointsCalled:
 		err = rcsw.handleCreateOrUpdateEndpoints(ctx, ev.ep)
+	case *OnUpdateEndpointSliceCalled:
+		err = rcsw.handleCreateOrUpdateEndpointSlice(ctx, ev.es)
 	case *OnDeleteCalled:
 		rcsw.handleOnDelete(ev.svc)
 	case *RemoteServiceExported:
@@ -1401,48 +1492,97 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 		return err
 	}
 
-	rcsw.epHandler, err = rcsw.remoteAPIClient.Endpoint().Informer().AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			// AddFunc only relevant for exported headless endpoints
-			AddFunc: func(obj interface{}) {
-				ep, ok := obj.(*corev1.Endpoints)
-				if !ok {
-					rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", ep)
-					return
-				}
+	// Register either EndpointSlice or Endpoints informer based on configuration
+	if rcsw.enableEndpointSlices {
+		rcsw.log.Debugf("Watching EndpointSlice resources")
+		rcsw.esHandler, err = rcsw.remoteAPIClient.ES().Informer().AddEventHandler(
+			cache.ResourceEventHandlerFuncs{
+				// AddFunc only relevant for exported headless endpoints
+				AddFunc: func(obj interface{}) {
+					es, ok := obj.(*discoveryv1.EndpointSlice)
+					if !ok {
+						rcsw.log.Errorf("error processing EndpointSlice object: got %#v, expected *discoveryv1.EndpointSlice", obj)
+						return
+					}
 
-				if !rcsw.isExported(ep.Labels) {
-					rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
-					return
-				}
+					if !rcsw.isExported(es.Labels) {
+						rcsw.log.Debugf("skipped processing EndpointSlice object %s/%s: missing export label", es.Namespace, es.Name)
+						return
+					}
 
-				if !isHeadlessEndpoints(ep, rcsw.log) {
-					return
-				}
+					if !isHeadlessEndpointSlice(es, rcsw.log) {
+						return
+					}
 
-				rcsw.eventsQueue.Add(&OnAddEndpointsCalled{obj.(*corev1.Endpoints)})
+					rcsw.eventsQueue.Add(&OnAddEndpointSliceCalled{es})
+				},
+				// UpdateFunc relevant for all kind of exported endpoints
+				UpdateFunc: func(_, new interface{}) {
+					esNew, ok := new.(*discoveryv1.EndpointSlice)
+					if !ok {
+						rcsw.log.Errorf("error processing EndpointSlice object: got %#v, expected *discoveryv1.EndpointSlice", new)
+						return
+					}
+					if !rcsw.isExported(esNew.Labels) {
+						rcsw.log.Debugf("skipped processing EndpointSlice object %s/%s: missing export label", esNew.Namespace, esNew.Name)
+						return
+					}
+					if rcsw.isRemoteDiscovery(esNew.Labels) {
+						rcsw.log.Debugf("skipped processing EndpointSlice object %s/%s (service labeled for remote-discovery mode)", esNew.Namespace, esNew.Name)
+						return
+					}
+					rcsw.eventsQueue.Add(&OnUpdateEndpointSliceCalled{esNew})
+				},
 			},
-			// AddFunc relevant for all kind of exported endpoints
-			UpdateFunc: func(_, new interface{}) {
-				epNew, ok := new.(*corev1.Endpoints)
-				if !ok {
-					rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", epNew)
-					return
-				}
-				if !rcsw.isExported(epNew.Labels) {
-					rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", epNew.Namespace, epNew.Name, consts.DefaultExportedServiceSelector)
-					return
-				}
-				if rcsw.isRemoteDiscovery(epNew.Labels) {
-					rcsw.log.Debugf("skipped processing endpoints object %s/%s (service labeled for remote-discovery mode)", epNew.Namespace, epNew.Name)
-					return
-				}
-				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{epNew})
+		)
+		if err != nil {
+			return err
+		}
+	} else {
+		rcsw.log.Debugf("Watching Endpoints resources")
+		rcsw.epHandler, err = rcsw.remoteAPIClient.Endpoint().Informer().AddEventHandler(
+			cache.ResourceEventHandlerFuncs{
+				// AddFunc only relevant for exported headless endpoints
+				AddFunc: func(obj interface{}) {
+					ep, ok := obj.(*corev1.Endpoints)
+					if !ok {
+						rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", ep)
+						return
+					}
+
+					if !rcsw.isExported(ep.Labels) {
+						rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
+						return
+					}
+
+					if !isHeadlessEndpoints(ep, rcsw.log) {
+						return
+					}
+
+					rcsw.eventsQueue.Add(&OnAddEndpointsCalled{obj.(*corev1.Endpoints)})
+				},
+				// UpdateFunc relevant for all kind of exported endpoints
+				UpdateFunc: func(_, new interface{}) {
+					epNew, ok := new.(*corev1.Endpoints)
+					if !ok {
+						rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", epNew)
+						return
+					}
+					if !rcsw.isExported(epNew.Labels) {
+						rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", epNew.Namespace, epNew.Name, consts.DefaultExportedServiceSelector)
+						return
+					}
+					if rcsw.isRemoteDiscovery(epNew.Labels) {
+						rcsw.log.Debugf("skipped processing endpoints object %s/%s (service labeled for remote-discovery mode)", epNew.Namespace, epNew.Name)
+						return
+					}
+					rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{epNew})
+				},
 			},
-		},
-	)
-	if err != nil {
-		return err
+		)
+		if err != nil {
+			return err
+		}
 	}
 
 	rcsw.nsHandler, err = rcsw.localAPIClient.NS().Informer().AddEventHandler(
@@ -1505,7 +1645,12 @@ func (rcsw *RemoteClusterServiceWatcher) Stop(cleanupState bool) {
 	}
 	if rcsw.epHandler != nil {
 		if err := rcsw.remoteAPIClient.Endpoint().Informer().RemoveEventHandler(rcsw.epHandler); err != nil {
-			rcsw.log.Warnf("error removing service informer handler: %s", err)
+			rcsw.log.Warnf("error removing endpoints informer handler: %s", err)
+		}
+	}
+	if rcsw.esHandler != nil {
+		if err := rcsw.remoteAPIClient.ES().Informer().RemoveEventHandler(rcsw.esHandler); err != nil {
+			rcsw.log.Warnf("error removing endpointslice informer handler: %s", err)
 		}
 	}
 	if rcsw.nsHandler != nil {
