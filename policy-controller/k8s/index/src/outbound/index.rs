@@ -214,7 +214,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
     fn apply(&mut self, service: Service) {
         let name = service.name_unchecked();
         let ns = service.namespace().expect("Service must have a namespace");
-        tracing::debug!(name, ns, "indexing service");
+        tracing::debug!(service = name, namespace = ns, "indexing service");
         let accrual = parse_accrual_config(service.annotations())
             .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse accrual config"))
             .unwrap_or_default();
@@ -376,7 +376,11 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         let ns = egress_network
             .namespace()
             .expect("EgressNetwork must have a namespace");
-        tracing::debug!(name, ns, "indexing EgressNetwork");
+        tracing::debug!(
+            egress_network = name,
+            namespace = ns,
+            "indexing EgressNetwork"
+        );
         let accrual = parse_accrual_config(egress_network.annotations())
             .map_err(|error| tracing::warn!(%error, egress_network=name, namespace=ns, "Failed to parse accrual config"))
             .unwrap_or_default();
