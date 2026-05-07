@@ -560,7 +560,9 @@ data:
     enableH2Upgrade: true
     enablePodAntiAffinity: true
     enablePodDisruptionBudget: true
-    heartbeat: null
+    heartbeat:
+      failedJobsHistoryLimit: 1
+      successfulJobsHistoryLimit: 0
     heartbeatResources:
       cpu:
         limit: ""
@@ -1933,6 +1935,7 @@ spec:
   concurrencyPolicy: Replace
   schedule: "1 2 3 4 5"
   successfulJobsHistoryLimit: 0
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
       template:
