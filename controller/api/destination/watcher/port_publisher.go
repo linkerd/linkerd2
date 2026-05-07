@@ -638,6 +638,10 @@ func (pp *portPublisher) isAddressSelected(address Address, server *v1beta3.Serv
 	}
 
 	if address.Pod != nil {
+		if address.Pod.Namespace != server.Namespace {
+			return false
+		}
+
 		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
 		if err != nil {
 			pp.log.Errorf("failed to create Selector: %s", err)
@@ -664,6 +668,10 @@ func (pp *portPublisher) isAddressSelected(address Address, server *v1beta3.Serv
 		}
 
 	} else if address.ExternalWorkload != nil {
+		if address.ExternalWorkload.Namespace != server.Namespace {
+			return false
+		}
+
 		selector, err := metav1.LabelSelectorAsSelector(server.Spec.ExternalWorkloadSelector)
 		if err != nil {
 			pp.log.Errorf("failed to create Selector: %s", err)
