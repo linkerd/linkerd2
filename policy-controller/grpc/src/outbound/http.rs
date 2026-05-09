@@ -21,6 +21,8 @@ pub(crate) fn protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, HttpRoute)>,
     accrual: Option<outbound::FailureAccrual>,
+    load_bias: Option<outbound::LoadBiasConfig>,
+    retry_after: Option<outbound::RetryAfterConfig>,
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
@@ -76,10 +78,14 @@ pub(crate) fn protocol(
         http1: Some(outbound::proxy_protocol::Http1 {
             routes: routes.clone(),
             failure_accrual: accrual,
+            load_bias,
+            retry_after,
         }),
         http2: Some(outbound::proxy_protocol::Http2 {
             routes,
             failure_accrual: accrual,
+            load_bias,
+            retry_after,
         }),
     })
 }
@@ -89,6 +95,8 @@ pub(crate) fn http1_only_protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, HttpRoute)>,
     accrual: Option<outbound::FailureAccrual>,
+    load_bias: Option<outbound::LoadBiasConfig>,
+    retry_after: Option<outbound::RetryAfterConfig>,
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
@@ -106,6 +114,8 @@ pub(crate) fn http1_only_protocol(
             original_dst,
         ),
         failure_accrual: accrual,
+        load_bias,
+        retry_after,
     })
 }
 
@@ -114,6 +124,8 @@ pub(crate) fn http2_only_protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, HttpRoute)>,
     accrual: Option<outbound::FailureAccrual>,
+    load_bias: Option<outbound::LoadBiasConfig>,
+    retry_after: Option<outbound::RetryAfterConfig>,
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
@@ -131,6 +143,8 @@ pub(crate) fn http2_only_protocol(
             original_dst,
         ),
         failure_accrual: accrual,
+        load_bias,
+        retry_after,
     })
 }
 
@@ -318,6 +332,7 @@ fn convert_backend(
                                     )),
                                 }),
                                 load: Some(default_balancer_config()),
+                                ejection: None,
                             },
                         )),
                     }),

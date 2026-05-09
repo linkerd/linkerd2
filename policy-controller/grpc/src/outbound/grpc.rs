@@ -21,6 +21,8 @@ pub(crate) fn protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, GrpcRoute)>,
     failure_accrual: Option<outbound::FailureAccrual>,
+    load_bias: Option<outbound::LoadBiasConfig>,
+    retry_after: Option<outbound::RetryAfterConfig>,
     service_retry: Option<RouteRetry<GrpcRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
@@ -54,6 +56,8 @@ pub(crate) fn protocol(
     outbound::proxy_protocol::Kind::Grpc(outbound::proxy_protocol::Grpc {
         routes,
         failure_accrual,
+        load_bias,
+        retry_after,
     })
 }
 
@@ -230,6 +234,7 @@ fn convert_backend(
                                     )),
                                 }),
                                 load: Some(default_balancer_config()),
+                                ejection: None,
                             },
                         )),
                     }),

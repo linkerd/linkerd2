@@ -402,10 +402,14 @@ fn fallback(original_dst: SocketAddr) -> outbound::OutboundPolicy {
                     http1: Some(outbound::proxy_protocol::Http1 {
                         routes: http_routes.clone(),
                         failure_accrual: None,
+                        load_bias: None,
+                        retry_after: None,
                     }),
                     http2: Some(outbound::proxy_protocol::Http2 {
                         routes: http_routes,
                         failure_accrual: None,
+                        load_bias: None,
+                        retry_after: None,
                     }),
                 },
             )),
@@ -472,22 +476,32 @@ fn to_proto(
 ) -> outbound::OutboundPolicy {
     let backend: outbound::Backend = default_backend(&policy, original_dst);
 
-    let accrual = policy.accrual.map(|accrual| outbound::FailureAccrual {
-        kind: Some(match accrual {
-            linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
+    let accrual = policy.accrual.map(|accrual| {
+        let linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
+            max_failures,
+            backoff,
+        } = accrual;
+        outbound::FailureAccrual {
+            consecutive_failures: Some(outbound::failure_accrual::ConsecutiveFailures {
                 max_failures,
-                backoff,
-            } => outbound::failure_accrual::Kind::ConsecutiveFailures(
-                outbound::failure_accrual::ConsecutiveFailures {
-                    max_failures,
-                    backoff: Some(outbound::ExponentialBackoff {
-                        min_backoff: convert_duration("min_backoff", backoff.min_penalty),
-                        max_backoff: convert_duration("max_backoff", backoff.max_penalty),
-                        jitter_ratio: backoff.jitter,
-                    }),
-                },
-            ),
-        }),
+                backoff: Some(outbound::ExponentialBackoff {
+                    min_backoff: convert_duration("min_backoff", backoff.min_penalty),
+                    max_backoff: convert_duration("max_backoff", backoff.max_penalty),
+                    jitter_ratio: backoff.jitter,
+                }),
+            }),
+            success_rate: None,
+        }
+    });
+
+    let load_bias = policy.load_bias.map(|lb| outbound::LoadBiasConfig {
+        enabled: lb.enabled,
+        penalty: convert_duration("load_bias_penalty", lb.penalty),
+        penalty_decay: convert_duration("load_bias_penalty_decay", lb.penalty_decay),
+    });
+
+    let retry_after = policy.retry_after.map(|ra| outbound::RetryAfterConfig {
+        max_duration: convert_duration("retry_after_max_duration", ra.max_duration),
     });
 
     let mut http_routes = policy.http_routes.clone().into_iter().collect::<Vec<_>>();
@@ -499,6 +513,8 @@ fn to_proto(
                 backend,
                 http_routes.into_iter(),
                 accrual,
+                load_bias,
+                retry_after,
                 policy.http_retry.clone(),
                 policy.timeouts.clone(),
                 allow_l5d_request_headers,
@@ -515,6 +531,8 @@ fn to_proto(
                     backend,
                     grpc_routes.into_iter(),
                     accrual,
+                    load_bias,
+                    retry_after,
                     policy.grpc_retry.clone(),
                     policy.timeouts.clone(),
                     allow_l5d_request_headers,
@@ -527,6 +545,8 @@ fn to_proto(
                     backend,
                     http_routes.into_iter(),
                     accrual,
+                    load_bias,
+                    retry_after,
                     policy.http_retry.clone(),
                     policy.timeouts.clone(),
                     allow_l5d_request_headers,
@@ -567,6 +587,8 @@ fn to_proto(
                     backend,
                     grpc_routes.into_iter(),
                     accrual,
+                    load_bias,
+                    retry_after,
                     policy.grpc_retry.clone(),
                     policy.timeouts.clone(),
                     allow_l5d_request_headers,
@@ -579,6 +601,8 @@ fn to_proto(
                     backend,
                     http_routes.into_iter(),
                     accrual,
+                    load_bias,
+                    retry_after,
                     policy.http_retry.clone(),
                     policy.timeouts.clone(),
                     allow_l5d_request_headers,
@@ -607,6 +631,8 @@ fn to_proto(
                     backend,
                     http_routes.into_iter(),
                     accrual,
+                    load_bias,
+                    retry_after,
                     policy.http_retry.clone(),
                     policy.timeouts.clone(),
                     allow_l5d_request_headers,
@@ -690,6 +716,7 @@ fn default_backend(policy: &OutboundPolicy, original_dst: Option<SocketAddr>) ->
                         )),
                     }),
                     load: Some(default_balancer_config()),
+                    ejection: None,
                 },
             )),
         },
