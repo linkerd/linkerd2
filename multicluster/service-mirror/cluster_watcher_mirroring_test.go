@@ -433,9 +433,9 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:             q,
 		requeueLimit:            0,
-		gatewayAlive:            true,
 		headlessServicesEnabled: true,
 	}
+	watcher.setGatewayAlive(true)
 
 	q.Add(&RemoteServiceExported{
 		service: remoteService("service-one", "ns1", "111", map[string]string{
@@ -525,8 +525,8 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 		log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:     events,
 		requeueLimit:    0,
-		gatewayAlive:    true,
 	}
+	watcher.setGatewayAlive(true)
 
 	events.Add(&RemoteServiceExported{
 		service: remoteService("svc", "ns", "1", map[string]string{
@@ -567,7 +567,7 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 
 	// The gateway is now down which triggers repairing Endpoints on the local
 	// cluster.
-	watcher.gatewayAlive = false
+	watcher.setGatewayAlive(false)
 	events.Add(&RepairEndpoints{})
 	for events.Len() > 0 {
 		watcher.processNextEvent(context.Background())
@@ -683,7 +683,6 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 		log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:     events,
 		requeueLimit:    0,
-		gatewayAlive:    false,
 	}
 
 	events.Add(&RemoteServiceExported{
@@ -725,7 +724,7 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 
 	// The gateway is now alive which triggers repairing Endpoints on the
 	// local cluster.
-	watcher.gatewayAlive = true
+	watcher.setGatewayAlive(true)
 	events.Add(&RepairEndpoints{})
 	for events.Len() > 0 {
 		watcher.processNextEvent(context.Background())

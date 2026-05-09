@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
@@ -60,7 +61,7 @@ type (
 		eventsQueue              workqueue.TypedRateLimitingInterface[any]
 		requeueLimit             int
 		repairPeriod             time.Duration
-		gatewayAlive             bool
+		gatewayAlive             atomic.Bool
 		liveness                 chan bool
 		headlessServicesEnabled  bool
 		namespaceCreationEnabled bool
@@ -216,7 +217,7 @@ func NewRemoteClusterServiceWatcher(
 	})
 
 	stopper := make(chan struct{})
-	return &RemoteClusterServiceWatcher{
+	rcsw := &RemoteClusterServiceWatcher{
 		serviceMirrorNamespace: serviceMirrorNamespace,
 		link:                   link,
 		remoteAPIClient:        remoteAPI,
@@ -235,9 +236,12 @@ func NewRemoteClusterServiceWatcher(
 		liveness:                 liveness,
 		headlessServicesEnabled:  enableHeadlessSvc,
 		namespaceCreationEnabled: enableNamespaceCreation,
-		// always instantiate the gatewayAlive=true to prevent unexpected service fail fast
-		gatewayAlive: true,
-	}, nil
+	}
+
+	// always instantiate the gatewayAlive=true to prevent unexpected service fail fast
+	rcsw.setGatewayAlive(true)
+
+	return rcsw, nil
 }
 
 func (rcsw *RemoteClusterServiceWatcher) mirrorServiceName(remoteName string) string {
@@ -369,6 +373,14 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServiceAnnotations(remoteServi
 	annotations[consts.RemoteResourceVersionAnnotation] = remoteService.ResourceVersion // needed to detect real changes
 
 	return annotations
+}
+
+func (rcsw *RemoteClusterServiceWatcher) getGatewayAlive() bool {
+	return rcsw.gatewayAlive.Load()
+}
+
+func (rcsw *RemoteClusterServiceWatcher) setGatewayAlive(alive bool) {
+	rcsw.gatewayAlive.Store(alive)
 }
 
 // Provides annotations for federated service
@@ -1468,25 +1480,29 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 	ev := RepairEndpoints{}
 	rcsw.eventsQueue.Add(&ev)
 
-	go func() {
-		ticker := time.NewTicker(rcsw.repairPeriod)
-		for {
-			select {
-			case <-ticker.C:
-				ev := RepairEndpoints{}
-				rcsw.eventsQueue.Add(&ev)
-			case alive := <-rcsw.liveness:
-				rcsw.log.Debugf("gateway liveness change from %t to %t", rcsw.gatewayAlive, alive)
-				rcsw.gatewayAlive = alive
-				ev := RepairEndpoints{}
-				rcsw.eventsQueue.Add(&ev)
-			case <-rcsw.stopper:
-				return
-			}
-		}
-	}()
+	go rcsw.watchGatewayLiveness()
 
 	return nil
+}
+
+func (rcsw *RemoteClusterServiceWatcher) watchGatewayLiveness() {
+	ticker := time.NewTicker(rcsw.repairPeriod)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			ev := RepairEndpoints{}
+			rcsw.eventsQueue.Add(&ev)
+		case alive := <-rcsw.liveness:
+			rcsw.log.Debugf("gateway liveness change from %t to %t", rcsw.getGatewayAlive(), alive)
+			rcsw.setGatewayAlive(alive)
+			ev := RepairEndpoints{}
+			rcsw.eventsQueue.Add(&ev)
+		case <-rcsw.stopper:
+			return
+		}
+	}
 }
 
 // Stop stops watching the cluster and cleans up all mirrored resources
@@ -1786,7 +1802,7 @@ func (rcsw *RemoteClusterServiceWatcher) updateMirrorEndpoints(ctx context.Conte
 }
 
 func (rcsw *RemoteClusterServiceWatcher) updateReadiness(endpoints *corev1.Endpoints) {
-	if !rcsw.gatewayAlive {
+	if !rcsw.getGatewayAlive() {
 		rcsw.log.Warnf("gateway for %s/%s does not have ready addresses; setting addresses to not ready", endpoints.Namespace, endpoints.Name)
 		for i := range endpoints.Subsets {
 			endpoints.Subsets[i].NotReadyAddresses = append(endpoints.Subsets[i].NotReadyAddresses, endpoints.Subsets[i].Addresses...)
