@@ -1,14 +1,16 @@
 use std::time::Duration;
 
 use futures::StreamExt;
+use kube::Resource;
 use linkerd_policy_controller_k8s_api::{self as k8s, policy};
 use linkerd_policy_test::{
     assert_default_accrual_backoff, assert_resource_meta, create, grpc,
     outbound_api::{
-        detect_failure_accrual, failure_accrual_consecutive, retry_watch_outbound_policy,
+        detect_failure_accrual, detect_load_bias_and_retry_after, failure_accrual_consecutive,
+        retry_watch_outbound_policy,
     },
     test_route::TestParent,
-    with_temp_ns,
+    update, with_temp_ns,
 };
 use maplit::btreemap;
 
@@ -241,4 +243,482 @@ async fn default_failure_accrual() {
 
     test::<k8s::Service>().await;
     test::<policy::EgressNetwork>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn load_bias_with_custom_penalty() {
+    async fn test<P: TestParent>() {
+        with_temp_ns(|client, ns| async move {
+            let port = 4191;
+            let mut parent = P::make_parent(&ns);
+            parent.meta_mut().annotations = Some(btreemap! {
+                "balancer.alpha.linkerd.io/load-bias".to_string() => "true".to_string(),
+                "balancer.alpha.linkerd.io/load-bias-penalty".to_string() => "3s".to_string(),
+                "balancer.alpha.linkerd.io/load-bias-penalty-decay".to_string() => "6s".to_string(),
+            });
+            let parent = create(&client, parent).await;
+
+            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config);
+
+            let dt = P::DynamicType::default();
+            let (load_bias, _) = detect_load_bias_and_retry_after(&config);
+            if P::kind(&dt) == "EgressNetwork" {
+                assert!(
+                    load_bias.is_none(),
+                    "EgressNetwork should not have load_bias"
+                );
+            } else {
+                let lb = load_bias.expect("load_bias must be configured");
+                assert!(lb.enabled, "load_bias must be enabled");
+                assert_eq!(
+                    lb.penalty,
+                    Some(Duration::from_secs(3).try_into().unwrap()),
+                    "penalty should be 3s"
+                );
+                assert_eq!(
+                    lb.penalty_decay,
+                    Some(Duration::from_secs(6).try_into().unwrap()),
+                    "penalty_decay should be 6s"
+                );
+            }
+        })
+        .await;
+    }
+
+    test::<k8s::Service>().await;
+    test::<policy::EgressNetwork>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn retry_after_with_custom_max() {
+    async fn test<P: TestParent>() {
+        with_temp_ns(|client, ns| async move {
+            let port = 4191;
+            let mut parent = P::make_parent(&ns);
+            parent.meta_mut().annotations = Some(btreemap! {
+                "balancer.alpha.linkerd.io/retry-after".to_string() => "true".to_string(),
+                "balancer.alpha.linkerd.io/retry-after-max-duration".to_string() => "120s".to_string(),
+            });
+            let parent = create(&client, parent).await;
+
+            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config);
+
+            let dt = P::DynamicType::default();
+            let (_, retry_after) = detect_load_bias_and_retry_after(&config);
+            if P::kind(&dt) == "EgressNetwork" {
+                assert!(retry_after.is_none(), "EgressNetwork should not have retry_after");
+            } else {
+                let ra = retry_after.expect("retry_after must be configured");
+                assert_eq!(
+                    ra.max_duration,
+                    Some(Duration::from_secs(120).try_into().unwrap()),
+                    "max_duration should be 120s"
+                );
+            }
+        })
+        .await;
+    }
+
+    test::<k8s::Service>().await;
+    test::<policy::EgressNetwork>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn combined_load_bias_and_retry_after() {
+    async fn test<P: TestParent>() {
+        with_temp_ns(|client, ns| async move {
+            let port = 4191;
+            let mut parent = P::make_parent(&ns);
+            parent.meta_mut().annotations = Some(btreemap! {
+                "balancer.alpha.linkerd.io/load-bias".to_string() => "true".to_string(),
+                "balancer.alpha.linkerd.io/retry-after".to_string() => "true".to_string(),
+            });
+            let parent = create(&client, parent).await;
+
+            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config);
+
+            let dt = P::DynamicType::default();
+            let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
+            if P::kind(&dt) == "EgressNetwork" {
+                assert!(
+                    load_bias.is_none(),
+                    "EgressNetwork should not have load_bias"
+                );
+                assert!(
+                    retry_after.is_none(),
+                    "EgressNetwork should not have retry_after"
+                );
+            } else {
+                let lb = load_bias.expect("load_bias must be configured");
+                assert!(lb.enabled, "load_bias must be enabled");
+                assert_eq!(
+                    lb.penalty,
+                    Some(Duration::from_secs(5).try_into().unwrap()),
+                    "default penalty should be 5s"
+                );
+                assert_eq!(
+                    lb.penalty_decay,
+                    Some(Duration::from_secs(10).try_into().unwrap()),
+                    "default penalty_decay should be 10s"
+                );
+
+                let ra = retry_after.expect("retry_after must be configured");
+                assert_eq!(
+                    ra.max_duration,
+                    Some(Duration::from_secs(300).try_into().unwrap()),
+                    "default max_duration should be 300s"
+                );
+            }
+        })
+        .await;
+    }
+
+    test::<k8s::Service>().await;
+    test::<policy::EgressNetwork>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn accrual_with_load_bias_and_retry_after() {
+    async fn test<P: TestParent>() {
+        with_temp_ns(|client, ns| async move {
+            let port = 4191;
+            let mut parent = P::make_parent(&ns);
+            parent.meta_mut().annotations = Some(btreemap! {
+                "balancer.linkerd.io/failure-accrual".to_string() => "consecutive".to_string(),
+                "balancer.alpha.linkerd.io/load-bias".to_string() => "true".to_string(),
+                "balancer.alpha.linkerd.io/retry-after".to_string() => "true".to_string(),
+            });
+            let parent = create(&client, parent).await;
+
+            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config);
+
+            detect_failure_accrual(&config, |accrual| {
+                let _consecutive = failure_accrual_consecutive(accrual);
+            });
+
+            let dt = P::DynamicType::default();
+            let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
+            if P::kind(&dt) == "EgressNetwork" {
+                assert!(
+                    load_bias.is_none(),
+                    "EgressNetwork should not have load_bias"
+                );
+                assert!(
+                    retry_after.is_none(),
+                    "EgressNetwork should not have retry_after"
+                );
+            } else {
+                let lb = load_bias.expect("load_bias must be configured");
+                assert!(lb.enabled, "load_bias must be enabled");
+                assert_eq!(
+                    lb.penalty,
+                    Some(Duration::from_secs(5).try_into().unwrap()),
+                    "default penalty should be 5s"
+                );
+                assert_eq!(
+                    lb.penalty_decay,
+                    Some(Duration::from_secs(10).try_into().unwrap()),
+                    "default penalty_decay should be 10s"
+                );
+
+                let ra = retry_after.expect("retry_after must be configured");
+                assert_eq!(
+                    ra.max_duration,
+                    Some(Duration::from_secs(300).try_into().unwrap()),
+                    "default max_duration should be 300s"
+                );
+            }
+        })
+        .await;
+    }
+
+    test::<k8s::Service>().await;
+    test::<policy::EgressNetwork>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn invalid_load_bias_mode_produces_default() {
+    async fn test<P: TestParent>() {
+        with_temp_ns(|client, ns| async move {
+            let port = 4191;
+            let mut parent = P::make_parent(&ns);
+            parent.meta_mut().annotations = Some(btreemap! {
+                "balancer.alpha.linkerd.io/load-bias".to_string() => "invalid".to_string(),
+            });
+            let parent = create(&client, parent).await;
+
+            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config);
+
+            // Invalid mode value causes a parse error. The indexer logs
+            // a warning and falls through to the default (no load bias).
+            let (load_bias, _) = detect_load_bias_and_retry_after(&config);
+            assert!(
+                load_bias.is_none(),
+                "invalid load-bias mode should produce no load_bias config"
+            );
+        })
+        .await;
+    }
+
+    test::<k8s::Service>().await;
+    test::<policy::EgressNetwork>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn invalid_retry_after_duration_produces_default() {
+    async fn test<P: TestParent>() {
+        with_temp_ns(|client, ns| async move {
+            let port = 4191;
+            let mut parent = P::make_parent(&ns);
+            parent.meta_mut().annotations = Some(btreemap! {
+                "balancer.alpha.linkerd.io/retry-after".to_string() => "true".to_string(),
+                "balancer.alpha.linkerd.io/retry-after-max-duration".to_string() => "5".to_string(),
+            });
+            let parent = create(&client, parent).await;
+
+            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config);
+
+            // Bare number "5" lacks a duration unit, causing a parse error.
+            // The indexer logs a warning and falls through to the default.
+            let (_, retry_after) = detect_load_bias_and_retry_after(&config);
+            assert!(
+                retry_after.is_none(),
+                "bare-number duration should produce no retry_after config"
+            );
+        })
+        .await;
+    }
+
+    test::<k8s::Service>().await;
+    test::<policy::EgressNetwork>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn unannotated_service_has_no_new_config() {
+    async fn test<P: TestParent>() {
+        with_temp_ns(|client, ns| async move {
+            let port = 4191;
+            let parent = P::make_parent(&ns);
+            // No balancer annotations at all -- backwards compatibility test.
+            let parent = create(&client, parent).await;
+
+            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config);
+
+            // No annotations means no failure accrual, load bias, or retry
+            // after config -- zero behavior change for unannotated resources.
+            detect_failure_accrual(&config, |accrual| {
+                assert!(
+                    accrual.is_none(),
+                    "unannotated resource should have no failure accrual"
+                );
+            });
+            let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
+            assert!(
+                load_bias.is_none(),
+                "unannotated resource should have no load_bias"
+            );
+            assert!(
+                retry_after.is_none(),
+                "unannotated resource should have no retry_after"
+            );
+        })
+        .await;
+    }
+
+    test::<k8s::Service>().await;
+    test::<policy::EgressNetwork>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn egress_network_ignores_load_bias_and_retry_after() {
+    async fn test<P: TestParent>() {
+        with_temp_ns(|client, ns| async move {
+            let port = 4191;
+            let mut parent = P::make_parent(&ns);
+            parent.meta_mut().annotations = Some(btreemap! {
+                "balancer.alpha.linkerd.io/load-bias".to_string() => "true".to_string(),
+                "balancer.alpha.linkerd.io/load-bias-penalty".to_string() => "3s".to_string(),
+                "balancer.alpha.linkerd.io/retry-after".to_string() => "true".to_string(),
+                "balancer.alpha.linkerd.io/retry-after-max-duration".to_string() => "60s".to_string(),
+            });
+            let parent = create(&client, parent).await;
+
+            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config);
+
+            // EgressNetworks use Forward instead of Balancer, so the
+            // indexer skips load-bias and retry-after even when annotated.
+            let dt = P::DynamicType::default();
+            let kind = P::kind(&dt);
+            let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
+            assert!(
+                load_bias.is_none(),
+                "{kind} should not have load_bias"
+            );
+            assert!(
+                retry_after.is_none(),
+                "{kind} should not have retry_after"
+            );
+        })
+        .await;
+    }
+
+    test::<policy::EgressNetwork>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn consecutive_accrual_pipeline_unchanged() {
+    async fn test<P: TestParent>() {
+        with_temp_ns(|client, ns| async move {
+            let port = 4191;
+            let mut parent = P::make_parent(&ns);
+            parent.meta_mut().annotations = Some(btreemap! {
+                "balancer.linkerd.io/failure-accrual".to_string() => "consecutive".to_string(),
+            });
+            let parent = create(&client, parent).await;
+
+            let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+            let config = rx
+                .next()
+                .await
+                .expect("watch must not fail")
+                .expect("watch must return an initial config");
+            tracing::trace!(?config);
+
+            // Consecutive mode should produce failure accrual with
+            // consecutive_failures but no success_rate.
+            detect_failure_accrual(&config, |accrual| {
+                let accrual = accrual.expect("failure accrual must be configured");
+                assert!(
+                    accrual.consecutive_failures.is_some(),
+                    "consecutive_failures must be present"
+                );
+                assert!(
+                    accrual.success_rate.is_none(),
+                    "success_rate must NOT be set in consecutive mode"
+                );
+            });
+
+            // Consecutive mode should not enable load bias or retry after.
+            let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
+            assert!(
+                load_bias.is_none(),
+                "consecutive mode should not enable load_bias"
+            );
+            assert!(
+                retry_after.is_none(),
+                "consecutive mode should not enable retry_after"
+            );
+        })
+        .await;
+    }
+
+    test::<k8s::Service>().await;
+    test::<policy::EgressNetwork>().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn load_bias_watch_update() {
+    with_temp_ns(|client, ns| async move {
+        let port = 4191;
+        let parent = k8s::Service::make_parent(&ns);
+        let mut parent = create(&client, parent).await;
+
+        let mut rx = retry_watch_outbound_policy(&client, &ns, parent.ip(), port).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+
+        let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
+        assert!(
+            load_bias.is_none(),
+            "unannotated service should have no load_bias"
+        );
+        assert!(
+            retry_after.is_none(),
+            "unannotated service should have no retry_after"
+        );
+
+        parent.meta_mut().annotations = Some(btreemap! {
+            "balancer.alpha.linkerd.io/load-bias".to_string() => "true".to_string(),
+            "balancer.alpha.linkerd.io/load-bias-penalty".to_string() => "3s".to_string(),
+            "balancer.alpha.linkerd.io/retry-after".to_string() => "true".to_string(),
+            "balancer.alpha.linkerd.io/retry-after-max-duration".to_string() => "60s".to_string(),
+        });
+        update(&client, parent).await;
+
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?config);
+
+        let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
+        let lb = load_bias.expect("load_bias must be present after update");
+        assert!(lb.enabled, "load_bias must be enabled");
+        assert_eq!(
+            lb.penalty,
+            Some(Duration::from_secs(3).try_into().unwrap()),
+            "penalty should be 3s"
+        );
+
+        let ra = retry_after.expect("retry_after must be present after update");
+        assert_eq!(
+            ra.max_duration,
+            Some(Duration::from_secs(60).try_into().unwrap()),
+            "max_duration should be 60s"
+        );
+    })
+    .await;
 }
