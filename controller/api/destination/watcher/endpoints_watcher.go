@@ -612,7 +612,7 @@ func SetToServerProtocol(k8sAPI *k8s.API, address *Address, log *logging.Entry) 
 	if address.Pod == nil {
 		return fmt.Errorf("endpoint not backed by Pod: %s:%d", address.IP, address.Port)
 	}
-	servers, err := k8sAPI.Srv().Lister().Servers("").List(labels.Everything())
+	servers, err := k8sAPI.Srv().Lister().Servers(address.Pod.Namespace).List(labels.Everything())
 	if err != nil {
 		return fmt.Errorf("failed to list Servers: %w", err)
 	}
@@ -656,7 +656,7 @@ func SetToServerProtocolExternalWorkload(k8sAPI *k8s.API, address *Address) erro
 	if address.ExternalWorkload == nil {
 		return fmt.Errorf("endpoint not backed by ExternalWorkload: %s:%d", address.IP, address.Port)
 	}
-	servers, err := k8sAPI.Srv().Lister().Servers("").List(labels.Everything())
+	servers, err := k8sAPI.Srv().Lister().Servers(address.ExternalWorkload.Namespace).List(labels.Everything())
 	if err != nil {
 		return fmt.Errorf("failed to list Servers: %w", err)
 	}

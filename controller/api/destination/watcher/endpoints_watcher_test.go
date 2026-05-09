@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta3"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
@@ -17,18 +18,19 @@ import (
 	dv1 "k8s.io/api/discovery/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type bufferingEndpointListener struct {
-	added   []string
-	removed []string
+	added   []Address
+	removed []Address
 	sync.Mutex
 }
 
 func newBufferingEndpointListener() *bufferingEndpointListener {
 	return &bufferingEndpointListener{
-		added:   []string{},
-		removed: []string{},
+		added:   make([]Address, 0),
+		removed: make([]Address, 0),
 		Mutex:   sync.Mutex{},
 	}
 }
@@ -48,23 +50,55 @@ func (bel *bufferingEndpointListener) ExpectAdded(expected []string, t *testing.
 	bel.Lock()
 	defer bel.Unlock()
 	t.Helper()
-	sort.Strings(bel.added)
-	testCompare(t, expected, bel.added)
+	actual := make([]string, len(bel.added))
+	for i, address := range bel.added {
+		actual[i] = addressString(address)
+	}
+	sort.Strings(actual)
+	testCompare(t, expected, actual)
 }
 
 func (bel *bufferingEndpointListener) ExpectRemoved(expected []string, t *testing.T) {
 	bel.Lock()
 	defer bel.Unlock()
 	t.Helper()
-	sort.Strings(bel.removed)
-	testCompare(t, expected, bel.removed)
+	actual := make([]string, len(bel.removed))
+	for i, address := range bel.removed {
+		actual[i] = addressString(address)
+	}
+	sort.Strings(actual)
+	testCompare(t, expected, actual)
+}
+
+func (bel *bufferingEndpointListener) ExpectAddedWithResVersion(expected []string, t *testing.T) {
+	bel.Lock()
+	defer bel.Unlock()
+	t.Helper()
+	actual := make([]string, len(bel.added))
+	for i, address := range bel.added {
+		actual[i] = fmt.Sprintf("%s:%s", addressString(address), address.Pod.ResourceVersion)
+	}
+	sort.Strings(actual)
+	testCompare(t, expected, actual)
+}
+
+func (bel *bufferingEndpointListener) ExpectAddedWithOpaqueProtocol(expected []string, t *testing.T) {
+	bel.Lock()
+	defer bel.Unlock()
+	t.Helper()
+	actual := make([]string, len(bel.added))
+	for i, address := range bel.added {
+		actual[i] = fmt.Sprintf("%s:%t", addressString(address), address.OpaqueProtocol)
+	}
+	sort.Strings(actual)
+	testCompare(t, expected, actual)
 }
 
 func (bel *bufferingEndpointListener) Add(set AddressSet) {
 	bel.Lock()
 	defer bel.Unlock()
 	for _, address := range set.Addresses {
-		bel.added = append(bel.added, addressString(address))
+		bel.added = append(bel.added, address)
 	}
 }
 
@@ -76,7 +110,7 @@ func (bel *bufferingEndpointListener) Remove(set AddressSet) {
 	bel.Lock()
 	defer bel.Unlock()
 	for _, address := range set.Addresses {
-		bel.removed = append(bel.removed, addressString(address))
+		bel.removed = append(bel.removed, address)
 	}
 }
 
@@ -97,80 +131,6 @@ func (bel *bufferingEndpointListener) EnableEndpointFiltering() bool {
 }
 
 func (bel *bufferingEndpointListener) EnableIPv6() bool {
-	return false
-}
-
-type bufferingEndpointListenerWithResVersion struct {
-	added   []string
-	removed []string
-	sync.Mutex
-}
-
-func newBufferingEndpointListenerWithResVersion() *bufferingEndpointListenerWithResVersion {
-	return &bufferingEndpointListenerWithResVersion{
-		added:   []string{},
-		removed: []string{},
-		Mutex:   sync.Mutex{},
-	}
-}
-
-func addressStringWithResVersion(address Address) string {
-	return fmt.Sprintf("%s:%d:%s", address.IP, address.Port, address.Pod.ResourceVersion)
-}
-
-func (bel *bufferingEndpointListenerWithResVersion) ExpectAdded(expected []string, t *testing.T) {
-	bel.Lock()
-	defer bel.Unlock()
-	sort.Strings(bel.added)
-	testCompare(t, expected, bel.added)
-}
-
-func (bel *bufferingEndpointListenerWithResVersion) ExpectRemoved(expected []string, t *testing.T) {
-	bel.Lock()
-	defer bel.Unlock()
-	sort.Strings(bel.removed)
-	testCompare(t, expected, bel.removed)
-}
-
-func (bel *bufferingEndpointListenerWithResVersion) Add(set AddressSet) {
-	bel.Lock()
-	defer bel.Unlock()
-	for _, address := range set.Addresses {
-		bel.added = append(bel.added, addressStringWithResVersion(address))
-	}
-}
-
-func (bel *bufferingEndpointListenerWithResVersion) AddFiltered(set AddressSet) {
-	bel.Add(set)
-}
-
-func (bel *bufferingEndpointListenerWithResVersion) Remove(set AddressSet) {
-	bel.Lock()
-	defer bel.Unlock()
-	for _, address := range set.Addresses {
-		bel.removed = append(bel.removed, addressStringWithResVersion(address))
-	}
-}
-
-func (bel *bufferingEndpointListenerWithResVersion) RemoveFiltered(set AddressSet) {
-	bel.Remove(set)
-}
-
-func (bel *bufferingEndpointListenerWithResVersion) NoEndpoints(exists bool) {}
-
-func (bel *bufferingEndpointListenerWithResVersion) NodeName() string {
-	return ""
-}
-
-func (bel *bufferingEndpointListenerWithResVersion) NodeTopologyZone() string {
-	return ""
-}
-
-func (bel *bufferingEndpointListenerWithResVersion) EnableEndpointFiltering() bool {
-	return false
-}
-
-func (bel *bufferingEndpointListenerWithResVersion) EnableIPv6() bool {
 	return false
 }
 
@@ -704,6 +664,96 @@ status:
 			listener.ExpectAdded(tt.expectedAddresses, t)
 		})
 	}
+}
+
+func TestServerCannotSetOpaqueProtocolForPodsInOtherNamespaces(t *testing.T) {
+	k8sConfigs := []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: pod-ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`, `
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1
+  namespace: pod-ns
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+    targetRef:
+      kind: Pod
+      name: name1-1
+      namespace: pod-ns
+  ports:
+  - port: 8989`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: pod-ns
+  labels:
+    app: name1
+status:
+  phase: Running
+  podIP: 172.17.0.12`}
+
+	k8sAPI, err := k8s.NewFakeAPI(k8sConfigs...)
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+
+	metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+	if err != nil {
+		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+	}
+
+	watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false, false, "local")
+	if err != nil {
+		t.Fatalf("can't create Endpoints watcher: %s", err)
+	}
+
+	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
+
+	listener := newBufferingEndpointListener()
+
+	err = watcher.Subscribe(ServiceID{Name: "name1", Namespace: "pod-ns"}, 8989, testFilterKey(""), listener)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	listener.ExpectAddedWithOpaqueProtocol([]string{"172.17.0.12:8989:false"}, t)
+
+	_, err = k8sAPI.L5dClient.ServerV1beta3().Servers("server-ns").Create(context.Background(), &v1beta3.Server{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name1",
+			Namespace: "server-ns",
+		},
+		Spec: v1beta3.ServerSpec{
+			PodSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "name1",
+				},
+			},
+			Port:          intstr.FromInt(8989),
+			ProxyProtocol: opaqueProtocol,
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
+	time.Sleep(50 * time.Millisecond)
+
+	listener.ExpectAddedWithOpaqueProtocol([]string{"172.17.0.12:8989:false"}, t)
+	listener.ExpectRemoved([]string{}, t)
 }
 
 func TestEndpointsWatcherWithEndpointSlices(t *testing.T) {
@@ -2626,7 +2676,7 @@ status:
 			k8sAPI.Sync(nil)
 			metadataAPI.Sync(nil)
 
-			listener := newBufferingEndpointListenerWithResVersion()
+			listener := newBufferingEndpointListener()
 
 			err = watcher.Subscribe(tt.id, tt.port, testFilterKey(tt.hostname), listener)
 			if err != nil {
@@ -2640,7 +2690,7 @@ status:
 			k8sAPI.Sync(nil)
 
 			watcher.addEndpoints(endpoints)
-			listener.ExpectAdded(tt.expectedAddresses, t)
+			listener.ExpectAddedWithResVersion(tt.expectedAddresses, t)
 		})
 	}
 }
