@@ -500,6 +500,8 @@ impl Validate<HttpRouteSpec> for Admission {
         }) {
             outbound_index::http::parse_http_retry(annotations)?;
             outbound_index::parse_accrual_config(annotations)?;
+            outbound_index::parse_load_bias_config(annotations)?;
+            outbound_index::parse_retry_after_config(annotations)?;
             outbound_index::parse_timeouts(annotations)?;
         }
 
@@ -624,6 +626,8 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
         }) {
             outbound_index::http::parse_http_retry(annotations)?;
             outbound_index::parse_accrual_config(annotations)?;
+            outbound_index::parse_load_bias_config(annotations)?;
+            outbound_index::parse_retry_after_config(annotations)?;
             outbound_index::parse_timeouts(annotations)?;
         }
 
@@ -694,6 +698,8 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
         }) {
             outbound_index::grpc::parse_grpc_retry(annotations)?;
             outbound_index::parse_accrual_config(annotations)?;
+            outbound_index::parse_load_bias_config(annotations)?;
+            outbound_index::parse_retry_after_config(annotations)?;
             outbound_index::parse_timeouts(annotations)?;
         }
 
@@ -851,5 +857,333 @@ impl Validate<RateLimitPolicySpec> for Admission {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Constructs an HttpRouteSpec with a single Service parent ref,
+    /// which causes validate() to parse annotations.
+    fn service_parent_spec() -> HttpRouteSpec {
+        HttpRouteSpec {
+            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                name: "test-svc".to_string(),
+                namespace: Some("test-ns".to_string()),
+                kind: Some("Service".to_string()),
+                group: Some("core".to_string()),
+                section_name: None,
+                port: None,
+            }]),
+            hostnames: None,
+            rules: None,
+        }
+    }
+
+    fn gateway_http_service_parent_spec() -> gateway::HTTPRouteSpec {
+        gateway::HTTPRouteSpec {
+            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                name: "test-svc".to_string(),
+                namespace: Some("test-ns".to_string()),
+                kind: Some("Service".to_string()),
+                group: Some("core".to_string()),
+                section_name: None,
+                port: None,
+            }]),
+            hostnames: None,
+            rules: None,
+        }
+    }
+
+    fn grpc_service_parent_spec() -> gateway::GRPCRouteSpec {
+        gateway::GRPCRouteSpec {
+            parent_refs: Some(vec![gateway::GRPCRouteParentRefs {
+                name: "test-svc".to_string(),
+                namespace: Some("test-ns".to_string()),
+                kind: Some("Service".to_string()),
+                group: Some("core".to_string()),
+                section_name: None,
+                port: None,
+            }]),
+            hostnames: None,
+            rules: None,
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn admission_valid_load_bias() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias-penalty".to_string(),
+            "10s".to_string(),
+        );
+
+        let admission = Admission::new();
+        let result = admission
+            .validate("test-ns", "test-route", &annotations, service_parent_spec())
+            .await;
+        result.expect("valid load-bias should be accepted");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn admission_invalid_load_bias_mode() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "invalid".to_string(),
+        );
+
+        let admission = Admission::new();
+        let result = admission
+            .validate("test-ns", "test-route", &annotations, service_parent_spec())
+            .await;
+        let err = result.expect_err("invalid load-bias mode should be rejected");
+        assert!(
+            err.to_string().contains("load-bias"),
+            "error should mention load-bias: {err}"
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn admission_valid_retry_after() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after-max-duration".to_string(),
+            "120s".to_string(),
+        );
+
+        let admission = Admission::new();
+        let result = admission
+            .validate("test-ns", "test-route", &annotations, service_parent_spec())
+            .await;
+        result.expect("valid retry-after should be accepted");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn admission_invalid_retry_after_duration() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after-max-duration".to_string(),
+            "5".to_string(),
+        );
+
+        let admission = Admission::new();
+        let result = admission
+            .validate("test-ns", "test-route", &annotations, service_parent_spec())
+            .await;
+        let err = result.expect_err("bare number duration should be rejected");
+        assert!(
+            err.to_string().contains("missing duration unit"),
+            "error should mention missing unit: {err}"
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn admission_gateway_httproute_valid_load_bias() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "true".to_string(),
+        );
+
+        let admission = Admission::new();
+        let result = admission
+            .validate(
+                "test-ns",
+                "test-route",
+                &annotations,
+                gateway_http_service_parent_spec(),
+            )
+            .await;
+        result.expect("valid load-bias on gateway HTTPRoute should be accepted");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn admission_gateway_httproute_invalid_load_bias() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "invalid".to_string(),
+        );
+
+        let admission = Admission::new();
+        let result = admission
+            .validate(
+                "test-ns",
+                "test-route",
+                &annotations,
+                gateway_http_service_parent_spec(),
+            )
+            .await;
+        let err = result.expect_err("invalid load-bias on gateway HTTPRoute should be rejected");
+        assert!(
+            err.to_string().contains("load-bias"),
+            "error should mention load-bias: {err}"
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn admission_gateway_httproute_valid_retry_after() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after-max-duration".to_string(),
+            "120s".to_string(),
+        );
+
+        let admission = Admission::new();
+        let result = admission
+            .validate(
+                "test-ns",
+                "test-route",
+                &annotations,
+                gateway_http_service_parent_spec(),
+            )
+            .await;
+        result.expect("valid retry-after on gateway HTTPRoute should be accepted");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn admission_gateway_httproute_invalid_retry_after() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after-max-duration".to_string(),
+            "5".to_string(),
+        );
+
+        let admission = Admission::new();
+        let result = admission
+            .validate(
+                "test-ns",
+                "test-route",
+                &annotations,
+                gateway_http_service_parent_spec(),
+            )
+            .await;
+        let err = result.expect_err("bare number duration on gateway HTTPRoute should be rejected");
+        assert!(
+            err.to_string().contains("missing duration unit"),
+            "error should mention missing unit: {err}"
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn admission_grpcroute_valid_load_bias() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias-penalty".to_string(),
+            "10s".to_string(),
+        );
+
+        let admission = Admission::new();
+        let result = admission
+            .validate(
+                "test-ns",
+                "test-route",
+                &annotations,
+                grpc_service_parent_spec(),
+            )
+            .await;
+        result.expect("valid load-bias on GRPCRoute should be accepted");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn admission_grpcroute_invalid_load_bias() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "invalid".to_string(),
+        );
+
+        let admission = Admission::new();
+        let result = admission
+            .validate(
+                "test-ns",
+                "test-route",
+                &annotations,
+                grpc_service_parent_spec(),
+            )
+            .await;
+        let err = result.expect_err("invalid load-bias on GRPCRoute should be rejected");
+        assert!(
+            err.to_string().contains("load-bias"),
+            "error should mention load-bias: {err}"
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn admission_grpcroute_valid_retry_after() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after-max-duration".to_string(),
+            "60s".to_string(),
+        );
+
+        let admission = Admission::new();
+        let result = admission
+            .validate(
+                "test-ns",
+                "test-route",
+                &annotations,
+                grpc_service_parent_spec(),
+            )
+            .await;
+        result.expect("valid retry-after on GRPCRoute should be accepted");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn admission_grpcroute_invalid_retry_after() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after-max-duration".to_string(),
+            "0s".to_string(),
+        );
+
+        let admission = Admission::new();
+        let result = admission
+            .validate(
+                "test-ns",
+                "test-route",
+                &annotations,
+                grpc_service_parent_spec(),
+            )
+            .await;
+        let err = result.expect_err("zero max_duration on GRPCRoute should be rejected");
+        assert!(
+            err.to_string().contains("greater than zero"),
+            "error should mention 'greater than zero': {err}"
+        );
     }
 }
