@@ -228,7 +228,7 @@ proxy:
   # Kubernetes but no longer than the pod's `terminationGracePeriodSeconds`.
   # See [Lifecycle
   # hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks)
-  # for more info on container lifecycle hooks.
+  # for more info on container lifecycle hooks. Ignored when nativeSidecar=true.
   waitBeforeExitSeconds: 0
   # -- If set, the application container will not start until the proxy is
   # ready
@@ -251,10 +251,8 @@ proxy:
   defaultInboundPolicy: "all-unauthenticated"
   # -- Configures the outbound transport mode. Valid values are "transport-header" and "transparent"
   outboundTransportMode: transport-header
-  # -- Enable KEP-753 native sidecars
-  # This is a beta feature. It requires Kubernetes >= 1.29.
-  # If enabled, .proxy.waitBeforeExitSeconds should not be used.
-  nativeSidecar: false
+  # -- Enable [native sidecars](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/)
+  nativeSidecar: true
   # -- Native sidecar proxy startup probe parameters.
   # -- LivenessProbe timeout and delay configuration
   livenessProbe:

@@ -158,6 +158,7 @@ func TestNewValues(t *testing.T) {
 			InboundDiscoveryCacheUnusedTimeout:   "90s",
 			DisableOutboundProtocolDetectTimeout: false,
 			DisableInboundProtocolDetectTimeout:  false,
+			NativeSidecar:                        true,
 			StartupProbe: &StartupProbe{
 				FailureThreshold:    120,
 				InitialDelaySeconds: 0,

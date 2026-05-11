@@ -279,12 +279,16 @@ const (
 	// configured for the Pod
 	ProxyWaitBeforeExitSecondsAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-wait-before-exit-seconds"
 
-	// ProxyEnableNativeSidecarAnnotationAlpha enables the new native initContainer sidecar.
-	// Deprecated: use ProxyEnableNativeSidecarAnnotationBeta instead.
+	// ProxyEnableNativeSidecarAnnotationAlpha enables the native initContainer sidecar.
+	// Deprecated: use ProxyEnableNativeSidecarAnnotation instead.
 	ProxyEnableNativeSidecarAnnotationAlpha = ProxyConfigAnnotationsPrefixAlpha + "/proxy-enable-native-sidecar"
 
-	// ProxyEnableNativeSidecarAnnotationBeta enables the new native initContainer sidecar
+	// ProxyEnableNativeSidecarAnnotationBeta enables the native initContainer sidecar
+	// Deprecated: use ProxyEnableNativeSidecarAnnotation instead.
 	ProxyEnableNativeSidecarAnnotationBeta = ProxyConfigAnnotationsPrefixBeta + "/proxy-enable-native-sidecar"
+
+	// ProxyEnableNativeSidecarAnnotation enables the native initContainer sidecar
+	ProxyEnableNativeSidecarAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-enable-native-sidecar"
 
 	// ProxyAwait can be used to force the application to wait for the proxy
 	// to be ready.

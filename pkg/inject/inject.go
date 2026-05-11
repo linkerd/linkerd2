@@ -79,7 +79,7 @@ var (
 		k8s.ProxyInboundDiscoveryCacheUnusedTimeout,
 		k8s.ProxyDisableOutboundProtocolDetectTimeout,
 		k8s.ProxyDisableInboundProtocolDetectTimeout,
-		k8s.ProxyEnableNativeSidecarAnnotationBeta,
+		k8s.ProxyEnableNativeSidecarAnnotation,
 		k8s.ProxyAdditionalEnvAnnotation,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
@@ -426,8 +426,13 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		}
 	}
 
-	// ProxyEnableNativeSidecarAnnotationBeta should take precedence over ProxyEnableNativeSidecarAnnotationAlpha
-	if override, ok := annotations[k8s.ProxyEnableNativeSidecarAnnotationBeta]; ok {
+	// ProxyEnableNativeSidecarAnnotation should take precedence over ProxyEnableNativeSidecarAnnotationAlpha and ProxyEnableNativeSidecarAnnotationBeta
+	if override, ok := annotations[k8s.ProxyEnableNativeSidecarAnnotation]; ok {
+		value, err := strconv.ParseBool(override)
+		if err == nil {
+			values.Proxy.NativeSidecar = value
+		}
+	} else if override, ok := annotations[k8s.ProxyEnableNativeSidecarAnnotationBeta]; ok {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
 			values.Proxy.NativeSidecar = value
