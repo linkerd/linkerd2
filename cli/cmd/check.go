@@ -113,7 +113,11 @@ non-zero exit code.`,
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(cmd, stdout, stderr, options)
+			hc, err := ConfigureChecks(cmd.Context(), options)
+			if err != nil {
+				return err
+			}
+			return RunChecks(cmd, stdout, stderr, hc, options)
 		},
 	}
 
@@ -126,10 +130,10 @@ non-zero exit code.`,
 	return cmd
 }
 
-func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, options *checkOptions) error {
+func ConfigureChecks(ctx context.Context, options *checkOptions) (*healthcheck.HealthChecker, error) {
 	err := options.validate()
 	if err != nil {
-		return fmt.Errorf("Validation error when executing check command: %w", err)
+		return nil, fmt.Errorf("Validation error when executing check command: %w", err)
 	}
 
 	if options.cliVersionOverride != "" {
@@ -143,14 +147,14 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 	}
 
 	crdManifest := bytes.Buffer{}
-	err = renderCRDs(cmd.Context(), nil, &crdManifest, valuespkg.Options{
+	err = renderCRDs(ctx, nil, &crdManifest, valuespkg.Options{
 		// GatewayAPI CRDs are optional so don't check for them.
 		Values: []string{
 			"installGatewayAPI=false",
 		},
 	}, "yaml")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var installManifest string
 	var values *charts.Values
@@ -159,7 +163,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 		if options.cniEnabled {
 			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
 		}
-		values, installManifest, err = renderInstallManifest(cmd.Context())
+		values, installManifest, err = renderInstallManifest(ctx)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error rendering install manifest: %s\n", err)
 			os.Exit(1)
@@ -186,7 +190,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 		checks = append(checks, healthcheck.LinkerdHAChecks)
 	}
 
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+	return healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		IsMainCheckCommand:    true,
 		ControlPlaneNamespace: controlPlaneNamespace,
 		CNINamespace:          cniNamespace,
@@ -202,8 +206,10 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 		InstallManifest:       installManifest,
 		CRDManifest:           crdManifest.String(),
 		ChartValues:           values,
-	})
+	}), nil
+}
 
+func RunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker, options *checkOptions) error {
 	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !options.preInstallOnly && !options.crdsOnly {

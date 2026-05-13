@@ -496,6 +496,11 @@ func (hc *HealthChecker) AppendCategories(categories ...*Category) *HealthChecke
 	return hc
 }
 
+func (hc *HealthChecker) PrependCategories(categories ...*Category) *HealthChecker {
+	hc.categories = append(categories, hc.categories...)
+	return hc
+}
+
 // GetCategories returns all the categories
 func (hc *HealthChecker) GetCategories() []*Category {
 	return hc.categories
