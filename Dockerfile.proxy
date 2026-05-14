@@ -3,7 +3,7 @@ ARG RUNTIME_IMAGE="cr.l5d.io/linkerd/proxy-runtime:latest"
 ARG TARGETARCH
 
 # Precompile key slow-to-build dependencies
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS go-deps
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS go-deps
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 COPY bin/install-deps bin/
@@ -45,7 +45,7 @@ COPY proxy-identity proxy-identity
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/proxy-identity -mod=readonly -ldflags "-s -w" ./proxy-identity
 
 ## build proxy-init
-FROM --platform=$BUILDPLATFORM golang:1.25.10-alpine AS proxy-init
+FROM --platform=$BUILDPLATFORM golang:1.26.3-alpine AS proxy-init
 WORKDIR /build
 ARG PROXY_INIT_REPO="linkerd/linkerd2-proxy-init"
 ARG PROXY_INIT_REF="proxy-init/v2.4.8"
