@@ -722,12 +722,22 @@ podMonitor:
       matchNames:
         - {{ .Release.Namespace }}
         - linkerd-viz
+    # -- Sets honorTimestamps for the control-plane PodMonitor endpoint. When set to false
+    # Prometheus uses scrape time instead of exporter-provided timestamps.
+    honorTimestamps: false
   serviceMirror:
     # -- Enables the creation of PodMonitor for the Service Mirror component
     enabled: true
+    # -- Sets honorTimestamps for the Service Mirror PodMonitor endpoint. When set to false,
+    # Prometheus uses scrape time instead of exporter-provided timestamps.
+    honorTimestamps: false
   proxy:
     # -- Enables the creation of PodMonitor for the data-plane
     enabled: true
+    # -- Sets honorTimestamps for the proxy PodMonitor endpoint. When set to false,
+    # Prometheus uses scrape time instead of exporter-provided timestamps,
+    # preventing duplicate timestamp drops in clusters with frequent pod restarts.
+    honorTimestamps: false
 
 
 # Egress related configuration
