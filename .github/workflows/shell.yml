@@ -16,6 +16,6 @@ jobs:
     timeout-minutes: 10
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
-      - uses: linkerd/dev/actions/setup-tools@v48
+      - uses: linkerd/dev/actions/setup-tools@v49
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - run: just sh-lint
