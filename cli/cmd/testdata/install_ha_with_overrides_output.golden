@@ -657,6 +657,7 @@ data:
     podMonitor:
       controller:
         enabled: true
+        honorTimestamps: false
         namespaceSelector: |
           matchNames:
             - {{ .Release.Namespace }}
@@ -664,10 +665,12 @@ data:
       enabled: false
       proxy:
         enabled: true
+        honorTimestamps: false
       scrapeInterval: 10s
       scrapeTimeout: 10s
       serviceMirror:
         enabled: true
+        honorTimestamps: false
     policyController:
       logLevel: info
       probeNetworks:
