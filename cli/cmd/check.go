@@ -34,6 +34,8 @@ type checkOptions struct {
 	cliVersionOverride string
 }
 
+var CheckOptions *checkOptions
+
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
 		versionOverride:    "",
@@ -90,9 +92,9 @@ func (options *checkOptions) validate() error {
 }
 
 func newCmdCheck() *cobra.Command {
-	options := newCheckOptions()
-	checkFlags := options.checkFlagSet()
-	nonConfigFlags := options.nonConfigFlagSet()
+	CheckOptions = newCheckOptions()
+	checkFlags := CheckOptions.checkFlagSet()
+	nonConfigFlags := CheckOptions.nonConfigFlagSet()
 
 	cmd := &cobra.Command{
 		Use:   "check [flags]",
@@ -113,11 +115,11 @@ non-zero exit code.`,
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			hc, err := ConfigureChecks(cmd.Context(), options)
+			hc, err := ConfigureChecks(cmd.Context(), CheckOptions)
 			if err != nil {
 				return err
 			}
-			return RunChecks(cmd, stdout, stderr, hc, options)
+			return RunChecks(cmd, stdout, stderr, hc, CheckOptions)
 		},
 	}
 
