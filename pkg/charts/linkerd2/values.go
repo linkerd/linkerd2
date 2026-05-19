@@ -265,11 +265,13 @@ type (
 	PodMonitorController struct {
 		Enabled           bool   `json:"enabled"`
 		NamespaceSelector string `json:"namespaceSelector"`
+		HonorTimestamps   *bool  `json:"honorTimestamps,omitempty"`
 	}
 
 	// PodMonitorComponent contains the fields to configure the Prometheus Operator `PodMonitor` for other components
 	PodMonitorComponent struct {
-		Enabled bool `json:"enabled"`
+		Enabled         bool  `json:"enabled"`
+		HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
 	}
 
 	// PolicyController contains the fields to configure the policy controller container

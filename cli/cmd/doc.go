@@ -282,11 +282,15 @@ func generateAnnotationsDocs() []annotationDoc {
 		},
 		{
 			Name:        k8s.ProxyEnableNativeSidecarAnnotationAlpha,
-			Description: "Enable KEP-753 native sidecars. This is a beta feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used. Deprecated in favor of " + k8s.ProxyEnableNativeSidecarAnnotationBeta,
+			Description: "Enable KEP-753 native sidecars. Deprecated in favor of " + k8s.ProxyEnableNativeSidecarAnnotation,
 		},
 		{
 			Name:        k8s.ProxyEnableNativeSidecarAnnotationBeta,
-			Description: "Enable KEP-753 native sidecars. This is a beta feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used.",
+			Description: "Enable KEP-753 native sidecars. Deprecated in favor of " + k8s.ProxyEnableNativeSidecarAnnotation,
+		},
+		{
+			Name:        k8s.ProxyEnableNativeSidecarAnnotation,
+			Description: "Enable KEP-753 native sidecars",
 		},
 		{
 			Name:        k8s.ProxyAdditionalEnvAnnotation,

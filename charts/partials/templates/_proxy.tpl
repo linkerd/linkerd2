@@ -1,7 +1,4 @@
 {{ define "partials.proxy" -}}
-{{ if and .Values.proxy.nativeSidecar .Values.proxy.waitBeforeExitSeconds }}
-{{ fail "proxy.nativeSidecar and waitBeforeExitSeconds cannot be used simultaneously" }}
-{{- end }}
 {{- if not (has .Values.proxy.logHTTPHeaders (list "insecure" "off" "")) }}
 {{- fail "logHTTPHeaders must be one of: insecure | off" }}
 {{- end }}
