@@ -22,6 +22,9 @@ spec:
   podMetricsEndpoints:
     - interval: {{ $podMonitor.scrapeInterval }}
       scrapeTimeout: {{ $podMonitor.scrapeTimeout }}
+      {{- if not (kindIs "invalid" $podMonitor.controller.honorTimestamps) }}
+      honorTimestamps: {{ $podMonitor.controller.honorTimestamps }}
+      {{- end }}
       relabelings:
         - sourceLabels:
             - __meta_kubernetes_pod_container_port_name
@@ -60,6 +63,9 @@ spec:
   podMetricsEndpoints:
     - interval: {{ $podMonitor.scrapeInterval }}
       scrapeTimeout: {{ $podMonitor.scrapeTimeout }}
+      {{- if not (kindIs "invalid" $podMonitor.serviceMirror.honorTimestamps) }}
+      honorTimestamps: {{ $podMonitor.serviceMirror.honorTimestamps }}
+      {{- end }}
       relabelings:
         - sourceLabels:
             - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
@@ -99,6 +105,9 @@ spec:
   podMetricsEndpoints:
     - interval: {{ $podMonitor.scrapeInterval }}
       scrapeTimeout: {{ $podMonitor.scrapeTimeout }}
+      {{- if not (kindIs "invalid" $podMonitor.proxy.honorTimestamps) }}
+      honorTimestamps: {{ $podMonitor.proxy.honorTimestamps }}
+      {{- end }}
       relabelings:
         - sourceLabels:
             - __meta_kubernetes_pod_container_name

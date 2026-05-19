@@ -22,6 +22,48 @@ spec:
     spec:
       containers:
       - env:
+        - name: WEB_PORT
+          value: "80"
+        - name: EMOJISVC_HOST
+          value: emoji-svc.emojivoto:8080
+        - name: VOTINGSVC_HOST
+          value: voting-svc.emojivoto:8080
+        - name: INDEX_BUNDLE
+          value: dist/index_bundle.js
+        image: buoyantio/emojivoto-web:v10
+        name: web-svc
+        ports:
+        - containerPort: 80
+          name: http
+      initContainers:
+      - args:
+        - --log-format
+        - plain
+        - --log-level
+        - debug
+        - --connect-addr
+        - 1.1.1.1:20001
+        - --listen-addr
+        - 0.0.0.0:4140
+        - --timeout
+        - 10s
+        command:
+        - /usr/lib/linkerd/linkerd2-network-validator
+        image: cr.l5d.io/linkerd/proxy:test-inject-proxy-version
+        imagePullPolicy: IfNotPresent
+        name: linkerd-network-validator
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsGroup: 65534
+          runAsNonRoot: true
+          runAsUser: 65534
+          seccompProfile:
+            type: RuntimeDefault
+      - env:
         - name: _pod_name
           valueFrom:
             fieldRef:
@@ -160,13 +202,6 @@ spec:
           value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.cluster.local
         image: cr.l5d.io/linkerd/proxy:test-inject-proxy-version
         imagePullPolicy: IfNotPresent
-        lifecycle:
-          postStart:
-            exec:
-              command:
-              - /usr/lib/linkerd/linkerd-await
-              - --timeout=2m
-              - --port=4191
         livenessProbe:
           httpGet:
             path: /live
@@ -185,6 +220,7 @@ spec:
             port: 4191
           initialDelaySeconds: 2
           timeoutSeconds: 1
+        restartPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -192,54 +228,18 @@ spec:
           runAsUser: 2102
           seccompProfile:
             type: RuntimeDefault
+        startupProbe:
+          failureThreshold: 120
+          httpGet:
+            path: /ready
+            port: 4191
+          periodSeconds: 1
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
-      - env:
-        - name: WEB_PORT
-          value: "80"
-        - name: EMOJISVC_HOST
-          value: emoji-svc.emojivoto:8080
-        - name: VOTINGSVC_HOST
-          value: voting-svc.emojivoto:8080
-        - name: INDEX_BUNDLE
-          value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v10
-        name: web-svc
-        ports:
-        - containerPort: 80
-          name: http
-      initContainers:
-      - args:
-        - --log-format
-        - plain
-        - --log-level
-        - debug
-        - --connect-addr
-        - 1.1.1.1:20001
-        - --listen-addr
-        - 0.0.0.0:4140
-        - --timeout
-        - 10s
-        command:
-        - /usr/lib/linkerd/linkerd2-network-validator
-        image: cr.l5d.io/linkerd/proxy:test-inject-proxy-version
-        imagePullPolicy: IfNotPresent
-        name: linkerd-network-validator
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: true
-          runAsGroup: 65534
-          runAsNonRoot: true
-          runAsUser: 65534
-          seccompProfile:
-            type: RuntimeDefault
       volumes:
       - emptyDir:
           medium: Memory

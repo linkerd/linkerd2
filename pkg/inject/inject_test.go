@@ -73,7 +73,7 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyInboundDiscoveryCacheUnusedTimeout:      "900s",
 							k8s.ProxyDisableOutboundProtocolDetectTimeout:    "true",
 							k8s.ProxyDisableInboundProtocolDetectTimeout:     "true",
-							k8s.ProxyEnableNativeSidecarAnnotationBeta:       "true",
+							k8s.ProxyEnableNativeSidecarAnnotation:           "true",
 						},
 					},
 					Spec: corev1.PodSpec{},
@@ -192,7 +192,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyInboundDiscoveryCacheUnusedTimeout:   "6000ms",
 				k8s.ProxyDisableOutboundProtocolDetectTimeout: "true",
 				k8s.ProxyDisableInboundProtocolDetectTimeout:  "false",
-				k8s.ProxyEnableNativeSidecarAnnotationBeta:    "true",
+				k8s.ProxyEnableNativeSidecarAnnotation:        "true",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
