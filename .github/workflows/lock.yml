@@ -11,7 +11,7 @@ jobs:
   action:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     steps:
-      - uses: dessant/lock-threads@7266a7ce5c1df01b1c6db85bf8cd86c737dadbe7
+      - uses: dessant/lock-threads@851cffe46851ddd2051ea7147ebdc995113241c3
         with:
           issue-inactive-days: "30"
           process-only: "issues"
