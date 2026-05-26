@@ -495,6 +495,9 @@ impl Validate<HttpRouteSpec> for Admission {
             }
         }
 
+        // Validate balancer annotations on the Route itself. Annotations set directly
+        // on Services are only parsed at indexer time (not admission-validated) because
+        // the ValidatingWebhookConfiguration does not intercept core/v1 Services.
         if spec.parent_refs.iter().flatten().any(|parent| {
             outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
         }) {
@@ -621,6 +624,7 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
             }
         }
 
+        // See note in Validate<HttpRouteSpec>: only Route annotations are validated here
         if spec.parent_refs.iter().flatten().any(|parent| {
             outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
         }) {
@@ -693,6 +697,7 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
             }
         }
 
+        // See note in Validate<HttpRouteSpec>: only Route annotations are validated here
         if spec.parent_refs.iter().flatten().any(|parent| {
             outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
         }) {
