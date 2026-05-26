@@ -160,6 +160,23 @@ pub struct Backoff {
     pub jitter: f32,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct LoadBiasConfig {
+    pub enabled: bool,
+    pub penalty: time::Duration,
+    pub penalty_decay: time::Duration,
+}
+
+pub const DEFAULT_LOAD_BIAS_PENALTY: time::Duration = time::Duration::from_secs(5);
+pub const DEFAULT_LOAD_BIAS_PENALTY_DECAY: time::Duration = time::Duration::from_secs(10);
+
+pub const DEFAULT_RETRY_AFTER_MAX_DURATION: time::Duration = time::Duration::from_secs(300);
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct RetryAfterConfig {
+    pub max_duration: time::Duration,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Filter {
     RequestHeaderModifier(HeaderModifierFilter),

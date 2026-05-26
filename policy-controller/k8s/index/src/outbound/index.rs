@@ -1604,6 +1604,8 @@ impl ResourceRoutes {
                 port: self.port,
                 app_protocol: self.app_protocol.clone(),
                 accrual: self.accrual,
+                load_bias: self.load_bias,
+                retry_after: self.retry_after,
                 http_retry: self.http_retry.clone(),
                 grpc_retry: self.grpc_retry.clone(),
                 timeouts: self.timeouts.clone(),
