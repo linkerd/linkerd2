@@ -194,17 +194,11 @@ where
 pub fn failure_accrual_consecutive(
     accrual: Option<&grpc::outbound::FailureAccrual>,
 ) -> &grpc::outbound::failure_accrual::ConsecutiveFailures {
-    assert!(
-        accrual.is_some(),
-        "failure accrual must be configured for service"
-    );
-    let kind = accrual
-        .unwrap()
-        .kind
-        .as_ref()
-        .expect("failure accrual must have kind");
-    let grpc::outbound::failure_accrual::Kind::ConsecutiveFailures(accrual) = kind;
     accrual
+        .expect("failure accrual must be configured for service")
+        .consecutive_failures
+        .as_ref()
+        .expect("failure accrual must have consecutive failures")
 }
 
 #[track_caller]
