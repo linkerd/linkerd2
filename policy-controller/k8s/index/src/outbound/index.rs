@@ -1979,19 +1979,48 @@ pub fn parse_timeouts(
 
 fn parse_duration(s: &str) -> Result<time::Duration> {
     let s = s.trim();
+    if s.starts_with('-') {
+        bail!("duration value cannot be negative: '{s}'");
+    }
     let offset = s
         .rfind(|c: char| c.is_ascii_digit())
         .ok_or_else(|| anyhow::anyhow!("{s} does not contain a timeout duration value"))?;
     let (magnitude, unit) = s.split_at(offset + 1);
+
+    if magnitude.contains('.') {
+        if unit == "s" {
+            let frac: f64 = magnitude
+                .parse()
+                .map_err(|_| anyhow::anyhow!("invalid fractional value {magnitude}"))?;
+            if frac == 0.0 {
+                bail!("fractional seconds not supported; use '0' for zero duration");
+            }
+            if !frac.is_finite() || frac > (u64::MAX / 1000) as f64 {
+                bail!("duration value {s} overflows when converted to milliseconds");
+            }
+            let ms = (frac * 1000.0).round() as u64;
+            if ms >= 1 {
+                bail!("fractional seconds not supported; try '{ms}ms' instead of '{s}'");
+            } else {
+                bail!("{s} value is sub-millisecond; minimum resolution is 1ms");
+            }
+        } else {
+            bail!("fractional values not supported for duration unit '{unit}'");
+        }
+    }
+
     let magnitude = magnitude.parse::<u64>()?;
 
     let mul = match unit {
+        // Special case: "0" is valid as zero duration without requiring a unit suffix.
+        // Non-zero bare numbers (ie. "5") require a unit.
         "" if magnitude == 0 => 0,
         "ms" => 1,
         "s" => 1000,
         "m" => 1000 * 60,
         "h" => 1000 * 60 * 60,
         "d" => 1000 * 60 * 60 * 24,
+        "" => bail!("missing duration unit; did you mean '{magnitude}s' or '{magnitude}ms'?"),
         _ => bail!("invalid duration unit {unit} (expected one of 'ms', 's', 'm', 'h', or 'd')"),
     };
 
@@ -1999,4 +2028,148 @@ fn parse_duration(s: &str) -> Result<time::Duration> {
         .checked_mul(mul)
         .ok_or_else(|| anyhow::anyhow!("Timeout value {s} overflows when converted to 'ms'"))?;
     Ok(time::Duration::from_millis(ms))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_duration_integer_seconds() {
+        let d = parse_duration("10s").expect("should parse");
+        assert_eq!(d, time::Duration::from_secs(10));
+    }
+
+    #[test]
+    fn parse_duration_milliseconds() {
+        let d = parse_duration("500ms").expect("should parse");
+        assert_eq!(d, time::Duration::from_millis(500));
+    }
+
+    #[test]
+    fn parse_duration_minutes() {
+        let d = parse_duration("5m").expect("should parse");
+        assert_eq!(d, time::Duration::from_secs(300));
+    }
+
+    #[test]
+    fn parse_duration_hours() {
+        let d = parse_duration("2h").expect("should parse");
+        assert_eq!(d, time::Duration::from_secs(7200));
+    }
+
+    #[test]
+    fn parse_duration_days() {
+        let d = parse_duration("1d").expect("should parse");
+        assert_eq!(d, time::Duration::from_secs(86400));
+    }
+
+    #[test]
+    fn parse_duration_zero() {
+        let d = parse_duration("0").expect("zero without unit should parse");
+        assert_eq!(d, time::Duration::ZERO);
+    }
+
+    #[test]
+    fn parse_duration_zero_seconds() {
+        let d = parse_duration("0s").expect("0s should parse");
+        assert_eq!(d, time::Duration::ZERO);
+    }
+
+    #[test]
+    fn parse_duration_zero_milliseconds() {
+        let d = parse_duration("0ms").expect("0ms should parse");
+        assert_eq!(d, time::Duration::ZERO);
+    }
+
+    #[test]
+    fn parse_duration_fractional_seconds_rejected() {
+        let err = parse_duration("0.5s").expect_err("fractional seconds should fail");
+        assert!(
+            err.to_string().contains("500ms"),
+            "should suggest ms equivalent: {err}"
+        );
+        assert!(
+            err.to_string().contains("fractional seconds not supported"),
+            "should explain the issue: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_fractional_zero_seconds_rejected() {
+        let err = parse_duration("0.0s").expect_err("fractional zero should fail");
+        assert!(
+            err.to_string().contains("use '0' for zero duration"),
+            "should suggest bare 0: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_fractional_non_seconds_rejected() {
+        let err = parse_duration("0.5m").expect_err("fractional minutes should fail");
+        assert!(
+            err.to_string().contains("fractional values not supported"),
+            "should reject fractional: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_bare_number_rejected() {
+        let err = parse_duration("5").expect_err("bare number should fail");
+        assert!(
+            err.to_string().contains("missing duration unit"),
+            "should mention missing unit: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_bare_number_error_suggests_units() {
+        let err = parse_duration("100").expect_err("bare number should fail");
+        assert!(
+            err.to_string().contains("'100s' or '100ms'"),
+            "should suggest likely units: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_overflow_rejected() {
+        let err = parse_duration("999999999999999999d").expect_err("huge value should overflow");
+        assert!(
+            err.to_string().contains("overflows"),
+            "should mention overflow: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_invalid_unit_rejected() {
+        let err = parse_duration("10x").expect_err("invalid unit should fail");
+        assert!(
+            err.to_string().contains("invalid duration unit"),
+            "should mention invalid unit: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_empty_rejected() {
+        let result = parse_duration("");
+        assert!(result.is_err(), "empty string should fail");
+    }
+
+    #[test]
+    fn parse_duration_negative_seconds_rejected() {
+        let err = parse_duration("-5s").expect_err("negative should fail");
+        assert!(
+            err.to_string().contains("cannot be negative"),
+            "should mention negative: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_negative_fractional_rejected() {
+        let err = parse_duration("-0.5s").expect_err("negative fractional should fail");
+        assert!(
+            err.to_string().contains("cannot be negative"),
+            "should mention negative: {err}"
+        );
+    }
 }
