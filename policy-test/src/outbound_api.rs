@@ -70,6 +70,8 @@ pub fn http1_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound
     if let grpc::outbound::proxy_protocol::Kind::Http1(grpc::outbound::proxy_protocol::Http1 {
         routes,
         failure_accrual: _,
+        load_bias: _,
+        retry_after: _,
     }) = kind
     {
         routes
@@ -90,6 +92,8 @@ pub fn http2_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound
     if let grpc::outbound::proxy_protocol::Kind::Http2(grpc::outbound::proxy_protocol::Http2 {
         routes,
         failure_accrual: _,
+        load_bias: _,
+        retry_after: _,
     }) = kind
     {
         routes
@@ -110,6 +114,8 @@ pub fn grpc_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound:
     if let grpc::outbound::proxy_protocol::Kind::Grpc(grpc::outbound::proxy_protocol::Grpc {
         routes,
         failure_accrual: _,
+        load_bias: _,
+        retry_after: _,
     }) = kind
     {
         routes
@@ -199,6 +205,47 @@ pub fn failure_accrual_consecutive(
         .consecutive_failures
         .as_ref()
         .expect("failure accrual must have consecutive failures")
+}
+
+/// Extract load_bias and retry_after from a Detect protocol config.
+#[track_caller]
+pub fn detect_load_bias_and_retry_after(
+    config: &grpc::outbound::OutboundPolicy,
+) -> (
+    Option<&grpc::outbound::LoadBiasConfig>,
+    Option<&grpc::outbound::RetryAfterConfig>,
+) {
+    let kind = config
+        .protocol
+        .as_ref()
+        .expect("must have proxy protocol")
+        .kind
+        .as_ref()
+        .expect("must have kind");
+    if let grpc::outbound::proxy_protocol::Kind::Detect(grpc::outbound::proxy_protocol::Detect {
+        http1,
+        http2,
+        ..
+    }) = kind
+    {
+        let http1 = http1
+            .as_ref()
+            .expect("proxy protocol must have http1 field");
+        let http2 = http2
+            .as_ref()
+            .expect("proxy protocol must have http2 field");
+        assert_eq!(
+            http1.load_bias, http2.load_bias,
+            "http1 and http2 load_bias configs must match"
+        );
+        assert_eq!(
+            http1.retry_after, http2.retry_after,
+            "http1 and http2 retry_after configs must match"
+        );
+        (http1.load_bias.as_ref(), http1.retry_after.as_ref())
+    } else {
+        panic!("proxy protocol must be Detect; actually got:\n{kind:#?}")
+    }
 }
 
 #[track_caller]

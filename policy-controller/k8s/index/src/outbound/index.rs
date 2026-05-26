@@ -9,8 +9,10 @@ use egress_network::EgressNetwork;
 use linkerd_policy_controller_core::{
     outbound::{
         AppProtocol, Backend, Backoff, FailureAccrual, GrpcRetryCondition, GrpcRoute,
-        HttpRetryCondition, HttpRoute, Kind, OutboundDiscoverTarget, OutboundPolicy, ParentInfo,
-        ResourceTarget, RouteRetry, RouteSet, RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy,
+        HttpRetryCondition, HttpRoute, Kind, LoadBiasConfig, OutboundDiscoverTarget,
+        OutboundPolicy, ParentInfo, ResourceTarget, RetryAfterConfig, RouteRetry, RouteSet,
+        RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy, DEFAULT_LOAD_BIAS_PENALTY,
+        DEFAULT_LOAD_BIAS_PENALTY_DECAY, DEFAULT_RETRY_AFTER_MAX_DURATION,
     },
     routes::GroupKindNamespaceName,
 };
@@ -101,6 +103,8 @@ struct Namespace {
 struct ResourceInfo {
     app_protocols: PortMap<AppProtocol>,
     accrual: Option<FailureAccrual>,
+    load_bias: Option<LoadBiasConfig>,
+    retry_after: Option<RetryAfterConfig>,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
     timeouts: RouteTimeouts,
@@ -122,6 +126,8 @@ struct ResourceRoutes {
     watches_by_ns: HashMap<String, RoutesWatch>,
     app_protocol: Option<AppProtocol>,
     accrual: Option<FailureAccrual>,
+    load_bias: Option<LoadBiasConfig>,
+    retry_after: Option<RetryAfterConfig>,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
     timeouts: RouteTimeouts,
@@ -132,6 +138,8 @@ struct RoutesWatch {
     parent_info: ParentInfo,
     app_protocol: Option<AppProtocol>,
     accrual: Option<FailureAccrual>,
+    load_bias: Option<LoadBiasConfig>,
+    retry_after: Option<RetryAfterConfig>,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
     timeouts: RouteTimeouts,
@@ -215,8 +223,16 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         let name = service.name_unchecked();
         let ns = service.namespace().expect("Service must have a namespace");
         tracing::debug!(name, ns, "indexing service");
+        // NB: The admission webhook only intercepts Route resources, not Services, so
+        // annotation parse errors here surface only as controller log warnings (not API rejections).
         let accrual = parse_accrual_config(service.annotations())
             .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse accrual config"))
+            .unwrap_or_default();
+        let load_bias = parse_load_bias_config(service.annotations())
+            .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse load bias config"))
+            .unwrap_or_default();
+        let retry_after = parse_retry_after_config(service.annotations())
+            .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse retry after config"))
             .unwrap_or_default();
 
         let mut app_protocols = service
@@ -321,6 +337,8 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         let service_info = ResourceInfo {
             app_protocols,
             accrual,
+            load_bias,
+            retry_after,
             http_retry,
             grpc_retry,
             timeouts,
@@ -380,6 +398,30 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         let accrual = parse_accrual_config(egress_network.annotations())
             .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse accrual config"))
             .unwrap_or_default();
+        // EgressNetwork uses Forward instead of Balancer, so load bias and
+        // retry-after have no effect. Warn if someone set them anyway.
+        let load_bias = None;
+        let retry_after = None;
+        if egress_network
+            .annotations()
+            .contains_key("balancer.alpha.linkerd.io/load-bias")
+        {
+            tracing::warn!(
+                service = name,
+                namespace = ns,
+                "load-bias annotation has no effect on EgressNetwork (no balancer)"
+            );
+        }
+        if egress_network
+            .annotations()
+            .contains_key("balancer.alpha.linkerd.io/retry-after")
+        {
+            tracing::warn!(
+                service = name,
+                namespace = ns,
+                "retry-after annotation has no effect on EgressNetwork (no balancer)"
+            );
+        }
         let opaque_ports = ports_annotation(
             egress_network.annotations(),
             "config.linkerd.io/opaque-ports",
@@ -421,6 +463,8 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         let egress_network_info = ResourceInfo {
             app_protocols,
             accrual,
+            load_bias,
+            retry_after,
             http_retry,
             grpc_retry,
             timeouts,
@@ -1252,6 +1296,8 @@ impl Namespace {
             resource_routes.update_resource(
                 app_protocol,
                 resource.accrual,
+                resource.load_bias,
+                resource.retry_after,
                 resource.http_retry.clone(),
                 resource.grpc_retry.clone(),
                 resource.timeouts.clone(),
@@ -1337,12 +1383,16 @@ impl Namespace {
                 };
                 let mut app_protocol = None;
                 let mut accrual = None;
+                let mut load_bias = None;
+                let mut retry_after = None;
                 let mut http_retry = None;
                 let mut grpc_retry = None;
                 let mut timeouts = Default::default();
                 if let Some(resource) = resource_info.get(&resource_ref) {
                     app_protocol = resource.app_protocols.get(&rp.port).cloned();
                     accrual = resource.accrual;
+                    load_bias = resource.load_bias;
+                    retry_after = resource.retry_after;
                     http_retry = resource.http_retry.clone();
                     grpc_retry = resource.grpc_retry.clone();
                     timeouts = resource.timeouts.clone();
@@ -1383,6 +1433,8 @@ impl Namespace {
                     parent_info,
                     app_protocol,
                     accrual,
+                    load_bias,
+                    retry_after,
                     http_retry,
                     grpc_retry,
                     timeouts,
@@ -1624,6 +1676,8 @@ impl ResourceRoutes {
                 watch: sender,
                 app_protocol: self.app_protocol.clone(),
                 accrual: self.accrual,
+                load_bias: self.load_bias,
+                retry_after: self.retry_after,
                 http_retry: self.http_retry.clone(),
                 grpc_retry: self.grpc_retry.clone(),
                 timeouts: self.timeouts.clone(),
@@ -1719,10 +1773,13 @@ impl ResourceRoutes {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn update_resource(
         &mut self,
         app_protocol: Option<AppProtocol>,
         accrual: Option<FailureAccrual>,
+        load_bias: Option<LoadBiasConfig>,
+        retry_after: Option<RetryAfterConfig>,
         http_retry: Option<RouteRetry<HttpRetryCondition>>,
         grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
         timeouts: RouteTimeouts,
@@ -1730,6 +1787,8 @@ impl ResourceRoutes {
     ) {
         self.app_protocol = app_protocol.clone();
         self.accrual = accrual;
+        self.load_bias = load_bias;
+        self.retry_after = retry_after;
         self.http_retry = http_retry.clone();
         self.grpc_retry = grpc_retry.clone();
         self.timeouts = timeouts.clone();
@@ -1737,6 +1796,8 @@ impl ResourceRoutes {
         for watch in self.watches_by_ns.values_mut() {
             watch.app_protocol = app_protocol.clone();
             watch.accrual = accrual;
+            watch.load_bias = load_bias;
+            watch.retry_after = retry_after;
             watch.http_retry = http_retry.clone();
             watch.grpc_retry = grpc_retry.clone();
             watch.timeouts = timeouts.clone();
@@ -1833,6 +1894,16 @@ impl RoutesWatch {
 
             if self.accrual != policy.accrual {
                 policy.accrual = self.accrual;
+                modified = true;
+            }
+
+            if self.load_bias != policy.load_bias {
+                policy.load_bias = self.load_bias;
+                modified = true;
+            }
+
+            if self.retry_after != policy.retry_after {
+                policy.retry_after = self.retry_after;
                 modified = true;
             }
 
@@ -1977,6 +2048,80 @@ pub fn parse_timeouts(
     })
 }
 
+pub fn parse_load_bias_config(
+    annotations: &std::collections::BTreeMap<String, String>,
+) -> Result<Option<LoadBiasConfig>> {
+    annotations
+        .get("balancer.alpha.linkerd.io/load-bias")
+        .and_then(|s| match s.trim() {
+            "false" => None,
+            mode => Some(mode),
+        })
+        .map(|mode| {
+            if mode != "true" {
+                bail!("unsupported load-bias mode: '{mode}' (expected 'true' or 'false')");
+            }
+
+            let penalty = annotations
+                .get("balancer.alpha.linkerd.io/load-bias-penalty")
+                .map(|s| parse_duration(s))
+                .transpose()?
+                .unwrap_or(DEFAULT_LOAD_BIAS_PENALTY);
+
+            let penalty_decay = annotations
+                .get("balancer.alpha.linkerd.io/load-bias-penalty-decay")
+                .map(|s| parse_duration(s))
+                .transpose()?
+                .unwrap_or(DEFAULT_LOAD_BIAS_PENALTY_DECAY);
+
+            ensure!(
+                penalty > time::Duration::ZERO,
+                "load-bias penalty must be greater than zero"
+            );
+            ensure!(
+                penalty_decay > time::Duration::ZERO,
+                "load-bias penalty_decay must be greater than zero"
+            );
+
+            Ok(LoadBiasConfig {
+                enabled: true,
+                penalty,
+                penalty_decay,
+            })
+        })
+        .transpose()
+}
+
+pub fn parse_retry_after_config(
+    annotations: &std::collections::BTreeMap<String, String>,
+) -> Result<Option<RetryAfterConfig>> {
+    annotations
+        .get("balancer.alpha.linkerd.io/retry-after")
+        .and_then(|s| match s.trim() {
+            "false" => None,
+            mode => Some(mode),
+        })
+        .map(|mode| {
+            if mode != "true" {
+                bail!("unsupported retry-after mode: '{mode}' (expected 'true' or 'false')");
+            }
+
+            let max_duration = annotations
+                .get("balancer.alpha.linkerd.io/retry-after-max-duration")
+                .map(|s| parse_duration(s))
+                .transpose()?
+                .unwrap_or(DEFAULT_RETRY_AFTER_MAX_DURATION);
+
+            ensure!(
+                max_duration > time::Duration::ZERO,
+                "retry-after-max-duration must be greater than zero"
+            );
+
+            Ok(RetryAfterConfig { max_duration })
+        })
+        .transpose()
+}
+
 fn parse_duration(s: &str) -> Result<time::Duration> {
     let s = s.trim();
     if s.starts_with('-') {
@@ -2033,6 +2178,7 @@ fn parse_duration(s: &str) -> Result<time::Duration> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
 
     #[test]
     fn parse_duration_integer_seconds() {
@@ -2170,6 +2316,361 @@ mod tests {
         assert!(
             err.to_string().contains("cannot be negative"),
             "should mention negative: {err}"
+        );
+    }
+
+    #[test]
+    fn load_bias_true_returns_defaults() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "true".to_string(),
+        );
+        let config = parse_load_bias_config(&annotations)
+            .expect("mode=true should succeed")
+            .expect("should return Some");
+        assert!(config.enabled);
+        assert_eq!(config.penalty, DEFAULT_LOAD_BIAS_PENALTY);
+        assert_eq!(config.penalty_decay, DEFAULT_LOAD_BIAS_PENALTY_DECAY);
+    }
+
+    #[test]
+    fn load_bias_false_returns_none() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "false".to_string(),
+        );
+        let result = parse_load_bias_config(&annotations).expect("mode=false should succeed");
+        assert!(result.is_none(), "mode=false should return None");
+    }
+
+    #[test]
+    fn load_bias_absent_returns_none() {
+        let annotations = BTreeMap::new();
+        let result =
+            parse_load_bias_config(&annotations).expect("absent annotation should succeed");
+        assert!(result.is_none(), "absent annotation should return None");
+    }
+
+    #[test]
+    fn load_bias_invalid_mode_rejected() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "maybe".to_string(),
+        );
+        let err = parse_load_bias_config(&annotations).expect_err("mode=maybe should be rejected");
+        assert!(
+            err.to_string().contains("'maybe'"),
+            "error should quote the invalid mode: {err}"
+        );
+    }
+
+    #[test]
+    fn load_bias_empty_mode_rejected_with_visible_quotes() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "".to_string(),
+        );
+        let err = parse_load_bias_config(&annotations).expect_err("empty mode should be rejected");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("''"),
+            "error should show empty value in quotes: {msg}"
+        );
+    }
+
+    #[test]
+    fn load_bias_custom_penalty_and_decay() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias-penalty".to_string(),
+            "3s".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias-penalty-decay".to_string(),
+            "7s".to_string(),
+        );
+        let config = parse_load_bias_config(&annotations)
+            .expect("custom values should succeed")
+            .expect("should return Some");
+        assert_eq!(config.penalty, time::Duration::from_secs(3));
+        assert_eq!(config.penalty_decay, time::Duration::from_secs(7));
+    }
+
+    #[test]
+    fn load_bias_invalid_penalty_duration_rejected() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias-penalty".to_string(),
+            "notaduration".to_string(),
+        );
+        let result = parse_load_bias_config(&annotations);
+        assert!(result.is_err(), "invalid penalty duration should fail");
+    }
+
+    #[test]
+    fn load_bias_zero_penalty_rejected() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias-penalty".to_string(),
+            "0".to_string(),
+        );
+        let err =
+            parse_load_bias_config(&annotations).expect_err("zero penalty should be rejected");
+        assert!(
+            err.to_string().contains("greater than zero"),
+            "error should mention 'greater than zero': {err}"
+        );
+    }
+
+    #[test]
+    fn load_bias_zero_penalty_decay_rejected() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias-penalty-decay".to_string(),
+            "0".to_string(),
+        );
+        let err = parse_load_bias_config(&annotations)
+            .expect_err("zero penalty_decay should be rejected");
+        assert!(
+            err.to_string().contains("greater than zero"),
+            "error should mention 'greater than zero': {err}"
+        );
+    }
+
+    #[test]
+    fn load_bias_whitespace_true_accepted() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            " true ".to_string(),
+        );
+        let config = parse_load_bias_config(&annotations)
+            .expect("whitespace-padded 'true' should succeed")
+            .expect("should return Some");
+        assert!(config.enabled);
+    }
+
+    #[test]
+    fn load_bias_whitespace_false_returns_none() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            " false ".to_string(),
+        );
+        let result =
+            parse_load_bias_config(&annotations).expect("whitespace-padded 'false' should succeed");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn retry_after_true_returns_defaults() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "true".to_string(),
+        );
+        let config = parse_retry_after_config(&annotations)
+            .expect("mode=true should succeed")
+            .expect("should return Some");
+        assert_eq!(config.max_duration, DEFAULT_RETRY_AFTER_MAX_DURATION);
+    }
+
+    #[test]
+    fn retry_after_false_returns_none() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "false".to_string(),
+        );
+        let result = parse_retry_after_config(&annotations).expect("mode=false should succeed");
+        assert!(result.is_none(), "mode=false should return None");
+    }
+
+    #[test]
+    fn retry_after_absent_returns_none() {
+        let annotations = BTreeMap::new();
+        let result =
+            parse_retry_after_config(&annotations).expect("absent annotation should succeed");
+        assert!(result.is_none(), "absent annotation should return None");
+    }
+
+    #[test]
+    fn retry_after_whitespace_true_accepted() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            " true ".to_string(),
+        );
+        let config = parse_retry_after_config(&annotations)
+            .expect("whitespace-padded 'true' should succeed")
+            .expect("should return Some");
+        assert_eq!(config.max_duration, DEFAULT_RETRY_AFTER_MAX_DURATION);
+    }
+
+    #[test]
+    fn retry_after_invalid_mode_rejected() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "sometimes".to_string(),
+        );
+        let err =
+            parse_retry_after_config(&annotations).expect_err("mode=sometimes should be rejected");
+        assert!(
+            err.to_string().contains("'sometimes'"),
+            "error should quote the invalid mode: {err}"
+        );
+    }
+
+    #[test]
+    fn retry_after_custom_max_duration() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after-max-duration".to_string(),
+            "60s".to_string(),
+        );
+        let config = parse_retry_after_config(&annotations)
+            .expect("custom max should succeed")
+            .expect("should return Some");
+        assert_eq!(config.max_duration, time::Duration::from_secs(60));
+    }
+
+    #[test]
+    fn retry_after_zero_max_duration_rejected() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after-max-duration".to_string(),
+            "0s".to_string(),
+        );
+        let err = parse_retry_after_config(&annotations)
+            .expect_err("zero max_duration should be rejected");
+        assert!(
+            err.to_string().contains("greater than zero"),
+            "error should mention 'greater than zero': {err}"
+        );
+    }
+
+    #[test]
+    fn load_bias_custom_decay_default_penalty() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias-penalty-decay".to_string(),
+            "20s".to_string(),
+        );
+        let config = parse_load_bias_config(&annotations)
+            .expect("custom decay with default penalty should succeed")
+            .expect("should return Some");
+        assert_eq!(config.penalty, DEFAULT_LOAD_BIAS_PENALTY);
+        assert_eq!(config.penalty_decay, time::Duration::from_secs(20));
+    }
+
+    #[test]
+    fn load_bias_false_ignores_sub_annotations() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "false".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias-penalty".to_string(),
+            "3s".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias-penalty-decay".to_string(),
+            "7s".to_string(),
+        );
+        let result = parse_load_bias_config(&annotations).expect("mode=false should succeed");
+        assert!(
+            result.is_none(),
+            "mode=false should return None even with sub-annotations"
+        );
+    }
+
+    #[test]
+    fn retry_after_false_ignores_sub_annotations() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "false".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after-max-duration".to_string(),
+            "60s".to_string(),
+        );
+        let result = parse_retry_after_config(&annotations).expect("mode=false should succeed");
+        assert!(
+            result.is_none(),
+            "mode=false should return None even with sub-annotations"
+        );
+    }
+
+    #[test]
+    fn load_bias_negative_penalty_rejected() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-bias-penalty".to_string(),
+            "-5s".to_string(),
+        );
+        let err =
+            parse_load_bias_config(&annotations).expect_err("negative penalty should be rejected");
+        assert!(
+            err.to_string().contains("cannot be negative"),
+            "error should mention negative: {err}"
+        );
+    }
+
+    #[test]
+    fn retry_after_negative_max_duration_rejected() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/retry-after-max-duration".to_string(),
+            "-10s".to_string(),
+        );
+        let err = parse_retry_after_config(&annotations)
+            .expect_err("negative max_duration should be rejected");
+        assert!(
+            err.to_string().contains("cannot be negative"),
+            "error should mention negative: {err}"
         );
     }
 }
