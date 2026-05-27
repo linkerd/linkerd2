@@ -66,6 +66,9 @@ func Validate(data []byte) error {
 	}
 
 	for _, route := range serviceProfile.Spec.Routes {
+		if route == nil {
+			return fmt.Errorf("ServiceProfile %q has a nil route", serviceProfile.Name)
+		}
 		if route.Name == "" {
 			return fmt.Errorf("ServiceProfile %q has a route with no name", serviceProfile.Name)
 		}

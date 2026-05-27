@@ -396,6 +396,17 @@ spec:
       method: GET
       pathRegex: /route-1`,
 		},
+		{
+			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" has a nil route"),
+			sp: `apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  routes:
+  -`,
+		},
 	}
 
 	for id, exp := range expectations {
