@@ -238,6 +238,11 @@ func TestSyncServiceExternalWorkloadSelection(t *testing.T) {
 	ew2.Labels["foo"] = "boo"
 	esController.externalWorkloadsStore.Add(ew2)
 
+	// ensure this ew will not match the selector
+	altNs := "test-ns-alt"
+	ew3 := newExternalWorkload(3, altNs, true, false)
+	esController.externalWorkloadsStore.Add(ew3)
+
 	standardSyncService(t, esController, ns, "testing-1")
 	expectActions(t, actions(), 1, "create", "endpointslices")
 
