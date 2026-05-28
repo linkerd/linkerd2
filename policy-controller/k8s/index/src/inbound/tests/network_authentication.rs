@@ -67,11 +67,9 @@ fn reset_network_authn_with_deleted_entries() {
 
     assert!(rx.has_changed().unwrap());
     assert!(
-        !rx.borrow_and_update()
-            .authorizations
-            .contains_key(&AuthorizationRef::AuthorizationPolicy(
-                "authz-policy-0".to_string()
-            )),
+        !rx.borrow_and_update().authorizations.contains_key(
+            &AuthorizationRef::AuthorizationPolicy("authz-policy-0".to_string())
+        ),
         "authz-policy-0 should be absent after reset removes it"
     );
 }
