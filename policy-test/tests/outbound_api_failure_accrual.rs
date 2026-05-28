@@ -6,8 +6,7 @@ use linkerd_policy_controller_k8s_api::{self as k8s, policy};
 use linkerd_policy_test::{
     assert_default_accrual_backoff, assert_resource_meta, create, grpc,
     outbound_api::{
-        detect_failure_accrual, detect_load_bias_and_retry_after, failure_accrual_consecutive,
-        retry_watch_outbound_policy,
+        assert_load_eq, detect_failure_accrual, failure_accrual_consecutive, penalty_peak_ewma, peak_ewma, retry_watch_outbound_policy
     },
     test_route::TestParent,
     update, with_temp_ns,
@@ -51,6 +50,7 @@ async fn consecutive_failure_accrual() {
                         min_backoff: Some(Duration::from_secs(10).try_into().unwrap()),
                         max_backoff: Some(Duration::from_secs(600).try_into().unwrap()),
                         jitter_ratio: 1.0_f32,
+                        respect_retry_after_hint: false,
                     },
                     consecutive
                         .backoff
@@ -189,6 +189,7 @@ async fn consecutive_failure_accrual_defaults_jitter() {
                         min_backoff: Some(Duration::from_secs(1).try_into().unwrap()),
                         max_backoff: Some(Duration::from_secs(60).try_into().unwrap()),
                         jitter_ratio: 1.0_f32,
+                        respect_retry_after_hint: false,
                     },
                     consecutive
                         .backoff
@@ -267,25 +268,14 @@ async fn load_bias_with_custom_penalty() {
             tracing::trace!(?config);
 
             let dt = P::DynamicType::default();
-            let (load_bias, _) = detect_load_bias_and_retry_after(&config);
             if P::kind(&dt) == "EgressNetwork" {
-                assert!(
-                    load_bias.is_none(),
-                    "EgressNetwork should not have load_bias"
-                );
+                assert_load_eq(&config, None);
             } else {
-                let lb = load_bias.expect("load_bias must be configured");
-                assert!(lb.enabled, "load_bias must be enabled");
-                assert_eq!(
-                    lb.penalty,
-                    Some(Duration::from_secs(3).try_into().unwrap()),
-                    "penalty should be 3s"
-                );
-                assert_eq!(
-                    lb.penalty_decay,
-                    Some(Duration::from_secs(6).try_into().unwrap()),
-                    "penalty_decay should be 6s"
-                );
+                assert_load_eq(&config, Some(penalty_peak_ewma(
+                    Some(Duration::from_secs(3)),
+                    Some(Duration::from_secs(6)),
+                    None,
+                )));
             }
         })
         .await;
@@ -316,16 +306,10 @@ async fn retry_after_with_custom_max() {
             tracing::trace!(?config);
 
             let dt = P::DynamicType::default();
-            let (_, retry_after) = detect_load_bias_and_retry_after(&config);
             if P::kind(&dt) == "EgressNetwork" {
-                assert!(retry_after.is_none(), "EgressNetwork should not have retry_after");
+                assert_load_eq(&config, None);
             } else {
-                let ra = retry_after.expect("retry_after must be configured");
-                assert_eq!(
-                    ra.max_duration,
-                    Some(Duration::from_secs(120).try_into().unwrap()),
-                    "max_duration should be 120s"
-                );
+                assert_load_eq(&config, Some(penalty_peak_ewma(None, None, Some(Duration::from_secs(120)))));
             }
         })
         .await;
@@ -679,15 +663,7 @@ async fn load_bias_watch_update() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
-        let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
-        assert!(
-            load_bias.is_none(),
-            "unannotated service should have no load_bias"
-        );
-        assert!(
-            retry_after.is_none(),
-            "unannotated service should have no retry_after"
-        );
+        assert_load_eq(&config, peak_ewma());
 
         parent.meta_mut().annotations = Some(btreemap! {
             "balancer.alpha.linkerd.io/load-bias".to_string() => "true".to_string(),

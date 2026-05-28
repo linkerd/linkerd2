@@ -1,4 +1,4 @@
-use super::{default_balancer_config, default_queue_config};
+use super::{balancer_config, default_queue_config};
 use linkerd2_proxy_api::{self, destination, meta, outbound};
 use linkerd_policy_controller_core::{
     outbound::{Backend, ParentInfo, TcpRoute, TrafficPolicy},
@@ -132,8 +132,7 @@ fn convert_backend(
                                     },
                                 )),
                             }),
-                            load: Some(default_balancer_config()),
-                            ejection: None,
+                            load: Some(balancer_config(None, None)),
                         },
                     )),
                 }),

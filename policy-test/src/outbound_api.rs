@@ -70,8 +70,6 @@ pub fn http1_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound
     if let grpc::outbound::proxy_protocol::Kind::Http1(grpc::outbound::proxy_protocol::Http1 {
         routes,
         failure_accrual: _,
-        load_bias: _,
-        retry_after: _,
     }) = kind
     {
         routes
@@ -92,8 +90,6 @@ pub fn http2_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound
     if let grpc::outbound::proxy_protocol::Kind::Http2(grpc::outbound::proxy_protocol::Http2 {
         routes,
         failure_accrual: _,
-        load_bias: _,
-        retry_after: _,
     }) = kind
     {
         routes
@@ -114,8 +110,6 @@ pub fn grpc_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound:
     if let grpc::outbound::proxy_protocol::Kind::Grpc(grpc::outbound::proxy_protocol::Grpc {
         routes,
         failure_accrual: _,
-        load_bias: _,
-        retry_after: _,
     }) = kind
     {
         routes
@@ -200,52 +194,108 @@ where
 pub fn failure_accrual_consecutive(
     accrual: Option<&grpc::outbound::FailureAccrual>,
 ) -> &grpc::outbound::failure_accrual::ConsecutiveFailures {
-    accrual
-        .expect("failure accrual must be configured for service")
-        .consecutive_failures
+    assert!(
+        accrual.is_some(),
+        "failure accrual must be configured for service"
+    );
+    let kind = accrual
+        .unwrap().kind
         .as_ref()
-        .expect("failure accrual must have consecutive failures")
+        .expect("failure accrual must have kind");
+    match kind {
+        grpc::outbound::failure_accrual::Kind::ConsecutiveFailures(accrual) => accrual,
+        _ => panic!("failure accrual must be consecutive failures; actually got:\n{kind:#?}"),
+    }
 }
 
-/// Extract load_bias and retry_after from a Detect protocol config.
+/// Asserts that the load balance config matches.
 #[track_caller]
-pub fn detect_load_bias_and_retry_after(
+pub fn assert_load_eq(
     config: &grpc::outbound::OutboundPolicy,
-) -> (
-    Option<&grpc::outbound::LoadBiasConfig>,
-    Option<&grpc::outbound::RetryAfterConfig>,
+    load: Option<grpc::outbound::backend::balance_p2c::Load>,
 ) {
-    let kind = config
-        .protocol
-        .as_ref()
-        .expect("must have proxy protocol")
-        .kind
-        .as_ref()
-        .expect("must have kind");
-    if let grpc::outbound::proxy_protocol::Kind::Detect(grpc::outbound::proxy_protocol::Detect {
-        http1,
-        http2,
-        ..
-    }) = kind
-    {
-        let http1 = http1
-            .as_ref()
-            .expect("proxy protocol must have http1 field");
-        let http2 = http2
-            .as_ref()
-            .expect("proxy protocol must have http2 field");
-        assert_eq!(
-            http1.load_bias, http2.load_bias,
-            "http1 and http2 load_bias configs must match"
-        );
-        assert_eq!(
-            http1.retry_after, http2.retry_after,
-            "http1 and http2 retry_after configs must match"
-        );
-        (http1.load_bias.as_ref(), http1.retry_after.as_ref())
-    } else {
-        panic!("proxy protocol must be Detect; actually got:\n{kind:#?}")
-    }
+    detect_http_routes(config, |routes| {
+        for backend in routes.iter().flat_map(|route| route.rules.iter())
+        .flat_map(|rule| rule.backends.iter()) {
+            match backend.kind.as_ref().unwrap() {
+                grpc::outbound::http_route::distribution::Kind::RandomAvailable(balance) => {
+                    for backend in balance.backends.iter() {
+                        match backend.backend.as_ref().unwrap().backend.as_ref().unwrap().kind.as_ref().unwrap() {
+                            linkerd2_proxy_api::outbound::backend::Kind::Balancer(balanc) => {
+                                assert_eq!(balanc.load, load);
+                            }
+                            _ => panic!("expected backend to be a balancer, but got:\n{backend:#?}"),
+                        }
+                    }
+                },
+                _ => panic!("expected backend to be a RandomAvailable, but got:\n{backend:#?}"),
+            }
+        }
+    });
+}
+
+#[track_caller]
+pub fn penalty_peak_ewma(
+    penalty: Option<Duration>,
+    penalty_decay: Option<Duration>,
+    max_retry_after: Option<Duration>,
+) -> grpc::outbound::backend::balance_p2c::Load {
+    grpc::outbound::backend::balance_p2c::Load::PenaltyPeakEwma(
+        grpc::outbound::backend::balance_p2c::PenaltyPeakEwma {
+            decay: Some(
+                    time::Duration::from_secs(10)
+                        .try_into()
+                        .expect("failed to convert ewma decay to protobuf")
+                ),
+            default_rtt: Some(
+                    time::Duration::from_millis(30)
+                        .try_into()
+                        .expect("failed to convert ewma default_rtt to protobuf")
+                ),
+            penalty: penalty.and_then(|duration| duration.try_into().ok()),
+            respect_retry_after_hint: max_retry_after.map(|duration| grpc::outbound::backend::balance_p2c::penalty_peak_ewma::RetryAfter {
+                max_retry_after: Some(
+                    duration.try_into().expect("failed to convert max_retry_after to protobuf")
+                ),
+            }),
+            penalty_decay: penalty_decay.and_then(|duration| duration.try_into().ok()),
+            http_status_ranges: vec![
+                grpc::outbound::backend::balance_p2c::penalty_peak_ewma::StatusRange {
+                    start: 500,
+                    end: 599,
+                },
+                grpc::outbound::backend::balance_p2c::penalty_peak_ewma::StatusRange {
+                    start: 429,
+                    end: 429,
+                },
+            ],
+            grpc_status_codes: vec![
+                8, // ResourceExhausted
+                14, // Unavailable
+                2, // Unknown
+                4, // DeadlineExceeded
+                13, // Internal
+                15, // DataLoss
+            ],
+
+        },
+    )
+}
+
+#[track_caller]
+pub fn peak_ewma() -> grpc::outbound::backend::balance_p2c::Load {
+    grpc::outbound::backend::balance_p2c::Load::PeakEwma(grpc::outbound::backend::balance_p2c::PeakEwma {
+        default_rtt: Some(
+            time::Duration::from_millis(30)
+                .try_into()
+                .expect("failed to convert ewma default_rtt to protobuf"),
+        ),
+        decay: Some(
+            time::Duration::from_secs(10)
+                .try_into()
+                .expect("failed to convert ewma decay to protobuf"),
+        ),
+    })
 }
 
 #[track_caller]

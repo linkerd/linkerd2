@@ -14,7 +14,7 @@ use linkerd_policy_controller_core::{
     outbound::{
         AppProtocol, DiscoverOutboundPolicy, ExternalPolicyStream, Kind, OutboundDiscoverTarget,
         OutboundPolicy, OutboundPolicyStream, ParentInfo, ResourceTarget, Route,
-        WeightedEgressNetwork, WeightedService,
+        WeightedEgressNetwork, WeightedService, LoadBiasConfig, RetryAfterConfig,
     },
     routes::GroupKindNamespaceName,
 };
@@ -402,14 +402,10 @@ fn fallback(original_dst: SocketAddr) -> outbound::OutboundPolicy {
                     http1: Some(outbound::proxy_protocol::Http1 {
                         routes: http_routes.clone(),
                         failure_accrual: None,
-                        load_bias: None,
-                        retry_after: None,
                     }),
                     http2: Some(outbound::proxy_protocol::Http2 {
                         routes: http_routes,
                         failure_accrual: None,
-                        load_bias: None,
-                        retry_after: None,
                     }),
                 },
             )),
@@ -481,28 +477,28 @@ fn to_proto(
             max_failures,
             backoff,
         } = accrual;
+        // Set the max_backoff to the minimum of the configured max_backoff and the retry_after max_duration (if configured).
+        let max_backoff = [
+            convert_duration("max_backoff", backoff.max_penalty),
+            policy.retry_after.and_then(|ra| convert_duration("retry_after_max_duration", ra.max_duration)),
+        ].into_iter().flatten().min_by_key(|duration| duration.nanos);
         outbound::FailureAccrual {
-            consecutive_failures: Some(outbound::failure_accrual::ConsecutiveFailures {
-                max_failures,
-                backoff: Some(outbound::ExponentialBackoff {
-                    min_backoff: convert_duration("min_backoff", backoff.min_penalty),
-                    max_backoff: convert_duration("max_backoff", backoff.max_penalty),
-                    jitter_ratio: backoff.jitter,
-                }),
-            }),
-            success_rate: None,
+            kind: Some(outbound::failure_accrual::Kind::ConsecutiveFailures(
+                outbound::failure_accrual::ConsecutiveFailures {
+                    max_failures,
+                    backoff: Some(outbound::ExponentialBackoff {
+                        min_backoff: convert_duration("min_backoff", backoff.min_penalty),
+                        max_backoff: max_backoff,
+                        jitter_ratio: backoff.jitter,
+                        respect_retry_after_hint: policy.retry_after.is_some(),
+                    }),
+                }
+            )),
+            ejection: None,
         }
     });
 
-    let load_bias = policy.load_bias.map(|lb| outbound::LoadBiasConfig {
-        enabled: lb.enabled,
-        penalty: convert_duration("load_bias_penalty", lb.penalty),
-        penalty_decay: convert_duration("load_bias_penalty_decay", lb.penalty_decay),
-    });
-
-    let retry_after = policy.retry_after.map(|ra| outbound::RetryAfterConfig {
-        max_duration: convert_duration("retry_after_max_duration", ra.max_duration),
-    });
+    let load = balancer_config(policy.load_bias.as_ref(), policy.retry_after.as_ref());
 
     let mut http_routes = policy.http_routes.clone().into_iter().collect::<Vec<_>>();
 
@@ -513,8 +509,7 @@ fn to_proto(
                 backend,
                 http_routes.into_iter(),
                 accrual,
-                load_bias,
-                retry_after,
+                load,
                 policy.http_retry.clone(),
                 policy.timeouts.clone(),
                 allow_l5d_request_headers,
@@ -531,8 +526,7 @@ fn to_proto(
                     backend,
                     grpc_routes.into_iter(),
                     accrual,
-                    load_bias,
-                    retry_after,
+                    load,
                     policy.grpc_retry.clone(),
                     policy.timeouts.clone(),
                     allow_l5d_request_headers,
@@ -545,8 +539,7 @@ fn to_proto(
                     backend,
                     http_routes.into_iter(),
                     accrual,
-                    load_bias,
-                    retry_after,
+                    load,
                     policy.http_retry.clone(),
                     policy.timeouts.clone(),
                     allow_l5d_request_headers,
@@ -587,8 +580,7 @@ fn to_proto(
                     backend,
                     grpc_routes.into_iter(),
                     accrual,
-                    load_bias,
-                    retry_after,
+                    load,
                     policy.grpc_retry.clone(),
                     policy.timeouts.clone(),
                     allow_l5d_request_headers,
@@ -601,8 +593,7 @@ fn to_proto(
                     backend,
                     http_routes.into_iter(),
                     accrual,
-                    load_bias,
-                    retry_after,
+                    load,
                     policy.http_retry.clone(),
                     policy.timeouts.clone(),
                     allow_l5d_request_headers,
@@ -631,8 +622,7 @@ fn to_proto(
                     backend,
                     http_routes.into_iter(),
                     accrual,
-                    load_bias,
-                    retry_after,
+                    load,
                     policy.http_retry.clone(),
                     policy.timeouts.clone(),
                     allow_l5d_request_headers,
@@ -715,8 +705,7 @@ fn default_backend(policy: &OutboundPolicy, original_dst: Option<SocketAddr>) ->
                             },
                         )),
                     }),
-                    load: Some(default_balancer_config()),
-                    ejection: None,
+                    load: Some(balancer_config(policy.load_bias.as_ref(), policy.retry_after.as_ref())),
                 },
             )),
         },
@@ -797,7 +786,47 @@ fn default_outbound_opaq_route(
     }
 }
 
-fn default_balancer_config() -> outbound::backend::balance_p2c::Load {
+fn balancer_config(
+    load_bias: Option<&LoadBiasConfig>,
+    retry_after: Option<&RetryAfterConfig>,
+) -> outbound::backend::balance_p2c::Load {
+    if let Some(load_bias) = load_bias {
+            outbound::backend::balance_p2c::Load::PenaltyPeakEwma(outbound::backend::balance_p2c::PenaltyPeakEwma {
+                penalty: convert_duration("load_bias penalty", load_bias.penalty),
+                penalty_decay: convert_duration("load_bias penalty_decay", load_bias.penalty_decay),
+                default_rtt: Some(
+                    time::Duration::from_millis(30)
+                        .try_into()
+                        .expect("failed to convert ewma default_rtt to protobuf")
+                ),
+                decay: Some(
+                    time::Duration::from_secs(10)
+                        .try_into()
+                        .expect("failed to convert ewma decay to protobuf")
+                ),
+                respect_retry_after_hint: retry_after.map(|ra| outbound::backend::balance_p2c::penalty_peak_ewma::RetryAfter {
+                    max_retry_after: convert_duration("retry_after max_duration", ra.max_duration),
+                }),
+                http_status_ranges: vec![
+                    outbound::backend::balance_p2c::penalty_peak_ewma::StatusRange {
+                        start: 500,
+                        end: 599,
+                    },
+                    outbound::backend::balance_p2c::penalty_peak_ewma::StatusRange {
+                        start: 429,
+                        end: 429,
+                    },
+                ],
+                grpc_status_codes: vec![
+                    8, // ResourceExhausted
+                    14, // Unavailable
+                    2, // Unknown
+                    4, // DeadlineExceeded
+                    13, // Internal
+                    15, // DataLoss
+                ],
+            })
+    } else {
     outbound::backend::balance_p2c::Load::PeakEwma(outbound::backend::balance_p2c::PeakEwma {
         default_rtt: Some(
             time::Duration::from_millis(30)
@@ -810,6 +839,7 @@ fn default_balancer_config() -> outbound::backend::balance_p2c::Load {
                 .expect("failed to convert ewma decay to protobuf"),
         ),
     })
+}
 }
 
 fn default_queue_config() -> outbound::Queue {

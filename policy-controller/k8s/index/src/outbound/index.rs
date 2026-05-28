@@ -2133,25 +2133,7 @@ fn parse_duration(s: &str) -> Result<time::Duration> {
     let (magnitude, unit) = s.split_at(offset + 1);
 
     if magnitude.contains('.') {
-        if unit == "s" {
-            let frac: f64 = magnitude
-                .parse()
-                .map_err(|_| anyhow::anyhow!("invalid fractional value {magnitude}"))?;
-            if frac == 0.0 {
-                bail!("fractional seconds not supported; use '0' for zero duration");
-            }
-            if !frac.is_finite() || frac > (u64::MAX / 1000) as f64 {
-                bail!("duration value {s} overflows when converted to milliseconds");
-            }
-            let ms = (frac * 1000.0).round() as u64;
-            if ms >= 1 {
-                bail!("fractional seconds not supported; try '{ms}ms' instead of '{s}'");
-            } else {
-                bail!("{s} value is sub-millisecond; minimum resolution is 1ms");
-            }
-        } else {
-            bail!("fractional values not supported for duration unit '{unit}'");
-        }
+        bail!("fractional values not supported");
     }
 
     let magnitude = magnitude.parse::<u64>()?;

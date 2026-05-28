@@ -629,9 +629,6 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
             outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
         }) {
             outbound_index::http::parse_http_retry(annotations)?;
-            outbound_index::parse_accrual_config(annotations)?;
-            outbound_index::parse_load_bias_config(annotations)?;
-            outbound_index::parse_retry_after_config(annotations)?;
             outbound_index::parse_timeouts(annotations)?;
         }
 
@@ -702,9 +699,6 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
             outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
         }) {
             outbound_index::grpc::parse_grpc_retry(annotations)?;
-            outbound_index::parse_accrual_config(annotations)?;
-            outbound_index::parse_load_bias_config(annotations)?;
-            outbound_index::parse_retry_after_config(annotations)?;
             outbound_index::parse_timeouts(annotations)?;
         }
 

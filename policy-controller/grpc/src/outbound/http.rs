@@ -1,5 +1,5 @@
 use super::{
-    convert_duration, default_balancer_config, default_outbound_opaq_route, default_queue_config,
+    convert_duration, default_outbound_opaq_route, default_queue_config,
 };
 use crate::routes::{
     convert_host_match, convert_redirect_filter, convert_request_header_modifier_filter,
@@ -21,8 +21,7 @@ pub(crate) fn protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, HttpRoute)>,
     accrual: Option<outbound::FailureAccrual>,
-    load_bias: Option<outbound::LoadBiasConfig>,
-    retry_after: Option<outbound::RetryAfterConfig>,
+    load: outbound::backend::balance_p2c::Load,
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
@@ -38,6 +37,7 @@ pub(crate) fn protocol(
                 default_backend.clone(),
                 service_retry.clone(),
                 service_timeouts.clone(),
+                load.clone(),
                 allow_l5d_request_headers,
                 parent_info,
                 original_dst,
@@ -78,14 +78,10 @@ pub(crate) fn protocol(
         http1: Some(outbound::proxy_protocol::Http1 {
             routes: routes.clone(),
             failure_accrual: accrual,
-            load_bias,
-            retry_after,
         }),
         http2: Some(outbound::proxy_protocol::Http2 {
             routes,
             failure_accrual: accrual,
-            load_bias,
-            retry_after,
         }),
     })
 }
@@ -95,8 +91,7 @@ pub(crate) fn http1_only_protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, HttpRoute)>,
     accrual: Option<outbound::FailureAccrual>,
-    load_bias: Option<outbound::LoadBiasConfig>,
-    retry_after: Option<outbound::RetryAfterConfig>,
+    load: outbound::backend::balance_p2c::Load,
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
@@ -109,13 +104,12 @@ pub(crate) fn http1_only_protocol(
             routes,
             service_retry,
             service_timeouts,
+            load,
             allow_l5d_request_headers,
             parent_info,
             original_dst,
         ),
         failure_accrual: accrual,
-        load_bias,
-        retry_after,
     })
 }
 
@@ -124,8 +118,7 @@ pub(crate) fn http2_only_protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, HttpRoute)>,
     accrual: Option<outbound::FailureAccrual>,
-    load_bias: Option<outbound::LoadBiasConfig>,
-    retry_after: Option<outbound::RetryAfterConfig>,
+    load: outbound::backend::balance_p2c::Load,
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
@@ -138,13 +131,12 @@ pub(crate) fn http2_only_protocol(
             routes,
             service_retry,
             service_timeouts,
+            load,
             allow_l5d_request_headers,
             parent_info,
             original_dst,
         ),
         failure_accrual: accrual,
-        load_bias,
-        retry_after,
     })
 }
 
@@ -153,6 +145,7 @@ fn base_http_routes(
     routes: impl Iterator<Item = (GroupKindNamespaceName, HttpRoute)>,
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
+    load: outbound::backend::balance_p2c::Load,
     allow_l5d_request_headers: bool,
     parent_info: &ParentInfo,
     original_dst: Option<SocketAddr>,
@@ -165,6 +158,7 @@ fn base_http_routes(
                 default_backend.clone(),
                 service_retry.clone(),
                 service_timeouts.clone(),
+                load.clone(),
                 allow_l5d_request_headers,
                 parent_info,
                 original_dst,
@@ -206,6 +200,7 @@ fn convert_outbound_route(
     backend: outbound::Backend,
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
+    load: outbound::backend::balance_p2c::Load,
     allow_l5d_request_headers: bool,
     parent_info: &ParentInfo,
     original_dst: Option<SocketAddr>,
@@ -234,7 +229,7 @@ fn convert_outbound_route(
              }| {
                 let backends = backends
                     .into_iter()
-                    .map(|b| convert_backend(b, parent_info, original_dst))
+                    .map(|b| convert_backend(b, parent_info, original_dst, load.clone()))
                     .collect::<Vec<_>>();
                 let dist = if backends.is_empty() {
                     outbound::http_route::distribution::Kind::FirstAvailable(
@@ -285,6 +280,7 @@ fn convert_backend(
     backend: Backend,
     parent_info: &ParentInfo,
     original_dst: Option<SocketAddr>,
+    load: outbound::backend::balance_p2c::Load,
 ) -> outbound::http_route::WeightedRouteBackend {
     let original_dst_port = original_dst.map(|o| o.port());
     match backend {
@@ -331,8 +327,7 @@ fn convert_backend(
                                         },
                                     )),
                                 }),
-                                load: Some(default_balancer_config()),
-                                ejection: None,
+                                load: Some(load),
                             },
                         )),
                     }),
@@ -573,6 +568,7 @@ fn convert_retry(r: RouteRetry<HttpRetryCondition>) -> outbound::http_route::Ret
             min_backoff: Some(time::Duration::from_millis(25).try_into().unwrap()),
             max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
             jitter_ratio: 1.0,
+            respect_retry_after_hint: false
         }),
         conditions: Some(r.conditions.iter().flatten().fold(
             outbound::http_route::retry::Conditions::default(),
