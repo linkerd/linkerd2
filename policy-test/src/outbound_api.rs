@@ -253,30 +253,8 @@ pub fn penalty_peak_ewma(
                         .expect("failed to convert ewma default_rtt to protobuf")
                 ),
             penalty: penalty.and_then(|duration| duration.try_into().ok()),
-            respect_retry_after_hint: max_retry_after.map(|duration| grpc::outbound::backend::balance_p2c::penalty_peak_ewma::RetryAfter {
-                max_retry_after: Some(
-                    duration.try_into().expect("failed to convert max_retry_after to protobuf")
-                ),
-            }),
+            max_retry_after: max_retry_after.and_then(|duration| duration.try_into().ok()),
             penalty_decay: penalty_decay.and_then(|duration| duration.try_into().ok()),
-            http_status_ranges: vec![
-                grpc::outbound::backend::balance_p2c::penalty_peak_ewma::StatusRange {
-                    start: 500,
-                    end: 599,
-                },
-                grpc::outbound::backend::balance_p2c::penalty_peak_ewma::StatusRange {
-                    start: 429,
-                    end: 429,
-                },
-            ],
-            grpc_status_codes: vec![
-                8, // ResourceExhausted
-                14, // Unavailable
-                2, // Unknown
-                4, // DeadlineExceeded
-                13, // Internal
-                15, // DataLoss
-            ],
 
         },
     )

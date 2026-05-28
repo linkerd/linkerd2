@@ -494,7 +494,6 @@ fn to_proto(
                     }),
                 }
             )),
-            ejection: None,
         }
     });
 
@@ -706,6 +705,7 @@ fn default_backend(policy: &OutboundPolicy, original_dst: Option<SocketAddr>) ->
                         )),
                     }),
                     load: Some(balancer_config(policy.load_bias.as_ref(), policy.retry_after.as_ref())),
+                    ejection: None,
                 },
             )),
         },
@@ -804,27 +804,7 @@ fn balancer_config(
                         .try_into()
                         .expect("failed to convert ewma decay to protobuf")
                 ),
-                respect_retry_after_hint: retry_after.map(|ra| outbound::backend::balance_p2c::penalty_peak_ewma::RetryAfter {
-                    max_retry_after: convert_duration("retry_after max_duration", ra.max_duration),
-                }),
-                http_status_ranges: vec![
-                    outbound::backend::balance_p2c::penalty_peak_ewma::StatusRange {
-                        start: 500,
-                        end: 599,
-                    },
-                    outbound::backend::balance_p2c::penalty_peak_ewma::StatusRange {
-                        start: 429,
-                        end: 429,
-                    },
-                ],
-                grpc_status_codes: vec![
-                    8, // ResourceExhausted
-                    14, // Unavailable
-                    2, // Unknown
-                    4, // DeadlineExceeded
-                    13, // Internal
-                    15, // DataLoss
-                ],
+                max_retry_after: retry_after.and_then(|ra| convert_duration("retry_after max_duration", ra.max_duration)),
             })
     } else {
     outbound::backend::balance_p2c::Load::PeakEwma(outbound::backend::balance_p2c::PeakEwma {

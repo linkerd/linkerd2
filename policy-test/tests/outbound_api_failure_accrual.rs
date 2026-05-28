@@ -340,35 +340,13 @@ async fn combined_load_bias_and_retry_after() {
             tracing::trace!(?config);
 
             let dt = P::DynamicType::default();
-            let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
             if P::kind(&dt) == "EgressNetwork" {
-                assert!(
-                    load_bias.is_none(),
-                    "EgressNetwork should not have load_bias"
-                );
-                assert!(
-                    retry_after.is_none(),
-                    "EgressNetwork should not have retry_after"
-                );
+                assert_load_eq(&config, None);
             } else {
-                let lb = load_bias.expect("load_bias must be configured");
-                assert!(lb.enabled, "load_bias must be enabled");
-                assert_eq!(
-                    lb.penalty,
+                assert_load_eq(&config, Some(penalty_peak_ewma(
                     Some(Duration::from_secs(5).try_into().unwrap()),
-                    "default penalty should be 5s"
-                );
-                assert_eq!(
-                    lb.penalty_decay,
                     Some(Duration::from_secs(10).try_into().unwrap()),
-                    "default penalty_decay should be 10s"
-                );
-
-                let ra = retry_after.expect("retry_after must be configured");
-                assert_eq!(
-                    ra.max_duration,
-                    Some(Duration::from_secs(300).try_into().unwrap()),
-                    "default max_duration should be 300s"
+                    Some(Duration::from_secs(300).try_into().unwrap())))
                 );
             }
         })
@@ -405,35 +383,13 @@ async fn accrual_with_load_bias_and_retry_after() {
             });
 
             let dt = P::DynamicType::default();
-            let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
             if P::kind(&dt) == "EgressNetwork" {
-                assert!(
-                    load_bias.is_none(),
-                    "EgressNetwork should not have load_bias"
-                );
-                assert!(
-                    retry_after.is_none(),
-                    "EgressNetwork should not have retry_after"
-                );
+                assert_load_eq(&config, None);
             } else {
-                let lb = load_bias.expect("load_bias must be configured");
-                assert!(lb.enabled, "load_bias must be enabled");
-                assert_eq!(
-                    lb.penalty,
+                assert_load_eq(&config, Some(penalty_peak_ewma(
                     Some(Duration::from_secs(5).try_into().unwrap()),
-                    "default penalty should be 5s"
-                );
-                assert_eq!(
-                    lb.penalty_decay,
                     Some(Duration::from_secs(10).try_into().unwrap()),
-                    "default penalty_decay should be 10s"
-                );
-
-                let ra = retry_after.expect("retry_after must be configured");
-                assert_eq!(
-                    ra.max_duration,
-                    Some(Duration::from_secs(300).try_into().unwrap()),
-                    "default max_duration should be 300s"
+                    Some(Duration::from_secs(300).try_into().unwrap())))
                 );
             }
         })
@@ -465,11 +421,7 @@ async fn invalid_load_bias_mode_produces_default() {
 
             // Invalid mode value causes a parse error. The indexer logs
             // a warning and falls through to the default (no load bias).
-            let (load_bias, _) = detect_load_bias_and_retry_after(&config);
-            assert!(
-                load_bias.is_none(),
-                "invalid load-bias mode should produce no load_bias config"
-            );
+            assert_load_eq(&config, None);
         })
         .await;
     }
@@ -500,11 +452,7 @@ async fn invalid_retry_after_duration_produces_default() {
 
             // Bare number "5" lacks a duration unit, causing a parse error.
             // The indexer logs a warning and falls through to the default.
-            let (_, retry_after) = detect_load_bias_and_retry_after(&config);
-            assert!(
-                retry_after.is_none(),
-                "bare-number duration should produce no retry_after config"
-            );
+            assert_load_eq(&config, None);
         })
         .await;
     }
@@ -538,15 +486,7 @@ async fn unannotated_service_has_no_new_config() {
                     "unannotated resource should have no failure accrual"
                 );
             });
-            let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
-            assert!(
-                load_bias.is_none(),
-                "unannotated resource should have no load_bias"
-            );
-            assert!(
-                retry_after.is_none(),
-                "unannotated resource should have no retry_after"
-            );
+            assert_load_eq(&config, None);
         })
         .await;
     }
@@ -580,16 +520,7 @@ async fn egress_network_ignores_load_bias_and_retry_after() {
             // EgressNetworks use Forward instead of Balancer, so the
             // indexer skips load-bias and retry-after even when annotated.
             let dt = P::DynamicType::default();
-            let kind = P::kind(&dt);
-            let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
-            assert!(
-                load_bias.is_none(),
-                "{kind} should not have load_bias"
-            );
-            assert!(
-                retry_after.is_none(),
-                "{kind} should not have retry_after"
-            );
+            assert_load_eq(&config, None);
         })
         .await;
     }
@@ -620,26 +551,15 @@ async fn consecutive_accrual_pipeline_unchanged() {
             // consecutive_failures but no success_rate.
             detect_failure_accrual(&config, |accrual| {
                 let accrual = accrual.expect("failure accrual must be configured");
-                assert!(
-                    accrual.consecutive_failures.is_some(),
-                    "consecutive_failures must be present"
-                );
-                assert!(
-                    accrual.success_rate.is_none(),
-                    "success_rate must NOT be set in consecutive mode"
-                );
+                match accrual.kind {
+                    Some(linkerd2_proxy_api::outbound::failure_accrual::Kind::ConsecutiveFailures(_)) => {},
+                    None => panic!("failure accrual kind must be set"),
+                    Some(_) => panic!("failure accrual kind must be consecutive"),
+                };
             });
 
             // Consecutive mode should not enable load bias or retry after.
-            let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
-            assert!(
-                load_bias.is_none(),
-                "consecutive mode should not enable load_bias"
-            );
-            assert!(
-                retry_after.is_none(),
-                "consecutive mode should not enable retry_after"
-            );
+            assert_load_eq(&config, None);
         })
         .await;
     }
@@ -663,7 +583,7 @@ async fn load_bias_watch_update() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
-        assert_load_eq(&config, peak_ewma());
+        assert_load_eq(&config, Some(peak_ewma()));
 
         parent.meta_mut().annotations = Some(btreemap! {
             "balancer.alpha.linkerd.io/load-bias".to_string() => "true".to_string(),
@@ -680,21 +600,11 @@ async fn load_bias_watch_update() {
             .expect("watch must return an updated config");
         tracing::trace!(?config);
 
-        let (load_bias, retry_after) = detect_load_bias_and_retry_after(&config);
-        let lb = load_bias.expect("load_bias must be present after update");
-        assert!(lb.enabled, "load_bias must be enabled");
-        assert_eq!(
-            lb.penalty,
+        assert_load_eq(&config, Some(penalty_peak_ewma(
             Some(Duration::from_secs(3).try_into().unwrap()),
-            "penalty should be 3s"
-        );
-
-        let ra = retry_after.expect("retry_after must be present after update");
-        assert_eq!(
-            ra.max_duration,
+            None,
             Some(Duration::from_secs(60).try_into().unwrap()),
-            "max_duration should be 60s"
-        );
+        )));
     })
     .await;
 }

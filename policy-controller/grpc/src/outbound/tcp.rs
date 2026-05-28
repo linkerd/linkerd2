@@ -133,6 +133,7 @@ fn convert_backend(
                                 )),
                             }),
                             load: Some(balancer_config(None, None)),
+                            ejection: None,
                         },
                     )),
                 }),

@@ -48,5 +48,5 @@ default-features = false
 
 [workspace.dependencies.linkerd2-proxy-api]
 git = "https://github.com/linkerd/linkerd2-proxy-api"
-rev = "998c98f5d7289d9e903ea3e5701ffc85030a2ee2"
+rev = "8b5acbd16af1da6c103735da4e6de090c6a2225d"
 features = ["inbound", "outbound"]

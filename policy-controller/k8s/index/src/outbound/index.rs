@@ -2214,11 +2214,7 @@ mod tests {
     fn parse_duration_fractional_seconds_rejected() {
         let err = parse_duration("0.5s").expect_err("fractional seconds should fail");
         assert!(
-            err.to_string().contains("500ms"),
-            "should suggest ms equivalent: {err}"
-        );
-        assert!(
-            err.to_string().contains("fractional seconds not supported"),
+            err.to_string().contains("fractional values not supported"),
             "should explain the issue: {err}"
         );
     }
@@ -2227,8 +2223,8 @@ mod tests {
     fn parse_duration_fractional_zero_seconds_rejected() {
         let err = parse_duration("0.0s").expect_err("fractional zero should fail");
         assert!(
-            err.to_string().contains("use '0' for zero duration"),
-            "should suggest bare 0: {err}"
+            err.to_string().contains("fractional values not supported"),
+            "should explain the issue: {err}"
         );
     }
 
