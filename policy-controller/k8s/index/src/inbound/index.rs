@@ -887,7 +887,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
         let _span = info_span!("delete", %ns, %name).entered();
 
         if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(ns) {
-            tracing::debug!("Deleting NetworkTLSAuthentication");
+            tracing::debug!("Deleting NetworkAuthentication");
 
             ns.get_mut().network.remove(&name);
             if ns.get().is_empty() {
