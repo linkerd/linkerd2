@@ -25,16 +25,27 @@ func TestGetLatestVersions(t *testing.T) {
 				"fooHotpatch": "foo-1.2.3-4",
 				"stable":      "stable-2.1.0",
 				"edge":        "edge-2.1.0",
+				"edgeFIPS":    "edge-2.1.0-fips",
 			},
 			nil,
 			Channels{
 				[]channelVersion{
-					{"foo", "1.2.3", nil, "foo-1.2.3"},
-					{"foo", "1.2.3", &four, "foo-1.2.3-4"},
-					{"stable", "2.1.0", nil, "stable-2.1.0"},
-					{"edge", "2.1.0", nil, "edge-2.1.0"},
+					{"foo", "1.2.3", nil, false, "foo-1.2.3"},
+					{"foo", "1.2.3", &four, false, "foo-1.2.3-4"},
+					{"stable", "2.1.0", nil, false, "stable-2.1.0"},
+					{"edge", "2.1.0", nil, false, "edge-2.1.0"},
+					{"edge", "2.1.0", nil, true, "edge-2.1.0-fips"},
 				},
 			},
+		},
+		{
+			"fips channel name mismatch",
+			map[string]string{
+				"foo":  "foo-1.2.3",
+				"edge": "edge-2.1.0-fips",
+			},
+			fmt.Errorf("unexpected versioncheck response: channel in edge-2.1.0-fips does not match edge"),
+			Channels{},
 		},
 		{
 			"channel version mismatch",
@@ -102,7 +113,7 @@ func channelsEqual(c1, c2 Channels) bool {
 	for _, cv1 := range c1.array {
 		found := false
 		for _, cv2 := range c2.array {
-			if cv1.channel == cv2.channel && cv1.version == cv2.version && cv1.hotpatchEqual(cv2) {
+			if cv1.channel == cv2.channel && cv1.version == cv2.version && cv1.suffixEqual(cv2) {
 				found = true
 				break
 			}
@@ -119,10 +130,12 @@ func TestChannelsMatch(t *testing.T) {
 	four := int64(4)
 	channels := Channels{
 		[]channelVersion{
-			{"stable", "2.1.0", nil, "stable-2.1.0"},
-			{"foo", "1.2.3", nil, "foo-1.2.3"},
-			{"foo", "1.2.3", &four, "foo-1.2.3-4"},
-			{"version", "3.2.1", nil, "version-3.2.1"},
+			{"stable", "2.1.0", nil, false, "stable-2.1.0"},
+			{"foo", "1.2.3", nil, false, "foo-1.2.3"},
+			{"foo", "1.2.3", &four, false, "foo-1.2.3-4"},
+			{"version", "3.2.1", nil, false, "version-3.2.1"},
+			{"edge", "2.1.0", nil, false, "edge-2.1.0"},
+			{"edge", "2.1.0", nil, true, "edge-2.1.0-fips"},
 		},
 	}
 
@@ -136,6 +149,17 @@ func TestChannelsMatch(t *testing.T) {
 		{"foo-1.2.3-4", nil},
 		{"foo-1.2.3-4-buildinfo", nil},
 		{"version-3.2.1", nil},
+		// A FIPS build routes to the separate "edgeFIPS" update channel and is
+		// up-to-date with the latest FIPS version.
+		{"edge-2.1.0", nil},
+		{"edge-2.1.0-fips", nil},
+		{"edge-2.1.0-fips-buildinfo", nil},
+		{
+			// An out-of-date FIPS build is compared against the latest FIPS
+			// version in the edgeFIPS channel.
+			"edge-2.0.0-fips",
+			fmt.Errorf("is running version 2.0.0-fips but the latest edge version is 2.1.0-fips"),
+		},
 		{
 			"foo-1.2.2",
 			fmt.Errorf("is running version 1.2.2 but the latest foo version is 1.2.3"),

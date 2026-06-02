@@ -57,9 +57,9 @@ func match(expectedVersion, actualVersion string) error {
 			actual, expected)
 	}
 
-	if actual.version != expected.version || !actual.hotpatchEqual(expected) {
+	if actual.version != expected.version || !actual.suffixEqual(expected) {
 		return fmt.Errorf("is running version %s but the latest %s version is %s",
-			actual.versionWithHotpatch(), actual.channel, expected.versionWithHotpatch())
+			actual.versionWithSuffix(), actual.channel, expected.versionWithSuffix())
 	}
 
 	return nil

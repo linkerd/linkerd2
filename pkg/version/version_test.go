@@ -56,6 +56,22 @@ func TestMatch(t *testing.T) {
 			err:      errors.New("is running version 0.1.2-2 but the latest dev version is 0.1.2-3"),
 		},
 		{
+			name:     "up-to-date with fips",
+			expected: "dev-0.1.2-fips",
+			actual:   "dev-0.1.2-fips",
+		},
+		{
+			name:     "up-to-date with fips and different build info",
+			expected: "dev-0.1.2-fips",
+			actual:   "dev-0.1.2-fips-baz",
+		},
+		{
+			name:     "not up-to-date with fips",
+			expected: "dev-0.1.3-fips",
+			actual:   "dev-0.1.2-fips",
+			err:      errors.New("is running version 0.1.2-fips but the latest dev version is 0.1.3-fips"),
+		},
+		{
 			name:     "mismatched channels",
 			expected: "dev-0.1.2",
 			actual:   "git-cb21f1bc",
