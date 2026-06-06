@@ -59,6 +59,7 @@ fn grpc_route_no_conflict(p: ParentRefType) {
             },
         },
         &GRPCRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -74,6 +75,7 @@ fn grpc_route_no_conflict(p: ParentRefType) {
             },
         },
         &HTTPRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -89,6 +91,7 @@ fn grpc_route_no_conflict(p: ParentRefType) {
             },
         },
         &TLSRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -104,6 +107,7 @@ fn grpc_route_no_conflict(p: ParentRefType) {
             },
         },
         &TCPRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -140,6 +144,7 @@ fn http_route_conflict_grpc(p: ParentRefType) {
             },
         },
         &GRPCRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -176,6 +181,7 @@ fn http_route_no_conflict(p: ParentRefType) {
             },
         },
         &HTTPRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -191,6 +197,7 @@ fn http_route_no_conflict(p: ParentRefType) {
             },
         },
         &TLSRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -206,6 +213,7 @@ fn http_route_no_conflict(p: ParentRefType) {
             },
         },
         &TCPRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -242,6 +250,7 @@ fn tls_route_conflict_http(p: ParentRefType) {
             },
         },
         &HTTPRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -278,6 +287,7 @@ fn tls_route_conflict_grpc(p: ParentRefType) {
             },
         },
         &GRPCRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -314,6 +324,7 @@ fn tls_route_no_conflict(p: ParentRefType) {
             },
         },
         &TLSRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -329,6 +340,7 @@ fn tls_route_no_conflict(p: ParentRefType) {
             },
         },
         &TCPRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -365,6 +377,7 @@ fn tcp_route_conflict_grpc(p: ParentRefType) {
             },
         },
         &GRPCRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -401,6 +414,7 @@ fn tcp_route_conflict_http(p: ParentRefType) {
             },
         },
         &HTTPRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -437,6 +451,7 @@ fn tcp_route_conflict_tls(p: ParentRefType) {
             },
         },
         &TLSRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -473,6 +488,7 @@ fn tcp_route_no_conflict(p: ParentRefType) {
             },
         },
         &TCPRouteRef {
+            generation: None,
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
