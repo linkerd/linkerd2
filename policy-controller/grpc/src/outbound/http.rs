@@ -558,6 +558,7 @@ fn convert_retry(r: RouteRetry<HttpRetryCondition>) -> outbound::http_route::Ret
             min_backoff: Some(time::Duration::from_millis(25).try_into().unwrap()),
             max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
             jitter_ratio: 1.0,
+            respect_retry_after_hint: false,
         }),
         conditions: Some(r.conditions.iter().flatten().fold(
             outbound::http_route::retry::Conditions::default(),

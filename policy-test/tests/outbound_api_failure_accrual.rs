@@ -49,6 +49,7 @@ async fn consecutive_failure_accrual() {
                         min_backoff: Some(Duration::from_secs(10).try_into().unwrap()),
                         max_backoff: Some(Duration::from_secs(600).try_into().unwrap()),
                         jitter_ratio: 1.0_f32,
+                        respect_retry_after_hint: false,
                     },
                     consecutive
                         .backoff
@@ -187,6 +188,7 @@ async fn consecutive_failure_accrual_defaults_jitter() {
                         min_backoff: Some(Duration::from_secs(1).try_into().unwrap()),
                         max_backoff: Some(Duration::from_secs(60).try_into().unwrap()),
                         jitter_ratio: 1.0_f32,
+                        respect_retry_after_hint: false,
                     },
                     consecutive
                         .backoff

@@ -484,10 +484,12 @@ fn to_proto(
                         min_backoff: convert_duration("min_backoff", backoff.min_penalty),
                         max_backoff: convert_duration("max_backoff", backoff.max_penalty),
                         jitter_ratio: backoff.jitter,
+                        respect_retry_after_hint: false,
                     }),
                 },
             ),
         }),
+        ejection: None,
     });
 
     let mut http_routes = policy.http_routes.clone().into_iter().collect::<Vec<_>>();
