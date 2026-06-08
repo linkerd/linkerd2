@@ -145,6 +145,7 @@ fn convert_outbound_route(
                             min_backoff: Some(time::Duration::from_millis(25).try_into().unwrap()),
                             max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
                             jitter_ratio: 1.0,
+                            respect_retry_after_hint: false,
                         }),
                         conditions: Some(r.conditions.iter().flatten().fold(
                             outbound::grpc_route::retry::Conditions::default(),
@@ -403,6 +404,7 @@ pub(crate) fn default_outbound_egress_route(
                 min_backoff: Some(time::Duration::from_millis(25).try_into().unwrap()),
                 max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
                 jitter_ratio: 1.0,
+                respect_retry_after_hint: false,
             }),
             conditions: Some(r.conditions.iter().flatten().fold(
                 outbound::grpc_route::retry::Conditions::default(),
