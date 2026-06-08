@@ -39,10 +39,10 @@ pub struct Index {
     global_egress_network_namespace: Arc<String>,
 
     // holds a no-op sender to which all clients that have been returned
-    // a Fallback policy are subsribed. It is used to force these clients
-    // to reconnect an obtain new policy once the current one may no longer
+    // a Fallback policy are subscribed. It is used to force these clients
+    // to reconnect and obtain new policy once the current one may no longer
     // be valid
-    fallback_polcy_tx: watch::Sender<()>,
+    fallback_policy_tx: watch::Sender<()>,
 }
 
 pub mod egress_network;
@@ -477,7 +477,7 @@ impl Index {
         let cluster_networks = cluster_info.networks.clone();
         let global_egress_network_namespace = cluster_info.global_egress_network_namespace.clone();
 
-        let (fallback_polcy_tx, _) = watch::channel(());
+        let (fallback_policy_tx, _) = watch::channel(());
         Arc::new(RwLock::new(Self {
             namespaces: NamespaceIndex {
                 by_ns: HashMap::default(),
@@ -487,7 +487,7 @@ impl Index {
             egress_networks_by_ref: HashMap::default(),
             resource_info: HashMap::default(),
             cluster_networks: cluster_networks.into_iter().map(Cidr::from).collect(),
-            fallback_polcy_tx,
+            fallback_policy_tx,
             global_egress_network_namespace,
         }))
     }
@@ -499,12 +499,12 @@ impl Index {
     }
 
     pub fn fallback_policy_rx(&self) -> watch::Receiver<()> {
-        self.fallback_polcy_tx.subscribe()
+        self.fallback_policy_tx.subscribe()
     }
 
     fn reinitialize_fallback_watches(&mut self) {
         let (new_fallback_tx, _) = watch::channel(());
-        self.fallback_polcy_tx = new_fallback_tx;
+        self.fallback_policy_tx = new_fallback_tx;
     }
 
     pub fn outbound_policy_rx(
