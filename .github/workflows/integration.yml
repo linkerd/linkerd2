@@ -120,7 +120,7 @@ jobs:
         test:
           - cni-calico-deep
           - deep
-          - deep-native-sidecar
+          - deep-non-native-sidecar
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     steps:
