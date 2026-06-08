@@ -204,7 +204,9 @@ pub fn failure_accrual_consecutive(
         .as_ref()
         .expect("failure accrual must have kind");
     match kind {
-        linkerd2_proxy_api::outbound::failure_accrual::Kind::ConsecutiveFailures(accrual) => accrual,
+        linkerd2_proxy_api::outbound::failure_accrual::Kind::ConsecutiveFailures(accrual) => {
+            accrual
+        }
         linkerd2_proxy_api::outbound::failure_accrual::Kind::Unified(unified) => panic!(
             "expected failure accrual to be ConsecutiveFailures but got Unified: {unified:#?}"
         ),
