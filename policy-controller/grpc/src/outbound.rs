@@ -12,9 +12,9 @@ use linkerd2_proxy_api::{
 };
 use linkerd_policy_controller_core::{
     outbound::{
-        AppProtocol, DiscoverOutboundPolicy, ExternalPolicyStream, Kind, OutboundDiscoverTarget,
-        OutboundPolicy, OutboundPolicyStream, ParentInfo, ResourceTarget, Route,
-        WeightedEgressNetwork, WeightedService,
+        AppProtocol, Backoff, DiscoverOutboundPolicy, ExternalPolicyStream, Kind, LoadBiaserConfig,
+        OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream, ParentInfo, ResourceTarget,
+        Route, WeightedEgressNetwork, WeightedService, DEFAULT_LOAD_BIASER_PENALTY_DECAY,
     },
     routes::GroupKindNamespaceName,
 };
@@ -470,26 +470,48 @@ fn to_proto(
     allow_l5d_request_headers: bool,
     original_dst: Option<SocketAddr>,
 ) -> outbound::OutboundPolicy {
-    let backend: outbound::Backend = default_backend(&policy, original_dst);
+    // Captured before policy fields move, then folded into the balancer
+    // load once so every route backend shares one estimator.
+    let load_biaser = policy.load_biaser;
+    let honor_retry_after = policy.honor_retry_after;
+    let load = service_balancer_config(load_biaser.as_ref());
 
-    let accrual = policy.accrual.map(|accrual| outbound::FailureAccrual {
-        kind: Some(match accrual {
-            linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
-                max_failures,
-                backoff,
-            } => outbound::failure_accrual::Kind::ConsecutiveFailures(
+    let backend: outbound::Backend = default_backend(&policy, original_dst, &load);
+
+    let accrual = policy.accrual.map(|accrual| match accrual {
+        linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
+            max_failures,
+            backoff,
+        } => outbound::FailureAccrual {
+            kind: Some(outbound::failure_accrual::Kind::ConsecutiveFailures(
                 outbound::failure_accrual::ConsecutiveFailures {
                     max_failures,
-                    backoff: Some(outbound::ExponentialBackoff {
-                        min_backoff: convert_duration("min_backoff", backoff.min_penalty),
-                        max_backoff: convert_duration("max_backoff", backoff.max_penalty),
-                        jitter_ratio: backoff.jitter,
-                        respect_retry_after_hint: false,
-                    }),
+                    backoff: Some(convert_backoff(backoff, honor_retry_after)),
                 },
-            ),
-        }),
-        ejection: None,
+            )),
+            ejection: None,
+        },
+        linkerd_policy_controller_core::outbound::FailureAccrual::Unified {
+            max_failures,
+            backoff,
+            success_rate,
+        } => outbound::FailureAccrual {
+            kind: Some(outbound::failure_accrual::Kind::Unified(
+                outbound::failure_accrual::Unified {
+                    success_rate_threshold: success_rate.threshold,
+                    // The proxy-api field is named `decay` on the wire (0.20.0).
+                    // It holds the trailing sliding-window length.
+                    decay: convert_duration("success_rate_window", success_rate.window),
+                    min_requests: success_rate.min_requests,
+                    max_consecutive_failures: max_failures,
+                    // The proxy treats a missing backoff as an invalid accrual
+                    // config. The Retry-After opt-in is attached to the accrual
+                    // backoff for both kinds.
+                    backoff: Some(convert_backoff(backoff, honor_retry_after)),
+                },
+            )),
+            ejection: None,
+        },
     });
 
     let mut http_routes = policy.http_routes.clone().into_iter().collect::<Vec<_>>();
@@ -506,6 +528,7 @@ fn to_proto(
                 allow_l5d_request_headers,
                 &policy.parent_info,
                 original_dst,
+                &load,
             )
         }
         Some(AppProtocol::Http2) => {
@@ -522,6 +545,7 @@ fn to_proto(
                     allow_l5d_request_headers,
                     &policy.parent_info,
                     original_dst,
+                    &load,
                 )
             } else {
                 http_routes.sort_by(timestamp_then_name);
@@ -534,6 +558,7 @@ fn to_proto(
                     allow_l5d_request_headers,
                     &policy.parent_info,
                     original_dst,
+                    &load,
                 )
             }
         }
@@ -574,6 +599,7 @@ fn to_proto(
                     allow_l5d_request_headers,
                     &policy.parent_info,
                     original_dst,
+                    &load,
                 )
             } else if !http_routes.is_empty() {
                 http_routes.sort_by(timestamp_then_name);
@@ -586,6 +612,7 @@ fn to_proto(
                     allow_l5d_request_headers,
                     &policy.parent_info,
                     original_dst,
+                    &load,
                 )
             } else if !tls_routes.is_empty() {
                 tls_routes.sort_by(timestamp_then_name);
@@ -614,6 +641,7 @@ fn to_proto(
                     allow_l5d_request_headers,
                     &policy.parent_info,
                     original_dst,
+                    &load,
                 )
             }
         }
@@ -663,7 +691,11 @@ fn timestamp_then_name<R: Route>(
     by_ts.then_with(|| left_id.name.cmp(&right_id.name))
 }
 
-fn default_backend(policy: &OutboundPolicy, original_dst: Option<SocketAddr>) -> outbound::Backend {
+fn default_backend(
+    policy: &OutboundPolicy,
+    original_dst: Option<SocketAddr>,
+    load: &outbound::backend::balance_p2c::Load,
+) -> outbound::Backend {
     match policy.parent_info.clone() {
         ParentInfo::Service {
             authority,
@@ -691,7 +723,19 @@ fn default_backend(policy: &OutboundPolicy, original_dst: Option<SocketAddr>) ->
                             },
                         )),
                     }),
-                    load: Some(default_balancer_config()),
+                    // The response-code penalty applies only to HTTP and gRPC traffic.
+                    // An explicitly opaque service keeps the plain estimator on its
+                    // default backend. A service with no appProtocol still gets the
+                    // penalty estimator here. That backend also serves the Detect
+                    // opaque fallback and the tls and tcp traffic, where the proxy
+                    // drops the penalty and balances on round-trip time, logging once
+                    // per policy update.
+                    load: Some(match policy.app_protocol {
+                        Some(AppProtocol::Opaque) | Some(AppProtocol::Unknown(_)) => {
+                            default_balancer_config()
+                        }
+                        _ => *load,
+                    }),
                 },
             )),
         },
@@ -772,19 +816,63 @@ fn default_outbound_opaq_route(
     }
 }
 
+const BALANCER_DEFAULT_RTT: time::Duration = time::Duration::from_millis(30);
+const BALANCER_RTT_DECAY: time::Duration = time::Duration::from_secs(10);
+
 fn default_balancer_config() -> outbound::backend::balance_p2c::Load {
     outbound::backend::balance_p2c::Load::PeakEwma(outbound::backend::balance_p2c::PeakEwma {
         default_rtt: Some(
-            time::Duration::from_millis(30)
+            BALANCER_DEFAULT_RTT
                 .try_into()
                 .expect("failed to convert ewma default_rtt to protobuf"),
         ),
         decay: Some(
-            time::Duration::from_secs(10)
+            BALANCER_RTT_DECAY
                 .try_into()
                 .expect("failed to convert ewma decay to protobuf"),
         ),
     })
+}
+
+// Selects the load estimator for a service's own balancer. Without
+// penalization the plain PeakEwma applies. Penalization emits the penalty
+// estimator (PenaltyPeakEwma), which holds the penalty and the Retry-After
+// cap the biaser applies. The honor-retry-after flag is separate. It sets
+// respect_retry_after_hint on the failure-accrual backoff, which the breaker
+// bounds by its own backoff maximum.
+fn service_balancer_config(
+    load_biaser: Option<&LoadBiaserConfig>,
+) -> outbound::backend::balance_p2c::Load {
+    let Some(load_biaser) = load_biaser else {
+        return default_balancer_config();
+    };
+
+    outbound::backend::balance_p2c::Load::PenaltyPeakEwma(
+        outbound::backend::balance_p2c::PenaltyPeakEwma {
+            default_rtt: Some(
+                BALANCER_DEFAULT_RTT
+                    .try_into()
+                    .expect("failed to convert ewma default_rtt to protobuf"),
+            ),
+            decay: Some(
+                BALANCER_RTT_DECAY
+                    .try_into()
+                    .expect("failed to convert ewma decay to protobuf"),
+            ),
+            penalty: convert_duration("load_biaser_penalty", load_biaser.penalty),
+            // The proxy folds penalty_decay into its single rtt_decay EWMA, so
+            // it is not operator-tunable. The default is emitted to keep the
+            // proto representation complete.
+            penalty_decay: convert_duration(
+                "load_biaser_penalty_decay",
+                DEFAULT_LOAD_BIASER_PENALTY_DECAY,
+            ),
+            max_retry_after: convert_duration(
+                "load_biaser_max_retry_after",
+                load_biaser.max_retry_after,
+            ),
+        },
+    )
 }
 
 fn default_queue_config() -> outbound::Queue {
@@ -795,6 +883,18 @@ fn default_queue_config() -> outbound::Queue {
                 .try_into()
                 .expect("failed to convert failfast_timeout to protobuf"),
         ),
+    }
+}
+
+fn convert_backoff(
+    backoff: Backoff,
+    respect_retry_after_hint: bool,
+) -> outbound::ExponentialBackoff {
+    outbound::ExponentialBackoff {
+        min_backoff: convert_duration("min_backoff", backoff.min_penalty),
+        max_backoff: convert_duration("max_backoff", backoff.max_penalty),
+        jitter_ratio: backoff.jitter,
+        respect_retry_after_hint,
     }
 }
 

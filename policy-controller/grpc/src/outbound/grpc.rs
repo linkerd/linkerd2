@@ -1,4 +1,4 @@
-use super::{convert_duration, default_balancer_config, default_queue_config};
+use super::{convert_duration, default_queue_config};
 use crate::routes::{
     convert_host_match, convert_request_header_modifier_filter, grpc::convert_match,
 };
@@ -26,6 +26,7 @@ pub(crate) fn protocol(
     allow_l5d_request_headers: bool,
     parent_info: &ParentInfo,
     original_dst: Option<SocketAddr>,
+    load: &outbound::backend::balance_p2c::Load,
 ) -> outbound::proxy_protocol::Kind {
     let mut routes = routes
         .map(|(gknn, route)| {
@@ -38,6 +39,7 @@ pub(crate) fn protocol(
                 allow_l5d_request_headers,
                 parent_info,
                 original_dst,
+                load,
             )
         })
         .collect::<Vec<_>>();
@@ -71,6 +73,7 @@ fn convert_outbound_route(
     allow_l5d_request_headers: bool,
     parent_info: &ParentInfo,
     original_dst: Option<SocketAddr>,
+    load: &outbound::backend::balance_p2c::Load,
 ) -> outbound::GrpcRoute {
     let metadata = Some(meta::Metadata {
         kind: Some(meta::metadata::Kind::Resource(meta::Resource {
@@ -96,7 +99,7 @@ fn convert_outbound_route(
              }| {
                 let backends = backends
                     .into_iter()
-                    .map(|b| convert_backend(b, parent_info, original_dst))
+                    .map(|b| convert_backend(b, parent_info, original_dst, load))
                     .collect::<Vec<_>>();
                 let dist = if backends.is_empty() {
                     outbound::grpc_route::distribution::Kind::FirstAvailable(
@@ -183,6 +186,7 @@ fn convert_backend(
     backend: Backend,
     parent_info: &ParentInfo,
     original_dst: Option<SocketAddr>,
+    load: &outbound::backend::balance_p2c::Load,
 ) -> outbound::grpc_route::WeightedRouteBackend {
     let original_dst_port = original_dst.map(|o| o.port());
 
@@ -230,7 +234,7 @@ fn convert_backend(
                                         },
                                     )),
                                 }),
-                                load: Some(default_balancer_config()),
+                                load: Some(*load),
                             },
                         )),
                     }),
