@@ -1506,6 +1506,7 @@ dependencies = [
  "linkerd-policy-controller-k8s-api",
  "linkerd2-proxy-api",
  "maplit",
+ "prost-types",
  "rand 0.10.1",
  "regex",
  "schemars",
