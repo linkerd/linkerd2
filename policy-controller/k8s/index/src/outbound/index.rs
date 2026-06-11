@@ -241,7 +241,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         // honor-retry-after only configures the failure-accrual backoff. It
         // does nothing without a mode set.
         if honor_retry_after && accrual.is_none() {
-            tracing::warn!(
+            tracing::debug!(
                 service = name,
                 namespace = ns,
                 "balancer.alpha.linkerd.io/failure-accrual-honor-retry-after has \
@@ -432,7 +432,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         // honor-retry-after only configures the failure-accrual backoff. It
         // does nothing without a mode set.
         if honor_retry_after && accrual.is_none() {
-            tracing::warn!(
+            tracing::debug!(
                 egress_network = name,
                 namespace = ns,
                 "balancer.alpha.linkerd.io/failure-accrual-honor-retry-after has \
@@ -446,7 +446,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
             egress_network.annotations(),
             "balancer.alpha.linkerd.io/penalize-failures",
         ) {
-            Ok(true) => tracing::warn!(
+            Ok(true) => tracing::debug!(
                 egress_network = name,
                 namespace = ns,
                 "penalize-failures annotation has no effect on EgressNetwork; \
@@ -2031,7 +2031,7 @@ pub fn parse_accrual_config(
             .keys()
             .any(|k| k.starts_with(success_rate_key!("")))
         {
-            tracing::warn!(
+            tracing::debug!(
                 "success-rate annotations are set but no failure-accrual mode \
                  is configured; set balancer.linkerd.io/failure-accrual to \
                  'unified'"
@@ -2048,7 +2048,7 @@ pub fn parse_accrual_config(
             .keys()
             .any(|k| k.starts_with(success_rate_key!("")))
         {
-            tracing::warn!(
+            tracing::debug!(
                 "success-rate annotations have no effect under \
                  failure-accrual mode 'consecutive'; use mode 'unified' \
                  to enable success-rate circuit breaking"
@@ -2073,14 +2073,14 @@ pub fn parse_accrual_config(
         for key in annotations.keys() {
             if let Some(suffix) = key.strip_prefix(success_rate_key!("")) {
                 if !matches!(suffix, "-threshold" | "-window" | "-min-requests") {
-                    tracing::warn!("unrecognized success-rate annotation: {key}");
+                    tracing::debug!("unrecognized success-rate annotation: {key}");
                 }
             }
         }
 
         // Both dimensions disabled means no breaker runs at all.
         if max_failures == 0 && success_rate.threshold == 0.0 {
-            tracing::warn!(
+            tracing::debug!(
                 "unified failure-accrual has both dimensions disabled \
                  (max-failures=0 and success-rate-threshold=0); no breaker \
                  will run"
@@ -2163,7 +2163,7 @@ fn parse_success_rate_params(
     );
 
     if threshold == 0.0 {
-        tracing::warn!(
+        tracing::debug!(
             "balancer.alpha.linkerd.io/failure-accrual-success-rate-threshold=0 \
              disables success-rate circuit breaking; the success-rate window \
              will not trip the breaker"
@@ -2193,7 +2193,7 @@ fn parse_success_rate_params(
 
     // Skip the advisory when success-rate is off, like the floor above.
     if threshold != 0.0 && window < time::Duration::from_secs(1) {
-        tracing::warn!(
+        tracing::debug!(
             "balancer.alpha.linkerd.io/failure-accrual-success-rate-window={window:?} \
              is below 1s; the window is divided into ~10 fixed-duration buckets, \
              so a sub-second window gives very coarse buckets and may cause \
@@ -2219,7 +2219,7 @@ fn parse_success_rate_params(
 
     // Skip when success-rate is off, like the window advisory above.
     if threshold != 0.0 && min_requests == 0 {
-        tracing::warn!(
+        tracing::debug!(
             "balancer.alpha.linkerd.io/failure-accrual-success-rate-min-requests=0 \
              means the breaker can trip on the very first failure; \
              consider setting a higher value"
