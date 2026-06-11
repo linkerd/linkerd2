@@ -486,7 +486,8 @@ fn to_proto(
             kind: Some(outbound::failure_accrual::Kind::ConsecutiveFailures(
                 outbound::failure_accrual::ConsecutiveFailures {
                     max_failures,
-                    backoff: Some(convert_backoff(backoff, honor_retry_after)),
+                    // Consecutive failure accrual does not act on the Retry-After hint.
+                    backoff: Some(convert_backoff(backoff, false)),
                 },
             )),
             ejection: None,
@@ -838,8 +839,8 @@ fn default_balancer_config() -> outbound::backend::balance_p2c::Load {
 // penalization the plain PeakEwma applies. Penalization emits the penalty
 // estimator (PenaltyPeakEwma), which holds the penalty and the Retry-After
 // cap the biaser applies. The honor-retry-after flag is separate. It sets
-// respect_retry_after_hint on the failure-accrual backoff, which the breaker
-// bounds by its own backoff maximum.
+// respect_retry_after_hint on the unified breaker's backoff, where the
+// breaker bounds it by its own backoff maximum.
 fn service_balancer_config(
     load_biaser: Option<&LoadBiaserConfig>,
 ) -> outbound::backend::balance_p2c::Load {

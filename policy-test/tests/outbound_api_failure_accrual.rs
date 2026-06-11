@@ -567,7 +567,8 @@ async fn honor_retry_after_keeps_plain_estimator() {
                 .expect("watch must return an initial config");
             tracing::trace!(?config);
 
-            // Honoring Retry-After sets the hint on the accrual backoff.
+            // The consecutive breaker leaves the hint unset on its backoff even
+            // when honor-retry-after is on.
             detect_failure_accrual(&config, |accrual| {
                 let consecutive = failure_accrual_consecutive(accrual);
                 let backoff = consecutive
@@ -575,8 +576,8 @@ async fn honor_retry_after_keeps_plain_estimator() {
                     .as_ref()
                     .expect("backoff must be configured");
                 assert!(
-                    backoff.respect_retry_after_hint,
-                    "honor-retry-after must set respect_retry_after_hint"
+                    !backoff.respect_retry_after_hint,
+                    "consecutive accrual must not set respect_retry_after_hint"
                 );
             });
 
@@ -623,7 +624,7 @@ async fn penalize_and_honor_retry_after_combined() {
                 .expect("watch must return an initial config");
             tracing::trace!(?config);
 
-            // The backoff honors Retry-After.
+            // The consecutive breaker leaves the hint unset on its backoff.
             detect_failure_accrual(&config, |accrual| {
                 let consecutive = failure_accrual_consecutive(accrual);
                 let backoff = consecutive
@@ -631,8 +632,8 @@ async fn penalize_and_honor_retry_after_combined() {
                     .as_ref()
                     .expect("backoff must be configured");
                 assert!(
-                    backoff.respect_retry_after_hint,
-                    "honor-retry-after must set respect_retry_after_hint"
+                    !backoff.respect_retry_after_hint,
+                    "consecutive accrual must not set respect_retry_after_hint"
                 );
             });
 
