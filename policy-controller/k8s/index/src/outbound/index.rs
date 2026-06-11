@@ -231,7 +231,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         let load_biaser = parse_load_biaser_config(service.annotations())
             .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse load biaser config"))
             .unwrap_or_default();
-        let honor_retry_after = parse_balancer_toggle(
+        let honor_retry_after = parse_bool_annotation(
             service.annotations(),
             "balancer.alpha.linkerd.io/failure-accrual-honor-retry-after",
         )
@@ -422,7 +422,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         // The Retry-After opt-in is attached to the failure-accrual backoff.
         // That backoff reaches only the Service-backed route backends.
         let load_biaser = None;
-        let honor_retry_after = parse_balancer_toggle(
+        let honor_retry_after = parse_bool_annotation(
             egress_network.annotations(),
             "balancer.alpha.linkerd.io/failure-accrual-honor-retry-after",
         )
@@ -442,7 +442,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
 
         // Read the penalize-failures toggle directly to warn the operator.
         // A full load biaser parse here would only be discarded.
-        match parse_balancer_toggle(
+        match parse_bool_annotation(
             egress_network.annotations(),
             "balancer.alpha.linkerd.io/penalize-failures",
         ) {
@@ -2259,7 +2259,7 @@ pub fn parse_load_biaser_config(
     annotations: &std::collections::BTreeMap<String, String>,
 ) -> Result<Option<LoadBiaserConfig>> {
     let enabled =
-        parse_balancer_toggle(annotations, "balancer.alpha.linkerd.io/penalize-failures")?;
+        parse_bool_annotation(annotations, "balancer.alpha.linkerd.io/penalize-failures")?;
     if !enabled {
         return Ok(None);
     }
@@ -2285,13 +2285,13 @@ pub fn parse_load_biaser_config(
     }))
 }
 
-/// Reads an opt-in boolean balancer annotation. Absence is treated as `false`,
+/// Reads an opt-in boolean annotation. Absence is treated as `false`,
 /// matching the failure-accrual annotations, where an unset toggle leaves the
 /// feature off. Accepts the same token set as Go's `strconv.ParseBool`, the
 /// parser every boolean control-plane annotation already passes through.
 /// An unrecognized value is rejected. A typo surfaces rather than silently
 /// flipping the feature.
-fn parse_balancer_toggle(
+fn parse_bool_annotation(
     annotations: &std::collections::BTreeMap<String, String>,
     key: &str,
 ) -> Result<bool> {
@@ -2652,7 +2652,7 @@ mod tests {
     fn honor_retry_after_true() {
         let mut annotations = BTreeMap::new();
         annotations.insert(HONOR_RETRY_AFTER_KEY.to_string(), "true".to_string());
-        let honor = parse_balancer_toggle(&annotations, HONOR_RETRY_AFTER_KEY)
+        let honor = parse_bool_annotation(&annotations, HONOR_RETRY_AFTER_KEY)
             .expect("honor-retry-after=true should succeed");
         assert!(honor, "honor-retry-after=true should be true");
     }
@@ -2661,7 +2661,7 @@ mod tests {
     fn honor_retry_after_false() {
         let mut annotations = BTreeMap::new();
         annotations.insert(HONOR_RETRY_AFTER_KEY.to_string(), "false".to_string());
-        let honor = parse_balancer_toggle(&annotations, HONOR_RETRY_AFTER_KEY)
+        let honor = parse_bool_annotation(&annotations, HONOR_RETRY_AFTER_KEY)
             .expect("honor-retry-after=false should succeed");
         assert!(!honor, "honor-retry-after=false should be false");
     }
@@ -2669,7 +2669,7 @@ mod tests {
     #[test]
     fn honor_retry_after_absent_is_false() {
         let annotations = BTreeMap::new();
-        let honor = parse_balancer_toggle(&annotations, HONOR_RETRY_AFTER_KEY)
+        let honor = parse_bool_annotation(&annotations, HONOR_RETRY_AFTER_KEY)
             .expect("absent annotation should succeed");
         assert!(!honor, "absent annotation should be false");
     }
@@ -2678,7 +2678,7 @@ mod tests {
     fn honor_retry_after_whitespace_true_accepted() {
         let mut annotations = BTreeMap::new();
         annotations.insert(HONOR_RETRY_AFTER_KEY.to_string(), " true ".to_string());
-        let honor = parse_balancer_toggle(&annotations, HONOR_RETRY_AFTER_KEY)
+        let honor = parse_bool_annotation(&annotations, HONOR_RETRY_AFTER_KEY)
             .expect("whitespace-padded 'true' should succeed");
         assert!(honor, "whitespace-padded 'true' should be true");
     }
@@ -2687,7 +2687,7 @@ mod tests {
     fn honor_retry_after_invalid_value_rejected() {
         let mut annotations = BTreeMap::new();
         annotations.insert(HONOR_RETRY_AFTER_KEY.to_string(), "sometimes".to_string());
-        let err = parse_balancer_toggle(&annotations, HONOR_RETRY_AFTER_KEY)
+        let err = parse_bool_annotation(&annotations, HONOR_RETRY_AFTER_KEY)
             .expect_err("sometimes should be rejected");
         assert!(
             err.to_string().contains("'sometimes'"),
