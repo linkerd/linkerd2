@@ -33,7 +33,7 @@ rules:
 - apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["get"]
-  resourceNames: ["linkerd-config"]
+  resourceNames: ["linkerd-config", "linkerd-identity-trust-roots-local", "linkerd-identity-trust-roots"]
 - apiGroups: [""]
   resources: ["events"]
   verbs: ["create", "patch"]
