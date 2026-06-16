@@ -12,7 +12,7 @@ testdir=$bindir/../test/integration
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep deep-native-sidecar viz tracing external helm-upgrade uninstall upgrade-edge default-policy-deny rsa-ca)
+export default_test_names=(deep deep-non-native-sidecar viz tracing external helm-upgrade uninstall upgrade-edge default-policy-deny rsa-ca)
 export external_resource_test_names=(external-resources)
 # TODO(alpeb): add test cni-calico-deep-dual-stack
 export dual_stack_test_names=(deep-dual-stack)
@@ -25,7 +25,7 @@ tests_usage() {
 
 Optionally specify a test with the --name flag: [${all_test_names[*]}]
 
-Note: The cluster-domain, deep-native-sidecar cni-calico-deep and multicluster tests require a custom cluster configuration (see bin/_test-helpers.sh)
+Note: The cluster-domain, deep-non-native-sidecar cni-calico-deep and multicluster tests require a custom cluster configuration (see bin/_test-helpers.sh)
 
 Usage:
     ${progname} [--images docker|archive|skip] [--name test-name] [--skip-cluster-create] /path/to/linkerd
@@ -445,8 +445,8 @@ run_deep_test() {
   run_test "$testdir/deep/..."
 }
 
-run_deep-native-sidecar_test() {
-  run_test "$testdir/deep/..." --native-sidecar
+run_deep-non-native-sidecar_test() {
+  run_test "$testdir/deep/..." --non-native-sidecar
 }
 
 run_deep-dual-stack_test() {
