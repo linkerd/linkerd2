@@ -2,6 +2,8 @@ mod annotation;
 mod authorization_policy;
 mod grpc_routes;
 mod http_routes;
+mod meshtls_authentication;
+mod network_authentication;
 mod ratelimit_policy;
 mod server_authorization;
 
@@ -67,6 +69,82 @@ const DEFAULTS: [DefaultPolicy; 6] = [
     },
     DefaultPolicy::Audit,
 ];
+
+fn mk_authorization_policy(
+    ns: impl ToString,
+    name: impl ToString,
+    server: Option<impl ToString>,
+    authns: impl IntoIterator<Item = NamespacedTargetRef>,
+) -> k8s::policy::AuthorizationPolicy {
+    k8s::policy::AuthorizationPolicy {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: k8s::policy::AuthorizationPolicySpec {
+            target_ref: match server {
+                Some(server) => LocalTargetRef {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: "Server".to_string(),
+                    name: server.to_string(),
+                },
+                None => LocalTargetRef {
+                    group: Some("core".to_string()),
+                    kind: "Namespace".to_string(),
+                    name: ns.to_string(),
+                },
+            },
+            required_authentication_refs: authns.into_iter().collect(),
+        },
+    }
+}
+
+fn mk_meshtls_authentication(
+    ns: impl ToString,
+    name: impl ToString,
+    identities: impl IntoIterator<Item = String>,
+    refs: impl IntoIterator<Item = NamespacedTargetRef>,
+) -> k8s::policy::MeshTLSAuthentication {
+    let identities = identities.into_iter().collect::<Vec<_>>();
+    let identity_refs = refs.into_iter().collect::<Vec<_>>();
+    k8s::policy::MeshTLSAuthentication {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: k8s::policy::MeshTLSAuthenticationSpec {
+            identities: if identities.is_empty() {
+                None
+            } else {
+                Some(identities)
+            },
+            identity_refs: if identity_refs.is_empty() {
+                None
+            } else {
+                Some(identity_refs)
+            },
+        },
+    }
+}
+
+fn mk_network_authentication(
+    ns: impl ToString,
+    name: impl ToString,
+    networks: impl IntoIterator<Item = k8s::policy::network_authentication::Network>,
+) -> k8s::policy::NetworkAuthentication {
+    k8s::policy::NetworkAuthentication {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: k8s::policy::NetworkAuthenticationSpec {
+            networks: networks.into_iter().collect(),
+        },
+    }
+}
 
 pub fn mk_pod_with_containers(
     ns: impl ToString,
