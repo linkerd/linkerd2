@@ -28,7 +28,6 @@ import (
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/engine"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -206,51 +205,6 @@ func checkNoConfig(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
 	return nil
 }
 
-type GatewayAPICRDs int
-
-const (
-	Absent GatewayAPICRDs = iota
-	Linkerd
-	External
-)
-
-// checkGatewayAPICRDs returns true if the Gateway API CRDs are installed in the
-// cluster, and false otherwise.
-func checkGatewayAPICRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI) (GatewayAPICRDs, error) {
-	crds := k8sAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions()
-	result := Absent
-	names := []string{
-		"httproutes.gateway.networking.k8s.io",
-		"grpcroutes.gateway.networking.k8s.io",
-	}
-	for _, name := range names {
-		crd, err := crds.Get(ctx, name, metav1.GetOptions{})
-		if err == nil && crd != nil {
-			if crd.Annotations[k8s.CreatedByAnnotation] != "" {
-				return Linkerd, nil
-			}
-			result = External
-			if !crdIncludesV1(crd) {
-				return result, fmt.Errorf("the %s CRD is missing the v1 version, please upgrade to Gateway API v1.1.1 or later", name)
-			}
-		} else if kerrors.IsNotFound(err) {
-			// No action if CRD is not found.
-		} else {
-			return Absent, err
-		}
-	}
-	return result, nil
-}
-
-func crdIncludesV1(crd *v1.CustomResourceDefinition) bool {
-	for _, version := range crd.Spec.Versions {
-		if version.Name == "v1" {
-			return true
-		}
-	}
-	return false
-}
-
 func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, options valuespkg.Options, format string) error {
 	if err := checkNoConfig(ctx, k8sAPI); err != nil {
 		return err
@@ -390,14 +344,14 @@ func renderChartToBuffer(files []*loader.BufferedFile, values map[string]interfa
 	return &buf, vals, nil
 }
 
-func updateDefaultValues(installed GatewayAPICRDs, defaultValues map[string]interface{}) map[string]interface{} {
-	if installed == Absent {
+func updateDefaultValues(installed healthcheck.GatewayAPICRDs, defaultValues map[string]interface{}) map[string]interface{} {
+	if installed == healthcheck.GatewayAPIAbsent {
 		// if GW API is not installed, default to false
 		defaultValues["installGatewayAPI"] = false
-	} else if installed == Linkerd {
+	} else if installed == healthcheck.GatewayAPILinkerd {
 		// if it is installed by Linkerd, default to true
 		defaultValues["installGatewayAPI"] = true
-	} else if installed == External {
+	} else if installed == healthcheck.GatewayAPIExternal {
 		// if it is external, default to false as we are not managing it
 		defaultValues["installGatewayAPI"] = false
 	}
@@ -405,7 +359,7 @@ func updateDefaultValues(installed GatewayAPICRDs, defaultValues map[string]inte
 	return defaultValues
 }
 
-func validateFinalValues(installed GatewayAPICRDs, finalValues map[string]interface{}) error {
+func validateFinalValues(installed healthcheck.GatewayAPICRDs, finalValues map[string]interface{}) error {
 	installing := false
 
 	if installGatewayAPI, ok := finalValues["installGatewayAPI"]; ok {
@@ -416,21 +370,17 @@ func validateFinalValues(installed GatewayAPICRDs, finalValues map[string]interf
 		installing = enableHttpRoutes == true
 	}
 
-	if installed == Absent {
+	if installed == healthcheck.GatewayAPIAbsent {
 		if !installing {
 			// if we are not installing GW API Resources and they are not present, error
-			return errors.New(`The Gateway API CRDs must be installed prior to installing Linkerd. Run:
-
-kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
-
-or see https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api for more options.`)
+			return healthcheck.GatewayAPICRDsMissingError()
 		}
-	} else if installed == Linkerd {
+	} else if installed == healthcheck.GatewayAPILinkerd {
 		if !installing {
 			// if they are installed and managed by Linkerd, we cannot uninstall them
 			return errors.New("Linkerd is providing GW API, but your current install configuration will remove it")
 		}
-	} else if installed == External {
+	} else if installed == healthcheck.GatewayAPIExternal {
 		if installing {
 			// if they are installed but are external, we cannot be installing as well
 			return errors.New("Linkerd cannot install the Gateway API CRDs because they are already installed by an external source. Please set `installGatewayAPI` to `false`.")
@@ -476,7 +426,7 @@ func renderCRDs(ctx context.Context, k *k8s.KubernetesAPI, w io.Writer, options 
 	// If any of the Gateway API CRDs are installed, we default to rendering the
 	// Gateway API CRDs.
 	if k != nil {
-		installed, err := checkGatewayAPICRDs(ctx, k)
+		installed, err := healthcheck.CheckGatewayAPICRDs(ctx, k)
 		if err != nil {
 			return err
 		}
