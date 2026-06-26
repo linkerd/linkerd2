@@ -1,12 +1,6 @@
 name: Proto
 
-on:
-  pull_request:
-    paths:
-      - .github/workflows/proto.yml
-      - bin/protoc*
-      - "**/*.proto"
-      - "**/gen/**/*.go"
+on: pull_request
 
 permissions:
   contents: read
@@ -15,7 +9,7 @@ jobs:
   proto-diff:
     timeout-minutes: 10
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v49-go
+    container: ghcr.io/alpeb/dev:v50-go
     steps:
       - run: apt update && apt install -y unzip
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
