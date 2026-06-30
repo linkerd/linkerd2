@@ -4,13 +4,17 @@ use crate::{
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
-use anyhow::{bail, ensure, Result};
+use anyhow::{bail, ensure, Context, Result};
 use egress_network::EgressNetwork;
 use linkerd_policy_controller_core::{
     outbound::{
         AppProtocol, Backend, Backoff, FailureAccrual, GrpcRetryCondition, GrpcRoute,
-        HttpRetryCondition, HttpRoute, Kind, OutboundDiscoverTarget, OutboundPolicy, ParentInfo,
-        ResourceTarget, RouteRetry, RouteSet, RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy,
+        HttpRetryCondition, HttpRoute, Kind, LoadBiaserConfig, OutboundDiscoverTarget,
+        OutboundPolicy, ParentInfo, ResourceTarget, RouteRetry, RouteSet, RouteTimeouts,
+        SuccessRateConfig, TcpRoute, TlsRoute, TrafficPolicy, DEFAULT_LOAD_BIASER_MAX_RETRY_AFTER,
+        DEFAULT_LOAD_BIASER_PENALTY, DEFAULT_SUCCESS_RATE_MIN_REQUESTS,
+        DEFAULT_SUCCESS_RATE_THRESHOLD, DEFAULT_SUCCESS_RATE_WINDOW, MAX_SUCCESS_RATE_MIN_REQUESTS,
+        MIN_SUCCESS_RATE_WINDOW,
     },
     routes::GroupKindNamespaceName,
 };
@@ -39,10 +43,10 @@ pub struct Index {
     global_egress_network_namespace: Arc<String>,
 
     // holds a no-op sender to which all clients that have been returned
-    // a Fallback policy are subsribed. It is used to force these clients
-    // to reconnect an obtain new policy once the current one may no longer
+    // a Fallback policy are subscribed. It is used to force these clients
+    // to reconnect and obtain new policy once the current one may no longer
     // be valid
-    fallback_polcy_tx: watch::Sender<()>,
+    fallback_policy_tx: watch::Sender<()>,
 }
 
 pub mod egress_network;
@@ -101,6 +105,8 @@ struct Namespace {
 struct ResourceInfo {
     app_protocols: PortMap<AppProtocol>,
     accrual: Option<FailureAccrual>,
+    load_biaser: Option<LoadBiaserConfig>,
+    honor_retry_after: bool,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
     timeouts: RouteTimeouts,
@@ -122,6 +128,8 @@ struct ResourceRoutes {
     watches_by_ns: HashMap<String, RoutesWatch>,
     app_protocol: Option<AppProtocol>,
     accrual: Option<FailureAccrual>,
+    load_biaser: Option<LoadBiaserConfig>,
+    honor_retry_after: bool,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
     timeouts: RouteTimeouts,
@@ -132,6 +140,8 @@ struct RoutesWatch {
     parent_info: ParentInfo,
     app_protocol: Option<AppProtocol>,
     accrual: Option<FailureAccrual>,
+    load_biaser: Option<LoadBiaserConfig>,
+    honor_retry_after: bool,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
     timeouts: RouteTimeouts,
@@ -214,10 +224,30 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
     fn apply(&mut self, service: Service) {
         let name = service.name_unchecked();
         let ns = service.namespace().expect("Service must have a namespace");
-        tracing::debug!(name, ns, "indexing service");
+        tracing::debug!(service = name, namespace = ns, "indexing service");
         let accrual = parse_accrual_config(service.annotations())
             .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse accrual config"))
             .unwrap_or_default();
+        let load_biaser = parse_load_biaser_config(service.annotations())
+            .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse load biaser config"))
+            .unwrap_or_default();
+        let honor_retry_after = parse_bool_annotation(
+            service.annotations(),
+            "balancer.alpha.linkerd.io/failure-accrual-honor-retry-after",
+        )
+        .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse honor-retry-after toggle"))
+        .unwrap_or_default();
+
+        // honor-retry-after only configures the failure-accrual backoff. It
+        // does nothing without a mode set.
+        if honor_retry_after && accrual.is_none() {
+            tracing::debug!(
+                service = name,
+                namespace = ns,
+                "balancer.alpha.linkerd.io/failure-accrual-honor-retry-after has \
+                 no effect without a failure-accrual mode"
+            );
+        }
 
         let mut app_protocols = service
             .spec
@@ -321,6 +351,8 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         let service_info = ResourceInfo {
             app_protocols,
             accrual,
+            load_biaser,
+            honor_retry_after,
             http_retry,
             grpc_retry,
             timeouts,
@@ -376,10 +408,59 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         let ns = egress_network
             .namespace()
             .expect("EgressNetwork must have a namespace");
-        tracing::debug!(name, ns, "indexing EgressNetwork");
+        tracing::debug!(
+            egress_network = name,
+            namespace = ns,
+            "indexing EgressNetwork"
+        );
         let accrual = parse_accrual_config(egress_network.annotations())
-            .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse accrual config"))
+            .map_err(|error| tracing::warn!(%error, egress_network=name, namespace=ns, "Failed to parse accrual config"))
             .unwrap_or_default();
+        // EgressNetwork's default backend forwards without a balancer. The
+        // penalty estimator never applies there. Route backends that resolve
+        // to Services do balance, and the code below disables their penalty.
+        // The Retry-After opt-in is attached to the failure-accrual backoff.
+        // That backoff reaches only the Service-backed route backends.
+        let load_biaser = None;
+        let honor_retry_after = parse_bool_annotation(
+            egress_network.annotations(),
+            "balancer.alpha.linkerd.io/failure-accrual-honor-retry-after",
+        )
+        .map_err(|error| tracing::warn!(%error, egress_network=name, namespace=ns, "Failed to parse honor-retry-after toggle"))
+        .unwrap_or_default();
+
+        // honor-retry-after only configures the failure-accrual backoff. It
+        // does nothing without a mode set.
+        if honor_retry_after && accrual.is_none() {
+            tracing::debug!(
+                egress_network = name,
+                namespace = ns,
+                "balancer.alpha.linkerd.io/failure-accrual-honor-retry-after has \
+                 no effect without a failure-accrual mode"
+            );
+        }
+
+        // Read the penalize-failures toggle directly to warn the operator.
+        // A full load biaser parse here would only be discarded.
+        match parse_bool_annotation(
+            egress_network.annotations(),
+            "balancer.alpha.linkerd.io/penalize-failures",
+        ) {
+            Ok(true) => tracing::debug!(
+                egress_network = name,
+                namespace = ns,
+                "penalize-failures annotation has no effect on EgressNetwork; \
+                 the forward path has no balancer and Service-backed routes \
+                 drop the penalty"
+            ),
+            Ok(false) => {}
+            Err(error) => tracing::warn!(
+                %error,
+                egress_network = name,
+                namespace = ns,
+                "Failed to parse penalize-failures toggle"
+            ),
+        }
         let opaque_ports = ports_annotation(
             egress_network.annotations(),
             "config.linkerd.io/opaque-ports",
@@ -391,14 +472,14 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
             .collect();
 
         let timeouts = parse_timeouts(egress_network.annotations())
-            .map_err(|error| tracing::warn!(%error, service=name, namespace=ns, "Failed to parse timeouts"))
+            .map_err(|error| tracing::warn!(%error, egress_network=name, namespace=ns, "Failed to parse timeouts"))
             .unwrap_or_default();
 
         let http_retry = http::parse_http_retry(egress_network.annotations()).map_err(|error| {
-            tracing::warn!(%error, service=name, namespace=ns, "Failed to parse http retry")
+            tracing::warn!(%error, egress_network=name, namespace=ns, "Failed to parse http retry")
         }).unwrap_or_default();
         let grpc_retry = grpc::parse_grpc_retry(egress_network.annotations()).map_err(|error| {
-            tracing::warn!(%error, service=name, namespace=ns, "Failed to parse grpc retry")
+            tracing::warn!(%error, egress_network=name, namespace=ns, "Failed to parse grpc retry")
         }).unwrap_or_default();
 
         let egress_net_ref = ResourceRef {
@@ -421,6 +502,8 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         let egress_network_info = ResourceInfo {
             app_protocols,
             accrual,
+            load_biaser,
+            honor_retry_after,
             http_retry,
             grpc_retry,
             timeouts,
@@ -473,7 +556,7 @@ impl Index {
         let cluster_networks = cluster_info.networks.clone();
         let global_egress_network_namespace = cluster_info.global_egress_network_namespace.clone();
 
-        let (fallback_polcy_tx, _) = watch::channel(());
+        let (fallback_policy_tx, _) = watch::channel(());
         Arc::new(RwLock::new(Self {
             namespaces: NamespaceIndex {
                 by_ns: HashMap::default(),
@@ -483,7 +566,7 @@ impl Index {
             egress_networks_by_ref: HashMap::default(),
             resource_info: HashMap::default(),
             cluster_networks: cluster_networks.into_iter().map(Cidr::from).collect(),
-            fallback_polcy_tx,
+            fallback_policy_tx,
             global_egress_network_namespace,
         }))
     }
@@ -495,12 +578,12 @@ impl Index {
     }
 
     pub fn fallback_policy_rx(&self) -> watch::Receiver<()> {
-        self.fallback_polcy_tx.subscribe()
+        self.fallback_policy_tx.subscribe()
     }
 
     fn reinitialize_fallback_watches(&mut self) {
         let (new_fallback_tx, _) = watch::channel(());
-        self.fallback_polcy_tx = new_fallback_tx;
+        self.fallback_policy_tx = new_fallback_tx;
     }
 
     pub fn outbound_policy_rx(
@@ -1252,6 +1335,8 @@ impl Namespace {
             resource_routes.update_resource(
                 app_protocol,
                 resource.accrual,
+                resource.load_biaser,
+                resource.honor_retry_after,
                 resource.http_retry.clone(),
                 resource.grpc_retry.clone(),
                 resource.timeouts.clone(),
@@ -1337,12 +1422,16 @@ impl Namespace {
                 };
                 let mut app_protocol = None;
                 let mut accrual = None;
+                let mut load_biaser = None;
+                let mut honor_retry_after = false;
                 let mut http_retry = None;
                 let mut grpc_retry = None;
                 let mut timeouts = Default::default();
                 if let Some(resource) = resource_info.get(&resource_ref) {
                     app_protocol = resource.app_protocols.get(&rp.port).cloned();
                     accrual = resource.accrual;
+                    load_biaser = resource.load_biaser;
+                    honor_retry_after = resource.honor_retry_after;
                     http_retry = resource.http_retry.clone();
                     grpc_retry = resource.grpc_retry.clone();
                     timeouts = resource.timeouts.clone();
@@ -1383,6 +1472,8 @@ impl Namespace {
                     parent_info,
                     app_protocol,
                     accrual,
+                    load_biaser,
+                    honor_retry_after,
                     http_retry,
                     grpc_retry,
                     timeouts,
@@ -1604,6 +1695,8 @@ impl ResourceRoutes {
                 port: self.port,
                 app_protocol: self.app_protocol.clone(),
                 accrual: self.accrual,
+                load_biaser: self.load_biaser,
+                honor_retry_after: self.honor_retry_after,
                 http_retry: self.http_retry.clone(),
                 grpc_retry: self.grpc_retry.clone(),
                 timeouts: self.timeouts.clone(),
@@ -1622,6 +1715,8 @@ impl ResourceRoutes {
                 watch: sender,
                 app_protocol: self.app_protocol.clone(),
                 accrual: self.accrual,
+                load_biaser: self.load_biaser,
+                honor_retry_after: self.honor_retry_after,
                 http_retry: self.http_retry.clone(),
                 grpc_retry: self.grpc_retry.clone(),
                 timeouts: self.timeouts.clone(),
@@ -1717,10 +1812,13 @@ impl ResourceRoutes {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn update_resource(
         &mut self,
         app_protocol: Option<AppProtocol>,
         accrual: Option<FailureAccrual>,
+        load_biaser: Option<LoadBiaserConfig>,
+        honor_retry_after: bool,
         http_retry: Option<RouteRetry<HttpRetryCondition>>,
         grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
         timeouts: RouteTimeouts,
@@ -1728,6 +1826,8 @@ impl ResourceRoutes {
     ) {
         self.app_protocol = app_protocol.clone();
         self.accrual = accrual;
+        self.load_biaser = load_biaser;
+        self.honor_retry_after = honor_retry_after;
         self.http_retry = http_retry.clone();
         self.grpc_retry = grpc_retry.clone();
         self.timeouts = timeouts.clone();
@@ -1735,6 +1835,8 @@ impl ResourceRoutes {
         for watch in self.watches_by_ns.values_mut() {
             watch.app_protocol = app_protocol.clone();
             watch.accrual = accrual;
+            watch.load_biaser = load_biaser;
+            watch.honor_retry_after = honor_retry_after;
             watch.http_retry = http_retry.clone();
             watch.grpc_retry = grpc_retry.clone();
             watch.timeouts = timeouts.clone();
@@ -1834,6 +1936,16 @@ impl RoutesWatch {
                 modified = true;
             }
 
+            if self.load_biaser != policy.load_biaser {
+                policy.load_biaser = self.load_biaser;
+                modified = true;
+            }
+
+            if self.honor_retry_after != policy.honor_retry_after {
+                policy.honor_retry_after = self.honor_retry_after;
+                modified = true;
+            }
+
             if self.http_retry != policy.http_retry {
                 policy.http_retry = self.http_retry.clone();
                 modified = true;
@@ -1898,59 +2010,227 @@ impl RoutesWatch {
     }
 }
 
+/// Builds a success-rate annotation key from its suffix. The shared
+/// prefix then stays in one place.
+macro_rules! success_rate_key {
+    ($suffix:literal) => {
+        concat!(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate",
+            $suffix
+        )
+    };
+}
+
 pub fn parse_accrual_config(
     annotations: &std::collections::BTreeMap<String, String>,
 ) -> Result<Option<FailureAccrual>> {
-    annotations
-        .get("balancer.linkerd.io/failure-accrual")
-        .map(|mode| {
-            if mode == "consecutive" {
-                let max_failures = annotations
-                    .get("balancer.linkerd.io/failure-accrual-consecutive-max-failures")
-                    .map(|s| s.parse::<u32>())
-                    .transpose()?
-                    .unwrap_or(7);
+    let Some(mode) = annotations.get("balancer.linkerd.io/failure-accrual") else {
+        // Success-rate annotations only take effect under a failure-accrual
+        // mode. Warn if they are set without one.
+        if annotations
+            .keys()
+            .any(|k| k.starts_with(success_rate_key!("")))
+        {
+            tracing::debug!(
+                "success-rate annotations are set but no failure-accrual mode \
+                 is configured; set balancer.linkerd.io/failure-accrual to \
+                 'unified'"
+            );
+        }
+        return Ok(None);
+    };
 
-                let max_penalty = annotations
-                    .get("balancer.linkerd.io/failure-accrual-consecutive-max-penalty")
-                    .map(|s| parse_duration(s))
-                    .transpose()?
-                    .unwrap_or_else(|| time::Duration::from_secs(60));
+    if mode == "consecutive" {
+        // Success-rate annotations apply only in unified mode. Under
+        // consecutive mode they have no effect. Warn and keep the
+        // consecutive breaker instead of dropping the whole config.
+        if annotations
+            .keys()
+            .any(|k| k.starts_with(success_rate_key!("")))
+        {
+            tracing::debug!(
+                "success-rate annotations have no effect under \
+                 failure-accrual mode 'consecutive'; use mode 'unified' \
+                 to enable success-rate circuit breaking"
+            );
+        }
 
-                let min_penalty = annotations
-                    .get("balancer.linkerd.io/failure-accrual-consecutive-min-penalty")
-                    .map(|s| parse_duration(s))
-                    .transpose()?
-                    .unwrap_or_else(|| time::Duration::from_secs(1));
-                let jitter = annotations
-                    .get("balancer.linkerd.io/failure-accrual-consecutive-jitter-ratio")
-                    .map(|s| s.parse::<f32>())
-                    .transpose()?
-                    .unwrap_or(0.5);
-                ensure!(
-                    min_penalty <= max_penalty,
-                    "min_penalty ({min_penalty:?}) cannot exceed max_penalty ({max_penalty:?})"
-                );
-                ensure!(
-                    max_penalty > time::Duration::from_millis(0),
-                    "max_penalty cannot be zero"
-                );
-                ensure!(jitter >= 0.0, "jitter cannot be negative");
-                ensure!(jitter <= 100.0, "jitter cannot be greater than 100");
+        let (max_failures, backoff) = parse_consecutive_params(annotations)?;
 
-                Ok(FailureAccrual::Consecutive {
-                    max_failures,
-                    backoff: Backoff {
-                        min_penalty,
-                        max_penalty,
-                        jitter,
-                    },
-                })
-            } else {
-                bail!("unsupported failure accrual mode: {mode}");
+        Ok(Some(FailureAccrual::Consecutive {
+            max_failures,
+            backoff,
+        }))
+    } else if mode == "unified" {
+        // The unified breaker keeps the consecutive-failures dimension.
+        // Its parameters are read from the same annotations that the
+        // consecutive mode uses, with the same defaults.
+        let (max_failures, backoff) = parse_consecutive_params(annotations)?;
+        let success_rate = parse_success_rate_params(annotations)?;
+
+        // Warn about success-rate annotations the parser does not
+        // recognize. A typo here silently falls back to the default.
+        for key in annotations.keys() {
+            if let Some(suffix) = key.strip_prefix(success_rate_key!("")) {
+                if !matches!(suffix, "-threshold" | "-window" | "-min-requests") {
+                    tracing::debug!("unrecognized success-rate annotation: {key}");
+                }
             }
-        })
-        .transpose()
+        }
+
+        // Both dimensions disabled means no breaker runs at all.
+        if max_failures == 0 && success_rate.threshold == 0.0 {
+            tracing::debug!(
+                "unified failure-accrual has both dimensions disabled \
+                 (max-failures=0 and success-rate-threshold=0); no breaker \
+                 will run"
+            );
+        }
+
+        Ok(Some(FailureAccrual::Unified {
+            max_failures,
+            backoff,
+            success_rate,
+        }))
+    } else {
+        bail!("unsupported failure accrual mode: {mode}");
+    }
+}
+
+/// Parses the failure-accrual-consecutive-* annotations shared by the
+/// consecutive and unified accrual modes.
+fn parse_consecutive_params(
+    annotations: &std::collections::BTreeMap<String, String>,
+) -> Result<(u32, Backoff)> {
+    let max_failures = annotations
+        .get("balancer.linkerd.io/failure-accrual-consecutive-max-failures")
+        .map(|s| s.trim().parse::<u32>())
+        .transpose()?
+        .unwrap_or(7);
+
+    let max_penalty = annotations
+        .get("balancer.linkerd.io/failure-accrual-consecutive-max-penalty")
+        .map(|s| parse_duration(s))
+        .transpose()?
+        .unwrap_or_else(|| time::Duration::from_secs(60));
+
+    let min_penalty = annotations
+        .get("balancer.linkerd.io/failure-accrual-consecutive-min-penalty")
+        .map(|s| parse_duration(s))
+        .transpose()?
+        .unwrap_or_else(|| time::Duration::from_secs(1));
+    let jitter = annotations
+        .get("balancer.linkerd.io/failure-accrual-consecutive-jitter-ratio")
+        .map(|s| s.trim().parse::<f32>())
+        .transpose()?
+        .unwrap_or(0.5);
+    ensure!(
+        min_penalty <= max_penalty,
+        "min_penalty ({min_penalty:?}) cannot exceed max_penalty ({max_penalty:?})"
+    );
+    ensure!(
+        max_penalty > time::Duration::from_millis(0),
+        "max_penalty cannot be zero"
+    );
+    ensure!(jitter >= 0.0, "jitter cannot be negative");
+    ensure!(jitter <= 100.0, "jitter cannot be greater than 100");
+
+    Ok((
+        max_failures,
+        Backoff {
+            min_penalty,
+            max_penalty,
+            jitter,
+        },
+    ))
+}
+
+/// Parses the balancer.alpha.linkerd.io success-rate annotations read by the
+/// unified accrual mode.
+fn parse_success_rate_params(
+    annotations: &std::collections::BTreeMap<String, String>,
+) -> Result<SuccessRateConfig> {
+    let threshold = annotations
+        .get(success_rate_key!("-threshold"))
+        // The proto defines success_rate_threshold as a double, unlike the
+        // f32 jitter_ratio.
+        .map(|s| s.trim().parse::<f64>())
+        .transpose()?
+        .unwrap_or(DEFAULT_SUCCESS_RATE_THRESHOLD);
+    ensure!(
+        (0.0..=1.0).contains(&threshold),
+        "success-rate threshold must be between 0.0 and 1.0, got {threshold}"
+    );
+
+    if threshold == 0.0 {
+        tracing::debug!(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-threshold=0 \
+             disables success-rate circuit breaking; the success-rate window \
+             will not trip the breaker"
+        );
+    }
+
+    let window = annotations
+        .get(success_rate_key!("-window"))
+        .map(|s| parse_duration(s))
+        .transpose()?
+        .unwrap_or(DEFAULT_SUCCESS_RATE_WINDOW);
+    ensure!(
+        window > time::Duration::ZERO,
+        "success-rate-window must be greater than zero"
+    );
+    // The proxy rejects a success-rate window below 10ms, its minimum
+    // sampling window, when converting the client policy. A rejected
+    // conversion invalidates the entire policy. The proxy applies this
+    // floor only when the threshold is non-zero. Gate it the same way to
+    // keep a consecutive-only unified policy (threshold 0) intact.
+    if threshold != 0.0 {
+        ensure!(
+            window >= MIN_SUCCESS_RATE_WINDOW,
+            "success-rate-window must be at least 10ms, got {window:?}"
+        );
+    }
+
+    // Skip the advisory when success-rate is off, like the floor above.
+    if threshold != 0.0 && window < time::Duration::from_secs(1) {
+        tracing::debug!(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-window={window:?} \
+             is below 1s; the window is divided into ~10 fixed-duration buckets, \
+             so a sub-second window gives very coarse buckets and may cause \
+             spurious circuit-breaker trips"
+        );
+    }
+
+    let min_requests = annotations
+        .get(success_rate_key!("-min-requests"))
+        .map(|s| s.trim().parse::<u32>())
+        .transpose()?
+        .unwrap_or(DEFAULT_SUCCESS_RATE_MIN_REQUESTS);
+    // The proxy rejects min-requests above 1,000,000 when converting the
+    // client policy. A rejected conversion invalidates the entire policy.
+    // Like the window floor, this ceiling applies only when the threshold
+    // is non-zero. Gate it to match.
+    if threshold != 0.0 {
+        ensure!(
+            min_requests <= MAX_SUCCESS_RATE_MIN_REQUESTS,
+            "success-rate-min-requests cannot exceed 1000000, got {min_requests}"
+        );
+    }
+
+    // Skip when success-rate is off, like the window advisory above.
+    if threshold != 0.0 && min_requests == 0 {
+        tracing::debug!(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-min-requests=0 \
+             means the breaker can trip on the very first failure; \
+             consider setting a higher value"
+        );
+    }
+
+    Ok(SuccessRateConfig {
+        threshold,
+        window,
+        min_requests,
+    })
 }
 
 pub fn parse_timeouts(
@@ -1975,21 +2255,100 @@ pub fn parse_timeouts(
     })
 }
 
+pub fn parse_load_biaser_config(
+    annotations: &std::collections::BTreeMap<String, String>,
+) -> Result<Option<LoadBiaserConfig>> {
+    let enabled =
+        parse_bool_annotation(annotations, "balancer.alpha.linkerd.io/penalize-failures")?;
+    if !enabled {
+        return Ok(None);
+    }
+    let penalty = parse_duration_annotation(
+        annotations,
+        "balancer.alpha.linkerd.io/load-biaser-penalty",
+        DEFAULT_LOAD_BIASER_PENALTY,
+    )?;
+    // The proxy clamps the penalty to a u32 of milliseconds. Reject a larger
+    // value here so it does not saturate silently on the wire.
+    ensure!(
+        penalty.as_millis() <= u32::MAX as u128,
+        "load-biaser-penalty exceeds the maximum supported value (~49.7 days)"
+    );
+    let max_retry_after = parse_duration_annotation(
+        annotations,
+        "balancer.alpha.linkerd.io/load-biaser-max-retry-after",
+        DEFAULT_LOAD_BIASER_MAX_RETRY_AFTER,
+    )?;
+    Ok(Some(LoadBiaserConfig {
+        penalty,
+        max_retry_after,
+    }))
+}
+
+/// Reads an opt-in boolean annotation. Absence is treated as `false`,
+/// matching the failure-accrual annotations, where an unset toggle leaves the
+/// feature off. Accepts the same token set as Go's `strconv.ParseBool`, the
+/// parser every boolean control-plane annotation already passes through.
+/// An unrecognized value is rejected. A typo surfaces rather than silently
+/// flipping the feature.
+fn parse_bool_annotation(
+    annotations: &std::collections::BTreeMap<String, String>,
+    key: &str,
+) -> Result<bool> {
+    match annotations.get(key).map(|s| s.trim()) {
+        None | Some("0" | "f" | "F" | "false" | "FALSE" | "False") => Ok(false),
+        Some("1" | "t" | "T" | "true" | "TRUE" | "True") => Ok(true),
+        Some(other) => {
+            bail!(
+                "unsupported {key} value: '{other}' (expected a boolean such as 'true' or 'false')"
+            )
+        }
+    }
+}
+
+/// Reads an optional Duration annotation. Returns `default` when the key is
+/// absent. A present value is parsed and surfaces any error.
+fn parse_duration_annotation(
+    annotations: &std::collections::BTreeMap<String, String>,
+    key: &str,
+    default: time::Duration,
+) -> Result<time::Duration> {
+    match annotations.get(key) {
+        Some(v) => parse_duration(v).with_context(|| format!("invalid {key} value")),
+        None => Ok(default),
+    }
+}
+
 fn parse_duration(s: &str) -> Result<time::Duration> {
     let s = s.trim();
+    if s.starts_with('-') {
+        bail!("duration value cannot be negative: '{s}'");
+    }
     let offset = s
         .rfind(|c: char| c.is_ascii_digit())
         .ok_or_else(|| anyhow::anyhow!("{s} does not contain a timeout duration value"))?;
     let (magnitude, unit) = s.split_at(offset + 1);
+
+    // Any fractional duration is rejected. A fractional value with a 's'
+    // suffix could in principle round to a whole number of milliseconds, but
+    // every other case in this branch also rejects, so a single message is
+    // clearer than enumerating the individual reasons.
+    if magnitude.contains('.') {
+        bail!("fractional values not supported");
+    }
+
     let magnitude = magnitude.parse::<u64>()?;
 
     let mul = match unit {
+        // Special case: "0" is valid as zero duration without requiring a unit suffix.
+        // Non-zero bare numbers (ie. "5") require a unit.
         "" if magnitude == 0 => 0,
         "ms" => 1,
         "s" => 1000,
         "m" => 1000 * 60,
         "h" => 1000 * 60 * 60,
         "d" => 1000 * 60 * 60 * 24,
+        "" => bail!("missing duration unit; did you mean '{magnitude}s' or '{magnitude}ms'?"),
         _ => bail!("invalid duration unit {unit} (expected one of 'ms', 's', 'm', 'h', or 'd')"),
     };
 
@@ -1997,4 +2356,860 @@ fn parse_duration(s: &str) -> Result<time::Duration> {
         .checked_mul(mul)
         .ok_or_else(|| anyhow::anyhow!("Timeout value {s} overflows when converted to 'ms'"))?;
     Ok(time::Duration::from_millis(ms))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeMap;
+
+    /// Returns an annotation map with the failure-accrual mode set to
+    /// "unified" plus any additional key-value pairs.
+    fn accrual_annotations(extra: &[(&str, &str)]) -> BTreeMap<String, String> {
+        let mut m = BTreeMap::new();
+        m.insert(
+            "balancer.linkerd.io/failure-accrual".to_string(),
+            "unified".to_string(),
+        );
+        for (k, v) in extra {
+            m.insert(k.to_string(), v.to_string());
+        }
+        m
+    }
+
+    #[test]
+    fn parse_duration_integer_seconds() {
+        let d = parse_duration("10s").expect("should parse");
+        assert_eq!(d, time::Duration::from_secs(10));
+    }
+
+    #[test]
+    fn parse_duration_milliseconds() {
+        let d = parse_duration("500ms").expect("should parse");
+        assert_eq!(d, time::Duration::from_millis(500));
+    }
+
+    #[test]
+    fn parse_duration_minutes() {
+        let d = parse_duration("5m").expect("should parse");
+        assert_eq!(d, time::Duration::from_secs(300));
+    }
+
+    #[test]
+    fn parse_duration_hours() {
+        let d = parse_duration("2h").expect("should parse");
+        assert_eq!(d, time::Duration::from_secs(7200));
+    }
+
+    #[test]
+    fn parse_duration_days() {
+        let d = parse_duration("1d").expect("should parse");
+        assert_eq!(d, time::Duration::from_secs(86400));
+    }
+
+    #[test]
+    fn parse_duration_zero() {
+        let d = parse_duration("0").expect("zero without unit should parse");
+        assert_eq!(d, time::Duration::ZERO);
+    }
+
+    #[test]
+    fn parse_duration_zero_seconds() {
+        let d = parse_duration("0s").expect("0s should parse");
+        assert_eq!(d, time::Duration::ZERO);
+    }
+
+    #[test]
+    fn parse_duration_zero_milliseconds() {
+        let d = parse_duration("0ms").expect("0ms should parse");
+        assert_eq!(d, time::Duration::ZERO);
+    }
+
+    #[test]
+    fn parse_duration_fractional_seconds_rejected() {
+        let err = parse_duration("0.5s").expect_err("fractional seconds should fail");
+        assert!(
+            err.to_string().contains("fractional values not supported"),
+            "should reject fractional: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_fractional_zero_seconds_rejected() {
+        let err = parse_duration("0.0s").expect_err("fractional zero should fail");
+        assert!(
+            err.to_string().contains("fractional values not supported"),
+            "should reject fractional: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_fractional_non_seconds_rejected() {
+        let err = parse_duration("0.5m").expect_err("fractional minutes should fail");
+        assert!(
+            err.to_string().contains("fractional values not supported"),
+            "should reject fractional: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_bare_number_rejected() {
+        let err = parse_duration("5").expect_err("bare number should fail");
+        assert!(
+            err.to_string().contains("missing duration unit"),
+            "should mention missing unit: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_bare_number_error_suggests_units() {
+        let err = parse_duration("100").expect_err("bare number should fail");
+        assert!(
+            err.to_string().contains("'100s' or '100ms'"),
+            "should suggest likely units: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_overflow_rejected() {
+        let err = parse_duration("999999999999999999d").expect_err("huge value should overflow");
+        assert!(
+            err.to_string().contains("overflows"),
+            "should mention overflow: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_invalid_unit_rejected() {
+        let err = parse_duration("10x").expect_err("invalid unit should fail");
+        assert!(
+            err.to_string().contains("invalid duration unit"),
+            "should mention invalid unit: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_empty_rejected() {
+        let result = parse_duration("");
+        assert!(result.is_err(), "empty string should fail");
+    }
+
+    #[test]
+    fn parse_duration_negative_seconds_rejected() {
+        let err = parse_duration("-5s").expect_err("negative should fail");
+        assert!(
+            err.to_string().contains("cannot be negative"),
+            "should mention negative: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_duration_negative_fractional_rejected() {
+        let err = parse_duration("-0.5s").expect_err("negative fractional should fail");
+        assert!(
+            err.to_string().contains("cannot be negative"),
+            "should mention negative: {err}"
+        );
+    }
+
+    #[test]
+    fn penalize_failures_true_returns_defaults() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            "true".to_string(),
+        );
+        let config = parse_load_biaser_config(&annotations)
+            .expect("penalize-failures=true should succeed")
+            .expect("should return Some");
+        assert_eq!(config.penalty, DEFAULT_LOAD_BIASER_PENALTY);
+        assert_eq!(config.max_retry_after, DEFAULT_LOAD_BIASER_MAX_RETRY_AFTER);
+    }
+
+    #[test]
+    fn penalize_failures_false_returns_none() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            "false".to_string(),
+        );
+        let result =
+            parse_load_biaser_config(&annotations).expect("penalize-failures=false should succeed");
+        assert!(
+            result.is_none(),
+            "penalize-failures=false should return None"
+        );
+    }
+
+    #[test]
+    fn penalize_failures_absent_returns_none() {
+        let annotations = BTreeMap::new();
+        let result =
+            parse_load_biaser_config(&annotations).expect("absent annotation should succeed");
+        assert!(result.is_none(), "absent annotation should return None");
+    }
+
+    #[test]
+    fn penalize_failures_invalid_value_rejected() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            "maybe".to_string(),
+        );
+        let err = parse_load_biaser_config(&annotations).expect_err("maybe should be rejected");
+        assert!(
+            err.to_string().contains("'maybe'"),
+            "error should quote the invalid value: {err}"
+        );
+    }
+
+    #[test]
+    fn penalize_failures_empty_value_rejected_with_visible_quotes() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            "".to_string(),
+        );
+        let err =
+            parse_load_biaser_config(&annotations).expect_err("empty value should be rejected");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("''"),
+            "error should show empty value in quotes: {msg}"
+        );
+    }
+
+    #[test]
+    fn penalize_failures_whitespace_true_accepted() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            " true ".to_string(),
+        );
+        parse_load_biaser_config(&annotations)
+            .expect("whitespace-padded 'true' should succeed")
+            .expect("should return Some");
+    }
+
+    #[test]
+    fn penalize_failures_whitespace_false_returns_none() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            " false ".to_string(),
+        );
+        let result = parse_load_biaser_config(&annotations)
+            .expect("whitespace-padded 'false' should succeed");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn penalize_failures_parsebool_truthy_accepted() {
+        for value in ["True", "TRUE", "1", "t", "T"] {
+            let mut annotations = BTreeMap::new();
+            annotations.insert(
+                "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+                value.to_string(),
+            );
+            parse_load_biaser_config(&annotations)
+                .unwrap_or_else(|e| panic!("ParseBool truthy '{value}' should succeed: {e}"))
+                .unwrap_or_else(|| panic!("ParseBool truthy '{value}' should return Some"));
+        }
+    }
+
+    #[test]
+    fn penalize_failures_parsebool_falsy_returns_none() {
+        for value in ["False", "FALSE", "0", "f", "F"] {
+            let mut annotations = BTreeMap::new();
+            annotations.insert(
+                "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+                value.to_string(),
+            );
+            let result = parse_load_biaser_config(&annotations)
+                .unwrap_or_else(|e| panic!("ParseBool falsy '{value}' should succeed: {e}"));
+            assert!(result.is_none(), "value '{value}' should return None");
+        }
+    }
+
+    #[test]
+    fn penalize_failures_non_parsebool_rejected() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            "yes".to_string(),
+        );
+        let err = parse_load_biaser_config(&annotations).expect_err("yes should be rejected");
+        assert!(
+            err.to_string().contains("'yes'"),
+            "error should quote the invalid value: {err}"
+        );
+    }
+
+    const HONOR_RETRY_AFTER_KEY: &str =
+        "balancer.alpha.linkerd.io/failure-accrual-honor-retry-after";
+
+    #[test]
+    fn honor_retry_after_true() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(HONOR_RETRY_AFTER_KEY.to_string(), "true".to_string());
+        let honor = parse_bool_annotation(&annotations, HONOR_RETRY_AFTER_KEY)
+            .expect("honor-retry-after=true should succeed");
+        assert!(honor, "honor-retry-after=true should be true");
+    }
+
+    #[test]
+    fn honor_retry_after_false() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(HONOR_RETRY_AFTER_KEY.to_string(), "false".to_string());
+        let honor = parse_bool_annotation(&annotations, HONOR_RETRY_AFTER_KEY)
+            .expect("honor-retry-after=false should succeed");
+        assert!(!honor, "honor-retry-after=false should be false");
+    }
+
+    #[test]
+    fn honor_retry_after_absent_is_false() {
+        let annotations = BTreeMap::new();
+        let honor = parse_bool_annotation(&annotations, HONOR_RETRY_AFTER_KEY)
+            .expect("absent annotation should succeed");
+        assert!(!honor, "absent annotation should be false");
+    }
+
+    #[test]
+    fn honor_retry_after_whitespace_true_accepted() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(HONOR_RETRY_AFTER_KEY.to_string(), " true ".to_string());
+        let honor = parse_bool_annotation(&annotations, HONOR_RETRY_AFTER_KEY)
+            .expect("whitespace-padded 'true' should succeed");
+        assert!(honor, "whitespace-padded 'true' should be true");
+    }
+
+    #[test]
+    fn honor_retry_after_invalid_value_rejected() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(HONOR_RETRY_AFTER_KEY.to_string(), "sometimes".to_string());
+        let err = parse_bool_annotation(&annotations, HONOR_RETRY_AFTER_KEY)
+            .expect_err("sometimes should be rejected");
+        assert!(
+            err.to_string().contains("'sometimes'"),
+            "error should quote the invalid value: {err}"
+        );
+    }
+
+    #[test]
+    fn load_biaser_penalty_explicit_value_parsed() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-biaser-penalty".to_string(),
+            "2s".to_string(),
+        );
+        let config = parse_load_biaser_config(&annotations)
+            .expect("explicit penalty should succeed")
+            .expect("should return Some");
+        assert_eq!(config.penalty, time::Duration::from_secs(2));
+        assert_eq!(config.max_retry_after, DEFAULT_LOAD_BIASER_MAX_RETRY_AFTER);
+    }
+
+    #[test]
+    fn load_biaser_max_retry_after_explicit_value_parsed() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-biaser-max-retry-after".to_string(),
+            "60s".to_string(),
+        );
+        let config = parse_load_biaser_config(&annotations)
+            .expect("explicit max-retry-after should succeed")
+            .expect("should return Some");
+        assert_eq!(config.penalty, DEFAULT_LOAD_BIASER_PENALTY);
+        assert_eq!(config.max_retry_after, time::Duration::from_secs(60));
+    }
+
+    #[test]
+    fn load_biaser_duration_whitespace_tolerated() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-biaser-penalty".to_string(),
+            " 2s ".to_string(),
+        );
+        let config = parse_load_biaser_config(&annotations)
+            .expect("whitespace-padded duration should succeed")
+            .expect("should return Some");
+        assert_eq!(config.penalty, time::Duration::from_secs(2));
+    }
+
+    #[test]
+    fn load_biaser_invalid_duration_rejected() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-biaser-penalty".to_string(),
+            "1.5s".to_string(),
+        );
+        assert!(
+            parse_load_biaser_config(&annotations).is_err(),
+            "fractional duration should be rejected"
+        );
+    }
+
+    #[test]
+    fn load_biaser_penalty_over_u32_millis_rejected() {
+        // 50 days exceeds u32::MAX milliseconds (~49.7 days), which the proxy
+        // would otherwise saturate.
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-biaser-penalty".to_string(),
+            "50d".to_string(),
+        );
+        assert!(
+            parse_load_biaser_config(&annotations).is_err(),
+            "penalty over u32::MAX ms should be rejected"
+        );
+    }
+
+    #[test]
+    fn load_biaser_annotations_ignored_when_penalize_off() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/penalize-failures".to_string(),
+            "false".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-biaser-penalty".to_string(),
+            "2s".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/load-biaser-max-retry-after".to_string(),
+            "60s".to_string(),
+        );
+        let result = parse_load_biaser_config(&annotations)
+            .expect("disabled toggle should ignore duration annotations");
+        assert!(
+            result.is_none(),
+            "penalize-failures=false should return None even with overrides present"
+        );
+    }
+
+    #[test]
+    fn mode_unified_uses_success_rate_defaults() {
+        let annotations = accrual_annotations(&[]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("mode=unified should succeed")
+            .expect("should return Some");
+        let FailureAccrual::Unified {
+            max_failures,
+            backoff,
+            success_rate,
+        } = accrual
+        else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert_eq!(max_failures, 7);
+        assert_eq!(backoff.min_penalty, time::Duration::from_secs(1));
+        assert_eq!(backoff.max_penalty, time::Duration::from_secs(60));
+        assert!((backoff.jitter - 0.5).abs() < f32::EPSILON);
+        assert!((success_rate.threshold - 0.8).abs() < f64::EPSILON);
+        assert_eq!(success_rate.window, time::Duration::from_secs(10));
+        assert_eq!(success_rate.min_requests, 5);
+    }
+
+    #[test]
+    fn mode_unified_with_explicit_values() {
+        let annotations = accrual_annotations(&[
+            (
+                "balancer.alpha.linkerd.io/failure-accrual-success-rate-threshold",
+                "0.9",
+            ),
+            (
+                "balancer.alpha.linkerd.io/failure-accrual-success-rate-window",
+                "15s",
+            ),
+            (
+                "balancer.alpha.linkerd.io/failure-accrual-success-rate-min-requests",
+                "10",
+            ),
+            (
+                "balancer.linkerd.io/failure-accrual-consecutive-max-failures",
+                "3",
+            ),
+            (
+                "balancer.linkerd.io/failure-accrual-consecutive-min-penalty",
+                "2s",
+            ),
+        ]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("mode=unified should succeed")
+            .expect("should return Some");
+        let FailureAccrual::Unified {
+            max_failures,
+            backoff,
+            success_rate,
+        } = accrual
+        else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert_eq!(max_failures, 3);
+        assert_eq!(backoff.min_penalty, time::Duration::from_secs(2));
+        assert!((success_rate.threshold - 0.9).abs() < f64::EPSILON);
+        assert_eq!(success_rate.window, time::Duration::from_secs(15));
+        assert_eq!(success_rate.min_requests, 10);
+    }
+
+    #[test]
+    fn success_rate_threshold_whitespace_accepted() {
+        let annotations = accrual_annotations(&[(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-threshold",
+            " 0.9 ",
+        )]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("whitespace-padded threshold should succeed")
+            .expect("should return Some");
+        let FailureAccrual::Unified { success_rate, .. } = accrual else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert!((success_rate.threshold - 0.9).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn success_rate_min_requests_whitespace_accepted() {
+        let annotations = accrual_annotations(&[(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-min-requests",
+            " 5 ",
+        )]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("whitespace-padded min-requests should succeed")
+            .expect("should return Some");
+        let FailureAccrual::Unified { success_rate, .. } = accrual else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert_eq!(success_rate.min_requests, 5);
+    }
+
+    #[test]
+    fn mode_consecutive_unchanged() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.linkerd.io/failure-accrual".to_string(),
+            "consecutive".to_string(),
+        );
+        let accrual = parse_accrual_config(&annotations)
+            .expect("mode=consecutive should succeed")
+            .expect("should return Some");
+        assert_eq!(
+            accrual,
+            FailureAccrual::Consecutive {
+                max_failures: 7,
+                backoff: Backoff {
+                    min_penalty: time::Duration::from_secs(1),
+                    max_penalty: time::Duration::from_secs(60),
+                    jitter: 0.5,
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn unified_threshold_out_of_range_rejected() {
+        for value in ["-0.1", "1.5"] {
+            let annotations = accrual_annotations(&[(
+                "balancer.alpha.linkerd.io/failure-accrual-success-rate-threshold",
+                value,
+            )]);
+            let err = parse_accrual_config(&annotations)
+                .expect_err("out-of-range threshold should be rejected");
+            assert!(
+                err.to_string().contains("between 0.0 and 1.0"),
+                "error should mention the valid range: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn boolean_accrual_modes_rejected() {
+        for mode in ["true", "false"] {
+            let mut annotations = BTreeMap::new();
+            annotations.insert(
+                "balancer.linkerd.io/failure-accrual".to_string(),
+                mode.to_string(),
+            );
+            let err =
+                parse_accrual_config(&annotations).expect_err("boolean modes should be rejected");
+            assert!(
+                err.to_string().contains("unsupported failure accrual mode"),
+                "error should mention the unsupported mode: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn window_zero_rejected() {
+        let annotations = accrual_annotations(&[(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-window",
+            "0s",
+        )]);
+        let err = parse_accrual_config(&annotations).expect_err("window=0 should be rejected");
+        assert!(
+            err.to_string()
+                .contains("success-rate-window must be greater than zero"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn window_below_proxy_bound_rejected() {
+        let annotations = accrual_annotations(&[(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-window",
+            "9ms",
+        )]);
+        let err =
+            parse_accrual_config(&annotations).expect_err("window below 10ms should be rejected");
+        assert!(
+            err.to_string().contains("10ms"),
+            "error should mention the bound: {err}"
+        );
+    }
+
+    #[test]
+    fn window_at_proxy_bound_accepted() {
+        let annotations = accrual_annotations(&[(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-window",
+            "10ms",
+        )]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("window at the bound should parse")
+            .expect("should return Some");
+        let FailureAccrual::Unified { success_rate, .. } = accrual else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert_eq!(success_rate.window, MIN_SUCCESS_RATE_WINDOW);
+    }
+
+    #[test]
+    fn min_requests_zero_warns_but_succeeds() {
+        let annotations = accrual_annotations(&[(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-min-requests",
+            "0",
+        )]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("min_requests=0 should succeed with a warning")
+            .expect("should return Some");
+        let FailureAccrual::Unified { success_rate, .. } = accrual else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert_eq!(success_rate.min_requests, 0);
+    }
+
+    #[test]
+    fn threshold_zero_warns_but_succeeds() {
+        let annotations = accrual_annotations(&[(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-threshold",
+            "0.0",
+        )]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("threshold=0.0 should succeed with a warning")
+            .expect("should return Some");
+        let FailureAccrual::Unified { success_rate, .. } = accrual else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert!((success_rate.threshold - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn sub_second_window_warns_but_succeeds() {
+        let annotations = accrual_annotations(&[(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-window",
+            "500ms",
+        )]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("sub-second window should succeed with a warning")
+            .expect("should return Some");
+        let FailureAccrual::Unified { success_rate, .. } = accrual else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert_eq!(success_rate.window, time::Duration::from_millis(500));
+    }
+
+    #[test]
+    fn success_rate_annotations_ignored_under_consecutive() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.linkerd.io/failure-accrual".to_string(),
+            "consecutive".to_string(),
+        );
+        annotations.insert(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-threshold".to_string(),
+            "0.9".to_string(),
+        );
+        let accrual = parse_accrual_config(&annotations)
+            .expect("consecutive mode should keep the breaker despite success-rate annotations")
+            .expect("should return Some");
+        assert!(
+            matches!(accrual, FailureAccrual::Consecutive { .. }),
+            "expected consecutive accrual, got: {accrual:?}"
+        );
+    }
+
+    #[test]
+    fn mode_consecutive_without_success_rate_succeeds() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.linkerd.io/failure-accrual".to_string(),
+            "consecutive".to_string(),
+        );
+        let accrual = parse_accrual_config(&annotations)
+            .expect("consecutive without success-rate annotations should succeed")
+            .expect("should return Some");
+        assert!(
+            matches!(accrual, FailureAccrual::Consecutive { .. }),
+            "expected consecutive accrual, got: {accrual:?}"
+        );
+    }
+
+    #[test]
+    fn min_requests_above_proxy_bound_rejected() {
+        let annotations = accrual_annotations(&[(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-min-requests",
+            "1000001",
+        )]);
+        let err = parse_accrual_config(&annotations)
+            .expect_err("min-requests above 1000000 should be rejected");
+        assert!(
+            err.to_string().contains("1000000"),
+            "error should mention the bound: {err}"
+        );
+    }
+
+    #[test]
+    fn min_requests_at_proxy_bound_accepted() {
+        let annotations = accrual_annotations(&[(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-min-requests",
+            "1000000",
+        )]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("min-requests at the bound should parse")
+            .expect("should return Some");
+        let FailureAccrual::Unified { success_rate, .. } = accrual else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert_eq!(success_rate.min_requests, MAX_SUCCESS_RATE_MIN_REQUESTS);
+    }
+
+    #[test]
+    fn unified_threshold_zero_accepts_sub_10ms_window() {
+        let annotations = accrual_annotations(&[
+            (
+                "balancer.alpha.linkerd.io/failure-accrual-success-rate-threshold",
+                "0",
+            ),
+            (
+                "balancer.alpha.linkerd.io/failure-accrual-success-rate-window",
+                "5ms",
+            ),
+        ]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("threshold 0 should gate off the 10ms window floor")
+            .expect("should return Some");
+        let FailureAccrual::Unified { success_rate, .. } = accrual else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert_eq!(success_rate.window, time::Duration::from_millis(5));
+    }
+
+    #[test]
+    fn unified_threshold_zero_accepts_large_min_requests() {
+        let annotations = accrual_annotations(&[
+            (
+                "balancer.alpha.linkerd.io/failure-accrual-success-rate-threshold",
+                "0",
+            ),
+            (
+                "balancer.alpha.linkerd.io/failure-accrual-success-rate-min-requests",
+                "2000000",
+            ),
+        ]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("threshold 0 should gate off the min-requests ceiling")
+            .expect("should return Some");
+        let FailureAccrual::Unified { success_rate, .. } = accrual else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert_eq!(success_rate.min_requests, 2_000_000);
+    }
+
+    #[test]
+    fn success_rate_keys_without_mode_returns_none() {
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-threshold".to_string(),
+            "0.9".to_string(),
+        );
+        let result = parse_accrual_config(&annotations)
+            .expect("success-rate annotations without a mode should succeed");
+        assert!(
+            result.is_none(),
+            "no mode means no accrual, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn unified_unknown_success_rate_key_ignored() {
+        let annotations = accrual_annotations(&[(
+            "balancer.alpha.linkerd.io/failure-accrual-success-rate-thresold",
+            "0.99",
+        )]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("a typo'd success-rate key should be ignored, not rejected")
+            .expect("should return Some");
+        let FailureAccrual::Unified { success_rate, .. } = accrual else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert!(
+            (success_rate.threshold - DEFAULT_SUCCESS_RATE_THRESHOLD).abs() < f64::EPSILON,
+            "typo'd key must not be parsed; threshold should be the default"
+        );
+    }
+
+    #[test]
+    fn unified_both_dimensions_disabled_parses() {
+        let annotations = accrual_annotations(&[
+            (
+                "balancer.alpha.linkerd.io/failure-accrual-success-rate-threshold",
+                "0",
+            ),
+            (
+                "balancer.linkerd.io/failure-accrual-consecutive-max-failures",
+                "0",
+            ),
+        ]);
+        let accrual = parse_accrual_config(&annotations)
+            .expect("both dimensions disabled should still parse")
+            .expect("should return Some");
+        let FailureAccrual::Unified {
+            max_failures,
+            success_rate,
+            ..
+        } = accrual
+        else {
+            panic!("expected unified accrual, got: {accrual:?}");
+        };
+        assert_eq!(max_failures, 0);
+        assert!((success_rate.threshold - 0.0).abs() < f64::EPSILON);
+    }
 }

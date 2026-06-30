@@ -42,7 +42,7 @@ type TestHelper struct {
 	cni                           bool
 	calico                        bool
 	dualStack                     bool
-	nativeSidecar                 bool
+	nonNativeSidecar              bool
 	defaultInboundPolicy          string
 	httpClient                    http.Client
 	KubernetesHelper
@@ -207,7 +207,7 @@ func NewTestHelper() *TestHelper {
 	cni := flag.Bool("cni", false, "whether to install linkerd with CNI enabled")
 	calico := flag.Bool("calico", false, "whether to install calico CNI plugin")
 	dualStack := flag.Bool("dual-stack", false, "whether to run the dual-stack tests")
-	nativeSidecar := flag.Bool("native-sidecar", false, "whether to install using native sidecar injection")
+	nonNativeSidecar := flag.Bool("non-native-sidecar", false, "whether to install using non-native sidecar injection")
 	defaultInboundPolicy := flag.String("default-inbound-policy", "", "if non-empty, passed to --set proxy.defaultInboundPolicy at linkerd's install time")
 	flag.Parse()
 
@@ -255,7 +255,7 @@ func NewTestHelper() *TestHelper {
 		cni:                  *cni,
 		calico:               *calico,
 		dualStack:            *dualStack,
-		nativeSidecar:        *nativeSidecar,
+		nonNativeSidecar:     *nonNativeSidecar,
 		uninstall:            *uninstall,
 		defaultInboundPolicy: *defaultInboundPolicy,
 	}
@@ -409,9 +409,9 @@ func (h *TestHelper) DualStack() bool {
 	return h.dualStack
 }
 
-// NativeSidecar determines whether native sidecar injection is enabled
-func (h *TestHelper) NativeSidecar() bool {
-	return h.nativeSidecar
+// NativeSidecar determines whether non-native sidecar injection is enabled
+func (h *TestHelper) NonNativeSidecar() bool {
+	return h.nonNativeSidecar
 }
 
 // AddInstalledExtension adds an extension name to installedExtensions to

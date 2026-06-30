@@ -152,8 +152,8 @@ func TestInstall(t *testing.T) {
 		cmd = append(cmd, "--linkerd-cni-enabled")
 	}
 
-	if TestHelper.NativeSidecar() {
-		cmd = append(cmd, "--set", "proxy.nativeSidecar=true")
+	if TestHelper.NonNativeSidecar() {
+		cmd = append(cmd, "--set", "proxy.nativeSidecar=false")
 	}
 
 	if TestHelper.DualStack() {

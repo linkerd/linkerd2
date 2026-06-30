@@ -150,7 +150,15 @@ pub struct WeightedEgressNetwork {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum FailureAccrual {
-    Consecutive { max_failures: u32, backoff: Backoff },
+    Consecutive {
+        max_failures: u32,
+        backoff: Backoff,
+    },
+    Unified {
+        max_failures: u32,
+        backoff: Backoff,
+        success_rate: SuccessRateConfig,
+    },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -159,6 +167,45 @@ pub struct Backoff {
     pub max_penalty: time::Duration,
     pub jitter: f32,
 }
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct SuccessRateConfig {
+    pub threshold: f64,
+    /// Length of the trailing window over which the success ratio is
+    /// measured. The proxy samples responses into a ring of fixed-duration
+    /// buckets that span this window. The value sets a window length and
+    /// does not act as an EWMA time constant.
+    pub window: time::Duration,
+    pub min_requests: u32,
+}
+
+pub const DEFAULT_SUCCESS_RATE_THRESHOLD: f64 = 0.8;
+pub const DEFAULT_SUCCESS_RATE_WINDOW: time::Duration = time::Duration::from_secs(10);
+pub const DEFAULT_SUCCESS_RATE_MIN_REQUESTS: u32 = 5;
+
+/// Minimum success-rate window the proxy accepts. A shorter window
+/// invalidates the whole client policy (MIN_SUCCESS_RATE_DECAY in the proxy).
+pub const MIN_SUCCESS_RATE_WINDOW: time::Duration = time::Duration::from_millis(10);
+/// Maximum success-rate min-requests the proxy accepts. A larger value
+/// invalidates the whole client policy (MAX_SUCCESS_RATE_MIN_REQUESTS in the proxy).
+pub const MAX_SUCCESS_RATE_MIN_REQUESTS: u32 = 1_000_000;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct LoadBiaserConfig {
+    pub penalty: time::Duration,
+    /// Ceiling the biaser applies to a Retry-After hint before it raises the
+    /// effective RTT. The breaker honors Retry-After on its own, bounded by its
+    /// backoff maximum.
+    pub max_retry_after: time::Duration,
+}
+
+pub const DEFAULT_LOAD_BIASER_PENALTY: time::Duration = time::Duration::from_secs(5);
+/// Decay the proxy folds into its single rtt_decay EWMA. The biaser has no
+/// separate penalty-decay knob, so the default is emitted to keep the wire
+/// stable.
+pub const DEFAULT_LOAD_BIASER_PENALTY_DECAY: time::Duration = time::Duration::from_secs(10);
+
+pub const DEFAULT_LOAD_BIASER_MAX_RETRY_AFTER: time::Duration = time::Duration::from_secs(300);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Filter {
