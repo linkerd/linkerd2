@@ -16,7 +16,7 @@ jobs:
     container:
       image: golang:1.26.4
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - run: go install gotest.tools/gotestsum@v0.4.2
       - run: gotestsum -- -cover -coverprofile=coverage.out -v -mod=readonly ./...
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
@@ -31,7 +31,7 @@ jobs:
     container:
       image: node:20-stretch
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - name: Yarn setup
         shell: bash
         run: bin/scurl -o- https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
@@ -54,7 +54,7 @@ jobs:
       image: docker://rust:1.90.0
       options: --security-opt seccomp=unconfined
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - shell: bash
         run: mkdir -p target && cd target && bin/scurl -v https://github.com/xd009642/tarpaulin/releases/download/0.27.3/cargo-tarpaulin-x86_64-unknown-linux-musl.tar.gz | tar zxvf - && chmod 755 cargo-tarpaulin
       - run: target/cargo-tarpaulin tarpaulin --workspace --out Xml
