@@ -496,6 +496,18 @@ func (hc *HealthChecker) AppendCategories(categories ...*Category) *HealthChecke
 	return hc
 }
 
+func (hc *HealthChecker) InsertCategoriesBefore(targetID CategoryID, categories ...*Category) *HealthChecker {
+	var newCategories []*Category
+	for _, category := range hc.categories {
+		if category.ID == targetID {
+			newCategories = append(newCategories, categories...)
+		}
+		newCategories = append(newCategories, category)
+	}
+	hc.categories = newCategories
+	return hc
+}
+
 // GetCategories returns all the categories
 func (hc *HealthChecker) GetCategories() []*Category {
 	return hc.categories
