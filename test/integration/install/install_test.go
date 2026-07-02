@@ -379,8 +379,12 @@ func TestInstallHelm(t *testing.T) {
 		return
 	}
 
+	err := TestHelper.InstallGatewayAPI()
+	if err != nil {
+		testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
+	}
+
 	cn := fmt.Sprintf("identity.%s.cluster.local", TestHelper.GetLinkerdNamespace())
-	var err error
 	helmTLSCerts, err = tls.GenerateRootCAWithDefaults(cn)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to generate root certificate for identity",
