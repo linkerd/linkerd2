@@ -18,7 +18,7 @@ jobs:
     container: ghcr.io/linkerd/dev:v50-go
     steps:
       - run: apt update && apt install -y unzip
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: bin/protoc-go.sh
       - run: git diff --exit-code
