@@ -569,7 +569,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 			[]Checker{
 				{
 					description: "Gateway API CRDs are installed",
-					hintAnchor:  "l5d-existence-crd",
+					hintAnchor:  "gateway-api-crd",
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						return CheckGatewayAPICRDsInstalled(ctx, hc.kubeAPI)
