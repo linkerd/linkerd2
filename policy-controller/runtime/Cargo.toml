@@ -48,13 +48,13 @@ features = ["admission", "derive", "rustls-tls"]
 workspace = true
 default-features = false
 features = [
+    "aws-lc-rs",
     "clap",
     "index",
     "lease",
     "prometheus-client",
     "runtime",
     "server",
-    "rustls-tls"
 ]
 
 [dependencies.tokio]
