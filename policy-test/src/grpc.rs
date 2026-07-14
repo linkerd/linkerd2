@@ -89,6 +89,7 @@ macro_rules! assert_default_accrual_backoff {
             min_backoff: Some(std::time::Duration::from_secs(1).try_into().unwrap()),
             max_backoff: Some(std::time::Duration::from_secs(60).try_into().unwrap()),
             jitter_ratio: 0.5 as f32,
+            respect_retry_after_hint: false,
         };
         assert_eq!(&default_backoff, $backoff)
     }};

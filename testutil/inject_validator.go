@@ -431,10 +431,10 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 
 	// native sidecar annotation and flag are set explicitly to avoid relying on defaults that might change
 	if iv.NativeSidecar {
-		annotations[k8s.ProxyEnableNativeSidecarAnnotationBeta] = enabled
+		annotations[k8s.ProxyEnableNativeSidecarAnnotation] = enabled
 		flags = append(flags, "--native-sidecar")
 	} else {
-		annotations[k8s.ProxyEnableNativeSidecarAnnotationBeta] = "false"
+		annotations[k8s.ProxyEnableNativeSidecarAnnotation] = "false"
 		flags = append(flags, "--native-sidecar=false")
 	}
 

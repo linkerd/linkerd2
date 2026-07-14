@@ -1,7 +1,4 @@
 {{ define "partials.proxy" -}}
-{{ if and .Values.proxy.nativeSidecar .Values.proxy.waitBeforeExitSeconds }}
-{{ fail "proxy.nativeSidecar and waitBeforeExitSeconds cannot be used simultaneously" }}
-{{- end }}
 {{- if not (has .Values.proxy.logHTTPHeaders (list "insecure" "off" "")) }}
 {{- fail "logHTTPHeaders must be one of: insecure | off" }}
 {{- end }}
@@ -169,7 +166,7 @@ env:
 {{- fail "proxy.tracing.collector.meshIdentity.namespace must be set if proxy tracing is enabled" }}
 {{- end }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-  value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.{{ .Values.proxy.tracing.collector.meshIdentity.namespace }}.serviceaccount.identity.{{.Release.Namespace}}.{{ .Values.clusterDomain }}
+  value: {{ .Values.proxy.tracing.collector.meshIdentity.serviceAccountName }}.{{ .Values.proxy.tracing.collector.meshIdentity.namespace }}.serviceaccount.identity.{{.Release.Namespace}}.{{ $trustDomain }}
 - name: LINKERD2_PROXY_TRACE_EXTRA_ATTRIBUTES
   value: |
     {{- range $k, $v := .Values.proxy.tracing.labels }}
