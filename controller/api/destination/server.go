@@ -428,9 +428,11 @@ func (s *server) subscribeToServiceProfile(
 		// client policy API, not in the service profile API. Therefore, we
 		// return an empty destination profile which will cause the proxy to
 		// use the client policy API instead.
-
 		empty := &pb.DestinationProfile{}
-		stream.Send(empty)
+		err = stream.Send(empty)
+		if err != nil {
+			log.Warnf("Failed to send empty profile for %s: %s", fqn, err)
+		}
 		select {
 		case <-s.shutdown:
 		case <-canceled:
