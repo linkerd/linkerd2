@@ -416,6 +416,31 @@ func (s *server) subscribeToServiceProfile(
 	canceled := stream.Context().Done()
 	streamEnd := make(chan struct{})
 
+	svc, err := s.k8sAPI.Svc().Lister().Services(service.Namespace).Get(service.Name)
+	if err != nil {
+		log.Warnf("Failed to get service %s/%s: %s", service.Namespace, service.Name, err)
+		return err
+	}
+	if !s.svcDefinesPort(svc, port) {
+		log.Warnf("Service %s/%s does not define port %d", service.Namespace, service.Name, port)
+		// When the port is not defined on the service, we wish to return a
+		// Forbidden filter policy.  However, this policy is only defined in the
+		// client policy API, not in the service profile API. Therefore, we
+		// return an empty destination profile which will cause the proxy to
+		// use the client policy API instead.
+
+		empty := &pb.DestinationProfile{}
+		stream.Send(empty)
+		select {
+		case <-s.shutdown:
+		case <-canceled:
+			log.Debugf("GetProfile %s cancelled", fqn)
+		case <-streamEnd:
+			log.Errorf("GetProfile %s stream aborted", fqn)
+		}
+		return nil
+	}
+
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
@@ -588,6 +613,15 @@ func (s *server) subscribeToEndpointProfile(
 		log.Errorf("GetProfile %s:%d stream aborted", ip, port)
 	}
 	return nil
+}
+
+func (s *server) svcDefinesPort(svc *corev1.Service, port uint32) bool {
+	for _, p := range svc.Spec.Ports {
+		if uint32(p.Port) == port {
+			return true
+		}
+	}
+	return false
 }
 
 // getSvcID returns the service that corresponds to a Cluster IP address if one
