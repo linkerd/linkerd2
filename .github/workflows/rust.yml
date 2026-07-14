@@ -27,7 +27,7 @@ jobs:
   audit:
     timeout-minutes: 10
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v49-rust
+    container: ghcr.io/linkerd/dev:v50-rust
     strategy:
       matrix:
         checks:
@@ -36,25 +36,25 @@ jobs:
     # Prevent sudden announcement of a new advisory from failing Ci.
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: cargo deny --all-features check ${{ matrix.checks }}
 
   fmt:
     timeout-minutes: 5
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v49-rust
+    container: ghcr.io/linkerd/dev:v50-rust
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just rs-check-fmt
 
   clippy:
     timeout-minutes: 20
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v49-rust
+    container: ghcr.io/linkerd/dev:v50-rust
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just rs-fetch
       - run: just rs-clippy
@@ -63,9 +63,9 @@ jobs:
   check:
     timeout-minutes: 20
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v49-rust
+    container: ghcr.io/linkerd/dev:v50-rust
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just rs-fetch
       - run: just rs-check-dirs
@@ -74,9 +74,9 @@ jobs:
     name: test
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
-    container: ghcr.io/linkerd/dev:v49-rust
+    container: ghcr.io/linkerd/dev:v50-rust
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just rs-fetch
       - run: just rs-test-build
@@ -87,7 +87,7 @@ jobs:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - shell: bash
         run: |
           toolchain_version="$(./bin/rust-toolchain-version)"

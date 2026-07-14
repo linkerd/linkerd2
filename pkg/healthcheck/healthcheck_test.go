@@ -75,6 +75,89 @@ func (hc *HealthChecker) addCheckAsCategory(
 	hc.AppendCategories(testCategory)
 }
 
+func TestGatewayAPICRDChecks(t *testing.T) {
+	externalGatewayAPIManifest := `---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: httproutes.gateway.networking.k8s.io
+spec:
+  versions:
+    - name: v1
+`
+	unsupportedGatewayAPIManifest := `---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: httproutes.gateway.networking.k8s.io
+spec:
+  versions:
+    - name: v1alpha1
+`
+
+	testCases := []struct {
+		name        string
+		resources   []string
+		wantSuccess bool
+		wantErr     string
+	}{
+		{
+			name:        "passes when Gateway API CRDs are installed",
+			resources:   []string{externalGatewayAPIManifest},
+			wantSuccess: true,
+		},
+		{
+			name:        "fails when Gateway API CRDs are missing",
+			wantSuccess: false,
+			wantErr:     "The Gateway API CRDs must be installed prior to installing Linkerd",
+		},
+		{
+			name:        "fails when Gateway API CRDs do not include v1",
+			resources:   []string{unsupportedGatewayAPIManifest},
+			wantSuccess: false,
+			wantErr:     "missing the v1 version",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // pin
+		t.Run(tc.name, func(t *testing.T) {
+			hc := NewHealthChecker(
+				[]CategoryID{GatewayAPICRDChecks},
+				&Options{},
+			)
+
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI(tc.resources...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			var gotErr error
+			success, _ := hc.RunChecks(func(result *CheckResult) {
+				gotErr = result.Err
+			})
+			if success != tc.wantSuccess {
+				t.Fatalf("expected success=%v, got %v", tc.wantSuccess, success)
+			}
+
+			if tc.wantErr == "" {
+				if gotErr != nil {
+					t.Fatalf("expected no error, got %s", gotErr)
+				}
+				return
+			}
+
+			if gotErr == nil {
+				t.Fatalf("expected error containing %q", tc.wantErr)
+			}
+			if !strings.Contains(gotErr.Error(), tc.wantErr) {
+				t.Fatalf("expected error containing %q, got %q", tc.wantErr, gotErr.Error())
+			}
+		})
+	}
+}
+
 func TestHealthChecker(t *testing.T) {
 	nullObserver := func(*CheckResult) {}
 

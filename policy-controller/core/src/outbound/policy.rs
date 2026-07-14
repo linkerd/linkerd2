@@ -1,6 +1,6 @@
 use super::{
     AppProtocol, FailureAccrual, GrpcRetryCondition, GrpcRoute, HttpRetryCondition, HttpRoute,
-    RouteRetry, RouteSet, RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy,
+    LoadBiaserConfig, RouteRetry, RouteSet, RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy,
 };
 
 use std::num::NonZeroU16;
@@ -31,6 +31,8 @@ pub struct OutboundPolicy {
     pub port: NonZeroU16,
     pub app_protocol: Option<AppProtocol>,
     pub accrual: Option<FailureAccrual>,
+    pub load_biaser: Option<LoadBiaserConfig>,
+    pub honor_retry_after: bool,
     pub http_retry: Option<RouteRetry<HttpRetryCondition>>,
     pub grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
     pub timeouts: RouteTimeouts,
