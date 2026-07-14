@@ -81,6 +81,10 @@ func TestCheckPreInstall(t *testing.T) {
 		t.Skip("Skipping pre-install check for upgrade test")
 	}
 
+	if err := TestHelper.InstallGatewayAPI(); err != nil {
+		testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
+	}
+
 	if err := TestHelper.TestCheckPre(); err != nil {
 		t.Fatalf("'linkerd check --pre' command failed: %s", err)
 	}
@@ -188,11 +192,6 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			args = append(args, []string{"--skip-outbound-ports", skippedOutboundPorts}...)
 		}
 	} else {
-		err := TestHelper.InstallGatewayAPI()
-		if err != nil {
-			testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
-		}
-
 		// install CRDs first
 		exec := append([]string{cmd}, append(args, "--crds")...)
 		out, err := TestHelper.LinkerdRun(exec...)

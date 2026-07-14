@@ -54,6 +54,11 @@ const (
 	// requirements.
 	KubernetesVersionChecks CategoryID = "kubernetes-version"
 
+	// GatewayAPICRDChecks validates that the Gateway API CRDs exist.
+	// These checks are dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
+	GatewayAPICRDChecks CategoryID = "gateway-api-crd"
+
 	// LinkerdPreInstall* checks enabled by `linkerd check --pre`
 
 	// LinkerdPreInstallChecks adds checks to validate that the control plane
@@ -190,6 +195,14 @@ var ExpectedServiceAccountNames = []string{
 	"linkerd-identity",
 	"linkerd-proxy-injector",
 }
+
+type GatewayAPICRDs int
+
+const (
+	GatewayAPIAbsent GatewayAPICRDs = iota
+	GatewayAPILinkerd
+	GatewayAPIExternal
+)
 
 var (
 	retryWindow = 5 * time.Second
@@ -546,6 +559,20 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "k8s-version",
 					check: func(context.Context) error {
 						return hc.kubeAPI.CheckVersion(hc.kubeVersion)
+					},
+				},
+			},
+			false,
+		),
+		NewCategory(
+			GatewayAPICRDChecks,
+			[]Checker{
+				{
+					description: "Gateway API CRDs are installed",
+					hintAnchor:  "gateway-api-crd",
+					fatal:       true,
+					check: func(ctx context.Context) error {
+						return CheckGatewayAPICRDsInstalled(ctx, hc.kubeAPI)
 					},
 				},
 			},
@@ -2201,9 +2228,66 @@ func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesA
 	return nil
 }
 
+// CheckGatewayAPICRDs returns whether the Gateway API CRDs are installed in the
+// cluster, and whether they were created by Linkerd or an external source.
+func CheckGatewayAPICRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI) (GatewayAPICRDs, error) {
+	crds := k8sAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions()
+	result := GatewayAPIAbsent
+	names := []string{
+		"httproutes.gateway.networking.k8s.io",
+		"grpcroutes.gateway.networking.k8s.io",
+	}
+	for _, name := range names {
+		crd, err := crds.Get(ctx, name, metav1.GetOptions{})
+		if err == nil && crd != nil {
+			if crd.Annotations[k8s.CreatedByAnnotation] != "" {
+				return GatewayAPILinkerd, nil
+			}
+			result = GatewayAPIExternal
+			if !crdIncludesV1(crd) {
+				return result, fmt.Errorf("the %s CRD is missing the v1 version, please upgrade to Gateway API v1.1.1 or later", name)
+			}
+		} else if kerrors.IsNotFound(err) {
+			// No action if CRD is not found.
+		} else {
+			return GatewayAPIAbsent, err
+		}
+	}
+	return result, nil
+}
+
+// CheckGatewayAPICRDsInstalled verifies that the Gateway API CRDs are installed.
+func CheckGatewayAPICRDsInstalled(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
+	installed, err := CheckGatewayAPICRDs(ctx, k8sAPI)
+	if err != nil {
+		return err
+	}
+	if installed == GatewayAPIAbsent {
+		return GatewayAPICRDsMissingError()
+	}
+	return nil
+}
+
+func GatewayAPICRDsMissingError() error {
+	return errors.New(`The Gateway API CRDs must be installed prior to installing Linkerd. Run:
+
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+
+or see https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api for more options.`)
+}
+
 func crdHasVersion(crd *apiextv1.CustomResourceDefinition, version string) bool {
 	for _, crdVersion := range crd.Spec.Versions {
 		if crdVersion.Name == version {
+			return true
+		}
+	}
+	return false
+}
+
+func crdIncludesV1(crd *apiextv1.CustomResourceDefinition) bool {
+	for _, version := range crd.Spec.Versions {
+		if version.Name == "v1" {
 			return true
 		}
 	}
