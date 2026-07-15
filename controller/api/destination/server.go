@@ -414,7 +414,6 @@ func (s *server) subscribeToServiceProfile(
 		WithField("port", port)
 
 	canceled := stream.Context().Done()
-	streamEnd := make(chan struct{})
 
 	svc, err := s.k8sAPI.Svc().Lister().Services(service.Namespace).Get(service.Name)
 	if err != nil {
@@ -437,8 +436,6 @@ func (s *server) subscribeToServiceProfile(
 		case <-s.shutdown:
 		case <-canceled:
 			log.Debugf("GetProfile %s cancelled", fqn)
-		case <-streamEnd:
-			log.Errorf("GetProfile %s stream aborted", fqn)
 		}
 		return nil
 	}
@@ -446,6 +443,7 @@ func (s *server) subscribeToServiceProfile(
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
+	streamEnd := make(chan struct{})
 	translator, err := newProfileTranslatorWithCapacity(service, stream, log, fqn, port, streamEnd, s.config.StreamQueueCapacity)
 	if err != nil {
 		return status.Errorf(codes.Internal, "Failed to create profile translator: %s", err)
