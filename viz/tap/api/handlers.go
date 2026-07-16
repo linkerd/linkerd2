@@ -93,6 +93,12 @@ func initRouter(h *handler) *httprouter.Router {
 		if !res.namespaced {
 			route = fmt.Sprintf("/apis/%s/watch/%s/:namespace", gvk.GroupVersion().String(), res.name)
 		} else {
+			// Collection route (empty name): .../namespaces/:namespace/:resource/tap
+			// Named route: .../namespaces/:namespace/:resource/:name/tap
+			collectionRoute := fmt.Sprintf("/apis/%s/watch/namespaces/:namespace/%s", gvk.GroupVersion().String(), res.name)
+			router.GET(collectionRoute, handleRoot)
+			router.POST(collectionRoute+"/tap", h.handleTap)
+
 			route = fmt.Sprintf("/apis/%s/watch/namespaces/:namespace/%s/:name", gvk.GroupVersion().String(), res.name)
 		}
 
@@ -104,6 +110,7 @@ func initRouter(h *handler) *httprouter.Router {
 }
 
 // POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/tap
+// POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/:resource/tap
 // POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/:resource/:name/tap
 func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	namespace := p.ByName("namespace")
@@ -111,11 +118,17 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 	resource := ""
 
 	path := strings.Split(req.URL.Path, "/")
-	if len(path) == 8 {
+	switch len(path) {
+	case 8:
+		// /apis/.../watch/namespaces/:namespace/tap
 		resource = path[5]
-	} else if len(path) == 10 {
+	case 9:
+		// /apis/.../watch/namespaces/:namespace/:resource/tap
 		resource = path[7]
-	} else {
+	case 10:
+		// /apis/.../watch/namespaces/:namespace/:resource/:name/tap
+		resource = path[7]
+	default:
 		err := fmt.Errorf("invalid path: %q", req.URL.Path)
 		h.log.Error(err)
 		renderJSONError(w, err, http.StatusBadRequest)
