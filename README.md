@@ -60,7 +60,6 @@ welcome to attend, but audio and video participation is limited to Steering
 Committee members and maintainers. These meetings are currently scheduled on an
 ad-hoc basis and announced on the [linkerd-users][linkerd-users] mailing list.
 
-* [Zoom link](https://zoom.us/my/cncflinkerd)
 * [Minutes from previous meetings](https://docs.google.com/document/d/1GDNM5eosiyjVDo6YHXBMsvlpyzUldgg-XLMNzf7I404/edit)
 * [Recordings from previous meetings](https://www.youtube.com/playlist?list=PLI9FkLPXDscBHP91Ud3lyJScI4ZCjRG6F)
 
