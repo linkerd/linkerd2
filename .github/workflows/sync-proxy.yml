@@ -67,7 +67,7 @@ jobs:
     env:
       VERSION: ${{ needs.meta.outputs.name }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           token: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
       - name: Check if proxy version has changed
@@ -101,7 +101,7 @@ jobs:
           git config --global --add safe.directory "$PWD" # actions/runner#2033
           git config --global user.name "$GITHUB_USERNAME"
           git config --global user.email "$GITHUB_USERNAME"@users.noreply.github.com
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           token: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
       - name: Commit proxy version
