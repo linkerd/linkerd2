@@ -109,6 +109,24 @@ pub async fn init<T>(
         time::sleep(time::Duration::from_secs(1)).await;
     }
 
-    let (claim, _task) = runtime.spawn_lease(params).await?;
+    let (claim, task) = runtime.spawn_lease(params).await?;
+
+    // Consumers of `claim` panic if the lease watch is ever dropped, on the
+    // assumption that Kubernetes will restart the container (see
+    // https://github.com/linkerd/linkerd2/pull/10584). But since those
+    // consumers run in detached `tokio::spawn`ed tasks, such a panic is never
+    // observed by the process and the container is left running without a
+    // functioning status controller. Watch the lease task directly so that
+    // if it ever stops maintaining the watch--by returning or by
+    // panicking--the process exits and Kubernetes can restart it.
+    tokio::spawn(async move {
+        match task.await {
+            Ok(Ok(())) => tracing::error!("Lease task exited unexpectedly"),
+            Ok(Err(error)) => tracing::error!(%error, "Lease task failed"),
+            Err(error) => tracing::error!(%error, "Lease task panicked"),
+        }
+        std::process::exit(1);
+    });
+
     Ok(claim)
 }
