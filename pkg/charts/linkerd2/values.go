@@ -223,6 +223,8 @@ type (
 		IgnoreOutboundPorts string           `json:"ignoreOutboundPorts"`
 		KubeAPIServerPorts  string           `json:"kubeAPIServerPorts"`
 		SkipSubnets         string           `json:"skipSubnets"`
+		SkipInboundSubnets  string           `json:"skipInboundSubnets"`
+		SkipOutboundSubnets string           `json:"skipOutboundSubnets"`
 		LogLevel            string           `json:"logLevel"`
 		LogFormat           string           `json:"logFormat"`
 		SAMountPath         *VolumeMountPath `json:"saMountPath"`
