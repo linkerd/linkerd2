@@ -1280,7 +1280,7 @@ dependencies = [
  "kubert-prometheus-tokio",
  "parking_lot",
  "pin-project-lite",
- "prometheus-client",
+ "prometheus-client 0.24.1",
  "rustls-pki-types",
  "serde",
  "serde_json",
@@ -1300,7 +1300,7 @@ source = "git+https://github.com/linkerd/linkerd-kubert.git?tag=kubert%2Fv0.26.0
 dependencies = [
  "libc",
  "procfs",
- "prometheus-client",
+ "prometheus-client 0.24.1",
  "tracing",
 ]
 
@@ -1309,7 +1309,7 @@ name = "kubert-prometheus-tokio"
 version = "0.2.1"
 source = "git+https://github.com/linkerd/linkerd-kubert.git?tag=kubert%2Fv0.26.0#cb414cccb5099a0246f4b9b3f298f66e1bf21318"
 dependencies = [
- "prometheus-client",
+ "prometheus-client 0.24.1",
  "tokio",
  "tokio-metrics",
  "tracing",
@@ -1370,7 +1370,7 @@ dependencies = [
  "linkerd-policy-controller-core",
  "linkerd2-proxy-api",
  "maplit",
- "prometheus-client",
+ "prometheus-client 0.25.0",
  "prost-types",
  "serde",
  "serde_json",
@@ -1412,7 +1412,7 @@ dependencies = [
  "linkerd-policy-controller-k8s-api",
  "maplit",
  "parking_lot",
- "prometheus-client",
+ "prometheus-client 0.25.0",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -1432,7 +1432,7 @@ dependencies = [
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
  "parking_lot",
- "prometheus-client",
+ "prometheus-client 0.25.0",
  "serde",
  "serde_json",
  "thiserror",
@@ -1464,7 +1464,7 @@ dependencies = [
  "linkerd-policy-controller-k8s-status",
  "openssl",
  "parking_lot",
- "prometheus-client",
+ "prometheus-client 0.25.0",
  "regex",
  "serde",
  "serde_json",
@@ -1837,6 +1837,18 @@ name = "prometheus-client"
 version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cca3d75b4566b9a29fe1ed623587fb058e826eb329a0be4b7c4da1ebb2d7a6ca"
+dependencies = [
+ "dtoa",
+ "itoa",
+ "parking_lot",
+ "prometheus-client-derive-encode",
+]
+
+[[package]]
+name = "prometheus-client"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba70bf887030e45213b4a95c9b08d5a450b157f87c1d63661ed0847a12fa2aad"
 dependencies = [
  "dtoa",
  "itoa",
