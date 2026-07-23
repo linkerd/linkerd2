@@ -17,7 +17,7 @@ use std::fmt::Debug;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{sync::mpsc, time::Duration};
 use tonic::transport::Server;
-use tracing::{info, info_span, instrument, Instrument};
+use tracing::{error, info, info_span, instrument, Instrument};
 
 const DETECT_TIMEOUT: Duration = Duration::from_secs(10);
 const RECONCILIATION_PERIOD: Duration = Duration::from_secs(10);
@@ -381,11 +381,24 @@ impl Args {
                 .instrument(info_span!("egressnetworks")),
         );
 
+        // Get a readiness handle so we can mark the pod not-ready if a critical
+        // task panics, allowing the liveness probe to trigger a restart.
+        let readiness = runtime.readiness();
+
         // Spawn the status Controller reconciliation.
-        tokio::spawn(
+        let status_index_handle = tokio::spawn(
             status::Index::run(status_index.clone(), RECONCILIATION_PERIOD)
                 .instrument(info_span!("status_index")),
         );
+        {
+            let readiness = readiness.clone();
+            tokio::spawn(async move {
+                if status_index_handle.await.is_err() {
+                    error!("Status index task panicked; marking pod not ready");
+                    readiness.set(false);
+                }
+            });
+        }
 
         // Run the gRPC server, serving results by looking up against the index handle.
         tokio::spawn(grpc(
@@ -408,11 +421,20 @@ impl Args {
             Duration::from_millis(patch_timeout_ms),
             status_metrics,
         );
-        tokio::spawn(
+        let status_controller_handle = tokio::spawn(
             status_controller
                 .run()
                 .instrument(info_span!("status_controller")),
         );
+        {
+            let readiness = readiness.clone();
+            tokio::spawn(async move {
+                if status_controller_handle.await.is_err() {
+                    error!("Status controller task panicked; marking pod not ready");
+                    readiness.set(false);
+                }
+            });
+        }
 
         let runtime = runtime.spawn_server(Admission::new);
 

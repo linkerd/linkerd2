@@ -366,7 +366,7 @@ spec:
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         livenessProbe:
           httpGet:
-            path: /live
+            path: /ready
             port: policy-admin
           initialDelaySeconds: 10
           {{- with (.Values.policyController.livenessProbe).timeoutSeconds }}
