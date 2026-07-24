@@ -38,7 +38,7 @@ fn ratelimit_accepted() {
     index.write().apply(ratelimit);
 
     let expected_status = linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
-        conditions: vec![accepted()],
+        conditions: vec![accepted(None)],
         target_ref: linkerd_k8s_api::LocalTargetRef {
             group: Some("policy.linkerd.io".to_string()),
             kind: "Server".to_string(),
@@ -74,7 +74,7 @@ fn ratelimit_not_accepted_no_matching_target() {
     index.write().apply(ratelimit);
 
     let expected_status = linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
-        conditions: vec![no_matching_target()],
+        conditions: vec![no_matching_target(None)],
         target_ref: linkerd_k8s_api::LocalTargetRef {
             group: Some("policy.linkerd.io".to_string()),
             kind: "Server".to_string(),
@@ -110,7 +110,7 @@ fn ratelimit_not_accepted_already_exists() {
     index.write().apply(rl_1);
 
     let expected_status = linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
-        conditions: vec![accepted()],
+        conditions: vec![accepted(None)],
         target_ref: linkerd_k8s_api::LocalTargetRef {
             group: Some("policy.linkerd.io".to_string()),
             kind: "Server".to_string(),
@@ -130,7 +130,7 @@ fn ratelimit_not_accepted_already_exists() {
     index.write().apply(rl_2);
 
     let expected_status = linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
-        conditions: vec![ratelimit_already_exists()],
+        conditions: vec![ratelimit_already_exists(None)],
         target_ref: linkerd_k8s_api::LocalTargetRef {
             group: Some("policy.linkerd.io".to_string()),
             kind: "Server".to_string(),
@@ -215,4 +215,38 @@ fn make_ratelimit(
     };
 
     (ratelimit_id, ratelimit)
+}
+
+#[test]
+fn ratelimit_status_carries_observed_generation() {
+    let (index, mut updates_rx) = make_index_updates_rx();
+
+    let server = make_server(
+        "ns",
+        "server-1",
+        8080,
+        vec![("app", "server")],
+        vec![],
+        None,
+    );
+    index.write().apply(server);
+
+    let (ratelimit_id, mut ratelimit) = make_ratelimit("rl-1".to_string(), "server-1".to_string());
+    ratelimit.metadata.generation = Some(7);
+    index.write().apply(ratelimit);
+
+    let expected_status = linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
+        conditions: vec![accepted(Some(7))],
+        target_ref: linkerd_k8s_api::LocalTargetRef {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: "Server".to_string(),
+            name: "server-1".to_string(),
+        },
+    };
+    let expected_patch = crate::index::make_patch(&ratelimit_id, expected_status).unwrap();
+
+    let update = updates_rx.try_recv().unwrap();
+    assert_eq!(ratelimit_id, update.id);
+    assert_eq!(expected_patch, update.patch);
+    assert!(updates_rx.try_recv().is_err())
 }
