@@ -93,8 +93,8 @@ func (m *MockProm) Targets(ctx context.Context) (promv1.TargetsResult, error) {
 }
 
 // LabelNames returns the unique label names present in the block in sorted order by given time range and matchers.
-func (m *MockProm) LabelNames(ctx context.Context, matches []string, startTime time.Time, endTime time.Time, opts ...promv1.Option) ([]string, promv1.Warnings, error) {
-	return []string{}, nil, nil
+func (m *MockProm) LabelNames(ctx context.Context, matches []string, startTime time.Time, endTime time.Time, opts ...promv1.Option) (model.LabelNames, promv1.Warnings, error) {
+	return model.LabelNames{}, nil, nil
 }
 
 // Runtimeinfo returns the runtime info about Prometheus
@@ -108,7 +108,7 @@ func (m *MockProm) Metadata(ctx context.Context, metric string, limit string) (m
 }
 
 // Rules returns a list of alerting and recording rules that are currently loaded.
-func (m *MockProm) Rules(ctx context.Context) (promv1.RulesResult, error) {
+func (m *MockProm) Rules(ctx context.Context, ruleGroups []string) (promv1.RulesResult, error) {
 	return promv1.RulesResult{}, nil
 }
 
@@ -135,4 +135,14 @@ func (m *MockProm) TSDB(ctx context.Context, opts ...promv1.Option) (promv1.TSDB
 // WalReplay returns the current replay status of the wal.
 func (m *MockProm) WalReplay(ctx context.Context) (promv1.WalReplayStatus, error) {
 	return promv1.WalReplayStatus{}, nil
+}
+
+// FormatQuery formats a PromQL expression in a prettified way.
+func (m *MockProm) FormatQuery(ctx context.Context, query string) (string, error) {
+	return "", nil
+}
+
+// TSDBBlocks returns the list of currently loaded TSDB blocks and their metadata.
+func (m *MockProm) TSDBBlocks(ctx context.Context) (promv1.TSDBBlocksResult, error) {
+	return promv1.TSDBBlocksResult{}, nil
 }
