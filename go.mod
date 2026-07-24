@@ -41,14 +41,14 @@ require (
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gopkg.in/yaml.v2 v2.4.0
 	helm.sh/helm/v3 v3.21.3
-	k8s.io/api v0.36.2
-	k8s.io/apiextensions-apiserver v0.36.2
-	k8s.io/apimachinery v0.36.2
-	k8s.io/client-go v0.36.2
-	k8s.io/code-generator v0.36.2
-	k8s.io/endpointslice v0.36.2
+	k8s.io/api v0.36.3
+	k8s.io/apiextensions-apiserver v0.36.3
+	k8s.io/apimachinery v0.36.3
+	k8s.io/client-go v0.36.3
+	k8s.io/code-generator v0.36.3
+	k8s.io/endpointslice v0.36.3
 	k8s.io/klog/v2 v2.140.0
-	k8s.io/kube-aggregator v0.36.2
+	k8s.io/kube-aggregator v0.36.3
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
 	sigs.k8s.io/gateway-api v0.8.1
 	sigs.k8s.io/yaml v1.6.0
@@ -58,7 +58,7 @@ require (
 	github.com/go-openapi/swag/pools v0.27.3 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	golang.org/x/net v0.57.0 // indirect
-	k8s.io/streaming v0.36.2 // indirect
+	k8s.io/streaming v0.36.3 // indirect
 )
 
 require (
@@ -151,7 +151,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/cli-runtime v0.36.2 // indirect
-	k8s.io/component-base v0.36.2 // indirect
+	k8s.io/component-base v0.36.3 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // indirect
 	k8s.io/kubectl v0.36.2 // indirect
@@ -160,5 +160,5 @@ require (
 	sigs.k8s.io/kustomize/api v0.21.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.21.1 // indirect; indirecxt
 	sigs.k8s.io/randfill v1.0.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
+	sigs.k8s.io/structured-merge-diff/v6 v6.3.3 // indirect
 )
