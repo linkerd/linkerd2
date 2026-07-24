@@ -54,6 +54,7 @@ func Main(args []string) {
 	enableHeadlessSvc := cmd.Bool("enable-headless-services", false, "toggle support for headless service mirroring")
 	enableNamespaceCreation := cmd.Bool("enable-namespace-creation", false, "toggle support for namespace creation")
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
+	enableTrustRootsMirroring := cmd.Bool("enable-trust-roots-mirroring", false, "toggle mirroring of the target cluster's trust roots into the Link status")
 	localMirror := cmd.Bool("local-mirror", false, "watch the local cluster for federated service members")
 	federatedServiceSelector := cmd.String("federated-service-selector", k8s.DefaultFederatedServiceSelector, "Selector (label query) for federated service members in the local cluster")
 	exludedAnnotations := cmd.String("excluded-annotations", "", "Annotations to exclude when mirroring services")
@@ -200,7 +201,7 @@ func Main(args []string) {
 						if err != nil {
 							log.Errorf("Failed to load remote cluster credentials: %s", err)
 						}
-						err = restartClusterWatcher(ctx, link, *namespace, *probeSvc, creds, controllerK8sAPI, linksAPI, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *enableNamespaceCreation)
+						err = restartClusterWatcher(ctx, link, *namespace, *probeSvc, creds, controllerK8sAPI, linksAPI, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *enableNamespaceCreation, *enableTrustRootsMirroring)
 						if err != nil {
 							// failed to restart cluster watcher; give a bit of slack
 							// and requeue the link to give it another try
@@ -329,6 +330,7 @@ func restartClusterWatcher(
 	metrics servicemirror.ProbeMetricVecs,
 	enableHeadlessSvc bool,
 	enableNamespaceCreation bool,
+	enableTrustRootsMirroring bool,
 ) error {
 
 	cleanupWorkers()
@@ -369,6 +371,7 @@ func restartClusterWatcher(
 		ch,
 		enableHeadlessSvc,
 		enableNamespaceCreation,
+		enableTrustRootsMirroring,
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create cluster watcher: %w", err)
@@ -406,6 +409,8 @@ func startLocalClusterWatcher(
 		make(chan bool),
 		enableHeadlessSvc,
 		enableNamespaceCreation,
+		// The local mirror has no target cluster, so it never mirrors trust roots.
+		false,
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create cluster watcher: %w", err)
