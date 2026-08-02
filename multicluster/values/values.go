@@ -50,18 +50,19 @@ type Values struct {
 
 // Gateway contains all options related to the Gateway Service
 type Gateway struct {
-	Enabled            bool              `json:"enabled"`
-	Replicas           uint32            `json:"replicas"`
-	Name               string            `json:"name"`
-	Port               uint32            `json:"port"`
-	NodePort           uint32            `json:"nodePort"`
-	ServiceType        string            `json:"serviceType"`
-	Probe              *Probe            `json:"probe"`
-	ServiceAnnotations map[string]string `json:"serviceAnnotations"`
-	LoadBalancerIP     string            `json:"loadBalancerIP"`
-	PauseImage         string            `json:"pauseImage"`
-	UID                int64             `json:"UID"`
-	GID                int64             `json:"GID"`
+	Enabled             bool              `json:"enabled"`
+	Replicas            uint32            `json:"replicas"`
+	Name                string            `json:"name"`
+	Port                uint32            `json:"port"`
+	NodePort            uint32            `json:"nodePort"`
+	HealthCheckNodePort uint32            `json:"healthCheckNodePort"`
+	ServiceType         string            `json:"serviceType"`
+	Probe               *Probe            `json:"probe"`
+	ServiceAnnotations  map[string]string `json:"serviceAnnotations"`
+	LoadBalancerIP      string            `json:"loadBalancerIP"`
+	PauseImage          string            `json:"pauseImage"`
+	UID                 int64             `json:"UID"`
+	GID                 int64             `json:"GID"`
 }
 
 // Probe contains all options for the Probe Service

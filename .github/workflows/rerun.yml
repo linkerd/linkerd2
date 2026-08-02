@@ -2,6 +2,9 @@
 # From https://github.com/orgs/community/discussions/67654#discussioncomment-8038649
 name: Re-run failed workflow
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:

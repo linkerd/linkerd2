@@ -135,13 +135,13 @@ func mockFederatedServiceWatcher(t *testing.T) (*federatedServiceWatcher, error)
 	if err != nil {
 		return nil, fmt.Errorf("NewFakeMetadataAPI returned an error: %w", err)
 	}
-	localEndpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false, "local")
+	localEndpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false, false, "local")
 	if err != nil {
 		return nil, fmt.Errorf("NewEndpointsWatcher returned an error: %w", err)
 	}
 
 	prom := prometheus.NewRegistry()
-	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", false,
+	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", false, false,
 		watcher.CreateMulticlusterDecoder(map[string][]string{
 			"east":  eastConfigs,
 			"north": northConfigs,

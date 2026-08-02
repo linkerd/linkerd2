@@ -14,6 +14,7 @@ web/app/yarn-error.log
 vendor
 **/*.swp
 **/charts/**/charts
+go-test.json
 package-lock.json
 .vscode
 **/coverage*

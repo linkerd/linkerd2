@@ -396,6 +396,137 @@ spec:
       method: GET
       pathRegex: /route-1`,
 		},
+		{
+			err: errors.New(`ServiceProfile "name.ns.svc.cluster.local" has a null route`),
+			sp: `apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  routes:
+  -`,
+		},
+		{
+			err: errors.New(`ServiceProfile "name.ns.svc.cluster.local" has a route with an invalid condition: null condition "all"`),
+			sp: `apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  routes:
+  - name: name-1
+    condition:
+      method: GET
+      pathRegex: /route-1
+      all:
+      -`,
+		},
+		{
+			err: errors.New(`ServiceProfile "name.ns.svc.cluster.local" has a route with an invalid condition: null condition "any"`),
+			sp: `apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  routes:
+  - name: name-1
+    condition:
+      method: GET
+      pathRegex: /route-1
+      any:
+      -`,
+		},
+		{
+			err: errors.New(`ServiceProfile "name.ns.svc.cluster.local" has a null response class`),
+			sp: `apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  routes:
+  - name: name-1
+    condition:
+      method: GET
+      pathRegex: /route-1
+    responseClasses:
+    -`,
+		},
+		{
+			err: errors.New(`ServiceProfile "name.ns.svc.cluster.local" has a response class with an invalid condition: null condition "all"`),
+			sp: `apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  routes:
+  - name: name-1
+    condition:
+      method: GET
+      pathRegex: /route-1
+    responseClasses:
+    - condition:
+        status:
+          min: 500
+          max: 599
+        all:
+        -`,
+		},
+		{
+			err: errors.New(`ServiceProfile "name.ns.svc.cluster.local" has a response class with an invalid condition: null condition "any"`),
+			sp: `apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  routes:
+  - name: name-1
+    condition:
+      method: GET
+      pathRegex: /route-1
+    responseClasses:
+    - condition:
+        status:
+          min: 500
+          max: 599
+        any:
+        -`,
+		},
+		{
+			err: nil,
+			sp: `apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  routes:
+  - name: name-1
+    condition:
+      method: GET
+      pathRegex: /route-1,
+    timeout: 1ns`,
+		},
+		{
+			err: errors.New(`ServiceProfile "name.ns.svc.cluster.local" has a route with an invalid timeout: time: invalid duration "one-second"`),
+			sp: `apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  routes:
+  - name: name-1
+    condition:
+      method: GET
+      pathRegex: /route-1,
+    timeout: one-second`,
+		},
 	}
 
 	for id, exp := range expectations {

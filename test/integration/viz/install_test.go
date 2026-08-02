@@ -89,8 +89,8 @@ func TestInstallVizHA(t *testing.T) {
 		"--ha",
 	}
 
-	if TestHelper.NativeSidecar() {
-		cmd = append(cmd, "--set", "proxy.nativeSidecar=true")
+	if TestHelper.NonNativeSidecar() {
+		cmd = append(cmd, "--set", "proxy.nativeSidecar=false")
 	}
 
 	out, err := TestHelper.LinkerdRun(cmd...)

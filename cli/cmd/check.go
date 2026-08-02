@@ -139,12 +139,13 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.KubernetesVersionChecks,
+		healthcheck.GatewayAPICRDChecks,
 		healthcheck.LinkerdVersionChecks,
 	}
 
 	crdManifest := bytes.Buffer{}
 	err = renderCRDs(cmd.Context(), nil, &crdManifest, valuespkg.Options{
-		// GatewayAPI CRDs are optional so don't check for them.
+		// Gateway API CRDs are checked separately by GatewayAPICRDChecks.
 		Values: []string{
 			"installGatewayAPI=false",
 		},

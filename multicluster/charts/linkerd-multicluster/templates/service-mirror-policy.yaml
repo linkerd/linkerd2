@@ -3,6 +3,39 @@ apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: {{ .Release.Namespace }}
+  name: linkerd-admin
+  labels:
+    linkerd.io/extension: multicluster
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      linkerd.io/extension: multicluster
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: linkerd-admin
+  labels:
+    linkerd.io/extension: multicluster
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: linkerd-admin
+  requiredAuthenticationRefs:
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: linkerd-viz
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  namespace: {{ .Release.Namespace }}
   name: service-mirror
   labels:
     linkerd.io/extension: multicluster
@@ -10,12 +43,9 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   podSelector:
-    matchExpressions:
-    - key: component
-      operator: In
-      values:
-      - linkerd-service-mirror
-      - controller
+    matchLabels:
+      linkerd.io/extension: multicluster
+      component: linkerd-service-mirror
   port: svcmi-admin
   proxyProtocol: HTTP/1
 ---
@@ -33,6 +63,86 @@ spec:
     group: policy.linkerd.io
     kind: Server
     name: service-mirror
+  requiredAuthenticationRefs:
+    # In order to use `linkerd mc gateways` you need viz' Prometheus instance
+    # to be able to reach the service-mirror. In order to also have a separate
+    # Prometheus scrape the service-mirror an additional AuthorizationPolicy
+    # resource should be created.
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: linkerd-viz
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: controller
+  labels:
+    linkerd.io/extension: multicluster
+    component: controller
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      linkerd.io/extension: multicluster
+      component: controller
+  port: ctrl-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: controller
+  labels:
+    linkerd.io/extension: multicluster
+    component: controller
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: controller
+  requiredAuthenticationRefs:
+    # In order to use `linkerd mc gateways` you need viz' Prometheus instance
+    # to be able to reach the service-mirror. In order to also have a separate
+    # Prometheus scrape the service-mirror an additional AuthorizationPolicy
+    # resource should be created.
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: linkerd-viz
+---
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: local-service-mirror
+  labels:
+    linkerd.io/extension: multicluster
+    component: local-service-mirror
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      linkerd.io/extension: multicluster
+      component: local-service-mirror
+  port: locsm-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: local-service-mirror
+  labels:
+    linkerd.io/extension: multicluster
+    component: local-service-mirror
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: local-service-mirror
   requiredAuthenticationRefs:
     # In order to use `linkerd mc gateways` you need viz' Prometheus instance
     # to be able to reach the service-mirror. In order to also have a separate

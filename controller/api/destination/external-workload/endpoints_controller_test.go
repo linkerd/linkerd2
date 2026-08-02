@@ -238,10 +238,16 @@ func TestSyncServiceExternalWorkloadSelection(t *testing.T) {
 	ew2.Labels["foo"] = "boo"
 	esController.externalWorkloadsStore.Add(ew2)
 
+	// ensure this ew will not match the selector
+	altNs := "test-ns-alt"
+	ew3 := newExternalWorkload(3, altNs, true, false)
+	esController.externalWorkloadsStore.Add(ew3)
+
 	standardSyncService(t, esController, ns, "testing-1")
 	expectActions(t, actions(), 1, "create", "endpointslices")
 
-	// an endpoint slice should be created, it should only reference ew1 (not ew2)
+	// an endpoint slice should be created, it should only reference ew1 (not
+	// ew2 and not ew3)
 	slices, err := client.Client.DiscoveryV1().EndpointSlices(ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		t.Errorf("Expected no error fetching endpoint slices, got: %s", err)

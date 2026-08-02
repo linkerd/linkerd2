@@ -38,6 +38,8 @@ var (
 	minStatus uint32 = 100
 	maxStatus uint32 = 599
 
+	errNilMatchAll        = fmt.Errorf("null condition \"all\"")
+	errNilMatchAny        = fmt.Errorf("null condition \"any\"")
 	errRequestMatchField  = errors.New("A request match must have a field set")
 	errResponseMatchField = errors.New("A response match must have a field set")
 )
@@ -66,6 +68,9 @@ func Validate(data []byte) error {
 	}
 
 	for _, route := range serviceProfile.Spec.Routes {
+		if route == nil {
+			return fmt.Errorf("ServiceProfile %q has a null route", serviceProfile.Name)
+		}
 		if route.Name == "" {
 			return fmt.Errorf("ServiceProfile %q has a route with no name", serviceProfile.Name)
 		}
@@ -83,6 +88,9 @@ func Validate(data []byte) error {
 			return fmt.Errorf("ServiceProfile %q has a route with an invalid condition: %w", serviceProfile.Name, err)
 		}
 		for _, rc := range route.ResponseClasses {
+			if rc == nil {
+				return fmt.Errorf("ServiceProfile %q has a null response class", serviceProfile.Name)
+			}
 			if rc.Condition == nil {
 				return fmt.Errorf("ServiceProfile %q has a response class with no condition", serviceProfile.Name)
 			}
@@ -119,6 +127,9 @@ func ValidateRequestMatch(reqMatch *sp.RequestMatch) error {
 	if reqMatch.All != nil {
 		matchKindSet = true
 		for _, child := range reqMatch.All {
+			if child == nil {
+				return errNilMatchAll
+			}
 			err := ValidateRequestMatch(child)
 			if err != nil {
 				return err
@@ -128,6 +139,9 @@ func ValidateRequestMatch(reqMatch *sp.RequestMatch) error {
 	if reqMatch.Any != nil {
 		matchKindSet = true
 		for _, child := range reqMatch.Any {
+			if child == nil {
+				return errNilMatchAny
+			}
 			err := ValidateRequestMatch(child)
 			if err != nil {
 				return err
@@ -162,6 +176,9 @@ func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 	if rspMatch.All != nil {
 		matchKindSet = true
 		for _, child := range rspMatch.All {
+			if child == nil {
+				return errNilMatchAll
+			}
 			err := ValidateResponseMatch(child)
 			if err != nil {
 				return err
@@ -171,6 +188,9 @@ func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 	if rspMatch.Any != nil {
 		matchKindSet = true
 		for _, child := range rspMatch.Any {
+			if child == nil {
+				return errNilMatchAny
+			}
 			err := ValidateResponseMatch(child)
 			if err != nil {
 				return err

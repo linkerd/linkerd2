@@ -20,7 +20,7 @@ go-lint *flags:
     golangci-lint run {{ flags }}
 
 go-test:
-    LINKERD_TEST_PRETTY_DIFF=1 gotestsum -- -race -v -mod=readonly --timeout 10m ./...
+    LINKERD_TEST_PRETTY_DIFF=1 gotestsum --jsonfile go-test.json -- -race -v -mod=readonly --timeout 10m ./...
 
 ##
 ## Rust
@@ -263,7 +263,7 @@ _k3d-dns-ready:
 # If DOCKER_REGISTRY is not already set, use a bogus registry with a unique
 # name so that it's virtually impossible to accidentally use an incorrect image.
 export DOCKER_REGISTRY := env_var_or_default("DOCKER_REGISTRY", "test.l5d.io/" + _test-id )
-_test-id := `tr -dc 'a-z0-9' </dev/urandom | fold -w 5 | head -n 1`
+_test-id := choose('5', HEX)
 
 # The docker image tag.
 linkerd-tag := `bin/root-tag`

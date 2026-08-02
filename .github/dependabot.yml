@@ -118,3 +118,6 @@ updates:
       # see https://reactrouter.com/docs/en/v6/upgrading/v5
       - dependency-name: "react-router-dom"
         update-types: ["version-update:semver-major"]
+      # bumps beyound our current version (v3) are breaking
+      - dependency-name: "@lingui/*"
+        update-types: ["version-update:semver-major"]

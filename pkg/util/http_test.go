@@ -1,6 +1,7 @@
 package util
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -47,6 +48,26 @@ func TestParseScheme(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReadAllLimit(t *testing.T) {
+	t.Run("Allows input at limit", func(t *testing.T) {
+		input := "12345"
+		got, err := ReadAllLimit(strings.NewReader(input), len(input))
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if string(got) != input {
+			t.Fatalf("expected %q but received %q", input, string(got))
+		}
+	})
+
+	t.Run("Rejects input over limit", func(t *testing.T) {
+		_, err := ReadAllLimit(strings.NewReader("123456"), 5)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
 }
 
 func TestParseMethod(t *testing.T) {

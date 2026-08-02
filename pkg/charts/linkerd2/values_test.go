@@ -87,9 +87,10 @@ func TestNewValues(t *testing.T) {
   - {{ .Release.Namespace }}
   - linkerd-viz
 `,
+				HonorTimestamps: func() *bool { b := false; return &b }(),
 			},
-			ServiceMirror: &PodMonitorComponent{Enabled: true},
-			Proxy:         &PodMonitorComponent{Enabled: true},
+			ServiceMirror: &PodMonitorComponent{Enabled: true, HonorTimestamps: func() *bool { b := false; return &b }()},
+			Proxy:         &PodMonitorComponent{Enabled: true, HonorTimestamps: func() *bool { b := false; return &b }()},
 		},
 		DestinationController: &DestinationController{
 			MeshedHttp2ClientProtobuf: map[string]interface{}{
@@ -158,6 +159,7 @@ func TestNewValues(t *testing.T) {
 			InboundDiscoveryCacheUnusedTimeout:   "90s",
 			DisableOutboundProtocolDetectTimeout: false,
 			DisableInboundProtocolDetectTimeout:  false,
+			NativeSidecar:                        true,
 			StartupProbe: &StartupProbe{
 				FailureThreshold:    120,
 				InitialDelaySeconds: 0,

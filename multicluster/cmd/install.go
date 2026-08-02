@@ -103,6 +103,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().Uint32Var(&options.gateway.Probe.Port, "gateway-probe-port", options.gateway.Probe.Port, "The liveness check port of the gateway")
 	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported services")
 	cmd.Flags().StringVar(&options.gateway.ServiceType, "gateway-service-type", options.gateway.ServiceType, "Overwrite Service type for gateway service")
+	cmd.Flags().Uint32Var(&options.gateway.HealthCheckNodePort, "gateway-healthcheck-nodeport", options.gateway.HealthCheckNodePort, "Set the healthCheckNodePort on the gateway service (only used when externalTrafficPolicy is Local)")
 	cmd.Flags().BoolVar(&ha, "ha", false, `Install multicluster extension in High Availability mode.`)
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
 	cmd.Flags().BoolVar(&ignoreCluster, "ignore-cluster", false,
@@ -253,6 +254,7 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
 	defaults.Gateway.ServiceType = opts.gateway.ServiceType
+	defaults.Gateway.HealthCheckNodePort = opts.gateway.HealthCheckNodePort
 
 	if ignoreCluster {
 		return defaults, nil

@@ -54,11 +54,11 @@ func ParseMethod(method string) *httpPb.HttpMethod {
 // reached, the full bytes are returned. If the limit is reached, an error is
 // returned.
 func ReadAllLimit(r io.Reader, limit int) ([]byte, error) {
-	bytes, err := io.ReadAll(io.LimitReader(r, int64(limit)))
+	bytes, err := io.ReadAll(io.LimitReader(r, int64(limit)+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(bytes) == limit {
+	if len(bytes) > limit {
 		return nil, fmt.Errorf("limit reached while reading: %d", limit)
 	}
 	return bytes, nil

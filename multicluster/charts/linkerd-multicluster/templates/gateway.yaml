@@ -132,6 +132,9 @@ spec:
 {{- with .Values.gateway.serviceExternalTrafficPolicy }}
   externalTrafficPolicy: {{ . }}
 {{- end }}
+{{- if (and $setNodePorts .Values.gateway.healthCheckNodePort) }}
+  healthCheckNodePort: {{ .Values.gateway.healthCheckNodePort }}
+{{- end }}
 {{- if .Values.gateway.loadBalancerClass }}
   loadBalancerClass: {{ .Values.gateway.loadBalancerClass }}
 {{- end }}

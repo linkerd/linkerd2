@@ -373,7 +373,8 @@ func (ec *EndpointsController) syncService(update string) error {
 	}
 
 	ewSelector := labels.Set(svc.Spec.Selector).AsSelectorPreValidated()
-	ews, err := ec.k8sAPI.ExtWorkload().Lister().List(ewSelector)
+	ews, err := ec.k8sAPI.ExtWorkload().Lister().
+		ExternalWorkloads(namespace).List(ewSelector)
 	if err != nil {
 		// This operation should be infallible since we retrieve from the cache
 		// (we can guarantee we will receive at least an empty list), for good
@@ -385,7 +386,8 @@ func (ec *EndpointsController) syncService(update string) error {
 		discoveryv1.LabelServiceName: svc.Name,
 		discoveryv1.LabelManagedBy:   managedBy,
 	}).AsSelectorPreValidated()
-	epSlices, err := ec.k8sAPI.ES().Lister().List(esSelector)
+	epSlices, err := ec.k8sAPI.ES().Lister().
+		EndpointSlices(namespace).List(esSelector)
 	if err != nil {
 		return err
 	}

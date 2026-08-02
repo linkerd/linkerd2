@@ -95,19 +95,6 @@ func TestInstallCNIPlugin(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
-
-	// perform a linkerd check with --linkerd-cni-enabled
-	timeout := time.Minute
-	err = testutil.RetryFor(timeout, func() error {
-		out, err = TestHelper.LinkerdRun("check", "--pre", "--linkerd-cni-enabled", "--wait=5m")
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd check' command timed-out (%s)", timeout), err)
-	}
 }
 
 // TestInstall will install the linkerd control plane to be used in the rest of
@@ -116,6 +103,24 @@ func TestInstall(t *testing.T) {
 	err := TestHelper.InstallGatewayAPI()
 	if err != nil {
 		testutil.AnnotatedFatal(t, "failed to install gateway-api", err)
+	}
+
+	// perform a linkerd check
+	checkArgs := []string{"check", "--pre", "--wait=5m"}
+	if TestHelper.CNI() {
+		checkArgs = []string{"check", "--pre", "--linkerd-cni-enabled", "--wait=5m"}
+	}
+
+	timeout := time.Minute
+	err = testutil.RetryFor(timeout, func() error {
+		_, err = TestHelper.LinkerdRun(checkArgs...)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd check' command timed-out (%s)", timeout), err)
 	}
 
 	// Install CRDs
@@ -152,8 +157,8 @@ func TestInstall(t *testing.T) {
 		cmd = append(cmd, "--linkerd-cni-enabled")
 	}
 
-	if TestHelper.NativeSidecar() {
-		cmd = append(cmd, "--set", "proxy.nativeSidecar=true")
+	if TestHelper.NonNativeSidecar() {
+		cmd = append(cmd, "--set", "proxy.nativeSidecar=false")
 	}
 
 	if TestHelper.DualStack() {

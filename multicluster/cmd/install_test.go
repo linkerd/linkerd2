@@ -41,6 +41,17 @@ func TestRender(t *testing.T) {
 			nil,
 			"install_ha.golden",
 		},
+		{
+			map[string]interface{}{
+				"gateway": map[string]interface{}{
+					"serviceType":                  "LoadBalancer",
+					"serviceExternalTrafficPolicy": "Local",
+					"healthCheckNodePort":          30000,
+				},
+			},
+			nil,
+			"install_healthcheck_nodeport.golden",
+		},
 	}
 
 	for i, tc := range testCases {

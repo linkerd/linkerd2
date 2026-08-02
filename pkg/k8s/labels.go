@@ -279,12 +279,16 @@ const (
 	// configured for the Pod
 	ProxyWaitBeforeExitSecondsAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-wait-before-exit-seconds"
 
-	// ProxyEnableNativeSidecarAnnotationAlpha enables the new native initContainer sidecar.
-	// Deprecated: use ProxyEnableNativeSidecarAnnotationBeta instead.
+	// ProxyEnableNativeSidecarAnnotationAlpha enables the native initContainer sidecar.
+	// Deprecated: use ProxyEnableNativeSidecarAnnotation instead.
 	ProxyEnableNativeSidecarAnnotationAlpha = ProxyConfigAnnotationsPrefixAlpha + "/proxy-enable-native-sidecar"
 
-	// ProxyEnableNativeSidecarAnnotationBeta enables the new native initContainer sidecar
+	// ProxyEnableNativeSidecarAnnotationBeta enables the native initContainer sidecar
+	// Deprecated: use ProxyEnableNativeSidecarAnnotation instead.
 	ProxyEnableNativeSidecarAnnotationBeta = ProxyConfigAnnotationsPrefixBeta + "/proxy-enable-native-sidecar"
+
+	// ProxyEnableNativeSidecarAnnotation enables the native initContainer sidecar
+	ProxyEnableNativeSidecarAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-enable-native-sidecar"
 
 	// ProxyAwait can be used to force the application to wait for the proxy
 	// to be ready.
@@ -322,6 +326,16 @@ const (
 	// ProxyShutdownGracePeriodAnnotation configures the grace period for
 	// graceful shutdowns in the proxy.
 	ProxyShutdownGracePeriodAnnotation = ProxyConfigAnnotationsPrefix + "/shutdown-grace-period"
+
+	// ProxyAdditionalEnvAnnotation allows setting additional proxy environment
+	// variables via a JSON-encoded list of Kubernetes EnvVar objects.
+	// Unlike other override annotations, this annotation is not inherited
+	// wholesale from the namespace. Instead, env vars are merged by name
+	// across three layers with increasing precedence:
+	// Helm proxy.additionalEnv < namespace annotation < workload annotation.
+	// Entries from higher-precedence layers override entries with the same
+	// env var name rather than replacing the entire list.
+	ProxyAdditionalEnvAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-additional-env"
 
 	/*
 	 * Component Names

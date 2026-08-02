@@ -38,6 +38,13 @@ type AdmissionReview = kube::core::admission::AdmissionReview<DynamicObject>;
 
 #[async_trait::async_trait]
 trait Validate<T> {
+    // If true, parse failures are admitted with a warning instead of denied.
+    // Used for Gateway API types, where interoperability with other controllers
+    // takes precedence over strict schema enforcement.
+    fn lenient() -> bool {
+        false
+    }
+
     async fn validate(
         self,
         ns: &str,
@@ -174,6 +181,10 @@ impl Admission {
         let (obj, spec) = match parse_spec::<T>(req) {
             Ok(spec) => spec,
             Err(error) => {
+                if <Self as Validate<T>>::lenient() {
+                    warn!(%error, "Failed to parse {} spec; admitting anyway", kind);
+                    return rsp;
+                }
                 info!(%error, "Failed to parse {} spec", kind);
                 return rsp.deny(error);
             }
@@ -484,11 +495,13 @@ impl Validate<HttpRouteSpec> for Admission {
             }
         }
 
+        // Validate retry and timeout annotations on the Route itself. The
+        // admission webhook does not intercept core/v1 Services, so annotations
+        // set directly on a Service are checked later, at indexer time.
         if spec.parent_refs.iter().flatten().any(|parent| {
             outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
         }) {
             outbound_index::http::parse_http_retry(annotations)?;
-            outbound_index::parse_accrual_config(annotations)?;
             outbound_index::parse_timeouts(annotations)?;
         }
 
@@ -589,6 +602,10 @@ fn validate_grpc_backend_if_service(br: &gateway::GRPCRouteRulesBackendRefs) -> 
 
 #[async_trait::async_trait]
 impl Validate<gateway::HTTPRouteSpec> for Admission {
+    fn lenient() -> bool {
+        true
+    }
+
     async fn validate(
         self,
         _ns: &str,
@@ -604,11 +621,12 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
             }
         }
 
+        // See the note in Validate<HttpRouteSpec>. This route type is
+        // validated the same way.
         if spec.parent_refs.iter().flatten().any(|parent| {
             outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
         }) {
             outbound_index::http::parse_http_retry(annotations)?;
-            outbound_index::parse_accrual_config(annotations)?;
             outbound_index::parse_timeouts(annotations)?;
         }
 
@@ -655,6 +673,10 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
 
 #[async_trait::async_trait]
 impl Validate<gateway::GRPCRouteSpec> for Admission {
+    fn lenient() -> bool {
+        true
+    }
+
     async fn validate(
         self,
         _ns: &str,
@@ -670,11 +692,12 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
             }
         }
 
+        // See the note in Validate<HttpRouteSpec>. This route type is
+        // validated the same way.
         if spec.parent_refs.iter().flatten().any(|parent| {
             outbound_index::is_parent_service_or_egress_network(&parent.kind, &parent.group)
         }) {
             outbound_index::grpc::parse_grpc_retry(annotations)?;
-            outbound_index::parse_accrual_config(annotations)?;
             outbound_index::parse_timeouts(annotations)?;
         }
 
@@ -723,6 +746,10 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
 
 #[async_trait::async_trait]
 impl Validate<gateway::TLSRouteSpec> for Admission {
+    fn lenient() -> bool {
+        true
+    }
+
     async fn validate(
         self,
         _ns: &str,
@@ -748,6 +775,10 @@ impl Validate<gateway::TLSRouteSpec> for Admission {
 
 #[async_trait::async_trait]
 impl Validate<gateway::TCPRouteSpec> for Admission {
+    fn lenient() -> bool {
+        true
+    }
+
     async fn validate(
         self,
         _ns: &str,

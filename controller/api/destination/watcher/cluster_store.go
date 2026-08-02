@@ -29,6 +29,7 @@ type (
 		api                  *k8s.API
 		store                map[string]remoteCluster
 		enableEndpointSlices bool
+		enableIPv6           bool
 		log                  *logging.Entry
 
 		// Function used to parse a kubeconfig from a byte buffer. Based on the
@@ -69,8 +70,8 @@ const (
 // When created, a pair of event handlers are registered for the local cluster's
 // Secret informer. The event handlers are responsible for driving the discovery
 // of remote clusters and their configuration
-func NewClusterStore(client kubernetes.Interface, namespace string, enableEndpointSlices bool) (*ClusterStore, error) {
-	return NewClusterStoreWithDecoder(client, namespace, enableEndpointSlices, decodeK8sConfigFromSecret, prometheus.DefaultRegisterer)
+func NewClusterStore(client kubernetes.Interface, namespace string, enableEndpointSlices bool, enableIPv6 bool) (*ClusterStore, error) {
+	return NewClusterStoreWithDecoder(client, namespace, enableEndpointSlices, enableIPv6, decodeK8sConfigFromSecret, prometheus.DefaultRegisterer)
 }
 
 func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
@@ -81,7 +82,7 @@ func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
 // store with an arbitrary `configDecoder` function.
 func NewClusterStoreWithDecoder(
 	client kubernetes.Interface,
-	namespace string, enableEndpointSlices bool,
+	namespace string, enableEndpointSlices bool, enableIPv6 bool,
 	decodeFn configDecoder,
 	prom prometheus.Registerer,
 ) (*ClusterStore, error) {
@@ -93,6 +94,7 @@ func NewClusterStoreWithDecoder(
 			"component": "cluster-store",
 		}),
 		enableEndpointSlices: enableEndpointSlices,
+		enableIPv6:           enableIPv6,
 		api:                  api,
 		decodeFn:             decodeFn,
 	}
@@ -228,6 +230,7 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 			"remote-cluster": clusterName,
 		}),
 		cs.enableEndpointSlices,
+		cs.enableIPv6,
 		clusterName,
 	)
 	if err != nil {

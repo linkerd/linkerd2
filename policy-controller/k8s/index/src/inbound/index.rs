@@ -848,7 +848,9 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> 
         for (namespace, names) in deleted.into_iter() {
             if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(namespace) {
                 for name in names.into_iter() {
-                    changed = ns.get_mut().meshtls.remove(&name).is_some() || changed;
+                    if ns.get_mut().meshtls.remove(&name).is_some() {
+                        changed = true;
+                    }
                 }
                 if ns.get().is_empty() {
                     ns.remove();
@@ -915,7 +917,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
                 Ok(spec) => spec,
                 Err(error) => {
                     tracing::warn!(ns = %namespace, %name, %error, "Invalid NetworkAuthentication");
-                    return;
+                    continue;
                 }
             };
             changed = self.authentications.update_network(namespace, name, spec) || changed;
@@ -923,7 +925,9 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
         for (namespace, names) in deleted.into_iter() {
             if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(namespace) {
                 for name in names.into_iter() {
-                    changed = ns.get_mut().network.remove(&name).is_some() || changed;
+                    if ns.get_mut().network.remove(&name).is_some() {
+                        changed = true;
+                    }
                 }
                 if ns.get().is_empty() {
                     ns.remove();
