@@ -1,4 +1,5 @@
 use super::*;
+use ahash::{AHashMap, AHashSet};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1 as metav1;
 use linkerd_policy_controller_core::{inbound, routes};
 use linkerd_policy_controller_k8s_api::{gateway, policy};
@@ -402,6 +403,265 @@ fn authorization_policy_prevents_index_deletion() {
             grpc_routes: mk_default_grpc_routes(),
         },
     );
+}
+
+#[test]
+fn meshtls_authentication_delete_revokes_authorization_policy() {
+    let test = TestConfig::default();
+
+    let mut pod = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
+    pod.labels_mut()
+        .insert("app".to_string(), "app-0".to_string());
+    test.index.write().apply(pod);
+
+    let mut rx = test
+        .index
+        .write()
+        .pod_server_rx("ns-0", "pod-0", 8080.try_into().unwrap())
+        .expect("pod-0.ns-0 should exist");
+    assert_eq!(*rx.borrow_and_update(), test.default_server());
+
+    test.index.write().apply(mk_server(
+        "ns-0",
+        "srv-8080",
+        Port::Number(8080.try_into().unwrap()),
+        None,
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    ));
+    assert!(rx.has_changed().unwrap());
+    let _ = rx.borrow_and_update();
+
+    test.index.write().apply(mk_meshtls_authentication(
+        "ns-1",
+        "mtls-bar",
+        Some("foo.bar".to_string()),
+        None,
+    ));
+
+    test.index.write().apply(mk_authorization_policy(
+        "ns-0",
+        "authz-foo",
+        Some("srv-8080"),
+        vec![NamespacedTargetRef {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: "MeshTLSAuthentication".to_string(),
+            namespace: Some("ns-1".to_string()),
+            name: "mtls-bar".to_string(),
+        }],
+    ));
+
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(rx.borrow().authorizations.len(), 1);
+
+    <Index as IndexNamespacedResource<k8s::policy::MeshTLSAuthentication>>::delete(
+        &mut test.index.write(),
+        "ns-1".to_string(),
+        "mtls-bar".to_string(),
+    );
+
+    assert!(
+        rx.has_changed().unwrap(),
+        "deleting MeshTLSAuthentication should reindex and revoke AuthorizationPolicy"
+    );
+    assert!(rx.borrow_and_update().authorizations.is_empty());
+}
+
+#[test]
+fn meshtls_authentication_reset_deleted_only_revokes_authorization_policy() {
+    let test = TestConfig::default();
+
+    let mut pod = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
+    pod.labels_mut()
+        .insert("app".to_string(), "app-0".to_string());
+    test.index.write().apply(pod);
+
+    let mut rx = test
+        .index
+        .write()
+        .pod_server_rx("ns-0", "pod-0", 8080.try_into().unwrap())
+        .expect("pod-0.ns-0 should exist");
+    assert_eq!(*rx.borrow_and_update(), test.default_server());
+
+    test.index.write().apply(mk_server(
+        "ns-0",
+        "srv-8080",
+        Port::Number(8080.try_into().unwrap()),
+        None,
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    ));
+    assert!(rx.has_changed().unwrap());
+    let _ = rx.borrow_and_update();
+
+    test.index.write().apply(mk_meshtls_authentication(
+        "ns-1",
+        "mtls-bar",
+        Some("foo.bar".to_string()),
+        None,
+    ));
+
+    test.index.write().apply(mk_authorization_policy(
+        "ns-0",
+        "authz-foo",
+        Some("srv-8080"),
+        vec![NamespacedTargetRef {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: "MeshTLSAuthentication".to_string(),
+            namespace: Some("ns-1".to_string()),
+            name: "mtls-bar".to_string(),
+        }],
+    ));
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(rx.borrow().authorizations.len(), 1);
+
+    let deleted = std::iter::once((
+        "ns-1".to_string(),
+        std::iter::once("mtls-bar".to_string()).collect::<AHashSet<_>>(),
+    ))
+    .collect::<AHashMap<_, _>>();
+
+    <Index as IndexNamespacedResource<k8s::policy::MeshTLSAuthentication>>::reset(
+        &mut test.index.write(),
+        vec![],
+        deleted,
+    );
+
+    assert!(
+        rx.has_changed().unwrap(),
+        "reset with only deleted MeshTLSAuthentication should reindex and revoke AuthorizationPolicy"
+    );
+    assert!(rx.borrow_and_update().authorizations.is_empty());
+}
+
+#[test]
+fn network_authentication_delete_revokes_authorization_policy() {
+    let test = TestConfig::default();
+
+    let mut pod = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
+    pod.labels_mut()
+        .insert("app".to_string(), "app-0".to_string());
+    test.index.write().apply(pod);
+
+    let mut rx = test
+        .index
+        .write()
+        .pod_server_rx("ns-0", "pod-0", 8080.try_into().unwrap())
+        .expect("pod-0.ns-0 should exist");
+    assert_eq!(*rx.borrow_and_update(), test.default_server());
+
+    test.index.write().apply(mk_server(
+        "ns-0",
+        "srv-8080",
+        Port::Number(8080.try_into().unwrap()),
+        None,
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    ));
+    assert!(rx.has_changed().unwrap());
+    let _ = rx.borrow_and_update();
+
+    test.index.write().apply(mk_network_authentication(
+        "ns-0".to_string(),
+        "net-foo".to_string(),
+        vec![k8s::policy::network_authentication::Network {
+            cidr: "10.0.0.0/8".parse().unwrap(),
+            except: None,
+        }],
+    ));
+    test.index.write().apply(mk_authorization_policy(
+        "ns-0",
+        "authz-foo",
+        Some("srv-8080"),
+        vec![NamespacedTargetRef {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: "NetworkAuthentication".to_string(),
+            name: "net-foo".to_string(),
+            namespace: None,
+        }],
+    ));
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(rx.borrow().authorizations.len(), 1);
+
+    <Index as IndexNamespacedResource<k8s::policy::NetworkAuthentication>>::delete(
+        &mut test.index.write(),
+        "ns-0".to_string(),
+        "net-foo".to_string(),
+    );
+
+    assert!(
+        rx.has_changed().unwrap(),
+        "deleting NetworkAuthentication should reindex and revoke AuthorizationPolicy"
+    );
+    assert!(rx.borrow_and_update().authorizations.is_empty());
+}
+
+#[test]
+fn network_authentication_reset_deleted_only_revokes_authorization_policy() {
+    let test = TestConfig::default();
+
+    let mut pod = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
+    pod.labels_mut()
+        .insert("app".to_string(), "app-0".to_string());
+    test.index.write().apply(pod);
+
+    let mut rx = test
+        .index
+        .write()
+        .pod_server_rx("ns-0", "pod-0", 8080.try_into().unwrap())
+        .expect("pod-0.ns-0 should exist");
+    assert_eq!(*rx.borrow_and_update(), test.default_server());
+
+    test.index.write().apply(mk_server(
+        "ns-0",
+        "srv-8080",
+        Port::Number(8080.try_into().unwrap()),
+        None,
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    ));
+    assert!(rx.has_changed().unwrap());
+    let _ = rx.borrow_and_update();
+
+    test.index.write().apply(mk_network_authentication(
+        "ns-0".to_string(),
+        "net-foo".to_string(),
+        vec![k8s::policy::network_authentication::Network {
+            cidr: "10.0.0.0/8".parse().unwrap(),
+            except: None,
+        }],
+    ));
+    test.index.write().apply(mk_authorization_policy(
+        "ns-0",
+        "authz-foo",
+        Some("srv-8080"),
+        vec![NamespacedTargetRef {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: "NetworkAuthentication".to_string(),
+            name: "net-foo".to_string(),
+            namespace: None,
+        }],
+    ));
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(rx.borrow().authorizations.len(), 1);
+
+    let deleted = std::iter::once((
+        "ns-0".to_string(),
+        std::iter::once("net-foo".to_string()).collect::<AHashSet<_>>(),
+    ))
+    .collect::<AHashMap<_, _>>();
+
+    <Index as IndexNamespacedResource<k8s::policy::NetworkAuthentication>>::reset(
+        &mut test.index.write(),
+        vec![],
+        deleted,
+    );
+
+    assert!(
+        rx.has_changed().unwrap(),
+        "reset with only deleted NetworkAuthentication should reindex and revoke AuthorizationPolicy"
+    );
+    assert!(rx.borrow_and_update().authorizations.is_empty());
 }
 
 fn mk_authorization_policy(
