@@ -809,7 +809,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> 
 
         if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(ns) {
             tracing::debug!("Deleting MeshTLSAuthentication");
-            ns.get_mut().network.remove(&name);
+            ns.get_mut().meshtls.remove(&name);
             if ns.get().is_empty() {
                 ns.remove();
             }
@@ -848,7 +848,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> 
         for (namespace, names) in deleted.into_iter() {
             if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(namespace) {
                 for name in names.into_iter() {
-                    ns.get_mut().meshtls.remove(&name);
+                    changed = ns.get_mut().meshtls.remove(&name).is_some() || changed;
                 }
                 if ns.get().is_empty() {
                     ns.remove();
@@ -885,7 +885,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
         let _span = info_span!("delete", %ns, %name).entered();
 
         if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(ns) {
-            tracing::debug!("Deleting MeshTLSAuthentication");
+            tracing::debug!("Deleting NetworkAuthentication");
 
             ns.get_mut().network.remove(&name);
             if ns.get().is_empty() {
@@ -909,7 +909,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
         for authn in authns.into_iter() {
             let namespace = authn
                 .namespace()
-                .expect("meshtlsauthentication must be namespaced");
+                .expect("networkauthentication must be namespaced");
             let name = authn.name_unchecked();
             let spec = match network_authentication::Spec::try_from(authn.spec) {
                 Ok(spec) => spec,
@@ -923,7 +923,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
         for (namespace, names) in deleted.into_iter() {
             if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(namespace) {
                 for name in names.into_iter() {
-                    ns.get_mut().meshtls.remove(&name);
+                    changed = ns.get_mut().network.remove(&name).is_some() || changed;
                 }
                 if ns.get().is_empty() {
                     ns.remove();
