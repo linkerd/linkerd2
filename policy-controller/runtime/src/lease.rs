@@ -15,7 +15,10 @@ pub async fn init<T>(
     namespace: &str,
     deployment_name: &str,
     claimant: &str,
-) -> Result<watch::Receiver<Arc<kubert::lease::Claim>>> {
+) -> Result<(
+    watch::Receiver<Arc<kubert::lease::Claim>>,
+    tokio::task::JoinHandle<Result<(), kubert::lease::Error>>,
+)> {
     let params = kubert::LeaseParams {
         name: LEASE_NAME.to_string(),
         namespace: namespace.to_string(),
@@ -113,20 +116,10 @@ pub async fn init<T>(
 
     // Consumers of `claim` panic if the lease watch is ever dropped, on the
     // assumption that Kubernetes will restart the container (see
-    // https://github.com/linkerd/linkerd2/pull/10584). But since those
-    // consumers run in detached `tokio::spawn`ed tasks, such a panic is never
-    // observed by the process and the container is left running without a
-    // functioning status controller. Watch the lease task directly so that
-    // if it ever stops maintaining the watch--by returning or by
-    // panicking--the process exits and Kubernetes can restart it.
-    tokio::spawn(async move {
-        match task.await {
-            Ok(Ok(())) => tracing::error!("Lease task exited unexpectedly"),
-            Ok(Err(error)) => tracing::error!(%error, "Lease task failed"),
-            Err(error) => tracing::error!(%error, "Lease task panicked"),
-        }
-        std::process::exit(1);
-    });
-
-    Ok(claim)
+    // https://github.com/linkerd/linkerd2/pull/10584). Return the lease
+    // task's `JoinHandle` alongside the claim so the caller can watch it
+    // directly and exit the process if it ever stops maintaining the
+    // watch--by returning or by panicking--rather than leaving that failure
+    // unobserved in a detached task.
+    Ok((claim, task))
 }
