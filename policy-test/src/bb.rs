@@ -13,6 +13,7 @@ impl Terminus {
     const PORT: i32 = 80;
     const PORT_NAME: &'static str = "http";
     const APP: &'static str = "bb-terminus";
+    const IMAGE: &'static str = "docker.io/buoyantio/bb:latest";
     pub const SERVICE_NAME: &'static str = Self::APP;
 
     /// Builds a `bb-terminus` pod that can be configured to fail some (or all)
@@ -72,7 +73,7 @@ impl Terminus {
             spec: Some(k8s::PodSpec {
                 containers: vec![k8s::api::core::v1::Container {
                     name: "bb-terminus".to_string(),
-                    image: Some("buoyantio/bb:latest".to_string()),
+                    image: Some(Self::IMAGE.to_string()),
                     ports: Some(vec![k8s::api::core::v1::ContainerPort {
                         name: Some(Self::PORT_NAME.to_string()),
                         container_port: Self::PORT,

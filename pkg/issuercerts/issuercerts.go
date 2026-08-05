@@ -193,7 +193,7 @@ func checkRSACertRequirements(cert *x509.Certificate) error {
 		return fmt.Errorf("expected rsa.PublicKey but got something %v", cert.PublicKey)
 	}
 	if k.N.BitLen() != 2048 && k.N.BitLen() != 4096 {
-		return fmt.Errorf("RSA must use at least 2084 bit public key, instead %d bit public key was used", k.N.BitLen())
+		return fmt.Errorf("RSA must use a 2048 or 4096 bit public key, instead %d bit public key was used", k.N.BitLen())
 	}
 	if cert.SignatureAlgorithm != x509.SHA256WithRSA {
 		return fmt.Errorf("must be signed by an RSA 2048/4096 bit key, instead %s was used", cert.SignatureAlgorithm)
