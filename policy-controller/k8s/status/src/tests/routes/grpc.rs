@@ -116,9 +116,9 @@ fn route_with_valid_service_backends() {
     index.write().apply(route);
 
     // Create the expected update.
-    let accepted_condition = accepted();
+    let accepted_condition = accepted(None);
     // All backends exist and can be resolved.
-    let backend_condition = resolved_refs();
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
             group: Some("core".to_string()),
@@ -160,7 +160,7 @@ fn route_with_valid_egress_network_backend() {
     );
 
     // Apply the parent egress network
-    let parent = super::make_egress_network("ns-0", "egress", accepted());
+    let parent = super::make_egress_network("ns-0", "egress", accepted(None));
     index.write().apply(parent.clone());
 
     // Apply the route.
@@ -196,9 +196,9 @@ fn route_with_valid_egress_network_backend() {
     index.write().apply(route);
 
     // Create the expected update.
-    let accepted_condition = accepted();
+    let accepted_condition = accepted(None);
     // All backends exist and can be resolved.
-    let backend_condition = resolved_refs();
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
             group: parent.group,
@@ -291,9 +291,9 @@ fn route_with_invalid_service_backend() {
     index.write().apply(route);
 
     // Create the expected update.
-    let accepted_condition = accepted();
+    let accepted_condition = accepted(None);
     // One of the backends does not exist so the status should be BackendNotFound.
-    let backend_condition = backend_not_found();
+    let backend_condition = backend_not_found(None);
     let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
             group: parent.group,
@@ -335,11 +335,11 @@ fn route_with_egress_network_backend_different_from_parent() {
     );
 
     // Apply the parent egress network
-    let parent = super::make_egress_network("ns-0", "svc", accepted());
+    let parent = super::make_egress_network("ns-0", "svc", accepted(None));
     index.write().apply(parent.clone());
 
     // Apply one backend egress network
-    let backend = super::make_egress_network("ns-0", "backend-1", accepted());
+    let backend = super::make_egress_network("ns-0", "backend-1", accepted(None));
     index.write().apply(backend.clone());
 
     // Apply the route.
@@ -375,9 +375,10 @@ fn route_with_egress_network_backend_different_from_parent() {
     index.write().apply(route);
 
     // Create the expected update.
-    let accepted_condition = accepted();
+    let accepted_condition = accepted(None);
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
+        None,
     );
     let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
@@ -424,7 +425,7 @@ fn route_with_egress_network_backend_and_service_parent() {
     index.write().apply(parent.clone());
 
     // Apply one backend egress network
-    let backend = super::make_egress_network("ns-0", "backend-1", accepted());
+    let backend = super::make_egress_network("ns-0", "backend-1", accepted(None));
     index.write().apply(backend.clone());
 
     // Apply the route.
@@ -460,9 +461,10 @@ fn route_with_egress_network_backend_and_service_parent() {
     index.write().apply(route);
 
     // Create the expected update.
-    let accepted_condition = accepted();
+    let accepted_condition = accepted(None);
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
+        None,
     );
     let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
@@ -505,7 +507,7 @@ fn route_with_egress_network_parent_and_service_backend() {
     );
 
     // Apply the parent egress network
-    let parent = super::make_egress_network("ns-0", "egress", accepted());
+    let parent = super::make_egress_network("ns-0", "egress", accepted(None));
     index.write().apply(parent.clone());
 
     // Apply one backend service
@@ -545,8 +547,8 @@ fn route_with_egress_network_parent_and_service_backend() {
     index.write().apply(route);
 
     // Create the expected update.
-    let accepted_condition = accepted();
-    let backend_condition = resolved_refs();
+    let accepted_condition = accepted(None);
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
             group: parent.group,
@@ -695,8 +697,8 @@ fn route_accepted_after_egress_network_create() {
     index.write().apply(route);
 
     // Create the expected update.
-    let accepted_condition = no_matching_parent();
-    let backend_condition = resolved_refs();
+    let accepted_condition = no_matching_parent(None);
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
             group: parent.group.clone(),
@@ -722,11 +724,11 @@ fn route_accepted_after_egress_network_create() {
     assert_eq!(patch, update.patch);
 
     // Apply the egress network
-    let egress = super::make_egress_network("ns-0", "egress", accepted());
+    let egress = super::make_egress_network("ns-0", "egress", accepted(None));
     index.write().apply(egress);
 
     // Create the expected update.
-    let accepted_condition = accepted();
+    let accepted_condition = accepted(None);
     let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
             group: parent.group.clone(),
@@ -861,7 +863,7 @@ fn route_rejected_after_egress_network_delete() {
         default_cluster_networks(),
     );
 
-    let egress = super::make_egress_network("ns-0", "egress", accepted());
+    let egress = super::make_egress_network("ns-0", "egress", accepted(None));
     index.write().apply(egress);
 
     // There should be no update since there are no TLSRoutes yet.
@@ -890,8 +892,8 @@ fn route_rejected_after_egress_network_delete() {
     index.write().apply(route);
 
     // Create the expected update.
-    let accepted_condition = accepted();
-    let backend_condition = resolved_refs();
+    let accepted_condition = accepted(None);
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
             group: parent.group.clone(),
@@ -926,7 +928,7 @@ fn route_rejected_after_egress_network_delete() {
     }
 
     // Create the expected update.
-    let rejected_condition = no_matching_parent();
+    let rejected_condition = no_matching_parent(None);
     let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
             group: parent.group,
@@ -1016,9 +1018,9 @@ fn service_route_type_conflict() {
     index.write().apply(http_route);
 
     // Create the expected update -- HTTPRoute should be accepted
-    let accepted_condition = accepted();
+    let accepted_condition = accepted(None);
     // No backends were specified, so we have vacuously resolved them all.
-    let backend_condition = resolved_refs();
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
             group: parent.group.clone(),
@@ -1055,7 +1057,7 @@ fn service_route_type_conflict() {
     for _ in 0..2 {
         let update = updates_rx.try_recv().unwrap();
         if update.id.gkn.kind == gateway::HTTPRoute::kind(&()) {
-            let conflict_condition = route_conflicted();
+            let conflict_condition = route_conflicted(None);
             let parent_status = gateway::GRPCRouteStatusParents {
                 parent_ref: gateway::GRPCRouteStatusParentsParentRef {
                     group: parent.group.clone(),
@@ -1116,7 +1118,7 @@ fn egress_network_route_type_conflict() {
     );
 
     // Apply the parent egress network
-    let parent = super::make_egress_network("ns-0", "egress", accepted());
+    let parent = super::make_egress_network("ns-0", "egress", accepted(None));
     index.write().apply(parent.clone());
 
     let parent = gateway::GRPCRouteParentRefs {
@@ -1161,9 +1163,9 @@ fn egress_network_route_type_conflict() {
     index.write().apply(http_route);
 
     // Create the expected update -- HTTPRoute should be accepted
-    let accepted_condition = accepted();
+    let accepted_condition = accepted(None);
     // No backends were specified, so we have vacuously resolved them all.
-    let backend_condition = resolved_refs();
+    let backend_condition = resolved_refs(None);
     let parent_status = gateway::GRPCRouteStatusParents {
         parent_ref: gateway::GRPCRouteStatusParentsParentRef {
             group: parent.group.clone(),
@@ -1200,7 +1202,7 @@ fn egress_network_route_type_conflict() {
     for _ in 0..2 {
         let update = updates_rx.try_recv().unwrap();
         if update.id.gkn.kind == gateway::HTTPRoute::kind(&()) {
-            let conflict_condition = route_conflicted();
+            let conflict_condition = route_conflicted(None);
             let parent_status = gateway::GRPCRouteStatusParents {
                 parent_ref: gateway::GRPCRouteStatusParentsParentRef {
                     group: parent.group.clone(),
