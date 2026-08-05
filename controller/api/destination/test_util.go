@@ -341,7 +341,10 @@ metadata:
   name: name4
   namespace: ns
   annotations:
-    config.linkerd.io/opaque-ports: "4242"`,
+    config.linkerd.io/opaque-ports: "4242"
+spec:
+  ports:
+  - port: 4242`,
 	}
 
 	meshedSkippedPodResource := []string{

@@ -10,6 +10,8 @@ use linkerd_policy_test::{
 };
 use maplit::{btreemap, convert_args};
 
+const FORTIO_IMAGE: &str = "docker.io/fortio/fortio:latest";
+
 #[tokio::test(flavor = "current_thread")]
 /// Tests reaching the rate limit for:
 /// - a client with a meshed identity
@@ -229,7 +231,7 @@ async fn create_fortio_pod(
         spec: Some(k8s::PodSpec {
             containers: vec![k8s::api::core::v1::Container {
                 name: "fortio".to_string(),
-                image: Some("fortio/fortio:latest".to_string()),
+                image: Some(FORTIO_IMAGE.to_string()),
                 args: Some(vec![
                     "load".to_string(),
                     "-qps".to_string(),

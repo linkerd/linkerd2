@@ -181,7 +181,7 @@ impl Args {
         let hostname =
             std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
 
-        let claims = lease::init(
+        let (claims, lease_task) = lease::init(
             &runtime,
             &control_plane_namespace,
             &policy_deployment_name,
@@ -416,10 +416,35 @@ impl Args {
 
         let runtime = runtime.spawn_server(Admission::new);
 
-        // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
-        // complete before exiting.
-        if runtime.run().await.is_err() {
-            bail!("Aborted");
+        // Run until the shutdown signal fires or the lease task ends unexpectedly.
+        // Consumers of `claims` panic if the lease watch is ever dropped, on the
+        // assumption that Kubernetes will restart the container (see
+        // https://github.com/linkerd/linkerd2/pull/10584); watch the lease task here
+        // so the process exits deterministically instead of relying on that panic
+        // being observed from within a detached task.
+        tokio::select! {
+            biased;
+            res = lease_task => {
+                match res {
+                    Ok(Ok(())) => {
+                        bail!("Lease task exited unexpectedly");
+                    }
+                    Ok(Err(error)) => {
+                        bail!("Lease task failed: {error}");
+                    }
+                    Err(error) if error.is_panic() => {
+                        std::panic::resume_unwind(error.into_panic());
+                    }
+                    Err(error) => {
+                        bail!("Lease task was cancelled: {error}");
+                    }
+                }
+            }
+            res = runtime.run() => {
+                if res.is_err() {
+                    bail!("Aborted");
+                }
+            }
         }
 
         Ok(())

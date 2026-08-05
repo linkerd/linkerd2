@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metrics-test
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: metrics-test
+    spec:
+      containers:
+      - name: metrics-9090
+        image: buoyantio/bb:v0.0.7
+        args:
+        - terminus
+        - "--h1-server-port=9090"
+        - "--response-text=OK_FROM_9090"
+        ports:
+        - name: metrics-9090
+          containerPort: 9090
+      - name: metrics-9091
+        image: buoyantio/bb:v0.0.7
+        args:
+        - terminus
+        - "--h1-server-port=9091"
+        - "--response-text=OK_FROM_9091"
+        ports:
+        - name: metrics-9091
+          containerPort: 9091
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-test
+spec:
+  selector:
+    app: metrics-test
+  ports:
+  - name: metrics-9090
+    port: 9090
+    targetPort: 9090
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: curl-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: curl-test
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: curl-test
+    spec:
+      containers:
+      - name: curl
+        image: curlimages/curl
+        command: ["sleep", "infinite"]

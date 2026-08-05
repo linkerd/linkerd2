@@ -7,6 +7,10 @@ kubernetes-version
 ------------------
 √ is running the minimum Kubernetes API version
 
+gateway-api-crd
+---------------
+√ Gateway API CRDs are installed
+
 linkerd-existence
 -----------------
 √ 'linkerd-config' config map exists
