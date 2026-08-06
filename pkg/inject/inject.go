@@ -73,6 +73,8 @@ var (
 		k8s.ProxyAwait,
 		k8s.ProxyDefaultInboundPolicyAnnotation,
 		k8s.ProxySkipSubnetsAnnotation,
+		k8s.ProxySkipInboundSubnetsAnnotation,
+		k8s.ProxySkipOutboundSubnetsAnnotation,
 		k8s.ProxyAccessLogAnnotation,
 		k8s.ProxyShutdownGracePeriodAnnotation,
 		k8s.ProxyOutboundDiscoveryCacheUnusedTimeout,
@@ -599,6 +601,14 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 
 	if override, ok := annotations[k8s.ProxySkipSubnetsAnnotation]; ok {
 		values.ProxyInit.SkipSubnets = override
+	}
+
+	if override, ok := annotations[k8s.ProxySkipInboundSubnetsAnnotation]; ok {
+		values.ProxyInit.SkipInboundSubnets = override
+	}
+
+	if override, ok := annotations[k8s.ProxySkipOutboundSubnetsAnnotation]; ok {
+		values.ProxyInit.SkipOutboundSubnets = override
 	}
 
 	if override, ok := annotations[k8s.ProxyAccessLogAnnotation]; ok {
