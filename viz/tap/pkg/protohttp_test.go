@@ -15,7 +15,19 @@ func TestTapReqToURL(t *testing.T) {
 	}{
 		{
 			req: &tapPb.TapByResourceRequest{},
-			url: "/apis/tap.linkerd.io/v1alpha1/watch/namespaces//s//tap",
+			url: "/apis/tap.linkerd.io/v1alpha1/watch/namespaces//s/tap",
+		},
+		{
+			req: &tapPb.TapByResourceRequest{
+				Target: &metricsPb.ResourceSelection{
+					Resource: &metricsPb.Resource{
+						Namespace: "linkerd",
+						Type:      "pod",
+						Name:      "",
+					},
+				},
+			},
+			url: "/apis/tap.linkerd.io/v1alpha1/watch/namespaces/linkerd/pods/tap",
 		},
 		{
 			req: &tapPb.TapByResourceRequest{
