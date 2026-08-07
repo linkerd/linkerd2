@@ -561,6 +561,8 @@ data:
     podMonitor:
       controller:
         enabled: true
+        extraMetricRelabelings: []
+        extraRelabelings: []
         honorTimestamps: false
         namespaceSelector: |
           matchNames:
@@ -569,11 +571,15 @@ data:
       enabled: false
       proxy:
         enabled: true
+        extraMetricRelabelings: []
+        extraRelabelings: []
         honorTimestamps: false
       scrapeInterval: 10s
       scrapeTimeout: 10s
       serviceMirror:
         enabled: true
+        extraMetricRelabelings: []
+        extraRelabelings: []
         honorTimestamps: false
     policyController:
       logLevel: info
