@@ -2271,7 +2271,7 @@ func CheckGatewayAPICRDsInstalled(ctx context.Context, k8sAPI *k8s.KubernetesAPI
 func GatewayAPICRDsMissingError() error {
 	return errors.New(`The Gateway API CRDs must be installed prior to installing Linkerd. Run:
 
-kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
 
 or see https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api for more options.`)
 }
