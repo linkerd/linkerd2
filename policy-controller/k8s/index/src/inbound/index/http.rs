@@ -29,7 +29,7 @@ impl TryFrom<gateway::HTTPRoute> for RouteBinding<HttpRoute> {
             .into_iter()
             .flatten()
             .map(
-                |gateway::HTTPRouteRules {
+                |gateway::HttpRouteRules {
                      matches, filters, ..
                  }| try_http_rule(matches, filters, try_gateway_filter),
             )
@@ -97,7 +97,7 @@ impl TryFrom<policy::HttpRoute> for RouteBinding<HttpRoute> {
 }
 
 fn try_http_rule<F>(
-    matches: Option<Vec<gateway::HTTPRouteRulesMatches>>,
+    matches: Option<Vec<gateway::HttpRouteRulesMatches>>,
     filters: Option<Vec<F>>,
     try_filter: impl Fn(F) -> Result<Filter>,
 ) -> Result<InboundRouteRule<HttpRouteMatch>> {
@@ -116,7 +116,7 @@ fn try_http_rule<F>(
     Ok(InboundRouteRule { matches, filters })
 }
 
-fn try_gateway_filter(filter: gateway::HTTPRouteRulesFilters) -> Result<Filter> {
+fn try_gateway_filter(filter: gateway::HttpRouteRulesFilters) -> Result<Filter> {
     if let Some(request_header_modifier) = filter.request_header_modifier {
         let filter = crate::routes::http::request_header_modifier(request_header_modifier)?;
         return Ok(Filter::RequestHeaderModifier(filter));

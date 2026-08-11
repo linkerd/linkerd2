@@ -4,7 +4,7 @@ use crate::{
     tests::{default_cluster_networks, make_server},
     Index, IndexMetrics,
 };
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::routes::GroupKindName;
 use linkerd_policy_controller_k8s_api::{
@@ -162,7 +162,7 @@ fn make_index_updates_rx() -> (SharedIndex, Receiver<Update>) {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, updates_rx) = mpsc::channel(10000);

@@ -3,7 +3,7 @@ use linkerd_policy_controller_core::routes;
 use linkerd_policy_controller_k8s_api::gateway;
 
 pub fn try_match(
-    gateway::GRPCRouteRulesMatches { headers, method }: gateway::GRPCRouteRulesMatches,
+    gateway::GrpcRouteRulesMatches { headers, method }: gateway::GrpcRouteRulesMatches,
 ) -> Result<routes::GrpcRouteMatch> {
     let headers = headers
         .into_iter()
@@ -13,7 +13,7 @@ pub fn try_match(
 
     let method = method
         .map(|value| {
-            if value.r#type == Some(gateway::GRPCRouteRulesMatchesMethodType::RegularExpression) {
+            if value.r#type == Some(gateway::GrpcRouteRulesMatchesMethodType::RegularExpression) {
                 bail!(
                     "unsupported GRPCRoute method match type: {:?}",
                     value.r#type
@@ -30,27 +30,27 @@ pub fn try_match(
 }
 
 pub fn header_match(
-    header_match: gateway::GRPCRouteRulesMatchesHeaders,
+    header_match: gateway::GrpcRouteRulesMatchesHeaders,
 ) -> Result<routes::HeaderMatch> {
     match header_match.r#type {
-        Some(gateway::GRPCRouteRulesMatchesHeadersType::Exact) | None => Ok(
+        Some(gateway::GrpcRouteRulesMatchesHeadersType::Exact) | None => Ok(
             routes::HeaderMatch::Exact(header_match.name.parse()?, header_match.value.parse()?),
         ),
-        Some(gateway::GRPCRouteRulesMatchesHeadersType::RegularExpression) => Ok(
+        Some(gateway::GrpcRouteRulesMatchesHeadersType::RegularExpression) => Ok(
             routes::HeaderMatch::Regex(header_match.name.parse()?, header_match.value.parse()?),
         ),
     }
 }
 
 pub fn request_header_modifier(
-    gateway::GRPCRouteRulesFiltersRequestHeaderModifier { set, add, remove }: gateway::GRPCRouteRulesFiltersRequestHeaderModifier,
+    gateway::GrpcRouteRulesFiltersRequestHeaderModifier { set, add, remove }: gateway::GrpcRouteRulesFiltersRequestHeaderModifier,
 ) -> Result<routes::HeaderModifierFilter> {
     Ok(routes::HeaderModifierFilter {
         add: add
             .into_iter()
             .flatten()
             .map(
-                |gateway::GRPCRouteRulesFiltersRequestHeaderModifierAdd { name, value }| {
+                |gateway::GrpcRouteRulesFiltersRequestHeaderModifierAdd { name, value }| {
                     Ok((name.parse()?, value.parse()?))
                 },
             )
@@ -59,7 +59,7 @@ pub fn request_header_modifier(
             .into_iter()
             .flatten()
             .map(
-                |gateway::GRPCRouteRulesFiltersRequestHeaderModifierSet { name, value }| {
+                |gateway::GrpcRouteRulesFiltersRequestHeaderModifierSet { name, value }| {
                     Ok((name.parse()?, value.parse()?))
                 },
             )
@@ -73,14 +73,14 @@ pub fn request_header_modifier(
 }
 
 pub fn backend_request_header_modifier(
-    gateway::GRPCRouteRulesBackendRefsFiltersRequestHeaderModifier { set, add, remove }: gateway::GRPCRouteRulesBackendRefsFiltersRequestHeaderModifier,
+    gateway::GrpcRouteRulesBackendRefsFiltersRequestHeaderModifier { set, add, remove }: gateway::GrpcRouteRulesBackendRefsFiltersRequestHeaderModifier,
 ) -> Result<routes::HeaderModifierFilter> {
     Ok(routes::HeaderModifierFilter {
         add: add
             .into_iter()
             .flatten()
             .map(
-                |gateway::GRPCRouteRulesBackendRefsFiltersRequestHeaderModifierAdd {
+                |gateway::GrpcRouteRulesBackendRefsFiltersRequestHeaderModifierAdd {
                      name,
                      value,
                  }| { Ok((name.parse()?, value.parse()?)) },
@@ -90,7 +90,7 @@ pub fn backend_request_header_modifier(
             .into_iter()
             .flatten()
             .map(
-                |gateway::GRPCRouteRulesBackendRefsFiltersRequestHeaderModifierSet {
+                |gateway::GrpcRouteRulesBackendRefsFiltersRequestHeaderModifierSet {
                      name,
                      value,
                  }| { Ok((name.parse()?, value.parse()?)) },
@@ -105,14 +105,14 @@ pub fn backend_request_header_modifier(
 }
 
 pub fn response_header_modifier(
-    gateway::GRPCRouteRulesFiltersResponseHeaderModifier { set, add, remove }: gateway::GRPCRouteRulesFiltersResponseHeaderModifier,
+    gateway::GrpcRouteRulesFiltersResponseHeaderModifier { set, add, remove }: gateway::GrpcRouteRulesFiltersResponseHeaderModifier,
 ) -> Result<routes::HeaderModifierFilter> {
     Ok(routes::HeaderModifierFilter {
         add: add
             .into_iter()
             .flatten()
             .map(
-                |gateway::GRPCRouteRulesFiltersResponseHeaderModifierAdd { name, value }| {
+                |gateway::GrpcRouteRulesFiltersResponseHeaderModifierAdd { name, value }| {
                     Ok((name.parse()?, value.parse()?))
                 },
             )
@@ -121,7 +121,7 @@ pub fn response_header_modifier(
             .into_iter()
             .flatten()
             .map(
-                |gateway::GRPCRouteRulesFiltersResponseHeaderModifierSet { name, value }| {
+                |gateway::GrpcRouteRulesFiltersResponseHeaderModifierSet { name, value }| {
                     Ok((name.parse()?, value.parse()?))
                 },
             )
@@ -135,14 +135,14 @@ pub fn response_header_modifier(
 }
 
 pub fn backend_response_header_modifier(
-    gateway::GRPCRouteRulesBackendRefsFiltersResponseHeaderModifier { set, add, remove }: gateway::GRPCRouteRulesBackendRefsFiltersResponseHeaderModifier,
+    gateway::GrpcRouteRulesBackendRefsFiltersResponseHeaderModifier { set, add, remove }: gateway::GrpcRouteRulesBackendRefsFiltersResponseHeaderModifier,
 ) -> Result<routes::HeaderModifierFilter> {
     Ok(routes::HeaderModifierFilter {
         add: add
             .into_iter()
             .flatten()
             .map(
-                |gateway::GRPCRouteRulesBackendRefsFiltersResponseHeaderModifierAdd {
+                |gateway::GrpcRouteRulesBackendRefsFiltersResponseHeaderModifierAdd {
                      name,
                      value,
                  }| { Ok((name.parse()?, value.parse()?)) },
@@ -152,7 +152,7 @@ pub fn backend_response_header_modifier(
             .into_iter()
             .flatten()
             .map(
-                |gateway::GRPCRouteRulesBackendRefsFiltersResponseHeaderModifierSet {
+                |gateway::GrpcRouteRulesBackendRefsFiltersResponseHeaderModifierSet {
                      name,
                      value,
                  }| { Ok((name.parse()?, value.parse()?)) },

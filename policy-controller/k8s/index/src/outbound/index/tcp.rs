@@ -25,7 +25,6 @@ pub(super) fn convert_route(
         .backend_refs
         .clone()
         .into_iter()
-        .flatten()
         .filter_map(|b| convert_backend(ns, b, cluster, resource_info))
         .collect();
 
@@ -39,7 +38,7 @@ pub(super) fn convert_route(
 
 pub(super) fn convert_backend(
     ns: &str,
-    backend: gateway::TCPRouteRulesBackendRefs,
+    backend: gateway::TcpRouteRulesBackendRefs,
     cluster: &ClusterInfo,
     resources: &HashMap<ResourceRef, ResourceInfo>,
 ) -> Option<Backend> {
@@ -108,7 +107,7 @@ pub(super) fn convert_backend(
 }
 
 pub(super) fn route_accepted_by_resource_port(
-    route_status: Option<&gateway::TCPRouteStatus>,
+    route_status: Option<&gateway::TcpRouteStatus>,
     resource_port: &ResourcePort,
 ) -> bool {
     let (kind, group) = match resource_port.kind {
@@ -142,13 +141,12 @@ pub(super) fn route_accepted_by_resource_port(
                 && parent_status
                     .conditions
                     .iter()
-                    .flatten()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
 }
 
 pub fn route_accepted_by_service(
-    route_status: Option<&gateway::TCPRouteStatus>,
+    route_status: Option<&gateway::TcpRouteStatus>,
     service: &str,
 ) -> bool {
     let mut service_group = &*Service::group(&());
@@ -170,12 +168,11 @@ pub fn route_accepted_by_service(
                 && parent_status
                     .conditions
                     .iter()
-                    .flatten()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
 }
 
-pub(crate) fn backend_kind(backend: &gateway::TCPRouteRulesBackendRefs) -> Option<ResourceKind> {
+pub(crate) fn backend_kind(backend: &gateway::TcpRouteRulesBackendRefs) -> Option<ResourceKind> {
     let group = backend.group.as_deref();
     // Backends default to `Service` if no kind is specified.
     let kind = backend.kind.as_deref().unwrap_or("Service");

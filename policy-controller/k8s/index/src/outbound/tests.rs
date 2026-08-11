@@ -5,7 +5,7 @@ use crate::{
     outbound::index::{Index, SharedIndex},
     ClusterInfo,
 };
-use k8s_openapi::chrono::Utc;
+use k8s_openapi::jiff::Timestamp;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{outbound, IpNet};
 use linkerd_policy_controller_core::{
@@ -56,7 +56,7 @@ pub fn mk_egress_network(ns: impl ToString, name: impl ToString) -> policy::Egre
         },
         status: Some(policy::EgressNetworkStatus {
             conditions: vec![k8s::Condition {
-                last_transition_time: k8s::Time(Utc::now()),
+                last_transition_time: k8s::Time(Timestamp::now()),
                 message: "".to_string(),
                 observed_generation: None,
                 reason: "Accepted".to_string(),
@@ -246,7 +246,7 @@ fn update_backend_on_route_with_no_port() {
 
     test.index.write().apply(parent);
 
-    let parent_ref = gateway::HTTPRouteParentRefs {
+    let parent_ref = gateway::HttpRouteParentRefs {
         name: "parent-svc".to_string(),
         namespace: Some(ns.to_string()),
         kind: Some("Service".to_string()),
@@ -261,15 +261,15 @@ fn update_backend_on_route_with_no_port() {
             name: Some("foo-route".to_string()),
             ..Default::default()
         },
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![parent_ref.clone()]),
             hostnames: None,
-            rules: Some(vec![gateway::HTTPRouteRules {
+            rules: Some(vec![gateway::HttpRouteRules {
                 name: None,
                 matches: None,
                 filters: None,
                 // Reference to a backend that doesn't exist yet.
-                backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                backend_refs: Some(vec![gateway::HttpRouteRulesBackendRefs {
                     weight: Some(1),
                     group: Some("core".to_string()),
                     kind: Some("Service".to_string()),
@@ -281,10 +281,11 @@ fn update_backend_on_route_with_no_port() {
                 }]),
                 ..Default::default()
             }]),
+            use_default_gateways: None,
         },
-        status: Some(gateway::HTTPRouteStatus {
-            parents: vec![gateway::HTTPRouteStatusParents {
-                parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+        status: Some(gateway::HttpRouteStatus {
+            parents: vec![gateway::HttpRouteStatusParents {
+                parent_ref: gateway::HttpRouteStatusParentsParentRef {
                     name: "parent-svc".to_string(),
                     namespace: Some(ns.to_string()),
                     kind: Some("Service".to_string()),
@@ -293,14 +294,14 @@ fn update_backend_on_route_with_no_port() {
                     port: None, // Route is attached to parent without specifying port.
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![k8s::Condition {
-                    last_transition_time: k8s::Time(Utc::now()),
+                conditions: vec![k8s::Condition {
+                    last_transition_time: k8s::Time(Timestamp::now()),
                     message: "".to_string(),
                     observed_generation: None,
                     reason: "Accepted".to_string(),
                     status: "True".to_string(),
                     type_: "Accepted".to_string(),
-                }]),
+                }],
             }],
         }),
     };

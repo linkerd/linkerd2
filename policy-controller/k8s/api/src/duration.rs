@@ -162,24 +162,21 @@ impl<'de> Deserialize<'de> for K8sDuration {
 impl schemars::JsonSchema for K8sDuration {
     // see
     // https://github.com/kubernetes/apimachinery/blob/756e2227bf3a486098f504af1a0ffb736ad16f4c/pkg/apis/meta/v1/duration.go#L61
-    fn schema_name() -> String {
-        "K8sDuration".to_owned()
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "K8sDuration".into()
     }
 
-    fn is_referenceable() -> bool {
-        false
+    fn inline_schema() -> bool {
+        true
     }
 
-    fn json_schema(_: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-        schemars::schema::SchemaObject {
-            instance_type: Some(schemars::schema::InstanceType::String.into()),
-            // the format should *not* be "duration", because "duration" means
-            // the duration is formatted in ISO 8601, as described here:
-            // https://datatracker.ietf.org/doc/html/draft-handrews-json-schema-validation-02#section-7.3.1
-            format: None,
-            ..Default::default()
-        }
-        .into()
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        // the format should *not* be "duration", because "duration" means
+        // the duration is formatted in ISO 8601, as described here:
+        // https://datatracker.ietf.org/doc/html/draft-handrews-json-schema-validation-02#section-7.3.1
+        schemars::json_schema!({
+            "type": "string",
+        })
     }
 }
 #[cfg(test)]

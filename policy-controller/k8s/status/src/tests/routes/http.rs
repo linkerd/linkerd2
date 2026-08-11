@@ -7,7 +7,7 @@ use crate::{
     tests::{default_cluster_networks, make_server},
     Index, IndexMetrics,
 };
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{routes::GroupKindName, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy, Resource, ResourceExt};
@@ -20,18 +20,18 @@ pub(crate) fn make_parent_status(
     type_: impl ToString,
     status: impl ToString,
     reason: impl ToString,
-) -> gateway::HTTPRouteStatusParents {
+) -> gateway::HttpRouteStatusParents {
     let condition = k8s::Condition {
         message: "".to_string(),
         type_: type_.to_string(),
         observed_generation: None,
         reason: reason.to_string(),
         status: status.to_string(),
-        last_transition_time: k8s::Time(DateTime::<Utc>::MIN_UTC),
+        last_transition_time: k8s::Time(Timestamp::MIN),
     };
-    gateway::HTTPRouteStatusParents {
-        conditions: Some(vec![condition]),
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    gateway::HttpRouteStatusParents {
+        conditions: vec![condition],
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             port: None,
             section_name: None,
             name: name.to_string(),
@@ -48,7 +48,7 @@ fn linkerd_route_with_no_backends() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -73,7 +73,7 @@ fn linkerd_route_with_no_backends() {
             name: "route-foo".into(),
         },
     };
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -89,8 +89,8 @@ fn linkerd_route_with_no_backends() {
     let accepted_condition = accepted();
     // No backends were specified, so we have vacuously resolved them all.
     let backend_condition = resolved_refs();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -99,9 +99,9 @@ fn linkerd_route_with_no_backends() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -117,7 +117,7 @@ fn gateway_route_with_no_backends() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -134,7 +134,7 @@ fn gateway_route_with_no_backends() {
     index.write().apply(parent.clone());
 
     // Apply the route.
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -157,8 +157,8 @@ fn gateway_route_with_no_backends() {
     let accepted_condition = accepted();
     // No backends were specified, so we have vacuously resolved them all.
     let backend_condition = resolved_refs();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -167,9 +167,9 @@ fn gateway_route_with_no_backends() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -185,7 +185,7 @@ fn linkerd_route_with_valid_service_backends() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -218,7 +218,7 @@ fn linkerd_route_with_valid_service_backends() {
             name: "route-foo".into(),
         },
     };
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -230,7 +230,7 @@ fn linkerd_route_with_valid_service_backends() {
         &id,
         parent.clone(),
         Some(vec![
-            gateway::HTTPRouteRulesBackendRefs {
+            gateway::HttpRouteRulesBackendRefs {
                 weight: None,
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
@@ -239,7 +239,7 @@ fn linkerd_route_with_valid_service_backends() {
                 port: Some(8080),
                 filters: None,
             },
-            gateway::HTTPRouteRulesBackendRefs {
+            gateway::HttpRouteRulesBackendRefs {
                 weight: None,
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
@@ -256,8 +256,8 @@ fn linkerd_route_with_valid_service_backends() {
     let accepted_condition = accepted();
     // All backends exist and can be resolved.
     let backend_condition = resolved_refs();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -266,9 +266,9 @@ fn linkerd_route_with_valid_service_backends() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -284,7 +284,7 @@ fn linkerd_route_with_valid_egress_networks_backends() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -308,7 +308,7 @@ fn linkerd_route_with_valid_egress_networks_backends() {
             name: "route-foo".into(),
         },
     };
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -319,7 +319,7 @@ fn linkerd_route_with_valid_egress_networks_backends() {
     let route = make_linkerd_route(
         &id,
         parent.clone(),
-        Some(vec![gateway::HTTPRouteRulesBackendRefs {
+        Some(vec![gateway::HttpRouteRulesBackendRefs {
             weight: None,
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("EgressNetwork".to_string()),
@@ -335,8 +335,8 @@ fn linkerd_route_with_valid_egress_networks_backends() {
     let accepted_condition = accepted();
     // All backends exist and can be resolved.
     let backend_condition = resolved_refs();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -345,9 +345,9 @@ fn linkerd_route_with_valid_egress_networks_backends() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch: linkerd_policy_controller_k8s_api::Patch<serde_json::Value> =
@@ -364,7 +364,7 @@ fn gateway_route_with_valid_service_backends() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -389,7 +389,7 @@ fn gateway_route_with_valid_service_backends() {
     index.write().apply(backend2.clone());
 
     // Apply the route.
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -409,7 +409,7 @@ fn gateway_route_with_valid_service_backends() {
         &id,
         parent.clone(),
         Some(vec![
-            gateway::HTTPRouteRulesBackendRefs {
+            gateway::HttpRouteRulesBackendRefs {
                 weight: None,
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
@@ -419,7 +419,7 @@ fn gateway_route_with_valid_service_backends() {
 
                 filters: None,
             },
-            gateway::HTTPRouteRulesBackendRefs {
+            gateway::HttpRouteRulesBackendRefs {
                 weight: None,
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
@@ -436,8 +436,8 @@ fn gateway_route_with_valid_service_backends() {
     let accepted_condition = accepted();
     // All backends exist and can be resolved.
     let backend_condition = resolved_refs();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -446,9 +446,9 @@ fn gateway_route_with_valid_service_backends() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -464,7 +464,7 @@ fn gateway_route_with_valid_egress_networks_backends() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -481,7 +481,7 @@ fn gateway_route_with_valid_egress_networks_backends() {
     index.write().apply(parent.clone());
 
     // Apply the route.
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -500,7 +500,7 @@ fn gateway_route_with_valid_egress_networks_backends() {
     let route = make_gateway_route(
         &id,
         parent.clone(),
-        Some(vec![gateway::HTTPRouteRulesBackendRefs {
+        Some(vec![gateway::HttpRouteRulesBackendRefs {
             weight: None,
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("EgressNetwork".to_string()),
@@ -516,8 +516,8 @@ fn gateway_route_with_valid_egress_networks_backends() {
     let accepted_condition = accepted();
     // All backends exist and can be resolved.
     let backend_condition = resolved_refs();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -526,9 +526,9 @@ fn gateway_route_with_valid_egress_networks_backends() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -544,7 +544,7 @@ fn linkerd_route_with_invalid_service_backend() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -565,7 +565,7 @@ fn linkerd_route_with_invalid_service_backend() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -585,7 +585,7 @@ fn linkerd_route_with_invalid_service_backend() {
         &id,
         parent.clone(),
         Some(vec![
-            gateway::HTTPRouteRulesBackendRefs {
+            gateway::HttpRouteRulesBackendRefs {
                 weight: None,
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
@@ -594,7 +594,7 @@ fn linkerd_route_with_invalid_service_backend() {
                 port: Some(8080),
                 filters: None,
             },
-            gateway::HTTPRouteRulesBackendRefs {
+            gateway::HttpRouteRulesBackendRefs {
                 weight: None,
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
@@ -611,8 +611,8 @@ fn linkerd_route_with_invalid_service_backend() {
     let accepted_condition = accepted();
     // One of the backends does not exist so the status should be BackendNotFound.
     let backend_condition = backend_not_found();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -621,9 +621,9 @@ fn linkerd_route_with_invalid_service_backend() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -639,7 +639,7 @@ fn linkerd_route_with_egress_network_backend_different_from_parent() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -660,7 +660,7 @@ fn linkerd_route_with_egress_network_backend_different_from_parent() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -679,7 +679,7 @@ fn linkerd_route_with_egress_network_backend_different_from_parent() {
     let route = make_linkerd_route(
         &id,
         parent.clone(),
-        Some(vec![gateway::HTTPRouteRulesBackendRefs {
+        Some(vec![gateway::HttpRouteRulesBackendRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("EgressNetwork".to_string()),
             name: backend.name_unchecked(),
@@ -696,8 +696,8 @@ fn linkerd_route_with_egress_network_backend_different_from_parent() {
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
     );
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -706,9 +706,9 @@ fn linkerd_route_with_egress_network_backend_different_from_parent() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -724,7 +724,7 @@ fn linkerd_route_with_egress_network_backend_and_service_parent() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -745,7 +745,7 @@ fn linkerd_route_with_egress_network_backend_and_service_parent() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -765,7 +765,7 @@ fn linkerd_route_with_egress_network_backend_and_service_parent() {
     let route = make_linkerd_route(
         &id,
         parent.clone(),
-        Some(vec![gateway::HTTPRouteRulesBackendRefs {
+        Some(vec![gateway::HttpRouteRulesBackendRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("EgressNetwork".to_string()),
             name: backend.name_unchecked(),
@@ -782,8 +782,8 @@ fn linkerd_route_with_egress_network_backend_and_service_parent() {
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
     );
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -792,9 +792,9 @@ fn linkerd_route_with_egress_network_backend_and_service_parent() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -810,7 +810,7 @@ fn linkerd_route_with_egress_network_parent_and_service_backend() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -831,7 +831,7 @@ fn linkerd_route_with_egress_network_parent_and_service_backend() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -851,7 +851,7 @@ fn linkerd_route_with_egress_network_parent_and_service_backend() {
     let route = make_linkerd_route(
         &id,
         parent.clone(),
-        Some(vec![gateway::HTTPRouteRulesBackendRefs {
+        Some(vec![gateway::HttpRouteRulesBackendRefs {
             group: Some("core".to_string()),
             kind: Some("Service".to_string()),
             name: backend.name_unchecked(),
@@ -866,8 +866,8 @@ fn linkerd_route_with_egress_network_parent_and_service_backend() {
     // Create the expected update.
     let accepted_condition = accepted();
     let backend_condition = resolved_refs();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -876,9 +876,9 @@ fn linkerd_route_with_egress_network_parent_and_service_backend() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -894,7 +894,7 @@ fn gateway_route_with_invalid_service_backend() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -915,7 +915,7 @@ fn gateway_route_with_invalid_service_backend() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -935,7 +935,7 @@ fn gateway_route_with_invalid_service_backend() {
         &id,
         parent.clone(),
         Some(vec![
-            gateway::HTTPRouteRulesBackendRefs {
+            gateway::HttpRouteRulesBackendRefs {
                 weight: None,
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
@@ -944,7 +944,7 @@ fn gateway_route_with_invalid_service_backend() {
                 port: Some(8080),
                 filters: None,
             },
-            gateway::HTTPRouteRulesBackendRefs {
+            gateway::HttpRouteRulesBackendRefs {
                 weight: None,
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
@@ -961,8 +961,8 @@ fn gateway_route_with_invalid_service_backend() {
     let accepted_condition = accepted();
     // One of the backends does not exist so the status should be BackendNotFound.
     let backend_condition = backend_not_found();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -971,9 +971,9 @@ fn gateway_route_with_invalid_service_backend() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -989,7 +989,7 @@ fn gateway_route_with_egress_network_backend_different_from_parent() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -1010,7 +1010,7 @@ fn gateway_route_with_egress_network_backend_different_from_parent() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -1029,7 +1029,7 @@ fn gateway_route_with_egress_network_backend_different_from_parent() {
     let route = make_gateway_route(
         &id,
         parent.clone(),
-        Some(vec![gateway::HTTPRouteRulesBackendRefs {
+        Some(vec![gateway::HttpRouteRulesBackendRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("EgressNetwork".to_string()),
             name: backend.name_unchecked(),
@@ -1046,8 +1046,8 @@ fn gateway_route_with_egress_network_backend_different_from_parent() {
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
     );
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -1056,9 +1056,9 @@ fn gateway_route_with_egress_network_backend_different_from_parent() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1074,7 +1074,7 @@ fn gateway_route_with_egress_network_backend_and_service_parent() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -1095,7 +1095,7 @@ fn gateway_route_with_egress_network_backend_and_service_parent() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -1115,7 +1115,7 @@ fn gateway_route_with_egress_network_backend_and_service_parent() {
     let route = make_gateway_route(
         &id,
         parent.clone(),
-        Some(vec![gateway::HTTPRouteRulesBackendRefs {
+        Some(vec![gateway::HttpRouteRulesBackendRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("EgressNetwork".to_string()),
             name: backend.name_unchecked(),
@@ -1132,8 +1132,8 @@ fn gateway_route_with_egress_network_backend_and_service_parent() {
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
     );
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -1142,9 +1142,9 @@ fn gateway_route_with_egress_network_backend_and_service_parent() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1160,7 +1160,7 @@ fn gateway_route_with_egress_network_parent_and_service_backend() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -1181,7 +1181,7 @@ fn gateway_route_with_egress_network_parent_and_service_backend() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -1201,7 +1201,7 @@ fn gateway_route_with_egress_network_parent_and_service_backend() {
     let route = make_gateway_route(
         &id,
         parent.clone(),
-        Some(vec![gateway::HTTPRouteRulesBackendRefs {
+        Some(vec![gateway::HttpRouteRulesBackendRefs {
             group: Some("core".to_string()),
             kind: Some("Service".to_string()),
             name: backend.name_unchecked(),
@@ -1216,8 +1216,8 @@ fn gateway_route_with_egress_network_parent_and_service_backend() {
     // Create the expected update.
     let accepted_condition = accepted();
     let backend_condition = resolved_refs();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -1226,9 +1226,9 @@ fn gateway_route_with_egress_network_parent_and_service_backend() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1244,7 +1244,7 @@ fn linkerd_route_accepted_after_server_create() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -1265,7 +1265,7 @@ fn linkerd_route_accepted_after_server_create() {
             name: "route-foo".into(),
         },
     };
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("Server".to_string()),
         namespace: None,
@@ -1286,7 +1286,7 @@ fn linkerd_route_accepted_after_server_create() {
         "False",
         "NoMatchingParent",
     );
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1311,7 +1311,7 @@ fn linkerd_route_accepted_after_server_create() {
     // Create the expected update.
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1329,7 +1329,7 @@ fn linkerd_route_accepted_after_egress_network_create() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -1350,7 +1350,7 @@ fn linkerd_route_accepted_after_egress_network_create() {
             name: "route-foo".into(),
         },
     };
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: Some("ns-0".to_string()),
@@ -1366,8 +1366,8 @@ fn linkerd_route_accepted_after_egress_network_create() {
     // Create the expected update.
     let accepted_condition = no_matching_parent();
     let backend_condition = resolved_refs();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group.clone(),
             kind: parent.kind.clone(),
             namespace: parent.namespace.clone(),
@@ -1376,10 +1376,10 @@ fn linkerd_route_accepted_after_egress_network_create() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
+        conditions: vec![accepted_condition, backend_condition.clone()],
     };
 
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1396,8 +1396,8 @@ fn linkerd_route_accepted_after_egress_network_create() {
 
     // Create the expected update.
     let accepted_condition = accepted();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -1406,10 +1406,10 @@ fn linkerd_route_accepted_after_egress_network_create() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
 
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1427,7 +1427,7 @@ fn gateway_route_accepted_after_server_create() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -1448,7 +1448,7 @@ fn gateway_route_accepted_after_server_create() {
             group: gateway::HTTPRoute::group(&()),
         },
     };
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("Server".to_string()),
         namespace: None,
@@ -1469,7 +1469,7 @@ fn gateway_route_accepted_after_server_create() {
         "False",
         "NoMatchingParent",
     );
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1494,7 +1494,7 @@ fn gateway_route_accepted_after_server_create() {
     // Create the expected update.
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1512,7 +1512,7 @@ fn gateway_route_accepted_after_egress_network_create() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -1533,7 +1533,7 @@ fn gateway_route_accepted_after_egress_network_create() {
             name: "route-foo".into(),
         },
     };
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: Some("ns-0".to_string()),
@@ -1549,8 +1549,8 @@ fn gateway_route_accepted_after_egress_network_create() {
     // Create the expected update.
     let rejected_condition = no_matching_parent();
     let backend_condition = resolved_refs();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group.clone(),
             kind: parent.kind.clone(),
             namespace: parent.namespace.clone(),
@@ -1559,10 +1559,10 @@ fn gateway_route_accepted_after_egress_network_create() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![rejected_condition, backend_condition.clone()]),
+        conditions: vec![rejected_condition, backend_condition.clone()],
     };
 
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1579,8 +1579,8 @@ fn gateway_route_accepted_after_egress_network_create() {
 
     // Create the expected update.
     let accepted_condition = accepted();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             namespace: parent.namespace,
@@ -1589,10 +1589,10 @@ fn gateway_route_accepted_after_egress_network_create() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
 
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1610,7 +1610,7 @@ fn linkerd_route_rejected_after_server_delete() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -1644,7 +1644,7 @@ fn linkerd_route_rejected_after_server_delete() {
             name: "route-foo".into(),
         },
     };
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("Server".to_string()),
         namespace: None,
@@ -1660,7 +1660,7 @@ fn linkerd_route_rejected_after_server_delete() {
     // Create the expected update.
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1683,7 +1683,7 @@ fn linkerd_route_rejected_after_server_delete() {
     // Create the expected update.
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1701,7 +1701,7 @@ fn linkerd_route_rejected_after_egress_network_delete() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -1728,7 +1728,7 @@ fn linkerd_route_rejected_after_egress_network_delete() {
             name: "route-foo".into(),
         },
     };
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: Some("ns-0".to_string()),
@@ -1744,8 +1744,8 @@ fn linkerd_route_rejected_after_egress_network_delete() {
     // Create the expected update.
     let accepted_condition = accepted();
     let backend_condition = resolved_refs();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group.clone(),
             kind: parent.kind.clone(),
             namespace: parent.namespace.clone(),
@@ -1754,10 +1754,10 @@ fn linkerd_route_rejected_after_egress_network_delete() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
+        conditions: vec![accepted_condition, backend_condition.clone()],
     };
 
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1779,8 +1779,8 @@ fn linkerd_route_rejected_after_egress_network_delete() {
 
     // Create the expected update.
     let rejected_condition = no_matching_parent();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group.clone(),
             kind: parent.kind.clone(),
             namespace: parent.namespace.clone(),
@@ -1789,10 +1789,10 @@ fn linkerd_route_rejected_after_egress_network_delete() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![rejected_condition, backend_condition.clone()]),
+        conditions: vec![rejected_condition, backend_condition.clone()],
     };
 
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1810,7 +1810,7 @@ fn gateway_route_rejected_after_server_delete() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -1844,7 +1844,7 @@ fn gateway_route_rejected_after_server_delete() {
             group: gateway::HTTPRoute::group(&()),
         },
     };
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("Server".to_string()),
         namespace: None,
@@ -1860,7 +1860,7 @@ fn gateway_route_rejected_after_server_delete() {
     // Create the expected update.
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1883,7 +1883,7 @@ fn gateway_route_rejected_after_server_delete() {
     // Create the expected update.
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1901,7 +1901,7 @@ fn gateway_route_rejected_after_egress_network_delete() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -1928,7 +1928,7 @@ fn gateway_route_rejected_after_egress_network_delete() {
             name: "route-foo".into(),
         },
     };
-    let parent = gateway::HTTPRouteParentRefs {
+    let parent = gateway::HttpRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: Some("ns-0".to_string()),
@@ -1944,8 +1944,8 @@ fn gateway_route_rejected_after_egress_network_delete() {
     // Create the expected update.
     let accepted_condition = accepted();
     let backend_condition = resolved_refs();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group.clone(),
             kind: parent.kind.clone(),
             namespace: parent.namespace.clone(),
@@ -1954,10 +1954,10 @@ fn gateway_route_rejected_after_egress_network_delete() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
+        conditions: vec![accepted_condition, backend_condition.clone()],
     };
 
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -1979,8 +1979,8 @@ fn gateway_route_rejected_after_egress_network_delete() {
 
     // Create the expected update.
     let rejected_condition = no_matching_parent();
-    let parent_status = gateway::HTTPRouteStatusParents {
-        parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+    let parent_status = gateway::HttpRouteStatusParents {
+        parent_ref: gateway::HttpRouteStatusParentsParentRef {
             group: parent.group.clone(),
             kind: parent.kind.clone(),
             namespace: parent.namespace.clone(),
@@ -1989,10 +1989,10 @@ fn gateway_route_rejected_after_egress_network_delete() {
             port: parent.port,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![rejected_condition, backend_condition.clone()]),
+        conditions: vec![rejected_condition, backend_condition.clone()],
     };
 
-    let status = gateway::HTTPRouteStatus {
+    let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -2007,28 +2007,28 @@ fn gateway_route_rejected_after_egress_network_delete() {
 
 fn make_linkerd_route(
     id: &NamespaceGroupKindName,
-    parent: gateway::HTTPRouteParentRefs,
-    backends: Option<Vec<gateway::HTTPRouteRulesBackendRefs>>,
+    parent: gateway::HttpRouteParentRefs,
+    backends: Option<Vec<gateway::HttpRouteRulesBackendRefs>>,
 ) -> policy::HttpRoute {
     policy::HttpRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(id.namespace.clone()),
             name: Some(id.gkn.name.to_string()),
-            creation_timestamp: Some(k8s::Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(Timestamp::now())),
             ..Default::default()
         },
         spec: policy::HttpRouteSpec {
             parent_refs: Some(vec![parent]),
             hostnames: None,
             rules: Some(vec![policy::httproute::HttpRouteRule {
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo/bar".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
                     headers: None,
                     query_params: None,
-                    method: Some(gateway::HTTPRouteRulesMatchesMethod::Get),
+                    method: Some(gateway::HttpRouteRulesMatchesMethod::Get),
                 }]),
                 filters: None,
                 backend_refs: backends,
@@ -2041,35 +2041,36 @@ fn make_linkerd_route(
 
 fn make_gateway_route(
     id: &NamespaceGroupKindName,
-    parent: gateway::HTTPRouteParentRefs,
-    backends: Option<Vec<gateway::HTTPRouteRulesBackendRefs>>,
+    parent: gateway::HttpRouteParentRefs,
+    backends: Option<Vec<gateway::HttpRouteRulesBackendRefs>>,
 ) -> gateway::HTTPRoute {
     gateway::HTTPRoute {
         status: None,
         metadata: k8s::ObjectMeta {
             name: Some(id.gkn.name.to_string()),
             namespace: Some(id.namespace.clone()),
-            creation_timestamp: Some(k8s::Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(Timestamp::now())),
             ..Default::default()
         },
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![parent]),
             hostnames: None,
-            rules: Some(vec![gateway::HTTPRouteRules {
+            rules: Some(vec![gateway::HttpRouteRules {
                 name: None,
                 filters: None,
                 backend_refs: backends,
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
                     headers: None,
                     query_params: None,
-                    method: Some(gateway::HTTPRouteRulesMatchesMethod::Get),
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                    method: Some(gateway::HttpRouteRulesMatchesMethod::Get),
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo/bar".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::PathPrefix),
                     }),
                 }]),
                 ..Default::default()
             }]),
+            use_default_gateways: None,
         },
     }
 }

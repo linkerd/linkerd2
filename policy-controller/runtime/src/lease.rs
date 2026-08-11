@@ -39,7 +39,7 @@ pub async fn init<T>(
                 tracing::debug!(?deploy, "Found Deployment");
                 break deploy;
             }
-            Err(k8s::Error::Api(error)) => error.into(),
+            Err(k8s::Error::Api(error)) => (*error).into(),
             Err(k8s::Error::Service(error)) => error,
             Err(k8s::Error::HyperError(error)) => error.into(),
             Err(error) => {
@@ -94,7 +94,7 @@ pub async fn init<T>(
                 tracing::info!(?lease, "Created Lease");
                 break;
             }
-            Err(k8s::Error::Api(error)) if error.code >= 500 => error.into(),
+            Err(k8s::Error::Api(error)) if error.code >= 500 => (*error).into(),
             Err(k8s::Error::Api(error)) => {
                 tracing::debug!(?error, "Lease already exists");
                 break;

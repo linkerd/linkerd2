@@ -27,7 +27,7 @@ pub use k8s_openapi::{
 };
 pub use kube::{
     api::{Api, ListParams, ObjectMeta, Patch, PatchParams, Resource, ResourceExt},
-    error::ErrorResponse,
+    core::Status,
     runtime::watcher::Event as WatchEvent,
     Client, Error,
 };
@@ -39,25 +39,25 @@ pub mod gateway {
     pub use gateway_api::apis::experimental::tlsroutes::*;
 
     pub mod http_method {
-        use gateway_api::apis::experimental::httproutes::HTTPRouteRulesMatchesMethod;
+        use gateway_api::apis::experimental::httproutes::HttpRouteRulesMatchesMethod;
 
-        pub const GET: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Get;
-        pub const POST: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Post;
-        pub const PUT: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Put;
-        pub const DELETE: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Delete;
-        pub const PATCH: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Patch;
-        pub const HEAD: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Head;
-        pub const OPTIONS: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Options;
-        pub const CONNECT: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Connect;
-        pub const TRACE: HTTPRouteRulesMatchesMethod = HTTPRouteRulesMatchesMethod::Trace;
+        pub const GET: HttpRouteRulesMatchesMethod = HttpRouteRulesMatchesMethod::Get;
+        pub const POST: HttpRouteRulesMatchesMethod = HttpRouteRulesMatchesMethod::Post;
+        pub const PUT: HttpRouteRulesMatchesMethod = HttpRouteRulesMatchesMethod::Put;
+        pub const DELETE: HttpRouteRulesMatchesMethod = HttpRouteRulesMatchesMethod::Delete;
+        pub const PATCH: HttpRouteRulesMatchesMethod = HttpRouteRulesMatchesMethod::Patch;
+        pub const HEAD: HttpRouteRulesMatchesMethod = HttpRouteRulesMatchesMethod::Head;
+        pub const OPTIONS: HttpRouteRulesMatchesMethod = HttpRouteRulesMatchesMethod::Options;
+        pub const CONNECT: HttpRouteRulesMatchesMethod = HttpRouteRulesMatchesMethod::Connect;
+        pub const TRACE: HttpRouteRulesMatchesMethod = HttpRouteRulesMatchesMethod::Trace;
     }
 
     pub mod http_scheme {
-        use gateway_api::apis::experimental::httproutes::HTTPRouteRulesFiltersRequestRedirectScheme;
+        use gateway_api::apis::experimental::httproutes::HttpRouteRulesFiltersRequestRedirectScheme;
 
-        pub const HTTP: HTTPRouteRulesFiltersRequestRedirectScheme =
-            HTTPRouteRulesFiltersRequestRedirectScheme::Http;
-        pub const HTTPS: HTTPRouteRulesFiltersRequestRedirectScheme =
-            HTTPRouteRulesFiltersRequestRedirectScheme::Https;
+        pub const HTTP: HttpRouteRulesFiltersRequestRedirectScheme =
+            HttpRouteRulesFiltersRequestRedirectScheme::Http;
+        pub const HTTPS: HttpRouteRulesFiltersRequestRedirectScheme =
+            HttpRouteRulesFiltersRequestRedirectScheme::Https;
     }
 }

@@ -586,7 +586,7 @@ fn grpc_route_backend(route: &grpc::outbound::GrpcRoute) -> Option<&grpc::outbou
 #[track_caller]
 pub fn assert_route_is_default<R: TestRoute>(
     route: &R::Route,
-    parent: &gateway::HTTPRouteParentRefs,
+    parent: &gateway::HttpRouteParentRefs,
     port: u16,
 ) {
     let rules = &R::rules_first_available(route);
@@ -606,7 +606,7 @@ pub fn assert_route_is_default<R: TestRoute>(
 #[track_caller]
 pub fn assert_backend_matches_reference(
     backend: &grpc::outbound::Backend,
-    obj_ref: &gateway::HTTPRouteParentRefs,
+    obj_ref: &gateway::HttpRouteParentRefs,
     port: u16,
 ) {
     let mut group = obj_ref.group.as_deref();

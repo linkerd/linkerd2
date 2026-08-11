@@ -8,9 +8,9 @@ publish = false
 [dependencies]
 ahash = "0.8"
 anyhow = "1"
-chrono = { version = "0.4.45", default-features = false }
 futures = { version = "0.3", default-features = false }
 http = { workspace = true }
+jiff = { workspace = true }
 kubert = { workspace = true, default-features = false, features = ["index"] }
 parking_lot = "0.12"
 prometheus-client = { workspace = true, default-features = false }
@@ -31,7 +31,6 @@ features = [
 ]
 
 [dev-dependencies]
-chrono = { version = "0.4", default-features = false }
 k8s-openapi = { workspace = true, features = ["schemars"] }
 maplit = "1"
 tokio-stream = "0.1"

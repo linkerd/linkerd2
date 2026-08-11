@@ -181,11 +181,11 @@ fn mk_route(
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
-            creation_timestamp: Some(Time(Utc::now())),
+            creation_timestamp: Some(Time(Timestamp::now())),
             ..Default::default()
         },
-        spec: gateway::TLSRouteSpec {
-            parent_refs: Some(vec![gateway::TLSRouteParentRefs {
+        spec: gateway::TlsRouteSpec {
+            parent_refs: Some(vec![gateway::TlsRouteParentRefs {
                 group: Some(group.clone()),
                 kind: Some(kind.clone()),
                 namespace: Some(ns.to_string()),
@@ -193,22 +193,23 @@ fn mk_route(
                 section_name: None,
                 port: Some(port.into()),
             }]),
-            hostnames: None,
-            rules: vec![gateway::TLSRouteRules {
+            hostnames: Vec::default(),
+            rules: vec![gateway::TlsRouteRules {
                 name: None,
-                backend_refs: Some(vec![gateway::TLSRouteRulesBackendRefs {
+                backend_refs: vec![gateway::TlsRouteRulesBackendRefs {
                     weight: None,
                     group: Some(group.clone()),
                     kind: Some(kind.clone()),
                     namespace: Some(ns.to_string()),
                     name: backend_name.to_string(),
                     port: Some(port.into()),
-                }]),
+                }],
             }],
+            use_default_gateways: None,
         },
-        status: Some(gateway::TLSRouteStatus {
-            parents: vec![gateway::TLSRouteStatusParents {
-                parent_ref: gateway::TLSRouteStatusParentsParentRef {
+        status: Some(gateway::TlsRouteStatus {
+            parents: vec![gateway::TlsRouteStatusParents {
+                parent_ref: gateway::TlsRouteStatusParentsParentRef {
                     group: Some(group.clone()),
                     kind: Some(kind.clone()),
                     namespace: Some(ns.to_string()),
@@ -217,14 +218,14 @@ fn mk_route(
                     port: Some(port.into()),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![k8s::Condition {
-                    last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
+                conditions: vec![k8s::Condition {
+                    last_transition_time: Time(Timestamp::MIN),
                     message: "".to_string(),
                     observed_generation: None,
                     reason: "Accepted".to_string(),
                     status: "True".to_string(),
                     type_: "Accepted".to_string(),
-                }]),
+                }],
             }],
         }),
     }

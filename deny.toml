@@ -50,7 +50,12 @@ multiple-versions = "deny"
 # Wildcard dependencies are used for all workspace-local crates.
 wildcards = "allow"
 highlight = "all"
-skip = []
+skip = [
+    # syn v3 is still making its way through the ecosystem. schemars v1 (via
+    # gateway-api, k8s-openapi and kube) is on v3, while most other derive
+    # macros are still on v2. Both are build-time only.
+    { name = "syn", version = "2" },
+]
 skip-tree = [
     # `serde_json` and `h2` depend on diverged versions of `indexmap` (2.0.x and
     # 1.9.x, respectively)
