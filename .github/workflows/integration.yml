@@ -162,7 +162,7 @@ jobs:
         gateway-api:
           - version: linkerd
             channel: experimental
-          - version: v1.4.0
+          - version: v1.5.1
             channel: experimental
         # Also test the Minimum Supported Kubernetes Version with the Minimum
         # Supported Gateway API version.
