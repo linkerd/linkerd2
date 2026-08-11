@@ -169,7 +169,7 @@ jobs:
         include:
           - k8s: v1.31
             gateway-api:
-              version: v1.1.1
+              version: v1.2.1
               channel: standard
     env:
       GATEWAY_API_VERSION: ${{ matrix.gateway-api.version }}
