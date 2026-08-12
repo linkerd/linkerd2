@@ -37,10 +37,10 @@ default-features = false
 features = ["tracing"]
 
 [workspace.dependencies.kubert]
-version = "0.26"
+version = "0.27"
 default-features = false
 git = "https://github.com/linkerd/linkerd-kubert.git"
-branch = "kate/update-kube-rs-deps"
+tag = "kubert/v0.27.0"
 
 [workspace.dependencies.linkerd-policy-controller-k8s-index]
 path = "./policy-controller/k8s/index"

@@ -1221,8 +1221,8 @@ dependencies = [
 
 [[package]]
 name = "kubert"
-version = "0.26.0"
-source = "git+https://github.com/linkerd/linkerd-kubert.git?branch=kate%2Fupdate-kube-rs-deps#b2498f6581a35a17d9bbe8282514083534338a79"
+version = "0.27.0"
+source = "git+https://github.com/linkerd/linkerd-kubert.git?tag=kubert%2Fv0.27.0#04f6ac3543e84e814e50724dec11a5309fd9b8df"
 dependencies = [
  "ahash",
  "backon",
@@ -1259,7 +1259,7 @@ dependencies = [
 [[package]]
 name = "kubert-prometheus-process"
 version = "0.2.4"
-source = "git+https://github.com/linkerd/linkerd-kubert.git?branch=kate%2Fupdate-kube-rs-deps#b2498f6581a35a17d9bbe8282514083534338a79"
+source = "git+https://github.com/linkerd/linkerd-kubert.git?tag=kubert%2Fv0.27.0#04f6ac3543e84e814e50724dec11a5309fd9b8df"
 dependencies = [
  "libc",
  "procfs",
@@ -1270,7 +1270,7 @@ dependencies = [
 [[package]]
 name = "kubert-prometheus-tokio"
 version = "0.2.1"
-source = "git+https://github.com/linkerd/linkerd-kubert.git?branch=kate%2Fupdate-kube-rs-deps#b2498f6581a35a17d9bbe8282514083534338a79"
+source = "git+https://github.com/linkerd/linkerd-kubert.git?tag=kubert%2Fv0.27.0#04f6ac3543e84e814e50724dec11a5309fd9b8df"
 dependencies = [
  "prometheus-client",
  "tokio",
