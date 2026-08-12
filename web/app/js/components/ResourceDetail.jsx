@@ -32,17 +32,17 @@ const showNoTrafficMsgDelayMs = 6000;
 // resource types supported when querying API for edge data
 const edgeDataAvailable = ['cronjob', 'daemonset', 'deployment', 'job', 'pod', 'replicaset', 'replicationcontroller', 'statefulset'];
 
-const getResourceFromUrl = (match, pathPrefix) => {
+const getResourceFromUrl = (params, pathname, pathPrefix) => {
   const resource = {
-    namespace: match.params.namespace,
+    namespace: params.namespace,
   };
-  const regExp = RegExp(`${pathPrefix || ''}/namespaces/${match.params.namespace}/([^/]+)/([^/]+)`);
-  const urlParts = match.url.match(regExp);
+  const regExp = RegExp(`${pathPrefix || ''}/namespaces/${params.namespace}/([^/]+)/([^/]+)`);
+  const urlParts = pathname.match(regExp);
 
   resource.type = singularResource(urlParts[1]);
   resource.name = urlParts[2];
 
-  if (match.params[resource.type] !== resource.name) {
+  if (params[resource.type] !== resource.name) {
     console.error('Failed to extract resource from URL');
   }
   return resource;
@@ -55,11 +55,11 @@ export class ResourceDetailBase extends React.Component {
     this.unmeshedSources = {};
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
-    this.state = this.getInitialState(props.match, props.pathPrefix);
+    this.state = this.getInitialState(props.params, props.location.pathname, props.pathPrefix);
   }
 
-  getInitialState(match, pathPrefix) {
-    const resource = getResourceFromUrl(match, pathPrefix);
+  getInitialState(params, pathname, pathPrefix) {
+    const resource = getResourceFromUrl(params, pathname, pathPrefix);
     return {
       namespace: resource.namespace,
       resourceName: resource.name,
@@ -88,13 +88,13 @@ export class ResourceDetailBase extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { match, pathPrefix, isPageVisible } = this.props;
+    const { params, location, pathPrefix, isPageVisible } = this.props;
 
-    if (!_isEqual(prevProps.match.url, match.url)) {
+    if (!_isEqual(prevProps.location.pathname, location.pathname)) {
       // React won't unmount this component when switching resource pages so we need to clear state
       this.api.cancelCurrentRequests();
       this.unmeshedSources = {};
-      this.resetState(match, pathPrefix);
+      this.resetState(params, location.pathname, pathPrefix);
     }
 
     handlePageVisibility({
@@ -105,8 +105,8 @@ export class ResourceDetailBase extends React.Component {
     });
   }
 
-  resetState(match, pathPrefix) {
-    this.setState(this.getInitialState(match, pathPrefix));
+  resetState(params, pathname, pathPrefix) {
+    this.setState(this.getInitialState(params, pathname, pathPrefix));
   }
 
   componentWillUnmount() {
@@ -454,8 +454,11 @@ ResourceDetailBase.propTypes = {
     PrefixedLink: PropTypes.func.isRequired,
   }).isRequired,
   isPageVisible: PropTypes.bool.isRequired,
-  match: PropTypes.shape({
-    url: PropTypes.string.isRequired,
+  params: PropTypes.shape({
+    namespace: PropTypes.string.isRequired,
+  }).isRequired,
+  location: PropTypes.shape({
+    pathname: PropTypes.string.isRequired,
   }).isRequired,
   pathPrefix: PropTypes.string.isRequired,
 };
