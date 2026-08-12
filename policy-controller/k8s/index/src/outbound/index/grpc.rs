@@ -60,7 +60,7 @@ pub(super) fn convert_route(
 
 fn convert_rule(
     ns: &str,
-    rule: gateway::GRPCRouteRules,
+    rule: gateway::GrpcRouteRules,
     cluster: &ClusterInfo,
     resource_info: &HashMap<ResourceRef, ResourceInfo>,
     timeouts: RouteTimeouts,
@@ -98,7 +98,7 @@ fn convert_rule(
 
 pub(super) fn convert_backend(
     ns: &str,
-    backend: gateway::GRPCRouteRulesBackendRefs,
+    backend: gateway::GrpcRouteRulesBackendRefs,
     cluster: &ClusterInfo,
     resources: &HashMap<ResourceRef, ResourceInfo>,
 ) -> Option<Backend> {
@@ -183,7 +183,7 @@ pub(super) fn convert_backend(
     }
 }
 
-pub(crate) fn convert_filter(filter: gateway::GRPCRouteRulesFilters) -> Result<Filter> {
+pub(crate) fn convert_filter(filter: gateway::GrpcRouteRulesFilters) -> Result<Filter> {
     if let Some(request_header_modifier) = filter.request_header_modifier {
         let filter = routes::grpc::request_header_modifier(request_header_modifier)?;
         return Ok(Filter::RequestHeaderModifier(filter));
@@ -202,7 +202,7 @@ pub(crate) fn convert_filter(filter: gateway::GRPCRouteRulesFilters) -> Result<F
 }
 
 pub(crate) fn convert_backend_filter(
-    filter: gateway::GRPCRouteRulesBackendRefsFilters,
+    filter: gateway::GrpcRouteRulesBackendRefsFilters,
 ) -> Result<Filter> {
     if let Some(request_header_modifier) = filter.request_header_modifier {
         let filter = routes::grpc::backend_request_header_modifier(request_header_modifier)?;
@@ -274,7 +274,7 @@ pub fn parse_grpc_retry(
 }
 
 pub(super) fn route_accepted_by_resource_port(
-    route_status: Option<&gateway::GRPCRouteStatus>,
+    route_status: Option<&gateway::GrpcRouteStatus>,
     resource_port: &ResourcePort,
 ) -> bool {
     let (kind, group) = match resource_port.kind {
@@ -308,13 +308,12 @@ pub(super) fn route_accepted_by_resource_port(
                 && parent_status
                     .conditions
                     .iter()
-                    .flatten()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
 }
 
 pub fn route_accepted_by_service(
-    route_status: Option<&gateway::GRPCRouteStatus>,
+    route_status: Option<&gateway::GrpcRouteStatus>,
     service: &str,
 ) -> bool {
     let mut service_group = &*Service::group(&());
@@ -336,12 +335,11 @@ pub fn route_accepted_by_service(
                 && parent_status
                     .conditions
                     .iter()
-                    .flatten()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
 }
 
-pub(crate) fn backend_kind(backend: &gateway::GRPCRouteRulesBackendRefs) -> Option<ResourceKind> {
+pub(crate) fn backend_kind(backend: &gateway::GrpcRouteRulesBackendRefs) -> Option<ResourceKind> {
     let group = backend.group.as_deref();
     // Backends default to `Service` if no kind is specified.
     let kind = backend.kind.as_deref().unwrap_or("Service");

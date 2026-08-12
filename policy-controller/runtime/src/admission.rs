@@ -145,19 +145,19 @@ impl Admission {
         }
 
         if is_kind::<gateway::HTTPRoute>(&req) {
-            return self.admit_spec::<gateway::HTTPRouteSpec>(req).await;
+            return self.admit_spec::<gateway::HttpRouteSpec>(req).await;
         }
 
         if is_kind::<gateway::GRPCRoute>(&req) {
-            return self.admit_spec::<gateway::GRPCRouteSpec>(req).await;
+            return self.admit_spec::<gateway::GrpcRouteSpec>(req).await;
         }
 
         if is_kind::<gateway::TLSRoute>(&req) {
-            return self.admit_spec::<gateway::TLSRouteSpec>(req).await;
+            return self.admit_spec::<gateway::TlsRouteSpec>(req).await;
         }
 
         if is_kind::<gateway::TCPRoute>(&req) {
-            return self.admit_spec::<gateway::TCPRouteSpec>(req).await;
+            return self.admit_spec::<gateway::TcpRouteSpec>(req).await;
         }
 
         if is_kind::<HttpLocalRateLimitPolicy>(&req) {
@@ -474,7 +474,7 @@ impl Validate<ServerAuthorizationSpec> for Admission {
     }
 }
 
-fn validate_match(httproute_rules_match: gateway::HTTPRouteRulesMatches) -> Result<()> {
+fn validate_match(httproute_rules_match: gateway::HttpRouteRulesMatches) -> Result<()> {
     index::routes::http::try_match(httproute_rules_match).map(|_| ())
 }
 
@@ -572,7 +572,7 @@ impl Validate<HttpRouteSpec> for Admission {
     }
 }
 
-fn validate_http_backend_if_service(br: &gateway::HTTPRouteRulesBackendRefs) -> Result<()> {
+fn validate_http_backend_if_service(br: &gateway::HttpRouteRulesBackendRefs) -> Result<()> {
     let is_service = matches!(br.group.as_deref(), Some("core") | Some("") | None)
         && matches!(br.kind.as_deref(), Some("Service") | None);
 
@@ -586,7 +586,7 @@ fn validate_http_backend_if_service(br: &gateway::HTTPRouteRulesBackendRefs) -> 
     Ok(())
 }
 
-fn validate_grpc_backend_if_service(br: &gateway::GRPCRouteRulesBackendRefs) -> Result<()> {
+fn validate_grpc_backend_if_service(br: &gateway::GrpcRouteRulesBackendRefs) -> Result<()> {
     let is_service = matches!(br.group.as_deref(), Some("core") | Some("") | None)
         && matches!(br.kind.as_deref(), Some("Service") | None);
 
@@ -601,7 +601,7 @@ fn validate_grpc_backend_if_service(br: &gateway::GRPCRouteRulesBackendRefs) -> 
 }
 
 #[async_trait::async_trait]
-impl Validate<gateway::HTTPRouteSpec> for Admission {
+impl Validate<gateway::HttpRouteSpec> for Admission {
     fn lenient() -> bool {
         true
     }
@@ -611,7 +611,7 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
         _ns: &str,
         _name: &str,
         annotations: &BTreeMap<String, String>,
-        spec: gateway::HTTPRouteSpec,
+        spec: gateway::HttpRouteSpec,
     ) -> Result<()> {
         for parent in spec.parent_refs.iter().flatten() {
             if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)
@@ -630,7 +630,7 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
             outbound_index::parse_timeouts(annotations)?;
         }
 
-        fn validate_filter(filter: gateway::HTTPRouteRulesFilters) -> Result<()> {
+        fn validate_filter(filter: gateway::HttpRouteRulesFilters) -> Result<()> {
             if let Some(request_header_modifier) = filter.request_header_modifier {
                 index::routes::http::request_header_modifier(request_header_modifier)?;
             }
@@ -647,7 +647,7 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
         // This is essentially equivalent to the indexer's conversion function
         // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
         // actually allocate stuff in order to return an `InboundRouteBinding`.
-        for gateway::HTTPRouteRules {
+        for gateway::HttpRouteRules {
             filters,
             matches,
             backend_refs,
@@ -672,7 +672,7 @@ impl Validate<gateway::HTTPRouteSpec> for Admission {
 }
 
 #[async_trait::async_trait]
-impl Validate<gateway::GRPCRouteSpec> for Admission {
+impl Validate<gateway::GrpcRouteSpec> for Admission {
     fn lenient() -> bool {
         true
     }
@@ -682,7 +682,7 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
         _ns: &str,
         _name: &str,
         annotations: &BTreeMap<String, String>,
-        spec: gateway::GRPCRouteSpec,
+        spec: gateway::GrpcRouteSpec,
     ) -> Result<()> {
         for parent in spec.parent_refs.iter().flatten() {
             if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)
@@ -701,7 +701,7 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
             outbound_index::parse_timeouts(annotations)?;
         }
 
-        fn validate_filter(filter: gateway::GRPCRouteRulesFilters) -> Result<()> {
+        fn validate_filter(filter: gateway::GrpcRouteRulesFilters) -> Result<()> {
             if let Some(request_header_modifier) = filter.request_header_modifier {
                 index::routes::grpc::request_header_modifier(request_header_modifier)?;
             }
@@ -711,7 +711,7 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
             Ok(())
         }
 
-        fn validate_match_rule(matches: gateway::GRPCRouteRulesMatches) -> Result<()> {
+        fn validate_match_rule(matches: gateway::GrpcRouteRulesMatches) -> Result<()> {
             index::routes::grpc::try_match(matches).map(|_| ())
         }
 
@@ -720,7 +720,7 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
         // of the rules are improperly constructed (e.g. include
         // a `GrpcMethodMatch` rule where neither `method.method`
         // nor `method.service` actually contain a value)
-        for gateway::GRPCRouteRules {
+        for gateway::GrpcRouteRules {
             filters,
             matches,
             backend_refs,
@@ -745,7 +745,7 @@ impl Validate<gateway::GRPCRouteSpec> for Admission {
 }
 
 #[async_trait::async_trait]
-impl Validate<gateway::TLSRouteSpec> for Admission {
+impl Validate<gateway::TlsRouteSpec> for Admission {
     fn lenient() -> bool {
         true
     }
@@ -755,7 +755,7 @@ impl Validate<gateway::TLSRouteSpec> for Admission {
         _ns: &str,
         _name: &str,
         _annotations: &BTreeMap<String, String>,
-        spec: gateway::TLSRouteSpec,
+        spec: gateway::TlsRouteSpec,
     ) -> Result<()> {
         for parent in spec.parent_refs.iter().flatten() {
             if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)
@@ -774,7 +774,7 @@ impl Validate<gateway::TLSRouteSpec> for Admission {
 }
 
 #[async_trait::async_trait]
-impl Validate<gateway::TCPRouteSpec> for Admission {
+impl Validate<gateway::TcpRouteSpec> for Admission {
     fn lenient() -> bool {
         true
     }
@@ -784,7 +784,7 @@ impl Validate<gateway::TCPRouteSpec> for Admission {
         _ns: &str,
         _name: &str,
         _annotations: &BTreeMap<String, String>,
-        spec: gateway::TCPRouteSpec,
+        spec: gateway::TcpRouteSpec,
     ) -> Result<()> {
         for parent in spec.parent_refs.iter().flatten() {
             if outbound_index::is_parent_egress_network(&parent.kind, &parent.group)

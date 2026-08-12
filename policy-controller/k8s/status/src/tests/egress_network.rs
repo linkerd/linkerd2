@@ -4,7 +4,7 @@ use crate::{
     tests::default_cluster_networks,
     Index, IndexMetrics,
 };
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::routes::GroupKindName;
 use linkerd_policy_controller_k8s_api::{
@@ -20,7 +20,7 @@ fn egress_network_with_no_networks_specified() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -73,7 +73,7 @@ fn egress_network_with_nonoverlapping_networks_specified() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -135,7 +135,7 @@ fn egress_network_with_overlapping_networks_specified() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);

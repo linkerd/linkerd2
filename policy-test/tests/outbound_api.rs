@@ -132,11 +132,16 @@ async fn route_with_no_rules() {
         .await;
     }
 
-    test::<k8s::Service, gateway::HTTPRoute>().await;
+    // `gateway::HTTPRoute` is deliberately not exercised here: a rule-less
+    // Gateway API HTTPRoute cannot be expressed. `spec.rules` carries a CRD
+    // default of a single catch-all `PathPrefix: /` rule, so omitting the field
+    // yields one rule rather than none, and since Gateway API v1.5 an explicit
+    // empty list is rejected by `minItems: 1`. GRPCRoute has neither a default
+    // nor a minimum, and Linkerd's own HTTPRoute is only defaulted, so both can
+    // still send an explicit empty list.
     test::<k8s::Service, policy::HttpRoute>().await;
     test::<k8s::Service, gateway::GRPCRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
-    test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
 }
 

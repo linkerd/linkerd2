@@ -7,7 +7,7 @@ use crate::{
     tests::{default_cluster_networks, make_server},
     Index, IndexMetrics,
 };
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{routes::GroupKindName, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy, Resource, ResourceExt};
@@ -20,18 +20,18 @@ pub(crate) fn make_parent_status(
     type_: impl ToString,
     status: impl ToString,
     reason: impl ToString,
-) -> gateway::GRPCRouteStatusParents {
+) -> gateway::GrpcRouteStatusParents {
     let condition = k8s::Condition {
         message: "".to_string(),
         type_: type_.to_string(),
         observed_generation: None,
         reason: reason.to_string(),
         status: status.to_string(),
-        last_transition_time: k8s::Time(DateTime::<Utc>::MIN_UTC),
+        last_transition_time: k8s::Time(Timestamp::MIN),
     };
-    gateway::GRPCRouteStatusParents {
-        conditions: Some(vec![condition]),
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    gateway::GrpcRouteStatusParents {
+        conditions: vec![condition],
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             port: None,
             section_name: None,
             name: name.to_string(),
@@ -48,7 +48,7 @@ fn route_with_valid_service_backends() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -73,7 +73,7 @@ fn route_with_valid_service_backends() {
     index.write().apply(backend2.clone());
 
     // Apply the route.
-    let parent = gateway::GRPCRouteParentRefs {
+    let parent = gateway::GrpcRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -93,7 +93,7 @@ fn route_with_valid_service_backends() {
         &id,
         parent.clone(),
         Some(vec![
-            gateway::GRPCRouteRulesBackendRefs {
+            gateway::GrpcRouteRulesBackendRefs {
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
                 name: backend1.name_unchecked(),
@@ -102,7 +102,7 @@ fn route_with_valid_service_backends() {
                 weight: None,
                 filters: None,
             },
-            gateway::GRPCRouteRulesBackendRefs {
+            gateway::GrpcRouteRulesBackendRefs {
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
                 name: backend2.name_unchecked(),
@@ -119,8 +119,8 @@ fn route_with_valid_service_backends() {
     let accepted_condition = accepted();
     // All backends exist and can be resolved.
     let backend_condition = resolved_refs();
-    let parent_status = gateway::GRPCRouteStatusParents {
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    let parent_status = gateway::GrpcRouteStatusParents {
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             group: Some("core".to_string()),
             kind: Some("Service".to_string()),
             namespace: parent.namespace,
@@ -129,9 +129,9 @@ fn route_with_valid_service_backends() {
             port: Some(8080),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -147,7 +147,7 @@ fn route_with_valid_egress_network_backend() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -164,7 +164,7 @@ fn route_with_valid_egress_network_backend() {
     index.write().apply(parent.clone());
 
     // Apply the route.
-    let parent = gateway::GRPCRouteParentRefs {
+    let parent = gateway::GrpcRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -183,7 +183,7 @@ fn route_with_valid_egress_network_backend() {
     let route = make_route(
         &id,
         parent.clone(),
-        Some(vec![gateway::GRPCRouteRulesBackendRefs {
+        Some(vec![gateway::GrpcRouteRulesBackendRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("EgressNetwork".to_string()),
             name: parent.name.clone(),
@@ -199,8 +199,8 @@ fn route_with_valid_egress_network_backend() {
     let accepted_condition = accepted();
     // All backends exist and can be resolved.
     let backend_condition = resolved_refs();
-    let parent_status = gateway::GRPCRouteStatusParents {
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    let parent_status = gateway::GrpcRouteStatusParents {
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             name: parent.name,
@@ -209,9 +209,9 @@ fn route_with_valid_egress_network_backend() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -227,7 +227,7 @@ fn route_with_invalid_service_backend() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -248,7 +248,7 @@ fn route_with_invalid_service_backend() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = gateway::GRPCRouteParentRefs {
+    let parent = gateway::GrpcRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -268,7 +268,7 @@ fn route_with_invalid_service_backend() {
         &id,
         parent.clone(),
         Some(vec![
-            gateway::GRPCRouteRulesBackendRefs {
+            gateway::GrpcRouteRulesBackendRefs {
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
                 name: backend.name_unchecked(),
@@ -277,7 +277,7 @@ fn route_with_invalid_service_backend() {
                 filters: None,
                 weight: None,
             },
-            gateway::GRPCRouteRulesBackendRefs {
+            gateway::GrpcRouteRulesBackendRefs {
                 group: Some("core".to_string()),
                 kind: Some("Service".to_string()),
                 name: "nonexistant-backend".to_string(),
@@ -294,8 +294,8 @@ fn route_with_invalid_service_backend() {
     let accepted_condition = accepted();
     // One of the backends does not exist so the status should be BackendNotFound.
     let backend_condition = backend_not_found();
-    let parent_status = gateway::GRPCRouteStatusParents {
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    let parent_status = gateway::GrpcRouteStatusParents {
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             name: parent.name,
@@ -304,9 +304,9 @@ fn route_with_invalid_service_backend() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -322,7 +322,7 @@ fn route_with_egress_network_backend_different_from_parent() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -343,7 +343,7 @@ fn route_with_egress_network_backend_different_from_parent() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = gateway::GRPCRouteParentRefs {
+    let parent = gateway::GrpcRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -362,7 +362,7 @@ fn route_with_egress_network_backend_different_from_parent() {
     let route = make_route(
         &id,
         parent.clone(),
-        Some(vec![gateway::GRPCRouteRulesBackendRefs {
+        Some(vec![gateway::GrpcRouteRulesBackendRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("EgressNetwork".to_string()),
             name: backend.name_unchecked(),
@@ -379,8 +379,8 @@ fn route_with_egress_network_backend_different_from_parent() {
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
     );
-    let parent_status = gateway::GRPCRouteStatusParents {
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    let parent_status = gateway::GrpcRouteStatusParents {
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             name: parent.name,
@@ -389,9 +389,9 @@ fn route_with_egress_network_backend_different_from_parent() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -407,7 +407,7 @@ fn route_with_egress_network_backend_and_service_parent() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -428,7 +428,7 @@ fn route_with_egress_network_backend_and_service_parent() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = gateway::GRPCRouteParentRefs {
+    let parent = gateway::GrpcRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -447,7 +447,7 @@ fn route_with_egress_network_backend_and_service_parent() {
     let route = make_route(
         &id,
         parent.clone(),
-        Some(vec![gateway::GRPCRouteRulesBackendRefs {
+        Some(vec![gateway::GrpcRouteRulesBackendRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("EgressNetwork".to_string()),
             name: backend.name_unchecked(),
@@ -464,8 +464,8 @@ fn route_with_egress_network_backend_and_service_parent() {
     let backend_condition = invalid_backend_kind(
         "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
     );
-    let parent_status = gateway::GRPCRouteStatusParents {
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    let parent_status = gateway::GrpcRouteStatusParents {
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             name: parent.name,
@@ -474,9 +474,9 @@ fn route_with_egress_network_backend_and_service_parent() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -492,7 +492,7 @@ fn route_with_egress_network_parent_and_service_backend() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -513,7 +513,7 @@ fn route_with_egress_network_parent_and_service_backend() {
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = gateway::GRPCRouteParentRefs {
+    let parent = gateway::GrpcRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -532,7 +532,7 @@ fn route_with_egress_network_parent_and_service_backend() {
     let route = make_route(
         &id,
         parent.clone(),
-        Some(vec![gateway::GRPCRouteRulesBackendRefs {
+        Some(vec![gateway::GrpcRouteRulesBackendRefs {
             group: Some("core".to_string()),
             kind: Some("Service".to_string()),
             name: backend.name_unchecked(),
@@ -547,8 +547,8 @@ fn route_with_egress_network_parent_and_service_backend() {
     // Create the expected update.
     let accepted_condition = accepted();
     let backend_condition = resolved_refs();
-    let parent_status = gateway::GRPCRouteStatusParents {
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    let parent_status = gateway::GrpcRouteStatusParents {
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             name: parent.name,
@@ -557,9 +557,9 @@ fn route_with_egress_network_parent_and_service_backend() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -575,7 +575,7 @@ fn route_accepted_after_server_create() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -596,7 +596,7 @@ fn route_accepted_after_server_create() {
             group: gateway::GRPCRoute::group(&()),
         },
     };
-    let parent = gateway::GRPCRouteParentRefs {
+    let parent = gateway::GrpcRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("Server".to_string()),
         namespace: None,
@@ -617,7 +617,7 @@ fn route_accepted_after_server_create() {
         "False",
         "NoMatchingParent",
     );
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -642,7 +642,7 @@ fn route_accepted_after_server_create() {
     // Create the expected update.
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -660,7 +660,7 @@ fn route_accepted_after_egress_network_create() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -681,7 +681,7 @@ fn route_accepted_after_egress_network_create() {
             name: "route-foo".into(),
         },
     };
-    let parent = gateway::GRPCRouteParentRefs {
+    let parent = gateway::GrpcRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: Some("ns-0".to_string()),
@@ -697,8 +697,8 @@ fn route_accepted_after_egress_network_create() {
     // Create the expected update.
     let accepted_condition = no_matching_parent();
     let backend_condition = resolved_refs();
-    let parent_status = gateway::GRPCRouteStatusParents {
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    let parent_status = gateway::GrpcRouteStatusParents {
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             group: parent.group.clone(),
             kind: parent.kind.clone(),
             name: parent.name.clone(),
@@ -707,10 +707,10 @@ fn route_accepted_after_egress_network_create() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
+        conditions: vec![accepted_condition, backend_condition.clone()],
     };
 
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -727,8 +727,8 @@ fn route_accepted_after_egress_network_create() {
 
     // Create the expected update.
     let accepted_condition = accepted();
-    let parent_status = gateway::GRPCRouteStatusParents {
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    let parent_status = gateway::GrpcRouteStatusParents {
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             group: parent.group.clone(),
             kind: parent.kind.clone(),
             name: parent.name.clone(),
@@ -737,10 +737,10 @@ fn route_accepted_after_egress_network_create() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition]),
+        conditions: vec![accepted_condition, backend_condition],
     };
 
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -758,7 +758,7 @@ fn route_rejected_after_server_delete() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -792,7 +792,7 @@ fn route_rejected_after_server_delete() {
             group: gateway::GRPCRoute::group(&()),
         },
     };
-    let parent = gateway::GRPCRouteParentRefs {
+    let parent = gateway::GrpcRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("Server".to_string()),
         namespace: None,
@@ -808,7 +808,7 @@ fn route_rejected_after_server_delete() {
     // Create the expected update.
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -831,7 +831,7 @@ fn route_rejected_after_server_delete() {
     // Create the expected update.
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -849,7 +849,7 @@ fn route_rejected_after_egress_network_delete() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -876,7 +876,7 @@ fn route_rejected_after_egress_network_delete() {
             name: "route-foo".into(),
         },
     };
-    let parent = gateway::GRPCRouteParentRefs {
+    let parent = gateway::GrpcRouteParentRefs {
         group: Some(POLICY_API_GROUP.to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: Some("ns-0".to_string()),
@@ -892,8 +892,8 @@ fn route_rejected_after_egress_network_delete() {
     // Create the expected update.
     let accepted_condition = accepted();
     let backend_condition = resolved_refs();
-    let parent_status = gateway::GRPCRouteStatusParents {
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    let parent_status = gateway::GrpcRouteStatusParents {
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             group: parent.group.clone(),
             kind: parent.kind.clone(),
             name: parent.name.clone(),
@@ -902,10 +902,10 @@ fn route_rejected_after_egress_network_delete() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition, backend_condition.clone()]),
+        conditions: vec![accepted_condition, backend_condition.clone()],
     };
 
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -927,8 +927,8 @@ fn route_rejected_after_egress_network_delete() {
 
     // Create the expected update.
     let rejected_condition = no_matching_parent();
-    let parent_status = gateway::GRPCRouteStatusParents {
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    let parent_status = gateway::GrpcRouteStatusParents {
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             group: parent.group,
             kind: parent.kind,
             name: parent.name,
@@ -937,10 +937,10 @@ fn route_rejected_after_egress_network_delete() {
             section_name: parent.section_name,
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![rejected_condition, backend_condition.clone()]),
+        conditions: vec![rejected_condition, backend_condition.clone()],
     };
 
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&id, status).unwrap();
@@ -958,7 +958,7 @@ fn service_route_type_conflict() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -974,7 +974,7 @@ fn service_route_type_conflict() {
     let parent = super::make_service("ns-0", "svc");
     index.write().apply(parent.clone());
 
-    let parent = gateway::GRPCRouteParentRefs {
+    let parent = gateway::GrpcRouteParentRefs {
         group: Some("core".to_string()),
         kind: Some("Service".to_string()),
         namespace: parent.namespace(),
@@ -997,11 +997,11 @@ fn service_route_type_conflict() {
         metadata: k8s::ObjectMeta {
             name: Some(http_id.gkn.name.to_string()),
             namespace: Some(http_id.namespace.clone()),
-            creation_timestamp: Some(k8s::Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(Timestamp::now())),
             ..Default::default()
         },
-        spec: gateway::HTTPRouteSpec {
-            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+        spec: gateway::HttpRouteSpec {
+            parent_refs: Some(vec![gateway::HttpRouteParentRefs {
                 group: parent.group.clone(),
                 kind: parent.kind.clone(),
                 name: parent.name.clone(),
@@ -1011,6 +1011,7 @@ fn service_route_type_conflict() {
             }]),
             hostnames: None,
             rules: Some(vec![]),
+            use_default_gateways: None,
         },
     };
     index.write().apply(http_route);
@@ -1019,8 +1020,8 @@ fn service_route_type_conflict() {
     let accepted_condition = accepted();
     // No backends were specified, so we have vacuously resolved them all.
     let backend_condition = resolved_refs();
-    let parent_status = gateway::GRPCRouteStatusParents {
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    let parent_status = gateway::GrpcRouteStatusParents {
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             group: parent.group.clone(),
             kind: parent.kind.clone(),
             name: parent.name.clone(),
@@ -1029,9 +1030,9 @@ fn service_route_type_conflict() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
+        conditions: vec![accepted_condition.clone(), backend_condition.clone()],
     };
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&http_id, status).unwrap();
@@ -1056,8 +1057,8 @@ fn service_route_type_conflict() {
         let update = updates_rx.try_recv().unwrap();
         if update.id.gkn.kind == gateway::HTTPRoute::kind(&()) {
             let conflict_condition = route_conflicted();
-            let parent_status = gateway::GRPCRouteStatusParents {
-                parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+            let parent_status = gateway::GrpcRouteStatusParents {
+                parent_ref: gateway::GrpcRouteStatusParentsParentRef {
                     group: parent.group.clone(),
                     kind: parent.kind.clone(),
                     name: parent.name.clone(),
@@ -1066,16 +1067,16 @@ fn service_route_type_conflict() {
                     section_name: parent.section_name.clone(),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![conflict_condition, backend_condition.clone()]),
+                conditions: vec![conflict_condition, backend_condition.clone()],
             };
-            let status = gateway::GRPCRouteStatus {
+            let status = gateway::GrpcRouteStatus {
                 parents: vec![parent_status],
             };
             let patch = crate::index::make_patch(&http_id, status).unwrap();
             assert_eq!(patch, update.patch);
         } else {
-            let parent_status = gateway::GRPCRouteStatusParents {
-                parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+            let parent_status = gateway::GrpcRouteStatusParents {
+                parent_ref: gateway::GrpcRouteStatusParentsParentRef {
                     group: parent.group.clone(),
                     kind: parent.kind.clone(),
                     name: parent.name.clone(),
@@ -1084,9 +1085,9 @@ fn service_route_type_conflict() {
                     section_name: parent.section_name.clone(),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
+                conditions: vec![accepted_condition.clone(), backend_condition.clone()],
             };
-            let status = gateway::GRPCRouteStatus {
+            let status = gateway::GrpcRouteStatus {
                 parents: vec![parent_status],
             };
             let patch = crate::index::make_patch(&grpc_id, status).unwrap();
@@ -1103,7 +1104,7 @@ fn egress_network_route_type_conflict() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
@@ -1119,7 +1120,7 @@ fn egress_network_route_type_conflict() {
     let parent = super::make_egress_network("ns-0", "egress", accepted());
     index.write().apply(parent.clone());
 
-    let parent = gateway::GRPCRouteParentRefs {
+    let parent = gateway::GrpcRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -1142,11 +1143,11 @@ fn egress_network_route_type_conflict() {
         metadata: k8s::ObjectMeta {
             name: Some(http_id.gkn.name.to_string()),
             namespace: Some(http_id.namespace.clone()),
-            creation_timestamp: Some(k8s::Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(Timestamp::now())),
             ..Default::default()
         },
-        spec: gateway::HTTPRouteSpec {
-            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+        spec: gateway::HttpRouteSpec {
+            parent_refs: Some(vec![gateway::HttpRouteParentRefs {
                 group: parent.group.clone(),
                 kind: parent.kind.clone(),
                 name: parent.name.clone(),
@@ -1156,6 +1157,7 @@ fn egress_network_route_type_conflict() {
             }]),
             hostnames: None,
             rules: Some(vec![]),
+            use_default_gateways: None,
         },
     };
     index.write().apply(http_route);
@@ -1164,8 +1166,8 @@ fn egress_network_route_type_conflict() {
     let accepted_condition = accepted();
     // No backends were specified, so we have vacuously resolved them all.
     let backend_condition = resolved_refs();
-    let parent_status = gateway::GRPCRouteStatusParents {
-        parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+    let parent_status = gateway::GrpcRouteStatusParents {
+        parent_ref: gateway::GrpcRouteStatusParentsParentRef {
             group: parent.group.clone(),
             kind: parent.kind.clone(),
             name: parent.name.clone(),
@@ -1174,9 +1176,9 @@ fn egress_network_route_type_conflict() {
             section_name: parent.section_name.clone(),
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
-        conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
+        conditions: vec![accepted_condition.clone(), backend_condition.clone()],
     };
-    let status = gateway::GRPCRouteStatus {
+    let status = gateway::GrpcRouteStatus {
         parents: vec![parent_status],
     };
     let patch = crate::index::make_patch(&http_id, status).unwrap();
@@ -1201,8 +1203,8 @@ fn egress_network_route_type_conflict() {
         let update = updates_rx.try_recv().unwrap();
         if update.id.gkn.kind == gateway::HTTPRoute::kind(&()) {
             let conflict_condition = route_conflicted();
-            let parent_status = gateway::GRPCRouteStatusParents {
-                parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+            let parent_status = gateway::GrpcRouteStatusParents {
+                parent_ref: gateway::GrpcRouteStatusParentsParentRef {
                     group: parent.group.clone(),
                     kind: parent.kind.clone(),
                     name: parent.name.clone(),
@@ -1211,16 +1213,16 @@ fn egress_network_route_type_conflict() {
                     section_name: parent.section_name.clone(),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![conflict_condition, backend_condition.clone()]),
+                conditions: vec![conflict_condition, backend_condition.clone()],
             };
-            let status = gateway::GRPCRouteStatus {
+            let status = gateway::GrpcRouteStatus {
                 parents: vec![parent_status],
             };
             let patch = crate::index::make_patch(&http_id, status).unwrap();
             assert_eq!(patch, update.patch);
         } else {
-            let parent_status = gateway::GRPCRouteStatusParents {
-                parent_ref: gateway::GRPCRouteStatusParentsParentRef {
+            let parent_status = gateway::GrpcRouteStatusParents {
+                parent_ref: gateway::GrpcRouteStatusParentsParentRef {
                     group: parent.group.clone(),
                     kind: parent.kind.clone(),
                     name: parent.name.clone(),
@@ -1229,9 +1231,9 @@ fn egress_network_route_type_conflict() {
                     section_name: parent.section_name.clone(),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![accepted_condition.clone(), backend_condition.clone()]),
+                conditions: vec![accepted_condition.clone(), backend_condition.clone()],
             };
-            let status = gateway::GRPCRouteStatus {
+            let status = gateway::GrpcRouteStatus {
                 parents: vec![parent_status],
             };
             let patch = crate::index::make_patch(&grpc_id, status).unwrap();
@@ -1245,34 +1247,35 @@ fn egress_network_route_type_conflict() {
 
 fn make_route(
     id: &NamespaceGroupKindName,
-    parent: gateway::GRPCRouteParentRefs,
-    backends: Option<Vec<gateway::GRPCRouteRulesBackendRefs>>,
+    parent: gateway::GrpcRouteParentRefs,
+    backends: Option<Vec<gateway::GrpcRouteRulesBackendRefs>>,
 ) -> gateway::GRPCRoute {
     gateway::GRPCRoute {
         status: None,
         metadata: k8s::ObjectMeta {
             name: Some(id.gkn.name.to_string()),
             namespace: Some(id.namespace.clone()),
-            creation_timestamp: Some(k8s::Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(Timestamp::now())),
             ..Default::default()
         },
-        spec: gateway::GRPCRouteSpec {
+        spec: gateway::GrpcRouteSpec {
             parent_refs: Some(vec![parent]),
             hostnames: None,
-            rules: Some(vec![gateway::GRPCRouteRules {
+            rules: Some(vec![gateway::GrpcRouteRules {
                 name: None,
                 filters: None,
                 backend_refs: backends,
-                matches: Some(vec![gateway::GRPCRouteRulesMatches {
+                matches: Some(vec![gateway::GrpcRouteRulesMatches {
                     headers: None,
-                    method: Some(gateway::GRPCRouteRulesMatchesMethod {
+                    method: Some(gateway::GrpcRouteRulesMatchesMethod {
                         method: Some("MakeRoute".to_string()),
                         service: Some("io.linkerd.Test".to_string()),
-                        r#type: Some(gateway::GRPCRouteRulesMatchesMethodType::Exact),
+                        r#type: Some(gateway::GrpcRouteRulesMatchesMethodType::Exact),
                     }),
                 }]),
                 session_persistence: None,
             }]),
+            use_default_gateways: None,
         },
     }
 }

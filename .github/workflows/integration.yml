@@ -162,14 +162,14 @@ jobs:
         gateway-api:
           - version: linkerd
             channel: experimental
-          - version: v1.4.0
+          - version: v1.5.1
             channel: experimental
         # Also test the Minimum Supported Kubernetes Version with the Minimum
         # Supported Gateway API version.
         include:
           - k8s: v1.31
             gateway-api:
-              version: v1.1.1
+              version: v1.2.1
               channel: standard
     env:
       GATEWAY_API_VERSION: ${{ matrix.gateway-api.version }}

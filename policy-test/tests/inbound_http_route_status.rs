@@ -25,7 +25,7 @@ async fn inbound_accepted_parent() {
             },
         };
         let server = create(&client, server).await;
-        let srv_ref = vec![gateway::HTTPRouteParentRefs {
+        let srv_ref = vec![gateway::HttpRouteParentRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: server.namespace(),
@@ -68,7 +68,7 @@ async fn inbound_multiple_parents() {
     with_temp_ns(|client, ns| async move {
         // Exercise accepted test with a valid, and an invalid parent reference
         let srv_refs = vec![
-            gateway::HTTPRouteParentRefs {
+            gateway::HttpRouteParentRefs {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("Server".to_string()),
                 namespace: Some(ns.clone()),
@@ -76,7 +76,7 @@ async fn inbound_multiple_parents() {
                 section_name: None,
                 port: None,
             },
-            gateway::HTTPRouteParentRefs {
+            gateway::HttpRouteParentRefs {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("Server".to_string()),
                 namespace: Some(ns.clone()),
@@ -152,7 +152,7 @@ async fn inbound_no_parent_ref_patch() {
             },
         };
         let server = create(&client, server).await;
-        let srv_ref = vec![gateway::HTTPRouteParentRefs {
+        let srv_ref = vec![gateway::HttpRouteParentRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: server.namespace(),
@@ -204,7 +204,7 @@ async fn inbound_accepted_reconcile_no_parent() {
         // Given a route with a nonexistent parentReference, we expect to have an
         // 'Accepted' condition with 'False' as a status.
         let server_name = "test-reconcile-inbound-server";
-        let srv_ref = vec![gateway::HTTPRouteParentRefs {
+        let srv_ref = vec![gateway::HttpRouteParentRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: Some(ns.clone()),
@@ -294,7 +294,7 @@ async fn inbound_accepted_reconcile_parent_delete() {
         create(&client, server).await;
 
         // Create parentReference and route
-        let srv_ref = vec![gateway::HTTPRouteParentRefs {
+        let srv_ref = vec![gateway::HttpRouteParentRefs {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: Some(ns.clone()),
@@ -355,7 +355,7 @@ async fn await_route_status(
     client: &kube::Client,
     ns: &str,
     name: &str,
-) -> gateway::HTTPRouteStatus {
+) -> gateway::HttpRouteStatus {
     use k8s::policy::httproute as api;
     let route_status = await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
         obj.and_then(|route| route.status.as_ref()).is_some()

@@ -1,4 +1,4 @@
-use k8s_openapi::chrono;
+use k8s_openapi::jiff;
 use linkerd_policy_controller_k8s_api::{
     self as api,
     policy::{
@@ -93,7 +93,7 @@ fn mk_ratelimiter(
         },
         status: Some(HttpLocalRateLimitPolicyStatus {
             conditions: vec![api::Condition {
-                last_transition_time: api::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
+                last_transition_time: api::Time(jiff::Timestamp::MIN),
                 message: "".to_string(),
                 observed_generation: None,
                 reason: "".to_string(),
