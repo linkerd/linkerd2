@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIpWatcherGetPod(t *testing.T) {
@@ -129,3 +131,31 @@ status:
 		}
 	})
 }
+
+// TestUpdateExternalWorkloadNilDoesNotPanic is a regression test for
+// linkerdio/linkerd2#15551: when an ExternalWorkload is deleted,
+// submitExternalWorkloadUpdate passes nil to updateExternalWorkload, and the
+// opaque-protocol error branch dereferenced wp.addr.ExternalWorkload.GetName(),
+// panicking with a nil pointer dereference. The update must not panic when the
+// workload is nil (removal path).
+func TestUpdateExternalWorkloadNilDoesNotPanic(t *testing.T) {
+	metrics, err := workloadVecs.newMetrics(prometheus.Labels{})
+	if err != nil {
+		t.Fatalf("failed to initialize metrics: %s", err)
+	}
+	wp := &workloadPublisher{
+		log:     log.WithField("component", "workload-watcher"),
+		metrics: metrics,
+		listeners: []WorkloadUpdateListener{
+			stubWorkloadUpdateListener{},
+		},
+	}
+	require.NotPanics(t, func() {
+		wp.updateExternalWorkload(nil)
+	})
+}
+
+// stubWorkloadUpdateListener is a no-op WorkloadUpdateListener for tests.
+type stubWorkloadUpdateListener struct{}
+
+func (stubWorkloadUpdateListener) Update(*Address) error { return nil }

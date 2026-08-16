@@ -34,6 +34,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
+	github.com/stretchr/testify v1.11.1
 	go.opencensus.io v0.24.0
 	golang.org/x/tools v0.48.0
 	google.golang.org/grpc v1.83.0
