@@ -189,6 +189,11 @@ impl Args {
         )
         .await?;
 
+        // Determine which version of the TLSRoute API the cluster serves, if
+        // any. This must happen before the status index and controller are
+        // built, since they address routes by version.
+        let tls_route_api_version = tls_route_api_version(&runtime.client()).await;
+
         // Build the status index which will maintain information necessary for
         // updating the status field of policy resources.
         let (updates_tx, updates_rx) = mpsc::channel(STATUS_UPDATE_QUEUE_SIZE);
@@ -198,6 +203,7 @@ impl Args {
             updates_tx,
             status_index_metrcs,
             cluster_networks.clone(),
+            tls_route_api_version.unwrap_or_default(),
         );
 
         // Spawn resource watches.
@@ -328,20 +334,43 @@ impl Args {
             );
         }
 
-        if api_resource_exists::<gateway::TLSRoute>(&runtime.client()).await {
-            let tls_routes =
-                guarded_watch::<gateway::TLSRoute, _>(&mut runtime, watcher::Config::default());
-            let tls_routes_indexes = IndexList::new(status_index.clone())
-                .push(outbound_index.clone())
-                .shared();
-            tokio::spawn(
-                kubert::index::namespaced(tls_routes_indexes.clone(), tls_routes)
-                    .instrument(info_span!("tlsroutes.gateway.networking.k8s.io")),
-            );
-        } else {
-            tracing::warn!(
-                "tlsroutes.gateway.networking.k8s.io resource kind not found, skipping watches"
-            );
+        match tls_route_api_version {
+            Some(version) => {
+                let tls_routes_indexes = IndexList::new(status_index.clone())
+                    .push(outbound_index.clone())
+                    .shared();
+                // Routes read from a `v1alpha2` watch are converted to their
+                // `v1` representation so that a single index implementation
+                // serves both versions.
+                let tls_routes = match version {
+                    gateway::TlsRouteApiVersion::V1 => guarded_watch::<gateway::TLSRoute, _>(
+                        &mut runtime,
+                        watcher::Config::default(),
+                    )
+                    .boxed(),
+                    gateway::TlsRouteApiVersion::V1Alpha2 => {
+                        guarded_watch::<gateway::TLSRouteV1Alpha2, _>(
+                            &mut runtime,
+                            watcher::Config::default(),
+                        )
+                        .map(convert_event)
+                        .boxed()
+                    }
+                };
+                tokio::spawn(
+                    kubert::index::namespaced(tls_routes_indexes.clone(), tls_routes).instrument(
+                        info_span!(
+                            "tlsroutes.gateway.networking.k8s.io",
+                            version = version.version()
+                        ),
+                    ),
+                );
+            }
+            None => {
+                tracing::warn!(
+                    "tlsroutes.gateway.networking.k8s.io resource kind not found, skipping watches"
+                );
+            }
         }
 
         if api_resource_exists::<gateway::TCPRoute>(&runtime.client()).await {
@@ -407,6 +436,7 @@ impl Args {
             updates_rx,
             Duration::from_millis(patch_timeout_ms),
             status_metrics,
+            tls_route_api_version.unwrap_or_default(),
         );
         tokio::spawn(
             status_controller
@@ -517,13 +547,45 @@ where
     T::DynamicType: Default,
 {
     let dt = Default::default();
+    api_version_has_kind(client, &T::api_version(&dt), &T::kind(&dt)).await
+}
+
+async fn api_version_has_kind(client: &Client, api_version: &str, kind: &str) -> bool {
     client
-        .list_api_group_resources(&T::api_version(&dt))
+        .list_api_group_resources(api_version)
         .await
         .ok()
         .iter()
         .flat_map(|r| r.resources.iter())
-        .any(|r| r.kind == T::kind(&dt))
+        .any(|r| r.kind == kind)
+}
+
+/// Returns the most preferred version of the TLSRoute API that the cluster
+/// serves, if any.
+///
+/// TLSRoute has no version that is served by every supported Gateway API
+/// bundle: v1.2--v1.4 (and the CRDs vendored by the `linkerd-crds` chart) serve
+/// `v1alpha2`, while the standard channel of v1.5 serves `v1` only.
+async fn tls_route_api_version(client: &Client) -> Option<gateway::TlsRouteApiVersion> {
+    let kind = gateway::TLSRoute::kind(&());
+    for &version in gateway::TlsRouteApiVersion::ALL {
+        if api_version_has_kind(client, version.api_version(), &kind).await {
+            tracing::debug!(version = version.version(), "Found TLSRoute API version");
+            return Some(version);
+        }
+    }
+    None
+}
+
+/// Converts a watch event into one over an equivalent resource type.
+fn convert_event<A, B: From<A>>(event: watcher::Event<A>) -> watcher::Event<B> {
+    match event {
+        watcher::Event::Apply(obj) => watcher::Event::Apply(obj.into()),
+        watcher::Event::Delete(obj) => watcher::Event::Delete(obj.into()),
+        watcher::Event::InitApply(obj) => watcher::Event::InitApply(obj.into()),
+        watcher::Event::Init => watcher::Event::Init,
+        watcher::Event::InitDone => watcher::Event::InitDone,
+    }
 }
 
 // A watch that uses DeserializeGuard to skip resources which fail to deserialize.

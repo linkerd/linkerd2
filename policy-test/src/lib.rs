@@ -294,7 +294,21 @@ pub async fn await_grpc_route_status(
     route_status
 }
 
-#[cfg(feature = "gateway-api-experimental")]
+/// The `TLSRoute` binding the tests exercise.
+///
+/// TLSRoute has no version that is served by every supported Gateway API
+/// bundle, so the policy controller negotiates one with the API server; the
+/// `gateway-api-tls-route-{v1,v1alpha2}` features tell the tests which one it
+/// will pick, so that they address the same version.
+#[cfg(all(
+    feature = "gateway-api-tls-route",
+    not(feature = "gateway-api-tls-route-v1alpha2")
+))]
+pub use linkerd_policy_controller_k8s_api::gateway::TLSRoute;
+#[cfg(feature = "gateway-api-tls-route-v1alpha2")]
+pub use linkerd_policy_controller_k8s_api::gateway::TLSRouteV1Alpha2 as TLSRoute;
+
+#[cfg(feature = "gateway-api-tls-route")]
 // Waits until an TlsRoute with the given namespace and name has a status set
 // on it, then returns the generic route status representation.
 pub async fn await_tls_route_status(
@@ -302,14 +316,9 @@ pub async fn await_tls_route_status(
     ns: &str,
     name: &str,
 ) -> gateway::TlsRouteStatus {
-    let route_status = await_condition(
-        client,
-        ns,
-        name,
-        |obj: Option<&gateway::TLSRoute>| -> bool {
-            obj.and_then(|route| route.status.as_ref()).is_some()
-        },
-    )
+    let route_status = await_condition(client, ns, name, |obj: Option<&TLSRoute>| -> bool {
+        obj.and_then(|route| route.status.as_ref()).is_some()
+    })
     .await
     .expect("must fetch route")
     .status

@@ -30,6 +30,7 @@ fn egress_network_with_no_networks_specified() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     let id = NamespaceGroupKindName {
@@ -60,7 +61,7 @@ fn egress_network_with_no_networks_specified() {
     let status = EgressNetworkStatus {
         conditions: vec![accepted()],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -83,6 +84,7 @@ fn egress_network_with_nonoverlapping_networks_specified() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     let id = NamespaceGroupKindName {
@@ -122,7 +124,7 @@ fn egress_network_with_nonoverlapping_networks_specified() {
     let status = EgressNetworkStatus {
         conditions: vec![accepted()],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -145,6 +147,7 @@ fn egress_network_with_overlapping_networks_specified() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     let id = NamespaceGroupKindName {
@@ -182,7 +185,7 @@ fn egress_network_with_overlapping_networks_specified() {
     let status = EgressNetworkStatus {
         conditions: vec![in_cluster_net_overlap()],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
     assert_eq!(patch, update.patch);

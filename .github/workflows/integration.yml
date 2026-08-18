@@ -159,11 +159,21 @@ jobs:
         # version, as well as the vendored Gateway API CRDs.
         k8s:
           - v1.36
+        # 'tls-route' is the TLSRoute API version the bundle serves, and that
+        # the policy controller therefore negotiates, or 'none' when the bundle
+        # ships no TLSRoute CRD at all. TLSRoute only graduated to 'v1', and to
+        # the standard channel, in Gateway API v1.5; the vendored CRDs and
+        # older bundles serve 'v1alpha2'.
         gateway-api:
           - version: linkerd
             channel: experimental
+            tls-route: v1alpha2
           - version: v1.5.1
             channel: experimental
+            tls-route: v1
+          - version: v1.5.1
+            channel: standard
+            tls-route: v1
         # Also test the Minimum Supported Kubernetes Version with the Minimum
         # Supported Gateway API version.
         include:
@@ -171,9 +181,11 @@ jobs:
             gateway-api:
               version: v1.2.1
               channel: standard
+              tls-route: none
     env:
       GATEWAY_API_VERSION: ${{ matrix.gateway-api.version }}
       GATEWAY_API_CHANNEL: ${{ matrix.gateway-api.channel }}
+      GATEWAY_API_TLS_ROUTE: ${{ matrix.gateway-api.tls-route }}
     steps:
       - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
         env:

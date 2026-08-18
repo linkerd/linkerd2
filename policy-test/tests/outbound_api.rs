@@ -1,5 +1,7 @@
 use futures::{FutureExt, StreamExt};
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy};
+#[cfg(feature = "gateway-api-tls-route")]
+use linkerd_policy_test::TLSRoute;
 use linkerd_policy_test::{
     assert_resource_meta, await_route_accepted, create, create_cluster_scoped,
     delete_cluster_scoped, grpc,
@@ -295,10 +297,13 @@ async fn routes_with_backend() {
     test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
     #[cfg(feature = "gateway-api-experimental")]
     {
-        test::<k8s::Service, gateway::TLSRoute>().await;
         test::<k8s::Service, gateway::TCPRoute>().await;
-        test::<policy::EgressNetwork, gateway::TLSRoute>().await;
         test::<policy::EgressNetwork, gateway::TCPRoute>().await;
+    }
+    #[cfg(feature = "gateway-api-tls-route")]
+    {
+        test::<k8s::Service, TLSRoute>().await;
+        test::<policy::EgressNetwork, TLSRoute>().await;
     }
 }
 
@@ -400,8 +405,11 @@ async fn service_with_routes_with_cross_namespace_backend() {
     test::<k8s::Service, gateway::GRPCRoute>().await;
     #[cfg(feature = "gateway-api-experimental")]
     {
-        test::<k8s::Service, gateway::TLSRoute>().await;
         test::<k8s::Service, gateway::TCPRoute>().await;
+    }
+    #[cfg(feature = "gateway-api-tls-route")]
+    {
+        test::<k8s::Service, TLSRoute>().await;
     }
 }
 
@@ -489,10 +497,13 @@ async fn routes_with_invalid_backend() {
     test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
     #[cfg(feature = "gateway-api-experimental")]
     {
-        test::<k8s::Service, gateway::TLSRoute>().await;
         test::<k8s::Service, gateway::TCPRoute>().await;
-        test::<policy::EgressNetwork, gateway::TLSRoute>().await;
         test::<policy::EgressNetwork, gateway::TCPRoute>().await;
+    }
+    #[cfg(feature = "gateway-api-tls-route")]
+    {
+        test::<k8s::Service, TLSRoute>().await;
+        test::<policy::EgressNetwork, TLSRoute>().await;
     }
 }
 
@@ -590,10 +601,10 @@ async fn multiple_routes() {
     test::<policy::EgressNetwork, gateway::HTTPRoute>().await;
     test::<policy::EgressNetwork, policy::HttpRoute>().await;
     test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
-    #[cfg(feature = "gateway-api-experimental")]
+    #[cfg(feature = "gateway-api-tls-route")]
     {
-        test::<k8s::Service, gateway::TLSRoute>().await;
-        test::<policy::EgressNetwork, gateway::TLSRoute>().await;
+        test::<k8s::Service, TLSRoute>().await;
+        test::<policy::EgressNetwork, TLSRoute>().await;
     }
 }
 
@@ -732,8 +743,11 @@ async fn route_with_no_port() {
     test::<k8s::Service, gateway::GRPCRoute>().await;
     #[cfg(feature = "gateway-api-experimental")]
     {
-        test::<k8s::Service, gateway::TLSRoute>().await;
         test::<k8s::Service, gateway::TCPRoute>().await;
+    }
+    #[cfg(feature = "gateway-api-tls-route")]
+    {
+        test::<k8s::Service, TLSRoute>().await;
     }
 }
 
@@ -834,8 +848,11 @@ async fn producer_route() {
     test::<k8s::Service, gateway::GRPCRoute>().await;
     #[cfg(feature = "gateway-api-experimental")]
     {
-        test::<k8s::Service, gateway::TLSRoute>().await;
         test::<k8s::Service, gateway::TCPRoute>().await;
+    }
+    #[cfg(feature = "gateway-api-tls-route")]
+    {
+        test::<k8s::Service, TLSRoute>().await;
     }
 }
 
@@ -912,8 +929,11 @@ async fn pre_existing_producer_route() {
     test::<k8s::Service, gateway::GRPCRoute>().await;
     #[cfg(feature = "gateway-api-experimental")]
     {
-        test::<k8s::Service, gateway::TLSRoute>().await;
         test::<k8s::Service, gateway::TCPRoute>().await;
+    }
+    #[cfg(feature = "gateway-api-tls-route")]
+    {
+        test::<k8s::Service, TLSRoute>().await;
     }
 }
 
@@ -1043,8 +1063,11 @@ async fn consumer_route() {
     test::<k8s::Service, gateway::GRPCRoute>().await;
     #[cfg(feature = "gateway-api-experimental")]
     {
-        test::<k8s::Service, gateway::TLSRoute>().await;
         test::<k8s::Service, gateway::TCPRoute>().await;
+    }
+    #[cfg(feature = "gateway-api-tls-route")]
+    {
+        test::<k8s::Service, TLSRoute>().await;
     }
 }
 
@@ -1143,9 +1166,12 @@ async fn route_reattachment() {
     test::<policy::EgressNetwork, gateway::GRPCRoute>().await;
     #[cfg(feature = "gateway-api-experimental")]
     {
-        test::<k8s::Service, gateway::TLSRoute>().await;
         test::<k8s::Service, gateway::TCPRoute>().await;
-        test::<policy::EgressNetwork, gateway::TLSRoute>().await;
         test::<policy::EgressNetwork, gateway::TCPRoute>().await;
+    }
+    #[cfg(feature = "gateway-api-tls-route")]
+    {
+        test::<k8s::Service, TLSRoute>().await;
+        test::<policy::EgressNetwork, TLSRoute>().await;
     }
 }
