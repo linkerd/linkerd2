@@ -146,12 +146,16 @@ func Main(args []string) {
 	// (see issue #12710).
 	var k8sAPI *k8s.API
 	if *enableEndpointSlices {
+		// The v1 Endpoints informer is omitted here: when EndpointSlices are
+		// enabled, nothing in the destination controller reads from it, and
+		// keeping it running only produces unused watches and log noise from
+		// the deprecated v1 Endpoints API.
 		k8sAPI, err = k8s.InitializeAPI(
 			ctx,
 			*kubeConfigPath,
 			true,
 			"local",
-			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Srv, k8s.ExtWorkload,
+			k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Srv, k8s.ExtWorkload,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(
