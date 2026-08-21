@@ -25,14 +25,14 @@ impl HttpRouteResource {
         }
     }
 
-    pub(crate) fn parent_refs(&self) -> &Option<Vec<gateway::HTTPRouteParentRefs>> {
+    pub(crate) fn parent_refs(&self) -> &Option<Vec<gateway::HttpRouteParentRefs>> {
         match self {
             Self::LinkerdHttp(route) => &route.spec.parent_refs,
             Self::GatewayHttp(route) => &route.spec.parent_refs,
         }
     }
 
-    pub(crate) fn status(&self) -> Option<&gateway::HTTPRouteStatus> {
+    pub(crate) fn status(&self) -> Option<&gateway::HttpRouteStatus> {
         match self {
             Self::LinkerdHttp(route) => route.status.as_ref(),
             Self::GatewayHttp(route) => route.status.as_ref(),

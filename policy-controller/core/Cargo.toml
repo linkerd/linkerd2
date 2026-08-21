@@ -9,8 +9,8 @@ publish = false
 ahash = "0.8"
 anyhow = "1"
 async-trait = "0.1"
-chrono = { version = "0.4.45", default-features = false }
 futures = { version = "0.3", default-features = false, features = ["std"] }
 http = { workspace = true }
 ipnet = "2"
+jiff = { workspace = true }
 regex = "1"

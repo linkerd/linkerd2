@@ -4,12 +4,12 @@ use linkerd_policy_controller_k8s_api::gateway;
 use std::num::NonZeroU16;
 
 pub fn try_match(
-    gateway::HTTPRouteRulesMatches {
+    gateway::HttpRouteRulesMatches {
         path,
         headers,
         query_params,
         method,
-    }: gateway::HTTPRouteRulesMatches,
+    }: gateway::HttpRouteRulesMatches,
 ) -> Result<routes::HttpRouteMatch> {
     let path = path.map(path_match).transpose()?;
 
@@ -26,15 +26,15 @@ pub fn try_match(
         .collect::<Result<_>>()?;
 
     let method = method.map(|m| match m {
-        gateway::HTTPRouteRulesMatchesMethod::Get => routes::Method::GET,
-        gateway::HTTPRouteRulesMatchesMethod::Head => routes::Method::HEAD,
-        gateway::HTTPRouteRulesMatchesMethod::Post => routes::Method::POST,
-        gateway::HTTPRouteRulesMatchesMethod::Put => routes::Method::PUT,
-        gateway::HTTPRouteRulesMatchesMethod::Delete => routes::Method::DELETE,
-        gateway::HTTPRouteRulesMatchesMethod::Connect => routes::Method::CONNECT,
-        gateway::HTTPRouteRulesMatchesMethod::Options => routes::Method::OPTIONS,
-        gateway::HTTPRouteRulesMatchesMethod::Trace => routes::Method::TRACE,
-        gateway::HTTPRouteRulesMatchesMethod::Patch => routes::Method::PATCH,
+        gateway::HttpRouteRulesMatchesMethod::Get => routes::Method::GET,
+        gateway::HttpRouteRulesMatchesMethod::Head => routes::Method::HEAD,
+        gateway::HttpRouteRulesMatchesMethod::Post => routes::Method::POST,
+        gateway::HttpRouteRulesMatchesMethod::Put => routes::Method::PUT,
+        gateway::HttpRouteRulesMatchesMethod::Delete => routes::Method::DELETE,
+        gateway::HttpRouteRulesMatchesMethod::Connect => routes::Method::CONNECT,
+        gateway::HttpRouteRulesMatchesMethod::Options => routes::Method::OPTIONS,
+        gateway::HttpRouteRulesMatchesMethod::Trace => routes::Method::TRACE,
+        gateway::HttpRouteRulesMatchesMethod::Patch => routes::Method::PATCH,
     });
 
     Ok(routes::HttpRouteMatch {
@@ -45,22 +45,22 @@ pub fn try_match(
     })
 }
 
-pub fn path_match(path_match: gateway::HTTPRouteRulesMatchesPath) -> Result<routes::PathMatch> {
+pub fn path_match(path_match: gateway::HttpRouteRulesMatchesPath) -> Result<routes::PathMatch> {
     let value = path_match.value.unwrap_or_else(|| "/".to_string());
     match path_match.r#type {
-        Some(gateway::HTTPRouteRulesMatchesPathType::Exact) => {
+        Some(gateway::HttpRouteRulesMatchesPathType::Exact) => {
             if !value.starts_with('/') {
                 bail!("HttpPathMatch paths must be absolute (begin with `/`); {value:?} is not an absolute path")
             }
             Ok(routes::PathMatch::Exact(value))
         }
-        Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix) | None => {
+        Some(gateway::HttpRouteRulesMatchesPathType::PathPrefix) | None => {
             if !value.starts_with('/') {
                 bail!("HttpPathMatch paths must be absolute (begin with `/`); {value:?} is not an absolute path")
             }
             Ok(routes::PathMatch::Prefix(value))
         }
-        Some(gateway::HTTPRouteRulesMatchesPathType::RegularExpression) => value
+        Some(gateway::HttpRouteRulesMatchesPathType::RegularExpression) => value
             .parse()
             .map(routes::PathMatch::Regex)
             .map_err(Into::into),
@@ -68,40 +68,40 @@ pub fn path_match(path_match: gateway::HTTPRouteRulesMatchesPath) -> Result<rout
 }
 
 pub fn header_match(
-    header_match: gateway::HTTPRouteRulesMatchesHeaders,
+    header_match: gateway::HttpRouteRulesMatchesHeaders,
 ) -> Result<routes::HeaderMatch> {
     match header_match.r#type {
-        Some(gateway::HTTPRouteRulesMatchesHeadersType::Exact) | None => Ok(
+        Some(gateway::HttpRouteRulesMatchesHeadersType::Exact) | None => Ok(
             routes::HeaderMatch::Exact(header_match.name.parse()?, header_match.value.parse()?),
         ),
-        Some(gateway::HTTPRouteRulesMatchesHeadersType::RegularExpression) => Ok(
+        Some(gateway::HttpRouteRulesMatchesHeadersType::RegularExpression) => Ok(
             routes::HeaderMatch::Regex(header_match.name.parse()?, header_match.value.parse()?),
         ),
     }
 }
 
 pub fn query_param_match(
-    query_match: gateway::HTTPRouteRulesMatchesQueryParams,
+    query_match: gateway::HttpRouteRulesMatchesQueryParams,
 ) -> Result<routes::QueryParamMatch> {
     match query_match.r#type {
-        Some(gateway::HTTPRouteRulesMatchesQueryParamsType::Exact) | None => Ok(
+        Some(gateway::HttpRouteRulesMatchesQueryParamsType::Exact) | None => Ok(
             routes::QueryParamMatch::Exact(query_match.name, query_match.value),
         ),
-        Some(gateway::HTTPRouteRulesMatchesQueryParamsType::RegularExpression) => Ok(
+        Some(gateway::HttpRouteRulesMatchesQueryParamsType::RegularExpression) => Ok(
             routes::QueryParamMatch::Regex(query_match.name, query_match.value.parse()?),
         ),
     }
 }
 
 pub fn request_header_modifier(
-    gateway::HTTPRouteRulesFiltersRequestHeaderModifier { set, add, remove }: gateway::HTTPRouteRulesFiltersRequestHeaderModifier,
+    gateway::HttpRouteRulesFiltersRequestHeaderModifier { set, add, remove }: gateway::HttpRouteRulesFiltersRequestHeaderModifier,
 ) -> Result<routes::HeaderModifierFilter> {
     Ok(routes::HeaderModifierFilter {
         add: add
             .into_iter()
             .flatten()
             .map(
-                |gateway::HTTPRouteRulesFiltersRequestHeaderModifierAdd { name, value }| {
+                |gateway::HttpRouteRulesFiltersRequestHeaderModifierAdd { name, value }| {
                     Ok((name.parse()?, value.parse()?))
                 },
             )
@@ -110,7 +110,7 @@ pub fn request_header_modifier(
             .into_iter()
             .flatten()
             .map(
-                |gateway::HTTPRouteRulesFiltersRequestHeaderModifierSet { name, value }| {
+                |gateway::HttpRouteRulesFiltersRequestHeaderModifierSet { name, value }| {
                     Ok((name.parse()?, value.parse()?))
                 },
             )
@@ -124,14 +124,14 @@ pub fn request_header_modifier(
 }
 
 pub fn backend_request_header_modifier(
-    gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifier { set, add, remove }: gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifier,
+    gateway::HttpRouteRulesBackendRefsFiltersRequestHeaderModifier { set, add, remove }: gateway::HttpRouteRulesBackendRefsFiltersRequestHeaderModifier,
 ) -> Result<routes::HeaderModifierFilter> {
     Ok(routes::HeaderModifierFilter {
         add: add
             .into_iter()
             .flatten()
             .map(
-                |gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifierAdd {
+                |gateway::HttpRouteRulesBackendRefsFiltersRequestHeaderModifierAdd {
                      name,
                      value,
                  }| { Ok((name.parse()?, value.parse()?)) },
@@ -141,7 +141,7 @@ pub fn backend_request_header_modifier(
             .into_iter()
             .flatten()
             .map(
-                |gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifierSet {
+                |gateway::HttpRouteRulesBackendRefsFiltersRequestHeaderModifierSet {
                      name,
                      value,
                  }| { Ok((name.parse()?, value.parse()?)) },
@@ -156,14 +156,14 @@ pub fn backend_request_header_modifier(
 }
 
 pub fn response_header_modifier(
-    gateway::HTTPRouteRulesFiltersResponseHeaderModifier { set, add, remove }: gateway::HTTPRouteRulesFiltersResponseHeaderModifier,
+    gateway::HttpRouteRulesFiltersResponseHeaderModifier { set, add, remove }: gateway::HttpRouteRulesFiltersResponseHeaderModifier,
 ) -> Result<routes::HeaderModifierFilter> {
     Ok(routes::HeaderModifierFilter {
         add: add
             .into_iter()
             .flatten()
             .map(
-                |gateway::HTTPRouteRulesFiltersResponseHeaderModifierAdd { name, value }| {
+                |gateway::HttpRouteRulesFiltersResponseHeaderModifierAdd { name, value }| {
                     Ok((name.parse()?, value.parse()?))
                 },
             )
@@ -172,7 +172,7 @@ pub fn response_header_modifier(
             .into_iter()
             .flatten()
             .map(
-                |gateway::HTTPRouteRulesFiltersResponseHeaderModifierSet { name, value }| {
+                |gateway::HttpRouteRulesFiltersResponseHeaderModifierSet { name, value }| {
                     Ok((name.parse()?, value.parse()?))
                 },
             )
@@ -186,14 +186,14 @@ pub fn response_header_modifier(
 }
 
 pub fn backend_response_header_modifier(
-    gateway::HTTPRouteRulesBackendRefsFiltersResponseHeaderModifier { set, add, remove }: gateway::HTTPRouteRulesBackendRefsFiltersResponseHeaderModifier,
+    gateway::HttpRouteRulesBackendRefsFiltersResponseHeaderModifier { set, add, remove }: gateway::HttpRouteRulesBackendRefsFiltersResponseHeaderModifier,
 ) -> Result<routes::HeaderModifierFilter> {
     Ok(routes::HeaderModifierFilter {
         add: add
             .into_iter()
             .flatten()
             .map(
-                |gateway::HTTPRouteRulesBackendRefsFiltersResponseHeaderModifierAdd {
+                |gateway::HttpRouteRulesBackendRefsFiltersResponseHeaderModifierAdd {
                      name,
                      value,
                  }| { Ok((name.parse()?, value.parse()?)) },
@@ -203,7 +203,7 @@ pub fn backend_response_header_modifier(
             .into_iter()
             .flatten()
             .map(
-                |gateway::HTTPRouteRulesBackendRefsFiltersResponseHeaderModifierSet {
+                |gateway::HttpRouteRulesBackendRefsFiltersResponseHeaderModifierSet {
                      name,
                      value,
                  }| { Ok((name.parse()?, value.parse()?)) },
@@ -218,17 +218,17 @@ pub fn backend_response_header_modifier(
 }
 
 pub fn req_redirect(
-    gateway::HTTPRouteRulesFiltersRequestRedirect {
+    gateway::HttpRouteRulesFiltersRequestRedirect {
         scheme,
         hostname,
         path,
         port,
         status_code,
-    }: gateway::HTTPRouteRulesFiltersRequestRedirect,
+    }: gateway::HttpRouteRulesFiltersRequestRedirect,
 ) -> Result<routes::RequestRedirectFilter> {
     let scheme = scheme.map(|s| match s {
-        gateway::HTTPRouteRulesFiltersRequestRedirectScheme::Http => routes::Scheme::HTTP,
-        gateway::HTTPRouteRulesFiltersRequestRedirectScheme::Https => routes::Scheme::HTTPS,
+        gateway::HttpRouteRulesFiltersRequestRedirectScheme::Http => routes::Scheme::HTTP,
+        gateway::HttpRouteRulesFiltersRequestRedirectScheme::Https => routes::Scheme::HTTPS,
     });
     Ok(routes::RequestRedirectFilter {
         scheme,
@@ -246,19 +246,19 @@ pub fn req_redirect(
 }
 
 pub fn backend_req_redirect(
-    gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirect {
+    gateway::HttpRouteRulesBackendRefsFiltersRequestRedirect {
         scheme,
         hostname,
         path,
         port,
         status_code,
-    }: gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirect,
+    }: gateway::HttpRouteRulesBackendRefsFiltersRequestRedirect,
 ) -> Result<routes::RequestRedirectFilter> {
     let scheme = scheme.map(|s| match s {
-        gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectScheme::Http => {
+        gateway::HttpRouteRulesBackendRefsFiltersRequestRedirectScheme::Http => {
             routes::Scheme::HTTP
         }
-        gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectScheme::Https => {
+        gateway::HttpRouteRulesBackendRefsFiltersRequestRedirectScheme::Https => {
             routes::Scheme::HTTPS
         }
     });
@@ -278,7 +278,7 @@ pub fn backend_req_redirect(
 }
 
 fn path_modifier(
-    path_modifier: gateway::HTTPRouteRulesFiltersRequestRedirectPath,
+    path_modifier: gateway::HttpRouteRulesFiltersRequestRedirectPath,
 ) -> Result<routes::PathModifier> {
     if let Some(path) = path_modifier.replace_full_path {
         if !path.starts_with('/') {
@@ -302,7 +302,7 @@ fn path_modifier(
 }
 
 fn backend_path_modifier(
-    path_modifier: gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectPath,
+    path_modifier: gateway::HttpRouteRulesBackendRefsFiltersRequestRedirectPath,
 ) -> Result<routes::PathModifier> {
     if let Some(path) = path_modifier.replace_full_path {
         if !path.starts_with('/') {

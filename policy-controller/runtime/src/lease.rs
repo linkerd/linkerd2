@@ -15,7 +15,10 @@ pub async fn init<T>(
     namespace: &str,
     deployment_name: &str,
     claimant: &str,
-) -> Result<watch::Receiver<Arc<kubert::lease::Claim>>> {
+) -> Result<(
+    watch::Receiver<Arc<kubert::lease::Claim>>,
+    tokio::task::JoinHandle<Result<(), kubert::lease::Error>>,
+)> {
     let params = kubert::LeaseParams {
         name: LEASE_NAME.to_string(),
         namespace: namespace.to_string(),
@@ -36,7 +39,7 @@ pub async fn init<T>(
                 tracing::debug!(?deploy, "Found Deployment");
                 break deploy;
             }
-            Err(k8s::Error::Api(error)) => error.into(),
+            Err(k8s::Error::Api(error)) => (*error).into(),
             Err(k8s::Error::Service(error)) => error,
             Err(k8s::Error::HyperError(error)) => error.into(),
             Err(error) => {
@@ -91,7 +94,7 @@ pub async fn init<T>(
                 tracing::info!(?lease, "Created Lease");
                 break;
             }
-            Err(k8s::Error::Api(error)) if error.code >= 500 => error.into(),
+            Err(k8s::Error::Api(error)) if error.code >= 500 => (*error).into(),
             Err(k8s::Error::Api(error)) => {
                 tracing::debug!(?error, "Lease already exists");
                 break;
@@ -109,6 +112,14 @@ pub async fn init<T>(
         time::sleep(time::Duration::from_secs(1)).await;
     }
 
-    let (claim, _task) = runtime.spawn_lease(params).await?;
-    Ok(claim)
+    let (claim, task) = runtime.spawn_lease(params).await?;
+
+    // Consumers of `claim` panic if the lease watch is ever dropped, on the
+    // assumption that Kubernetes will restart the container (see
+    // https://github.com/linkerd/linkerd2/pull/10584). Return the lease
+    // task's `JoinHandle` alongside the claim so the caller can watch it
+    // directly and exit the process if it ever stops maintaining the
+    // watch--by returning or by panicking--rather than leaving that failure
+    // unobserved in a detached task.
+    Ok((claim, task))
 }

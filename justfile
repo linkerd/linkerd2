@@ -293,7 +293,7 @@ proxy-image := DOCKER_REGISTRY + "/proxy"
 # When GATEWAY_API_VERSION is 'linkerd' we use the CLI's vendored gateway API
 # CRDs. Otherwise, we install the CRDs from the upstream release.
 # This should be kept up-to-date with the latest stable release of the gateway API.
-export GATEWAY_API_VERSION := env_var_or_default("GATEWAY_API_VERSION", "v1.2.1")
+export GATEWAY_API_VERSION := env_var_or_default("GATEWAY_API_VERSION", "v1.5.1")
 
 # When GATEWAY_API_CHANNEL is 'experimental', we enable testing of experimental
 # resource types (TCPRoute, TLSRoute). Alternatively, the 'standard' channel may

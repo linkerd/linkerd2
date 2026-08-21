@@ -10,14 +10,14 @@ use linkerd_policy_controller_k8s_api::{
 
 pub(crate) fn make_backends(
     namespace: &str,
-    backends: impl Iterator<Item = gateway::TLSRouteRulesBackendRefs>,
+    backends: impl Iterator<Item = gateway::TlsRouteRulesBackendRefs>,
 ) -> Vec<BackendReference> {
     backends.map(|br| to_backend_ref(&br, namespace)).collect()
 }
 
 pub(crate) fn make_parents(
     namespace: &str,
-    parents: &[gateway::TLSRouteParentRefs],
+    parents: &[gateway::TlsRouteParentRefs],
 ) -> Vec<ParentReference> {
     parents
         .iter()
@@ -30,7 +30,7 @@ pub(crate) fn make_parents(
 }
 
 fn to_parent_ref(
-    parent_ref: &gateway::TLSRouteParentRefs,
+    parent_ref: &gateway::TlsRouteParentRefs,
     default_namespace: &str,
 ) -> Result<ParentReference> {
     if parent_ref_targets_kind::<policy::Server>(parent_ref) {
@@ -63,7 +63,7 @@ fn to_parent_ref(
 }
 
 fn to_backend_ref(
-    backend_ref: &gateway::TLSRouteRulesBackendRefs,
+    backend_ref: &gateway::TlsRouteRulesBackendRefs,
     default_namespace: &str,
 ) -> BackendReference {
     if backend_ref_targets_kind::<k8s::Service>(backend_ref) {
@@ -102,14 +102,14 @@ mod test {
                 name: Some("foo".to_string()),
                 ..Default::default()
             },
-            spec: gateway::TLSRouteSpec {
+            spec: gateway::TlsRouteSpec {
                 parent_refs: None,
-                hostnames: None,
+                hostnames: Vec::default(),
                 rules: vec![
-                    gateway::TLSRouteRules {
+                    gateway::TlsRouteRules {
                         name: None,
-                        backend_refs: Some(vec![
-                            gateway::TLSRouteRulesBackendRefs {
+                        backend_refs: vec![
+                            gateway::TlsRouteRulesBackendRefs {
                                 weight: None,
                                 group: None,
                                 kind: None,
@@ -117,7 +117,7 @@ mod test {
                                 namespace: Some("default".to_string()),
                                 port: None,
                             },
-                            gateway::TLSRouteRulesBackendRefs {
+                            gateway::TlsRouteRulesBackendRefs {
                                 weight: None,
                                 group: None,
                                 kind: None,
@@ -125,20 +125,21 @@ mod test {
                                 namespace: None,
                                 port: None,
                             },
-                        ]),
+                        ],
                     },
-                    gateway::TLSRouteRules {
+                    gateway::TlsRouteRules {
                         name: None,
-                        backend_refs: Some(vec![gateway::TLSRouteRulesBackendRefs {
+                        backend_refs: vec![gateway::TlsRouteRulesBackendRefs {
                             weight: None,
                             group: Some("Core".to_string()),
                             kind: Some("Service".to_string()),
                             name: "ref-3".to_string(),
                             namespace: Some("default".to_string()),
                             port: None,
-                        }]),
+                        }],
                     },
                 ],
+                use_default_gateways: None,
             },
             status: None,
         };
@@ -148,7 +149,6 @@ mod test {
             .rules
             .into_iter()
             .flat_map(|rule| rule.backend_refs)
-            .flatten()
             .map(|br| to_backend_ref(&br, "default"))
             .collect();
 
@@ -170,13 +170,13 @@ mod test {
                 name: Some("foo".to_string()),
                 ..Default::default()
             },
-            spec: gateway::TLSRouteSpec {
+            spec: gateway::TlsRouteSpec {
                 parent_refs: None,
-                hostnames: None,
-                rules: vec![gateway::TLSRouteRules {
+                hostnames: Vec::default(),
+                rules: vec![gateway::TlsRouteRules {
                     name: None,
-                    backend_refs: Some(vec![
-                        gateway::TLSRouteRulesBackendRefs {
+                    backend_refs: vec![
+                        gateway::TlsRouteRulesBackendRefs {
                             weight: None,
                             group: None,
                             kind: None,
@@ -184,7 +184,7 @@ mod test {
                             namespace: None,
                             port: None,
                         },
-                        gateway::TLSRouteRulesBackendRefs {
+                        gateway::TlsRouteRulesBackendRefs {
                             weight: None,
                             group: Some(POLICY_API_GROUP.to_string()),
                             kind: Some("EgressNetwork".to_string()),
@@ -192,7 +192,7 @@ mod test {
                             namespace: None,
                             port: Some(555),
                         },
-                        gateway::TLSRouteRulesBackendRefs {
+                        gateway::TlsRouteRulesBackendRefs {
                             weight: None,
                             group: Some(POLICY_API_GROUP.to_string()),
                             kind: Some("Server".to_string()),
@@ -200,8 +200,9 @@ mod test {
                             namespace: None,
                             port: None,
                         },
-                    ]),
+                    ],
                 }],
+                use_default_gateways: None,
             },
             status: None,
         };
@@ -211,7 +212,6 @@ mod test {
             .rules
             .into_iter()
             .flat_map(|rule| rule.backend_refs)
-            .flatten()
             .map(|br| to_backend_ref(&br, "default"))
             .collect();
 

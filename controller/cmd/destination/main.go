@@ -141,6 +141,9 @@ func Main(args []string) {
 		log.Fatalf("Failed to start with EndpointSlices enabled: %s", err)
 	}
 
+	// Jobs are only watched via the metadata API below; adding k8s.Job here
+	// as well would attempt to register a duplicate job_cache_size gauge
+	// (see issue #12710).
 	var k8sAPI *k8s.API
 	if *enableEndpointSlices {
 		k8sAPI, err = k8s.InitializeAPI(
@@ -148,7 +151,7 @@ func Main(args []string) {
 			*kubeConfigPath,
 			true,
 			"local",
-			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.ExtWorkload,
+			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Srv, k8s.ExtWorkload,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(
@@ -156,7 +159,7 @@ func Main(args []string) {
 			*kubeConfigPath,
 			true,
 			"local",
-			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.ExtWorkload,
+			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Srv, k8s.ExtWorkload,
 		)
 	}
 	if err != nil {

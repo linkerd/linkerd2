@@ -156,7 +156,7 @@ fn convert_linkerd_rule(
 
 fn convert_gateway_rule(
     ns: &str,
-    rule: gateway::HTTPRouteRules,
+    rule: gateway::HttpRouteRules,
     cluster: &ClusterInfo,
     resource_info: &HashMap<ResourceRef, ResourceInfo>,
     mut timeouts: RouteTimeouts,
@@ -207,7 +207,7 @@ fn convert_gateway_rule(
 
 pub(super) fn convert_backend(
     ns: &str,
-    backend: gateway::HTTPRouteRulesBackendRefs,
+    backend: gateway::HttpRouteRulesBackendRefs,
     cluster: &ClusterInfo,
     resources: &HashMap<ResourceRef, ResourceInfo>,
 ) -> Option<Backend> {
@@ -316,7 +316,7 @@ fn convert_linkerd_filter(filter: policy::httproute::HttpRouteFilter) -> Result<
     Ok(filter)
 }
 
-pub(crate) fn convert_gateway_filter(filter: gateway::HTTPRouteRulesFilters) -> Result<Filter> {
+pub(crate) fn convert_gateway_filter(filter: gateway::HttpRouteRulesFilters) -> Result<Filter> {
     if let Some(request_header_modifier) = filter.request_header_modifier {
         let filter = routes::http::request_header_modifier(request_header_modifier)?;
         return Ok(Filter::RequestHeaderModifier(filter));
@@ -342,7 +342,7 @@ pub(crate) fn convert_gateway_filter(filter: gateway::HTTPRouteRulesFilters) -> 
 }
 
 pub(crate) fn convert_gateway_backend_filter(
-    filter: gateway::HTTPRouteRulesBackendRefsFilters,
+    filter: gateway::HttpRouteRulesBackendRefsFilters,
 ) -> Result<Filter> {
     if let Some(request_header_modifier) = filter.request_header_modifier {
         let filter = routes::http::backend_request_header_modifier(request_header_modifier)?;
@@ -445,7 +445,7 @@ pub fn parse_http_retry(
 }
 
 pub(super) fn route_accepted_by_resource_port(
-    route_status: Option<&gateway::HTTPRouteStatus>,
+    route_status: Option<&gateway::HttpRouteStatus>,
     resource_port: &ResourcePort,
 ) -> bool {
     let (kind, group) = match resource_port.kind {
@@ -479,13 +479,12 @@ pub(super) fn route_accepted_by_resource_port(
                 && parent_status
                     .conditions
                     .iter()
-                    .flatten()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
 }
 
 pub fn route_accepted_by_service(
-    route_status: Option<&gateway::HTTPRouteStatus>,
+    route_status: Option<&gateway::HttpRouteStatus>,
     service: &str,
 ) -> bool {
     let mut service_group = &*Service::group(&());
@@ -507,12 +506,11 @@ pub fn route_accepted_by_service(
                 && parent_status
                     .conditions
                     .iter()
-                    .flatten()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
 }
 
-pub(crate) fn backend_kind(backend: &gateway::HTTPRouteRulesBackendRefs) -> Option<ResourceKind> {
+pub(crate) fn backend_kind(backend: &gateway::HttpRouteRulesBackendRefs) -> Option<ResourceKind> {
     let group = backend.group.as_deref();
     // Backends default to `Service` if no kind is specified.
     let kind = backend.kind.as_deref().unwrap_or("Service");
