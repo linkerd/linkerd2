@@ -58,6 +58,7 @@ fn linkerd_route_with_no_backends() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent service
@@ -104,7 +105,7 @@ fn linkerd_route_with_no_backends() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -127,6 +128,7 @@ fn gateway_route_with_no_backends() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent service
@@ -172,7 +174,7 @@ fn gateway_route_with_no_backends() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -195,6 +197,7 @@ fn linkerd_route_with_valid_service_backends() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent service
@@ -271,7 +274,7 @@ fn linkerd_route_with_valid_service_backends() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -294,6 +297,7 @@ fn linkerd_route_with_valid_egress_networks_backends() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent egress network
@@ -351,7 +355,7 @@ fn linkerd_route_with_valid_egress_networks_backends() {
         parents: vec![parent_status],
     };
     let patch: linkerd_policy_controller_k8s_api::Patch<serde_json::Value> =
-        crate::index::make_patch(&id, status).unwrap();
+        crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -374,6 +378,7 @@ fn gateway_route_with_valid_service_backends() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent service
@@ -451,7 +456,7 @@ fn gateway_route_with_valid_service_backends() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -474,6 +479,7 @@ fn gateway_route_with_valid_egress_networks_backends() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent egress network
@@ -531,7 +537,7 @@ fn gateway_route_with_valid_egress_networks_backends() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -554,6 +560,7 @@ fn linkerd_route_with_invalid_service_backend() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent service
@@ -626,7 +633,7 @@ fn linkerd_route_with_invalid_service_backend() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -649,6 +656,7 @@ fn linkerd_route_with_egress_network_backend_different_from_parent() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent egress network
@@ -711,7 +719,7 @@ fn linkerd_route_with_egress_network_backend_different_from_parent() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -734,6 +742,7 @@ fn linkerd_route_with_egress_network_backend_and_service_parent() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent service
@@ -797,7 +806,7 @@ fn linkerd_route_with_egress_network_backend_and_service_parent() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -820,6 +829,7 @@ fn linkerd_route_with_egress_network_parent_and_service_backend() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent egress network
@@ -881,7 +891,7 @@ fn linkerd_route_with_egress_network_parent_and_service_backend() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -904,6 +914,7 @@ fn gateway_route_with_invalid_service_backend() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent service
@@ -976,7 +987,7 @@ fn gateway_route_with_invalid_service_backend() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -999,6 +1010,7 @@ fn gateway_route_with_egress_network_backend_different_from_parent() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent egress network
@@ -1061,7 +1073,7 @@ fn gateway_route_with_egress_network_backend_different_from_parent() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -1084,6 +1096,7 @@ fn gateway_route_with_egress_network_backend_and_service_parent() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent service
@@ -1147,7 +1160,7 @@ fn gateway_route_with_egress_network_backend_and_service_parent() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -1170,6 +1183,7 @@ fn gateway_route_with_egress_network_parent_and_service_backend() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent egress network
@@ -1231,7 +1245,7 @@ fn gateway_route_with_egress_network_parent_and_service_backend() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -1254,6 +1268,7 @@ fn linkerd_route_accepted_after_server_create() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Create the route id and route
@@ -1289,7 +1304,7 @@ fn linkerd_route_accepted_after_server_create() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The first update will be that the HTTPRoute is not accepted because the
     // Server has been created yet.
@@ -1314,7 +1329,7 @@ fn linkerd_route_accepted_after_server_create() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The second update will be that the HTTPRoute is accepted because the
     // Server has been created.
@@ -1339,6 +1354,7 @@ fn linkerd_route_accepted_after_egress_network_create() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Create the route id and route
@@ -1382,7 +1398,7 @@ fn linkerd_route_accepted_after_egress_network_create() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The first update will be that the HTTPRoute is not accepted because the
     // EgressNetwork has not been created yet.
@@ -1412,7 +1428,7 @@ fn linkerd_route_accepted_after_egress_network_create() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The second update will be that the HTTPRoute is accepted because the
     // EgressNetwork has been created.
@@ -1437,6 +1453,7 @@ fn gateway_route_accepted_after_server_create() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Create the route id and route
@@ -1472,7 +1489,7 @@ fn gateway_route_accepted_after_server_create() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The first update will be that the HTTPRoute is not accepted because the
     // Server has been created yet.
@@ -1497,7 +1514,7 @@ fn gateway_route_accepted_after_server_create() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The second update will be that the HTTPRoute is accepted because the
     // Server has been created.
@@ -1522,6 +1539,7 @@ fn gateway_route_accepted_after_egress_network_create() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Create the route id and route
@@ -1565,7 +1583,7 @@ fn gateway_route_accepted_after_egress_network_create() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The first update will be that the HTTPRoute is not accepted because the
     // EgressNetwork has not been created yet.
@@ -1595,7 +1613,7 @@ fn gateway_route_accepted_after_egress_network_create() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The second update will be that the HTTPRoute is accepted because the
     // EgressNetwork has been created.
@@ -1620,6 +1638,7 @@ fn linkerd_route_rejected_after_server_delete() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     let server = make_server(
@@ -1663,7 +1682,7 @@ fn linkerd_route_rejected_after_server_delete() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The second update will be that the HTTPRoute is accepted because the
     // Server has been created.
@@ -1686,7 +1705,7 @@ fn linkerd_route_rejected_after_server_delete() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The third update will be that the HTTPRoute is not accepted because the
     // Server has been deleted.
@@ -1711,6 +1730,7 @@ fn linkerd_route_rejected_after_egress_network_delete() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     let egress = super::make_egress_network("ns-0", "egress", accepted());
@@ -1760,7 +1780,7 @@ fn linkerd_route_rejected_after_egress_network_delete() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The second update will be that the HTTPRoute is accepted because the
     // EgressNetwork has been created.
@@ -1795,7 +1815,7 @@ fn linkerd_route_rejected_after_egress_network_delete() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The third update will be that the HTTPRoute is not accepted because the
     // EgressNetwork has been deleted.
@@ -1820,6 +1840,7 @@ fn gateway_route_rejected_after_server_delete() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     let server = make_server(
@@ -1863,7 +1884,7 @@ fn gateway_route_rejected_after_server_delete() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The second update will be that the HTTPRoute is accepted because the
     // Server has been created.
@@ -1886,7 +1907,7 @@ fn gateway_route_rejected_after_server_delete() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The third update will be that the HTTPRoute is not accepted because the
     // Server has been deleted.
@@ -1911,6 +1932,7 @@ fn gateway_route_rejected_after_egress_network_delete() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     let egress = super::make_egress_network("ns-0", "egress", accepted());
@@ -1960,7 +1982,7 @@ fn gateway_route_rejected_after_egress_network_delete() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The second update will be that the HTTPRoute is accepted because the
     // EgressNetwork has been created.
@@ -1995,7 +2017,7 @@ fn gateway_route_rejected_after_egress_network_delete() {
     let status = gateway::HttpRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The third update will be that the HTTPRoute is not accepted because the
     // EgressNetwork has been deleted.

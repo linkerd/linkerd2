@@ -6,8 +6,20 @@ license = "Apache-2.0"
 publish = false
 
 [features]
-default = ["gateway-api-experimental"]
+default = ["gateway-api-experimental", "gateway-api-tls-route-v1"]
+# Enables tests for resources that are only available in the experimental
+# channel of the Gateway API.
 gateway-api-experimental = []
+# Enables the TLSRoute tests, addressing TLSRoute as the named API version;
+# leave both unset to skip them. TLSRoute has no version that is served by
+# every supported Gateway API bundle: `v1alpha2` is the only version served by
+# v1.2--v1.4 and by the CRDs vendored in the linkerd-crds chart, while `v1` is
+# the only version served by the standard channel of v1.5.
+gateway-api-tls-route-v1 = ["gateway-api-tls-route"]
+gateway-api-tls-route-v1alpha2 = ["gateway-api-tls-route"]
+# Implied by the features above; marks the TLSRoute tests as enabled, whichever
+# version they address. Not meant to be enabled on its own.
+gateway-api-tls-route = []
 
 [dependencies]
 anyhow = "1"

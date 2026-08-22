@@ -139,7 +139,9 @@ export POLICY_TEST_CONTEXT := env_var_or_default("POLICY_TEST_CONTEXT", "k3d-" +
 # Install linkerd in the test cluster and run the policy tests.
 policy-test: linkerd-install policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
 
-_policy-test-flags := "--no-default-features" + if GATEWAY_API_CHANNEL == "experimental" { " --features=gateway-api-experimental" } else { "" }
+_policy-test-tls-route-flags := if GATEWAY_API_TLS_ROUTE == "none" { "" } else if GATEWAY_API_TLS_ROUTE =~ '^v1(alpha2)?$' { " --features=gateway-api-tls-route-" + GATEWAY_API_TLS_ROUTE } else { error("GATEWAY_API_TLS_ROUTE must be 'v1', 'v1alpha2', or 'none'") }
+
+_policy-test-flags := "--no-default-features" + (if GATEWAY_API_CHANNEL == "experimental" { " --features=gateway-api-experimental" } else { "" }) + _policy-test-tls-route-flags
 
 # Run the policy tests without installing linkerd.
 policy-test-run *flags:
@@ -296,9 +298,16 @@ proxy-image := DOCKER_REGISTRY + "/proxy"
 export GATEWAY_API_VERSION := env_var_or_default("GATEWAY_API_VERSION", "v1.5.1")
 
 # When GATEWAY_API_CHANNEL is 'experimental', we enable testing of experimental
-# resource types (TCPRoute, TLSRoute). Alternatively, the 'standard' channel may
-# be used.
+# resource types (TCPRoute). Alternatively, the 'standard' channel may be used.
 export GATEWAY_API_CHANNEL := env_var_or_default("GATEWAY_API_CHANNEL", "experimental")
+
+# The TLSRoute API version to test against, or 'none' to skip the TLSRoute
+# tests. TLSRoute has no version that is served by every supported Gateway API
+# bundle: v1.2--v1.4 and the CRDs vendored by the linkerd-crds chart serve
+# 'v1alpha2' only (and only in the experimental channel), while the standard
+# channel of v1.5 serves 'v1' only. The policy controller negotiates a version
+# with the API server; this tells the tests which one it will pick.
+export GATEWAY_API_TLS_ROUTE := env_var_or_default("GATEWAY_API_TLS_ROUTE", if GATEWAY_API_VERSION == "linkerd" { "v1alpha2" } else { "v1" })
 
 _gateway-url := if GATEWAY_API_VERSION != "linkerd" { "https://github.com/kubernetes-sigs/gateway-api/releases/download/" + GATEWAY_API_VERSION + "/" + GATEWAY_API_CHANNEL + "-install.yaml" } else { "" }
 
