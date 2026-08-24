@@ -495,9 +495,9 @@ checksum = "9e5e8f6c15a24b9a3ee5efec809ccd006d3b30e8b3bb63c39af737c7f87daa1d"
 
 [[package]]
 name = "enum-ordinalize"
-version = "4.4.1"
+version = "4.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07f808d588c10e464ea6f7d3eaed500049eff30aaac103460f61828c2d65b3eb"
+checksum = "89dd01549b09589510cf0647475075d12071456586d70f5c75c98ae2a5537677"
 dependencies = [
  "enum-ordinalize-derive",
 ]
