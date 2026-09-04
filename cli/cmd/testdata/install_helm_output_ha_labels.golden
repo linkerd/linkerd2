@@ -704,6 +704,7 @@ data:
           initialTimeout: 3s
           lifetime: 1h
       defaultInboundPolicy: all-unauthenticated
+      defaultOutboundPolicy: all-unauthenticated
       disableInboundProtocolDetectTimeout: false
       disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
@@ -990,6 +991,7 @@ spec:
         asda: fasda
         bingo: bongo
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
+        config.linkerd.io/default-outbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: identity
         linkerd.io/control-plane-ns: linkerd-dev
@@ -1124,6 +1126,8 @@ spec:
           value: |
             {"ns":"$(_pod_ns)", "pod":"$(_pod_name)"}
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
+          value: all-unauthenticated
+        - name: LINKERD2_PROXY_OUTBOUND_DEFAULT_POLICY
           value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8"
@@ -1490,6 +1494,7 @@ spec:
         asda: fasda
         bingo: bongo
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
+        config.linkerd.io/default-outbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: linkerd-dev
@@ -1760,6 +1765,8 @@ spec:
           value: |
             {"ns":"$(_pod_ns)", "pod":"$(_pod_name)"}
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
+          value: all-unauthenticated
+        - name: LINKERD2_PROXY_OUTBOUND_DEFAULT_POLICY
           value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8"
@@ -2076,6 +2083,7 @@ spec:
         bingo: bongo
         config.linkerd.io/opaque-ports: "8443"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
+        config.linkerd.io/default-outbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd-dev
@@ -2247,6 +2255,8 @@ spec:
           value: |
             {"ns":"$(_pod_ns)", "pod":"$(_pod_name)"}
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
+          value: all-unauthenticated
+        - name: LINKERD2_PROXY_OUTBOUND_DEFAULT_POLICY
           value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8"

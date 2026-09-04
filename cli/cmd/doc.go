@@ -233,6 +233,10 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Proxy's default inbound policy",
 		},
 		{
+			Name:        k8s.ProxyDefaultOutboundPolicyAnnotation,
+			Description: "Proxy's default outbound policy",
+		},
+		{
 			Name:        k8s.ProxyEnableDebugAnnotation,
 			Description: "Inject a debug sidecar for data plane debugging",
 		},
