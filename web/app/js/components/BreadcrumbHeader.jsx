@@ -1,6 +1,5 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import ReactRouterPropTypes from 'react-router-prop-types';
 import { Trans } from '@lingui/macro';
 import _chunk from 'lodash/chunk';
 import _takeWhile from 'lodash/takeWhile';
@@ -98,7 +97,9 @@ BreadcrumbHeader.propTypes = {
   api: PropTypes.shape({
     PrefixedLink: PropTypes.func.isRequired,
   }).isRequired,
-  location: ReactRouterPropTypes.location.isRequired,
+  location: PropTypes.shape({
+    pathname: PropTypes.string.isRequired,
+  }).isRequired,
   pathPrefix: PropTypes.string.isRequired,
 };
 
