@@ -2,24 +2,28 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"time"
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type metricsOptions struct {
-	namespace string
-	pod       string
-	obfuscate bool
+	namespace     string
+	pod           string
+	obfuscate     bool
+	labelSelector string
 }
 
 func newMetricsOptions() *metricsOptions {
 	return &metricsOptions{
-		pod:       "",
-		obfuscate: false,
+		pod:           "",
+		obfuscate:     false,
+		labelSelector: "",
 	}
 }
 
@@ -27,7 +31,7 @@ func newCmdMetrics() *cobra.Command {
 	options := newMetricsOptions()
 
 	cmd := &cobra.Command{
-		Use:   "proxy-metrics [flags] (RESOURCE)",
+		Use:   "proxy-metrics [flags] [(RESOURCE)]",
 		Short: "Fetch metrics directly from Linkerd proxies",
 		Long: `Fetch metrics directly from Linkerd proxies.
 
@@ -35,7 +39,8 @@ func newCmdMetrics() *cobra.Command {
   queries the /metrics endpoint on the Linkerd proxies.
 
   The RESOURCE argument specifies the target resource to query metrics for:
-  (TYPE/NAME)
+  (TYPE/NAME). Alternatively, use --selector (-l) to select pods by label
+  without specifying a resource name.
 
   Examples:
   * cronjob/my-cronjob
@@ -61,14 +66,21 @@ func newCmdMetrics() *cobra.Command {
   # Get metrics from the web deployment in the emojivoto namespace.
   linkerd diagnostics proxy-metrics -n emojivoto deploy/web
 
+  # Get metrics from all pods with a given label in the emojivoto namespace.
+  linkerd diagnostics proxy-metrics -n emojivoto -l app=web
+
   # Get metrics from the linkerd-destination pod in the linkerd namespace.
   linkerd diagnostics proxy-metrics -n linkerd $(
     kubectl --namespace linkerd get pod \
       --selector linkerd.io/control-plane-component=destination \
       --output name
   )`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 && options.labelSelector == "" {
+				return errors.New("must specify a resource or --selector")
+			}
+
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
@@ -77,7 +89,13 @@ func newCmdMetrics() *cobra.Command {
 				return err
 			}
 
-			pods, err := k8s.GetPodsFor(cmd.Context(), k8sAPI, options.namespace, args[0])
+			var pods []corev1.Pod
+			if len(args) == 0 {
+				// selector-only mode: list pods matching the label selector
+				pods, err = k8s.GetPodsBySelector(cmd.Context(), k8sAPI, options.namespace, options.labelSelector)
+			} else {
+				pods, err = k8s.GetPodsFor(cmd.Context(), k8sAPI, options.namespace, args[0])
+			}
 			if err != nil {
 				return err
 			}
@@ -111,6 +129,7 @@ func newCmdMetrics() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of resource")
 	cmd.PersistentFlags().BoolVar(&options.obfuscate, "obfuscate", options.obfuscate, "Obfuscate sensitive information")
+	cmd.PersistentFlags().StringVarP(&options.labelSelector, "selector", "l", options.labelSelector, "Selector (label query) to filter on, supports '=', '==', and '!=")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(cmd, []string{"namespace"},
 		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
