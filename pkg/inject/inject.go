@@ -64,6 +64,7 @@ var (
 		k8s.ProxyGIDAnnotation,
 		k8s.ProxyVersionOverrideAnnotation,
 		k8s.ProxyRequireIdentityOnInboundPortsAnnotation,
+		k8s.ProxyProtocolV2InboundPortsAnnotation,
 		k8s.ProxyIgnoreInboundPortsAnnotation,
 		k8s.ProxyOpaquePortsAnnotation,
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
@@ -337,6 +338,10 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 
 	if override, ok := annotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation]; ok {
 		values.Proxy.RequireIdentityOnInboundPorts = override
+	}
+
+	if override, ok := annotations[k8s.ProxyProtocolV2InboundPortsAnnotation]; ok {
+		values.Proxy.ProxyProtocolV2InboundPorts = override
 	}
 
 	if override, ok := annotations[k8s.ProxyEnableHostnameLabels]; ok {
