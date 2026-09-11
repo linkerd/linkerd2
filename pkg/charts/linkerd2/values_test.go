@@ -87,10 +87,22 @@ func TestNewValues(t *testing.T) {
   - {{ .Release.Namespace }}
   - linkerd-viz
 `,
-				HonorTimestamps: func() *bool { b := false; return &b }(),
+				HonorTimestamps:        func() *bool { b := false; return &b }(),
+				ExtraRelabelings:       []interface{}{},
+				ExtraMetricRelabelings: []interface{}{},
 			},
-			ServiceMirror: &PodMonitorComponent{Enabled: true, HonorTimestamps: func() *bool { b := false; return &b }()},
-			Proxy:         &PodMonitorComponent{Enabled: true, HonorTimestamps: func() *bool { b := false; return &b }()},
+			ServiceMirror: &PodMonitorComponent{
+				Enabled:                true,
+				HonorTimestamps:        func() *bool { b := false; return &b }(),
+				ExtraRelabelings:       []interface{}{},
+				ExtraMetricRelabelings: []interface{}{},
+			},
+			Proxy: &PodMonitorComponent{
+				Enabled:                true,
+				HonorTimestamps:        func() *bool { b := false; return &b }(),
+				ExtraRelabelings:       []interface{}{},
+				ExtraMetricRelabelings: []interface{}{},
+			},
 		},
 		DestinationController: &DestinationController{
 			MeshedHttp2ClientProtobuf: map[string]interface{}{
