@@ -990,6 +990,30 @@ spec:
                   required:
                   - controllerName
                   - remoteRef
+              trustRoots:
+                description: Trust information synchronized from the target cluster,
+                  giving visibility into the certificates it advertises and trusts
+                type: object
+                properties:
+                  targetClusterLocalTrustRoots:
+                    description: The target cluster's linkerd-identity-trust-roots-local
+                      bundle
+                    type: string
+                  targetClusterFullTrustRoots:
+                    description: The target cluster's effective linkerd-identity-trust-roots
+                      bundle
+                    type: string
+                  targetClusterTrustMetadata:
+                    description: Annotations mirrored from the target cluster's
+                      linkerd-identity-trust-roots ConfigMap, carrying auxiliary
+                      trust bundle metadata across clusters
+                    type: object
+                    additionalProperties:
+                      type: string
+                  lastSyncedTime:
+                    description: When the trust information was last refreshed successfully
+                    format: date-time
+                    type: string
             type: object
     subresources:
       status: {}

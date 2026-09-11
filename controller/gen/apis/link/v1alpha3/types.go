@@ -62,6 +62,37 @@ type LinkStatus struct {
 	MirrorServices []ServiceStatus `json:"mirrorServices,omitempty"`
 	// +optional
 	FederatedServices []ServiceStatus `json:"federatedServices,omitempty"`
+	// TrustRoots holds trust observations synchronized from the target
+	// cluster. These are controller-owned runtime state used to gate
+	// multicluster-aware trust anchor rotation; they must never be authored in
+	// spec.
+	// +optional
+	TrustRoots *TrustRootsStatus `json:"trustRoots,omitempty"`
+}
+
+// TrustRootsStatus holds the trust information synchronized from the target
+// cluster of a Link, giving visibility into the certificates a linked cluster
+// advertises and trusts.
+type TrustRootsStatus struct {
+	// TargetClusterLocalTrustRoots is the target cluster's
+	// linkerd-identity-trust-roots-local bundle.
+	// +optional
+	TargetClusterLocalTrustRoots string `json:"targetClusterLocalTrustRoots,omitempty"`
+	// TargetClusterFullTrustRoots is the target cluster's effective
+	// linkerd-identity-trust-roots bundle.
+	// +optional
+	TargetClusterFullTrustRoots string `json:"targetClusterFullTrustRoots,omitempty"`
+	// TargetClusterTrustMetadata mirrors the annotations of the target
+	// cluster's linkerd-identity-trust-roots ConfigMap, so that controllers
+	// managing trust bundles can propagate auxiliary bundle metadata across
+	// clusters without extending this API. Well-known noisy annotations such
+	// as kubectl.kubernetes.io/last-applied-configuration are excluded.
+	// +optional
+	TargetClusterTrustMetadata map[string]string `json:"targetClusterTrustMetadata,omitempty"`
+	// LastSyncedTime is when the trust information was last refreshed
+	// successfully.
+	// +optional
+	LastSyncedTime *metav1.Time `json:"lastSyncedTime,omitempty"`
 }
 
 type ServiceStatus struct {
