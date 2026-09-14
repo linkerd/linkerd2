@@ -18,23 +18,31 @@ If updating to `linkerd-proxy` HEAD, note the commit SHA at
 
 ## 2. Bump the proxy-init or CNI plugin version
 
-If the `linkerd2/proxy-init` or `linkerd2/cni-plugin` projects have a new
+If either of the [`linkerd2/proxy-init`](https://github.com/linkerd/linkerd2-proxy-init/tree/main/proxy-init) or [`linkerd2/cni-plugin`](https://github.com/linkerd/linkerd2-proxy-init/tree/main/cni-plugin) components have a new
 release (which is rare), the following updates are needed:
 
 - `pkg/version/version.go` (this also implies changes in unit test fixtures)
 
    ```go
-   var ProxyInitVersion = "v2.3.0"
    var LinkerdCNIVersion = "v1.4.0"
    ```
 
-- `charts/linkerd-control-plane/values.yaml`
+- `Dockerfile.proxy`
 
-   Upgrade the version in `global.proxyInit.image.version`
+   Upgrade the proxy-init git ref in the `PROXY_INIT_REF` build arg
 
 - `charts/linkerd2-cni/values.yaml`
 
    Upgrade the version in `image.version`
+
+- `cli/cmd/testdata/*.golden` and `pkg/healthcheck/healthcheck_test.go`
+
+   Upgrade the `cr.l5d.io/linkerd/cni-plugin` image tag in the test fixtures
+   that reference it
+
+Commit
+[e36e9e1](https://github.com/linkerd/linkerd2/commit/e36e9e1bcf7248110d8d2e938aff3de0f49e6725)
+is a good reference for what the change set should look like.
 
 Create a new branch in the `linkerd2` repo,
 `username/proxy-init-version-bump`.
