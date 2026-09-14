@@ -725,12 +725,22 @@ podMonitor:
     # -- Sets honorTimestamps for the control-plane PodMonitor endpoint. When set to false
     # Prometheus uses scrape time instead of exporter-provided timestamps.
     honorTimestamps: false
+    # -- Additional relabelings, appended after the relabelings the chart already sets
+    # on the control-plane PodMonitor endpoint
+    extraRelabelings: []
+    # -- Metric relabelings to set on the control-plane PodMonitor endpoint
+    extraMetricRelabelings: []
   serviceMirror:
     # -- Enables the creation of PodMonitor for the Service Mirror component
     enabled: true
     # -- Sets honorTimestamps for the Service Mirror PodMonitor endpoint. When set to false,
     # Prometheus uses scrape time instead of exporter-provided timestamps.
     honorTimestamps: false
+    # -- Additional relabelings, appended after the relabelings the chart already sets
+    # on the Service Mirror PodMonitor endpoint
+    extraRelabelings: []
+    # -- Metric relabelings to set on the Service Mirror PodMonitor endpoint
+    extraMetricRelabelings: []
   proxy:
     # -- Enables the creation of PodMonitor for the data-plane
     enabled: true
@@ -738,6 +748,11 @@ podMonitor:
     # Prometheus uses scrape time instead of exporter-provided timestamps,
     # preventing duplicate timestamp drops in clusters with frequent pod restarts.
     honorTimestamps: false
+    # -- Additional relabelings, appended after the relabelings the chart already sets
+    # on the proxy PodMonitor endpoint
+    extraRelabelings: []
+    # -- Metric relabelings to set on the proxy PodMonitor endpoint
+    extraMetricRelabelings: []
 
 
 # Egress related configuration
