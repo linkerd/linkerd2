@@ -45,6 +45,7 @@ spec:
         {{- with (mergeOverwrite (deepCopy .Values.podAnnotations) .Values.identity.podAnnotations) }}{{ toYaml . | trim | nindent 8 }}{{- end }}
         config.linkerd.io/opaque-ports: "8443"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
+        config.linkerd.io/default-outbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -73,6 +74,7 @@ spec:
         cluster network.
       */}}
       {{- $_ := set $tree.Values.proxy "defaultInboundPolicy" "all-unauthenticated" }}
+      {{- $_ := set $tree.Values.proxy "defaultOutboundPolicy" "all-unauthenticated" }}
       {{- $_ := set $tree.Values.proxy "capabilities" (dict "drop" (list "ALL")) }}
       {{- $_ := set $tree.Values.proxy "outboundDiscoveryCacheUnusedTimeout" "5s" }}
       {{- $_ := set $tree.Values.proxy "inboundDiscoveryCacheUnusedTimeout" "90s" }}

@@ -165,6 +165,7 @@ spec:
         {{- include "partials.proxy.annotations" . | nindent 8}}
         {{- with (mergeOverwrite (deepCopy .Values.podAnnotations) .Values.destinationController.podAnnotations) }}{{ toYaml . | trim | nindent 8 }}{{- end }}
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
+        config.linkerd.io/default-outbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -195,6 +196,7 @@ spec:
         cluster network.
       */}}
       {{- $_ := set $tree.Values.proxy "defaultInboundPolicy" "all-unauthenticated" }}
+      {{- $_ := set $tree.Values.proxy "defaultOutboundPolicy" "all-unauthenticated" }}
       {{- $_ := set $tree.Values.proxy "capabilities" (dict "drop" (list "ALL")) }}
       {{- if not $tree.Values.proxy.nativeSidecar }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
