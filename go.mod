@@ -6,14 +6,14 @@ require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
 	dario.cat/mergo v1.0.2
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24
-	github.com/bombsimon/logrusr/v4 v4.1.0
+	github.com/bombsimon/logrusr/v4 v4.2.0
 	github.com/briandowns/spinner v1.23.2
 	github.com/clarketm/json v1.17.1
 	github.com/emicklei/proto v1.14.3
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/fatih/color v1.19.0
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/go-openapi/spec v1.0.0
+	github.com/go-openapi/spec v1.0.1
 	github.com/go-test/deep v1.1.1
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
@@ -22,20 +22,20 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/linkerd/linkerd2-proxy-api v0.20.0
 	github.com/mattn/go-isatty v0.0.24
-	github.com/mattn/go-runewidth v0.0.28
+	github.com/mattn/go-runewidth v0.0.29
 	github.com/nsf/termbox-go v1.1.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
 	github.com/prometheus/client_golang v1.24.1
-	github.com/prometheus/client_model v0.6.2
+	github.com/prometheus/client_model v0.6.3
 	github.com/prometheus/common v0.70.1
 	github.com/sergi/go-diff v1.4.0
 	github.com/shurcooL/vfsgen v0.0.0-20230704071429-0000e147ea92
-	github.com/sirupsen/logrus v1.10.1
+	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	go.opencensus.io v0.24.0
-	golang.org/x/tools v0.49.0
+	golang.org/x/tools v0.50.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.2
 	google.golang.org/protobuf v1.36.12
@@ -61,7 +61,7 @@ require (
 	github.com/go-openapi/swag/netutils v0.27.1 // indirect
 	github.com/go-openapi/swag/pools v0.29.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
-	golang.org/x/net v0.58.0 // indirect
+	golang.org/x/net v0.59.0 // indirect
 	k8s.io/streaming v0.37.0 // indirect
 )
 
@@ -85,7 +85,7 @@ require (
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
-	github.com/go-logr/logr v1.4.3 // indirect
+	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-openapi/jsonpointer v1.0.0 // indirect
 	github.com/go-openapi/jsonreference v1.0.1 // indirect
 	github.com/go-openapi/swag v0.27.1 // indirect
@@ -136,14 +136,14 @@ require (
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/crypto v0.55.0 // indirect
-	golang.org/x/mod v0.39.0 // indirect
+	golang.org/x/crypto v0.57.0 // indirect
+	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5 // indirect
-	golang.org/x/term v0.45.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260908163034-4bcc4b2ee518 // indirect
+	golang.org/x/term v0.46.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools/godoc v0.1.0-deprecated // indirect
 	google.golang.org/api v0.143.0 // indirect
