@@ -27,6 +27,16 @@ const RECONCILIATION_PERIOD: Duration = Duration::from_secs(10);
 // size to be the same as the reconciliation period in milliseconds.
 const STATUS_UPDATE_QUEUE_SIZE: usize = RECONCILIATION_PERIOD.as_millis() as usize;
 
+// h2 guards against DATA frame fragmentation by charging a per-connection
+// budget for small (non-final) DATA frames; once it's exhausted, the
+// connection is closed with a GOAWAY. Each Watch() request from a proxy
+// consumes a small amount of this budget, so a proxy with many outbound
+// destinations can exhaust h2's small default budget and have its connection
+// to the policy controller closed. h2 scales the budget with the
+// connection's flow-control window, so raising the window here gives the
+// budget enough headroom for a large number of concurrent watches.
+const GRPC_INITIAL_CONNECTION_WINDOW_SIZE: u32 = 16 * 1024 * 1024;
+
 #[derive(Debug, Parser)]
 #[clap(name = "policy", about = "A policy resource controller")]
 pub struct Args {
@@ -527,7 +537,11 @@ async fn grpc(
 
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
-        let srv = Server::builder().add_service(inbound_svc).add_service(outbound_svc).serve_with_shutdown(addr, close_rx.map(|_| {}));
+        let srv = Server::builder()
+            .initial_connection_window_size(GRPC_INITIAL_CONNECTION_WINDOW_SIZE)
+            .add_service(inbound_svc)
+            .add_service(outbound_svc)
+            .serve_with_shutdown(addr, close_rx.map(|_| {}));
     }
 
     info!(%addr, "policy gRPC server listening");
