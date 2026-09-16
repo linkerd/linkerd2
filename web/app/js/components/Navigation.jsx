@@ -8,14 +8,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Hidden from '@material-ui/core/Hidden';
 import IconButton from '@material-ui/core/IconButton';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
 import MenuItem from '@material-ui/core/MenuItem';
 import MenuList from '@material-ui/core/MenuList';
 import PropTypes from 'prop-types';
 import React from 'react';
-import ReactRouterPropTypes from 'react-router-prop-types';
 import TextField from '@material-ui/core/TextField';
 import Toolbar from '@material-ui/core/Toolbar';
 import { Trans } from '@lingui/macro';
@@ -234,9 +233,9 @@ class NavigationBase extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { history, checkNamespaceMatch, isPageVisible } = this.props;
-    if (history) {
-      checkNamespaceMatch(history.location.pathname);
+    const { location, checkNamespaceMatch, isPageVisible } = this.props;
+    if (location) {
+      checkNamespaceMatch(location.pathname);
     }
 
     handlePageVisibility({
@@ -383,10 +382,10 @@ class NavigationBase extends React.Component {
 
   handleConfirmNamespaceChange = () => {
     const { newNamespace } = this.state;
-    const { updateNamespaceInContext, history } = this.props;
+    const { updateNamespaceInContext, navigate } = this.props;
     this.setState({ showNamespaceChangeDialog: false });
     updateNamespaceInContext(newNamespace);
-    history.push(`/namespaces/${newNamespace}`);
+    navigate(`/namespaces/${newNamespace}`);
   };
 
   handleFilterInputChange = event => {
@@ -402,20 +401,20 @@ class NavigationBase extends React.Component {
   }
 
   handleNamespaceChange = (event, values) => {
-    const { history, updateNamespaceInContext, selectedNamespace } = this.props;
+    const { navigate, location, updateNamespaceInContext, selectedNamespace } = this.props;
 
     // event.stopPropagation();
     const namespace = values.name;
     if (namespace === selectedNamespace) {
       return;
     }
-    let path = history.location.pathname;
+    let path = location.pathname;
     const pathParts = path.split('/');
     if (pathParts.length === 3 || pathParts.length === 4) {
       // path is /namespaces/someNamespace/resourceType
       //      or /namespaces/someNamespace
       path = path.replace(selectedNamespace, namespace);
-      history.push(path);
+      navigate(path);
       updateNamespaceInContext(namespace);
     } else if (pathParts.length === 5) {
       // path is /namespace/someNamespace/resourceType/someResource
@@ -690,8 +689,10 @@ NavigationBase.propTypes = {
     PropTypes.object,
   ]).isRequired,
   isPageVisible: PropTypes.bool.isRequired,
-  history: ReactRouterPropTypes.history.isRequired,
-  location: ReactRouterPropTypes.location.isRequired,
+  navigate: PropTypes.func.isRequired,
+  location: PropTypes.shape({
+    pathname: PropTypes.string.isRequired,
+  }).isRequired,
   pathPrefix: PropTypes.string.isRequired,
   releaseVersion: PropTypes.string.isRequired,
   selectedNamespace: PropTypes.string.isRequired,
@@ -700,4 +701,23 @@ NavigationBase.propTypes = {
   uuid: PropTypes.string.isRequired,
 };
 
-export default withPageVisibility(withContext(withStyles(styles, { withTheme: true })(NavigationBase)));
+const NavigationWithContext = withPageVisibility(withContext(withStyles(styles, { withTheme: true })(NavigationBase)));
+
+// react-router v6 removed the `history`/`location`/`match` props that v5's <Route render={}>
+// used to inject. NavigationBase is a class component (can't use hooks directly), so this
+// function component reads the router state via hooks and forwards it down as plain props.
+function Navigation(props) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams();
+
+  return (
+    <NavigationWithContext
+      {...props}
+      navigate={navigate}
+      location={location}
+      params={params} />
+  );
+}
+
+export default Navigation;

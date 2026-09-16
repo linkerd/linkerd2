@@ -22,7 +22,7 @@ class Namespaces extends React.Component {
     this.api = props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
-    this.state = this.getInitialState(props.match.params);
+    this.state = this.getInitialState(props.params);
   }
 
   getInitialState(params) {
@@ -44,9 +44,8 @@ class Namespaces extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { match, isPageVisible } = this.props;
-    const { params } = match;
-    if (!_isEqual(prevProps.match.params.namespace, params.namespace)) {
+    const { params, isPageVisible } = this.props;
+    if (!_isEqual(prevProps.params.namespace, params.namespace)) {
       // React won't unmount this component when switching resource pages so we need to clear state
       this.api.cancelCurrentRequests();
       this.resetState(params);
@@ -188,20 +187,16 @@ Namespaces.propTypes = {
     urlsForResource: PropTypes.func.isRequired,
   }).isRequired,
   isPageVisible: PropTypes.bool.isRequired,
-  match: PropTypes.shape({
-    params: PropTypes.shape({
-      namespace: PropTypes.string,
-    }),
+  params: PropTypes.shape({
+    namespace: PropTypes.string,
   }),
   selectedNamespace: PropTypes.string.isRequired,
   updateNamespaceInContext: PropTypes.func.isRequired,
 };
 
 Namespaces.defaultProps = {
-  match: {
-    params: {
-      namespace: 'default',
-    },
+  params: {
+    namespace: 'default',
   },
 };
 
