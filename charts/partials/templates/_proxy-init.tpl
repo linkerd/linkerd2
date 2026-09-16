@@ -46,6 +46,14 @@ args:
 - --subnets-to-ignore
 - {{ .Values.proxyInit.skipSubnets | quote }}
 {{- end }}
+{{- if .Values.proxyInit.skipInboundSubnets }}
+- --inbound-subnets-to-ignore
+- {{ .Values.proxyInit.skipInboundSubnets | quote }}
+{{- end }}
+{{- if .Values.proxyInit.skipOutboundSubnets }}
+- --outbound-subnets-to-ignore
+- {{ .Values.proxyInit.skipOutboundSubnets | quote }}
+{{- end }}
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion}}
 command: ["/usr/lib/linkerd/linkerd2-proxy-init"]
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
