@@ -133,7 +133,9 @@ func decodeCertificatePEM(crtb []byte) (*x509.Certificate, []byte, error) {
 		return nil, crtb, errors.New("not a PEM certificate")
 	}
 	if block.Type != "CERTIFICATE" {
-		return nil, nil, nil
+		// Hand back the rest of the buffer so the caller's loop can carry on.
+		// Returning nil here ends it, dropping every certificate that follows.
+		return nil, crtb, nil
 	}
 	c, err := x509.ParseCertificate(block.Bytes)
 	return c, crtb, err

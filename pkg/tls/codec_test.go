@@ -26,3 +26,46 @@ func TestPrivateKeyParsing(t *testing.T) {
 		t.Fatalf("Failed to parse PKCS#8 encoded RSA private key: %s", err)
 	}
 }
+
+// A PEM bundle may carry blocks that are not certificates, which openssl writes
+// alongside a key or a CRL. decodeCertificatePEM returned a nil remainder for
+// those, which ended DecodePEMCertificates' loop and dropped every certificate
+// after the block rather than skipping it.
+func TestDecodePEMCertificatesSkipsNonCertificateBlocks(t *testing.T) {
+	first, err := GenerateRootCAWithDefaults("first-root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := GenerateRootCAWithDefaults("second-root")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	firstPEM := first.Cred.Crt.EncodeCertificatePEM()
+	secondPEM := second.Cred.Crt.EncodeCertificatePEM()
+	const ecParams = "-----BEGIN EC PARAMETERS-----\nBggqhkjOPQMBBw==\n-----END EC PARAMETERS-----\n"
+
+	for _, tc := range []struct {
+		name string
+		pem  string
+	}{
+		{"no other blocks", firstPEM + secondPEM},
+		{"other block first", ecParams + firstPEM + secondPEM},
+		{"other block in between", firstPEM + ecParams + secondPEM},
+		{"other block last", firstPEM + secondPEM + ecParams},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			certs, err := DecodePEMCertificates(tc.pem)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if len(certs) != 2 {
+				t.Fatalf("expected 2 certificates, got %d", len(certs))
+			}
+			if certs[0].Subject.CommonName != "first-root" || certs[1].Subject.CommonName != "second-root" {
+				t.Errorf("expected first-root and second-root, got %s and %s",
+					certs[0].Subject.CommonName, certs[1].Subject.CommonName)
+			}
+		})
+	}
+}
