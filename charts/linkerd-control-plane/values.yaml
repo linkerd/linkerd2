@@ -249,6 +249,16 @@ proxy:
   # "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny", "audit"
   # @default -- "all-unauthenticated"
   defaultInboundPolicy: "all-unauthenticated"
+  # -- The default policy to use for outbound traffic, enforced as an mTLS
+  # requirement on resolved endpoints. This can be used to restrict the proxy to
+  # only communicate with targets that are part of the mesh (or outside the
+  # cluster). "all-authenticated" requires a mesh identity for every outbound
+  # endpoint; "cluster-authenticated" requires one only for endpoints within
+  # `clusterNetworks`; "all-unauthenticated" permits cleartext (today's
+  # behavior). One of: "all-unauthenticated", "all-authenticated",
+  # "cluster-authenticated"
+  # @default -- "all-unauthenticated"
+  defaultOutboundPolicy: "all-unauthenticated"
   # -- Configures the outbound transport mode. Valid values are "transport-header" and "transparent"
   outboundTransportMode: transport-header
   # -- Enable [native sidecars](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/)
