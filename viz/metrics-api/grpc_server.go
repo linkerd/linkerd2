@@ -14,8 +14,8 @@ import (
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	log "github.com/sirupsen/logrus"
+	"go.yaml.in/yaml/v3"
 	"google.golang.org/grpc"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -56,7 +56,6 @@ func NewGrpcServer(
 	clusterDomain string,
 	ignoredNamespaces []string,
 ) *grpc.Server {
-
 	server := &grpcServer{
 		prometheusAPI:       promAPI,
 		k8sAPI:              k8sAPI,

@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/sergi/go-diff/diffmatchpatch"
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v3"
 )
 
 // TestDataDiffer holds configuration for generating test diff
