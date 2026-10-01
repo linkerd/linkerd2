@@ -1407,6 +1407,8 @@ dependencies = [
  "clap",
  "drain",
  "futures",
+ "h2",
+ "http",
  "http-body-util",
  "hyper",
  "hyper-util",
