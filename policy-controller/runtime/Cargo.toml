@@ -65,3 +65,11 @@ features = ["macros", "parking_lot", "rt", "rt-multi-thread", "signal"]
 workspace = true
 default-features = false
 features = ["transport", "router"]
+
+[dev-dependencies]
+h2 = "0.4.19"
+http = { workspace = true }
+
+[dev-dependencies.tokio]
+version = "1"
+features = ["io-util", "macros", "rt", "time"]
