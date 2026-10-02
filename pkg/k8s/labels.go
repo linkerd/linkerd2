@@ -298,6 +298,10 @@ const (
 	// inbound policy of the proxy
 	ProxyDefaultInboundPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/default-inbound-policy"
 
+	// ProxyDefaultOutboundPolicyAnnotation is used to configure the default
+	// outbound policy of the proxy
+	ProxyDefaultOutboundPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/default-outbound-policy"
+
 	// ProxyAccessLogAnnotation configures whether HTTP access logging is
 	// enabled, and what access log format is used.
 	ProxyAccessLogAnnotation = ProxyConfigAnnotationsPrefix + "/access-log"
