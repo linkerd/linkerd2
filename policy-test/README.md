@@ -10,4 +10,4 @@ The `policy-test` crate includes integration tests for the policy controller.
 
 ## Running in CI
 
-See the [workflow](.github/workflows/policy_controller.yml).
+See the [workflow](../.github/workflows/integration.yml).
