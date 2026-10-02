@@ -2,9 +2,10 @@
 
 PLEASE NOTE: if you haven't already discussed this problem and your solution
 to it with the Linkerd maintainers, you should almost certainly be opening a
-GitHub discussion instead of a pull request! We've seen a lot of PRs that
-we've been unable to accept because the project and the PR went in different
-directions, and we'd like to reduce that.
+GitHub discussion at https://github.com/linkerd/linkerd2/discussions/new/choose
+instead of a pull request! We've seen a lot of PRs that we've been unable to
+accept because the project and the PR went in different directions, and we'd
+like to reduce that.
 
 If you already have a well-structured git commit message, chances are GitHub
 set the title and description of this PR to the git commit message subject and
