@@ -135,6 +135,8 @@ type (
 		IsGateway                            bool             `json:"isGateway"`
 		IsIngress                            bool             `json:"isIngress"`
 		RequireIdentityOnInboundPorts        string           `json:"requireIdentityOnInboundPorts"`
+		ProxyProtocolV2InboundPorts          string           `json:"proxyProtocolV2InboundPorts"`
+		ProxyProtocolV1InboundPorts          string           `json:"proxyProtocolV1InboundPorts"`
 		OutboundConnectTimeout               string           `json:"outboundConnectTimeout"`
 		InboundConnectTimeout                string           `json:"inboundConnectTimeout"`
 		OutboundDiscoveryCacheUnusedTimeout  string           `json:"outboundDiscoveryCacheUnusedTimeout"`

@@ -766,6 +766,8 @@ data:
         control: 4190
         inbound: 4143
         outbound: 4140
+      proxyProtocolV1InboundPorts: ""
+      proxyProtocolV2InboundPorts: ""
       readinessProbe:
         initialDelaySeconds: 2
         timeoutSeconds: 1
