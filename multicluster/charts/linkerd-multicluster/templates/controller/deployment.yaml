@@ -58,6 +58,7 @@ spec:
         - -enable-namespace-creation
         {{- end }}
         - -enable-pprof={{ dig "enablePprof" $.Values.controllerDefaults.enablePprof . }}
+        - -enable-trust-roots-mirroring={{ dig "enableTrustRootsMirroring" $.Values.controllerDefaults.enableTrustRootsMirroring . }}
         - -probe-service=probe-{{.link.ref.name}}
         - {{.link.ref.name}}
         {{- if or $.Values.serviceMirrorAdditionalEnv $.Values.serviceMirrorExperimentalEnv }}
