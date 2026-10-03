@@ -21,13 +21,26 @@ func TapReqToURL(req *tapPb.TapByResourceRequest) string {
 		)
 	}
 
-	// namespaced
+	resourceType := url.PathEscape(res.GetType() + "s")
+	namespace := url.PathEscape(res.GetNamespace())
+
+	// When tapping an entire resource category (e.g. `linkerd tap po`), the
+	// name is empty. Avoid an empty path segment (`.../pods//tap`) which some
+	// API servers reject with unexpected EOF.
+	if res.GetName() == "" {
+		return fmt.Sprintf(
+			"/apis/tap.linkerd.io/v1alpha1/watch/namespaces/%s/%s/tap",
+			namespace,
+			resourceType,
+		)
+	}
+
 	return fmt.Sprintf(
 		"/apis/tap.linkerd.io/v1alpha1/watch/namespaces/%s/%s/%s/tap",
-		url.PathEscape(res.GetNamespace()),
+		namespace,
 		// FIXME(olix0r): This pluralization is probably not correct for all
 		// resource types.
-		url.PathEscape(res.GetType()+"s"),
+		resourceType,
 		url.PathEscape(res.GetName()),
 	)
 }
