@@ -232,7 +232,7 @@ pub async fn await_gateway_route_status(
     client: &kube::Client,
     ns: &str,
     name: &str,
-) -> gateway::HTTPRouteStatus {
+) -> gateway::HttpRouteStatus {
     let route_status = await_condition(
         client,
         ns,
@@ -277,7 +277,7 @@ pub async fn await_grpc_route_status(
     client: &kube::Client,
     ns: &str,
     name: &str,
-) -> gateway::GRPCRouteStatus {
+) -> gateway::GrpcRouteStatus {
     let route_status = await_condition(
         client,
         ns,
@@ -294,22 +294,31 @@ pub async fn await_grpc_route_status(
     route_status
 }
 
-#[cfg(feature = "gateway-api-experimental")]
+/// The `TLSRoute` binding the tests exercise.
+///
+/// TLSRoute has no version that is served by every supported Gateway API
+/// bundle, so the policy controller negotiates one with the API server; the
+/// `gateway-api-tls-route-{v1,v1alpha2}` features tell the tests which one it
+/// will pick, so that they address the same version.
+#[cfg(all(
+    feature = "gateway-api-tls-route",
+    not(feature = "gateway-api-tls-route-v1alpha2")
+))]
+pub use linkerd_policy_controller_k8s_api::gateway::TLSRoute;
+#[cfg(feature = "gateway-api-tls-route-v1alpha2")]
+pub use linkerd_policy_controller_k8s_api::gateway::TLSRouteV1Alpha2 as TLSRoute;
+
+#[cfg(feature = "gateway-api-tls-route")]
 // Waits until an TlsRoute with the given namespace and name has a status set
 // on it, then returns the generic route status representation.
 pub async fn await_tls_route_status(
     client: &kube::Client,
     ns: &str,
     name: &str,
-) -> gateway::TLSRouteStatus {
-    let route_status = await_condition(
-        client,
-        ns,
-        name,
-        |obj: Option<&gateway::TLSRoute>| -> bool {
-            obj.and_then(|route| route.status.as_ref()).is_some()
-        },
-    )
+) -> gateway::TlsRouteStatus {
+    let route_status = await_condition(client, ns, name, |obj: Option<&TLSRoute>| -> bool {
+        obj.and_then(|route| route.status.as_ref()).is_some()
+    })
     .await
     .expect("must fetch route")
     .status
@@ -325,7 +334,7 @@ pub async fn await_tcp_route_status(
     client: &kube::Client,
     ns: &str,
     name: &str,
-) -> gateway::TCPRouteStatus {
+) -> gateway::TcpRouteStatus {
     let route_status = await_condition(
         client,
         ns,
@@ -601,7 +610,7 @@ pub fn mk_egress_net(ns: &str, name: &str) -> policy::EgressNetwork {
 #[track_caller]
 pub fn assert_resource_meta(
     meta: &Option<grpc::meta::Metadata>,
-    parent_ref: gateway::HTTPRouteParentRefs,
+    parent_ref: gateway::HttpRouteParentRefs,
     port: u16,
 ) {
     println!("meta: {meta:?}");
@@ -628,7 +637,7 @@ pub fn assert_resource_meta(
 pub fn mk_route(
     ns: &str,
     name: &str,
-    parent_refs: Option<Vec<gateway::HTTPRouteParentRefs>>,
+    parent_refs: Option<Vec<gateway::HttpRouteParentRefs>>,
 ) -> policy::HttpRoute {
     use policy::httproute as api;
     api::HttpRoute {
@@ -647,7 +656,7 @@ pub fn mk_route(
 }
 
 pub fn find_route_condition<'a>(
-    statuses: impl IntoIterator<Item = &'a gateway::HTTPRouteStatusParents>,
+    statuses: impl IntoIterator<Item = &'a gateway::HttpRouteStatusParents>,
     parent_name: &'static str,
 ) -> Option<&'a k8s::Condition> {
     statuses
@@ -656,7 +665,6 @@ pub fn find_route_condition<'a>(
         .expect("route must have at least one status set")
         .conditions
         .iter()
-        .flatten()
         .find(|cond| cond.type_ == "Accepted")
 }
 
@@ -824,8 +832,8 @@ pub fn random_suffix(len: usize) -> String {
 pub fn egress_network_parent_ref(
     ns: impl ToString,
     port: Option<u16>,
-) -> gateway::HTTPRouteParentRefs {
-    gateway::HTTPRouteParentRefs {
+) -> gateway::HttpRouteParentRefs {
+    gateway::HttpRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: Some(ns.to_string()),

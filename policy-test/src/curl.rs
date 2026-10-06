@@ -220,7 +220,7 @@ impl Runner {
                     name: "curl".to_string(),
                     image: Some(Self::CURL_IMAGE.to_string()),
                     args: Some(
-                        vec!["curl", "-sf", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "10", "--retry", "10", "--retry-delay", "2", target_url]
+                        vec!["curl", "-sf", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "10", "--retry", "10", "--retry-delay", "2", "--retry-connrefused", target_url]
                             .into_iter()
                             .map(Into::into)
                             .collect(),

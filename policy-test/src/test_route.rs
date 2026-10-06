@@ -4,9 +4,11 @@ use linkerd_policy_controller_k8s_api::{
     self as k8s, gateway, policy, Condition, Resource as _, ResourceExt,
 };
 
-use crate::outbound_api::{detect_http_routes, grpc_routes};
 #[cfg(feature = "gateway-api-experimental")]
-use crate::outbound_api::{tcp_routes, tls_routes};
+use crate::outbound_api::tcp_routes;
+use crate::outbound_api::{detect_http_routes, grpc_routes};
+#[cfg(feature = "gateway-api-tls-route")]
+use crate::{outbound_api::tls_routes, TLSRoute};
 
 pub trait TestRoute:
     kube::Resource<Scope = kube::core::NamespaceResourceScope, DynamicType: Default>
@@ -24,8 +26,8 @@ pub trait TestRoute:
 
     fn make_route(
         ns: impl ToString,
-        parents: Vec<gateway::HTTPRouteParentRefs>,
-        rules: Vec<Vec<gateway::HTTPRouteRulesBackendRefs>>,
+        parents: Vec<gateway::HttpRouteParentRefs>,
+        rules: Vec<Vec<gateway::HttpRouteRulesBackendRefs>>,
     ) -> Self;
     fn routes<F>(config: &outbound::OutboundPolicy, f: F)
     where
@@ -68,10 +70,10 @@ pub trait TestParent:
     fn make_parent_with_protocol(ns: impl ToString, app_protocol: Option<String>) -> Self;
     fn make_backend(ns: impl ToString) -> Option<Self>;
     fn conditions(&self) -> Vec<&Condition>;
-    fn obj_ref(&self) -> gateway::HTTPRouteParentRefs;
-    fn backend_ref(&self, port: u16) -> gateway::HTTPRouteRulesBackendRefs {
+    fn obj_ref(&self) -> gateway::HttpRouteParentRefs;
+    fn backend_ref(&self, port: u16) -> gateway::HttpRouteRulesBackendRefs {
         let dt = Default::default();
-        gateway::HTTPRouteRulesBackendRefs {
+        gateway::HttpRouteRulesBackendRefs {
             weight: None,
             group: Some(Self::group(&dt).to_string()),
             kind: Some(Self::kind(&dt).to_string()),
@@ -91,14 +93,14 @@ impl TestRoute for gateway::HTTPRoute {
 
     fn make_route(
         ns: impl ToString,
-        parents: Vec<gateway::HTTPRouteParentRefs>,
-        rules: Vec<Vec<gateway::HTTPRouteRulesBackendRefs>>,
+        parents: Vec<gateway::HttpRouteParentRefs>,
+        rules: Vec<Vec<gateway::HttpRouteRulesBackendRefs>>,
     ) -> Self {
         let rules = rules
             .into_iter()
             .map(|backends| {
                 let backends = backends.into_iter().collect();
-                gateway::HTTPRouteRules {
+                gateway::HttpRouteRules {
                     name: None,
                     matches: Some(vec![]),
                     filters: None,
@@ -113,10 +115,11 @@ impl TestRoute for gateway::HTTPRoute {
                 name: Some("foo-route".to_string()),
                 ..Default::default()
             },
-            spec: gateway::HTTPRouteSpec {
+            spec: gateway::HttpRouteSpec {
                 parent_refs: Some(parents),
                 hostnames: None,
                 rules: Some(rules),
+                use_default_gateways: None,
             },
             status: None,
         }
@@ -187,7 +190,6 @@ impl TestRoute for gateway::HTTPRoute {
                 .parents
                 .iter()
                 .flat_map(|parent_status| &parent_status.conditions)
-                .flatten()
                 .collect()
         })
     }
@@ -217,8 +219,8 @@ impl TestRoute for policy::HttpRoute {
 
     fn make_route(
         ns: impl ToString,
-        parents: Vec<gateway::HTTPRouteParentRefs>,
-        rules: Vec<Vec<gateway::HTTPRouteRulesBackendRefs>>,
+        parents: Vec<gateway::HttpRouteParentRefs>,
+        rules: Vec<Vec<gateway::HttpRouteRulesBackendRefs>>,
     ) -> Self {
         let rules = rules
             .into_iter()
@@ -312,7 +314,6 @@ impl TestRoute for policy::HttpRoute {
                 .parents
                 .iter()
                 .flat_map(|parent_status| &parent_status.conditions)
-                .flatten()
                 .collect()
         })
     }
@@ -342,15 +343,15 @@ impl TestRoute for gateway::GRPCRoute {
 
     fn make_route(
         ns: impl ToString,
-        parents: Vec<gateway::HTTPRouteParentRefs>,
-        rules: Vec<Vec<gateway::HTTPRouteRulesBackendRefs>>,
+        parents: Vec<gateway::HttpRouteParentRefs>,
+        rules: Vec<Vec<gateway::HttpRouteRulesBackendRefs>>,
     ) -> Self {
         let rules = rules
             .into_iter()
             .map(|backends| {
                 let backends = backends
                     .into_iter()
-                    .map(|br| gateway::GRPCRouteRulesBackendRefs {
+                    .map(|br| gateway::GrpcRouteRulesBackendRefs {
                         filters: None,
                         weight: br.weight,
                         group: br.group,
@@ -360,7 +361,7 @@ impl TestRoute for gateway::GRPCRoute {
                         port: br.port,
                     })
                     .collect();
-                gateway::GRPCRouteRules {
+                gateway::GrpcRouteRules {
                     name: None,
                     matches: Some(vec![]),
                     filters: None,
@@ -375,11 +376,11 @@ impl TestRoute for gateway::GRPCRoute {
                 name: Some("foo-route".to_string()),
                 ..Default::default()
             },
-            spec: gateway::GRPCRouteSpec {
+            spec: gateway::GrpcRouteSpec {
                 parent_refs: Some(
                     parents
                         .into_iter()
-                        .map(|parents| gateway::GRPCRouteParentRefs {
+                        .map(|parents| gateway::GrpcRouteParentRefs {
                             group: parents.group,
                             kind: parents.kind,
                             namespace: parents.namespace,
@@ -391,6 +392,7 @@ impl TestRoute for gateway::GRPCRoute {
                 ),
                 hostnames: None,
                 rules: Some(rules),
+                use_default_gateways: None,
             },
             status: None,
         }
@@ -461,7 +463,6 @@ impl TestRoute for gateway::GRPCRoute {
                 .parents
                 .iter()
                 .flat_map(|parent_status| &parent_status.conditions)
-                .flatten()
                 .collect()
         })
     }
@@ -484,47 +485,45 @@ impl TestRoute for gateway::GRPCRoute {
     }
 }
 
-#[cfg(feature = "gateway-api-experimental")]
-impl TestRoute for gateway::TLSRoute {
+#[cfg(feature = "gateway-api-tls-route")]
+impl TestRoute for TLSRoute {
     type Route = outbound::TlsRoute;
     type Backend = outbound::tls_route::RouteBackend;
     type Filter = outbound::tls_route::Filter;
 
     fn make_route(
         ns: impl ToString,
-        parents: Vec<gateway::HTTPRouteParentRefs>,
-        rules: Vec<Vec<gateway::HTTPRouteRulesBackendRefs>>,
+        parents: Vec<gateway::HttpRouteParentRefs>,
+        rules: Vec<Vec<gateway::HttpRouteRulesBackendRefs>>,
     ) -> Self {
         let rules = rules
             .into_iter()
-            .map(|backends| gateway::TLSRouteRules {
+            .map(|backends| gateway::TlsRouteRules {
                 name: None,
-                backend_refs: Some(
-                    backends
-                        .into_iter()
-                        .map(|br| gateway::TLSRouteRulesBackendRefs {
-                            weight: br.weight,
-                            group: br.group,
-                            kind: br.kind,
-                            name: br.name,
-                            namespace: br.namespace,
-                            port: br.port,
-                        })
-                        .collect(),
-                ),
+                backend_refs: backends
+                    .into_iter()
+                    .map(|br| gateway::TlsRouteRulesBackendRefs {
+                        weight: br.weight,
+                        group: br.group,
+                        kind: br.kind,
+                        name: br.name,
+                        namespace: br.namespace,
+                        port: br.port,
+                    })
+                    .collect(),
             })
             .collect();
-        gateway::TLSRoute {
+        TLSRoute {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
                 name: Some("foo-route".to_string()),
                 ..Default::default()
             },
-            spec: gateway::TLSRouteSpec {
+            spec: gateway::TlsRouteSpec {
                 parent_refs: Some(
                     parents
                         .into_iter()
-                        .map(|parent| gateway::TLSRouteParentRefs {
+                        .map(|parent| gateway::TlsRouteParentRefs {
                             group: parent.group,
                             kind: parent.kind,
                             namespace: parent.namespace,
@@ -534,8 +533,11 @@ impl TestRoute for gateway::TLSRoute {
                         })
                         .collect(),
                 ),
-                hostnames: None,
+                // `v1` requires at least one hostname; `v1alpha2` accepts an
+                // empty list, but a hostname is valid in both.
+                hostnames: vec!["example.com".to_string()],
                 rules,
+                use_default_gateways: None,
             },
             status: None,
         }
@@ -606,7 +608,6 @@ impl TestRoute for gateway::TLSRoute {
                 .parents
                 .iter()
                 .flat_map(|parent_status| &parent_status.conditions)
-                .flatten()
                 .collect()
         })
     }
@@ -637,26 +638,24 @@ impl TestRoute for gateway::TCPRoute {
 
     fn make_route(
         ns: impl ToString,
-        parents: Vec<gateway::HTTPRouteParentRefs>,
-        rules: Vec<Vec<gateway::HTTPRouteRulesBackendRefs>>,
+        parents: Vec<gateway::HttpRouteParentRefs>,
+        rules: Vec<Vec<gateway::HttpRouteRulesBackendRefs>>,
     ) -> Self {
         let rules = rules
             .into_iter()
-            .map(|backends| gateway::TCPRouteRules {
+            .map(|backends| gateway::TcpRouteRules {
                 name: None,
-                backend_refs: Some(
-                    backends
-                        .into_iter()
-                        .map(|br| gateway::TCPRouteRulesBackendRefs {
-                            weight: br.weight,
-                            group: br.group,
-                            kind: br.kind,
-                            name: br.name,
-                            namespace: br.namespace,
-                            port: br.port,
-                        })
-                        .collect(),
-                ),
+                backend_refs: backends
+                    .into_iter()
+                    .map(|br| gateway::TcpRouteRulesBackendRefs {
+                        weight: br.weight,
+                        group: br.group,
+                        kind: br.kind,
+                        name: br.name,
+                        namespace: br.namespace,
+                        port: br.port,
+                    })
+                    .collect(),
             })
             .collect();
         gateway::TCPRoute {
@@ -665,11 +664,11 @@ impl TestRoute for gateway::TCPRoute {
                 name: Some("foo-route".to_string()),
                 ..Default::default()
             },
-            spec: gateway::TCPRouteSpec {
+            spec: gateway::TcpRouteSpec {
                 parent_refs: Some(
                     parents
                         .into_iter()
-                        .map(|parent| gateway::TCPRouteParentRefs {
+                        .map(|parent| gateway::TcpRouteParentRefs {
                             group: parent.group,
                             kind: parent.kind,
                             namespace: parent.namespace,
@@ -680,6 +679,7 @@ impl TestRoute for gateway::TCPRoute {
                         .collect(),
                 ),
                 rules,
+                use_default_gateways: None,
             },
             status: None,
         }
@@ -750,7 +750,6 @@ impl TestRoute for gateway::TCPRoute {
                 .parents
                 .iter()
                 .flat_map(|parent_status| &parent_status.conditions)
-                .flatten()
                 .collect()
         })
     }
@@ -832,8 +831,8 @@ impl TestParent for k8s::Service {
             .collect()
     }
 
-    fn obj_ref(&self) -> gateway::HTTPRouteParentRefs {
-        gateway::HTTPRouteParentRefs {
+    fn obj_ref(&self) -> gateway::HttpRouteParentRefs {
+        gateway::HttpRouteParentRefs {
             kind: Some(k8s::Service::KIND.to_string()),
             name: self.name_unchecked(),
             namespace: self.namespace(),
@@ -877,8 +876,8 @@ impl TestParent for policy::EgressNetwork {
         self.status.as_ref().unwrap().conditions.iter().collect()
     }
 
-    fn obj_ref(&self) -> gateway::HTTPRouteParentRefs {
-        gateway::HTTPRouteParentRefs {
+    fn obj_ref(&self) -> gateway::HttpRouteParentRefs {
+        gateway::HttpRouteParentRefs {
             kind: Some(policy::EgressNetwork::kind(&()).to_string()),
             name: self.name_unchecked(),
             namespace: self.namespace(),

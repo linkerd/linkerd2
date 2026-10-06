@@ -191,11 +191,11 @@ fn mk_route(
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
-            creation_timestamp: Some(Time(Utc::now())),
+            creation_timestamp: Some(Time(Timestamp::now())),
             ..Default::default()
         },
         spec: HttpRouteSpec {
-            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+            parent_refs: Some(vec![gateway::HttpRouteParentRefs {
                 group: Some(group.clone()),
                 kind: Some(kind.clone()),
                 namespace: Some(ns.to_string()),
@@ -205,17 +205,17 @@ fn mk_route(
             }]),
             hostnames: None,
             rules: Some(vec![HttpRouteRule {
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo/bar".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
                     headers: None,
                     query_params: None,
-                    method: Some(gateway::HTTPRouteRulesMatchesMethod::Get),
+                    method: Some(gateway::HttpRouteRulesMatchesMethod::Get),
                 }]),
                 filters: None,
-                backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                backend_refs: Some(vec![gateway::HttpRouteRulesBackendRefs {
                     weight: None,
                     group: Some(group.clone()),
                     kind: Some(kind.clone()),
@@ -227,9 +227,9 @@ fn mk_route(
                 timeouts: None,
             }]),
         },
-        status: Some(gateway::HTTPRouteStatus {
-            parents: vec![gateway::HTTPRouteStatusParents {
-                parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+        status: Some(gateway::HttpRouteStatus {
+            parents: vec![gateway::HttpRouteStatusParents {
+                parent_ref: gateway::HttpRouteStatusParentsParentRef {
                     group: Some(group),
                     kind: Some(kind),
                     namespace: Some(ns.to_string()),
@@ -238,14 +238,14 @@ fn mk_route(
                     port: Some(port.into()),
                 },
                 controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                conditions: Some(vec![k8s::Condition {
-                    last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
+                conditions: vec![k8s::Condition {
+                    last_transition_time: Time(Timestamp::MIN),
                     message: "".to_string(),
                     observed_generation: None,
                     reason: "Accepted".to_string(),
                     status: "True".to_string(),
                     type_: "Accepted".to_string(),
-                }]),
+                }],
             }],
         }),
     }

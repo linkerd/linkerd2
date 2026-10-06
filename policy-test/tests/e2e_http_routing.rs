@@ -16,7 +16,7 @@ async fn path_based_routing() {
                     ..Default::default()
                 },
                 spec: k8s::policy::HttpRouteSpec {
-                    parent_refs: Some(vec![k8s::gateway::HTTPRouteParentRefs {
+                    parent_refs: Some(vec![k8s::gateway::HttpRouteParentRefs {
                         namespace: None,
                         name: "web".to_string(),
                         port: Some(80),
@@ -72,14 +72,14 @@ async fn path_based_routing() {
 
 fn rule(path: String, backend: String) -> k8s::policy::httproute::HttpRouteRule {
     k8s::policy::httproute::HttpRouteRule {
-        matches: Some(vec![gateway::HTTPRouteRulesMatches {
-            path: Some(gateway::HTTPRouteRulesMatchesPath {
+        matches: Some(vec![gateway::HttpRouteRulesMatches {
+            path: Some(gateway::HttpRouteRulesMatchesPath {
                 value: Some(path),
-                r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
             }),
             ..Default::default()
         }]),
-        backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+        backend_refs: Some(vec![gateway::HttpRouteRulesBackendRefs {
             weight: None,
             group: None,
             kind: None,

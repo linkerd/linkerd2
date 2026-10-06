@@ -416,7 +416,7 @@ fn mk_http_route(
             ..Default::default()
         },
         spec: k8s::policy::HttpRouteSpec {
-            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+            parent_refs: Some(vec![gateway::HttpRouteParentRefs {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("Server".to_string()),
                 namespace: Some(ns.to_string()),
@@ -425,10 +425,10 @@ fn mk_http_route(
                 port: None,
             }]),
             rules: Some(vec![policy::httproute::HttpRouteRule {
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]),
@@ -438,17 +438,17 @@ fn mk_http_route(
             }]),
             ..Default::default()
         },
-        status: Some(gateway::HTTPRouteStatus {
-            parents: vec![gateway::HTTPRouteStatusParents {
-                conditions: Some(vec![metav1::Condition {
+        status: Some(gateway::HttpRouteStatus {
+            parents: vec![gateway::HttpRouteStatusParents {
+                conditions: vec![metav1::Condition {
                     type_: "Accepted".to_string(),
                     status: "True".to_string(),
                     message: String::new(),
                     reason: String::new(),
-                    last_transition_time: metav1::Time(chrono::Utc::now()),
+                    last_transition_time: metav1::Time(jiff::Timestamp::now()),
                     observed_generation: None,
-                }]),
-                parent_ref: gateway::HTTPRouteStatusParentsParentRef {
+                }],
+                parent_ref: gateway::HttpRouteStatusParentsParentRef {
                     group: Some("policy.linkerd.io".to_string()),
                     kind: Some("Server".to_string()),
                     namespace: Some(ns.to_string()),

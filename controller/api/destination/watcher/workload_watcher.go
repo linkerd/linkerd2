@@ -770,8 +770,10 @@ func (wp *workloadPublisher) updateExternalWorkload(externalWorkload *ext.Extern
 	}
 
 	// Compute opaque protocol.
-	if err := SetToServerProtocolExternalWorkload(wp.k8sAPI, &wp.addr); err != nil {
-		wp.log.Errorf("Error computing opaque protocol for externalworkload %s: %q", wp.addr.ExternalWorkload.GetName(), err)
+	if wp.addr.ExternalWorkload != nil {
+		if err := SetToServerProtocolExternalWorkload(wp.k8sAPI, &wp.addr); err != nil {
+			wp.log.Errorf("Error computing opaque protocol for externalworkload %s: %q", wp.addr.ExternalWorkload.GetName(), err)
+		}
 	}
 
 	for _, l := range wp.listeners {

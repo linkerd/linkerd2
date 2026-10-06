@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{offset::Utc, DateTime};
+use jiff::Timestamp;
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
     policy::{LocalTargetRef, NamespacedTargetRef},
@@ -9,7 +9,7 @@ use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct Spec {
-    pub creation_timestamp: Option<DateTime<Utc>>,
+    pub creation_timestamp: Option<Timestamp>,
     pub target: Target,
     pub total: Option<Limit>,
     pub identity: Option<Limit>,

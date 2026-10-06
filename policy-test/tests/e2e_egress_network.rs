@@ -1,10 +1,12 @@
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway};
+#[cfg(feature = "gateway-api-experimental")]
+use linkerd_policy_test::await_tcp_route_status;
 use linkerd_policy_test::{
     assert_status_accepted, await_condition, await_egress_net_status, await_gateway_route_status,
     create, create_ready_pod, curl, endpoints_ready, web, with_temp_ns, LinkerdInject,
 };
-#[cfg(feature = "gateway-api-experimental")]
-use linkerd_policy_test::{await_tcp_route_status, await_tls_route_status};
+#[cfg(feature = "gateway-api-tls-route")]
+use linkerd_policy_test::{await_tls_route_status, TLSRoute};
 
 #[tokio::test(flavor = "current_thread")]
 async fn default_traffic_policy_http_allow() {
@@ -203,8 +205,8 @@ async fn explicit_allow_http_route() {
                     name: Some("http-route".to_string()),
                     ..Default::default()
                 },
-                spec: gateway::HTTPRouteSpec {
-                    parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                spec: gateway::HttpRouteSpec {
+                    parent_refs: Some(vec![gateway::HttpRouteParentRefs {
                         namespace: None,
                         name: "egress".to_string(),
                         port: Some(80),
@@ -213,12 +215,12 @@ async fn explicit_allow_http_route() {
                         section_name: None,
                     }]),
                     hostnames: None,
-                    rules: Some(vec![gateway::HTTPRouteRules {
+                    rules: Some(vec![gateway::HttpRouteRules {
                         name: None,
-                        matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                            path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        matches: Some(vec![gateway::HttpRouteRulesMatches {
+                            path: Some(gateway::HttpRouteRulesMatchesPath {
                                 value: Some("/get".to_string()),
-                                r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                                r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                             }),
                             ..Default::default()
                         }]),
@@ -226,6 +228,7 @@ async fn explicit_allow_http_route() {
                         filters: None,
                         ..Default::default()
                     }]),
+                    use_default_gateways: None,
                 },
                 status: None,
             },
@@ -263,7 +266,7 @@ async fn explicit_allow_http_route() {
     .await;
 }
 
-#[cfg(feature = "gateway-api-experimental")]
+#[cfg(feature = "gateway-api-tls-route")]
 #[tokio::test(flavor = "current_thread")]
 async fn explicit_allow_tls_route() {
     with_temp_ns(|client, ns| async move {
@@ -304,14 +307,14 @@ async fn explicit_allow_tls_route() {
         // Now create a tls route that will allow explicit hostname and explicit path
         create(
             &client,
-            gateway::TLSRoute {
+            TLSRoute {
                 metadata: k8s::ObjectMeta {
                     namespace: Some(ns.clone()),
                     name: Some("tls-route".to_string()),
                     ..Default::default()
                 },
-                spec: gateway::TLSRouteSpec {
-                    parent_refs: Some(vec![gateway::TLSRouteParentRefs {
+                spec: gateway::TlsRouteSpec {
+                    parent_refs: Some(vec![gateway::TlsRouteParentRefs {
                         namespace: None,
                         name: "egress".to_string(),
                         port: Some(443),
@@ -319,18 +322,19 @@ async fn explicit_allow_tls_route() {
                         kind: Some("EgressNetwork".to_string()),
                         section_name: None,
                     }]),
-                    hostnames: Some(vec!["postman-echo.com".to_string()]),
-                    rules: vec![gateway::TLSRouteRules {
+                    hostnames: vec!["postman-echo.com".to_string()],
+                    rules: vec![gateway::TlsRouteRules {
                         name: None,
-                        backend_refs: Some(vec![gateway::TLSRouteRulesBackendRefs {
+                        backend_refs: vec![gateway::TlsRouteRulesBackendRefs {
                             weight: None,
                             namespace: None,
                             name: "egress".to_string(),
                             port: Some(443),
                             group: Some("policy.linkerd.io".to_string()),
                             kind: Some("EgressNetwork".to_string()),
-                        }]),
+                        }],
                     }],
+                    use_default_gateways: None,
                 },
                 status: None,
             },
@@ -418,8 +422,8 @@ async fn explicit_allow_tcp_route() {
                     name: Some("tcp-route".to_string()),
                     ..Default::default()
                 },
-                spec: gateway::TCPRouteSpec {
-                    parent_refs: Some(vec![gateway::TCPRouteParentRefs {
+                spec: gateway::TcpRouteSpec {
+                    parent_refs: Some(vec![gateway::TcpRouteParentRefs {
                         namespace: None,
                         name: "egress".to_string(),
                         port: Some(443),
@@ -427,17 +431,18 @@ async fn explicit_allow_tcp_route() {
                         kind: Some("EgressNetwork".to_string()),
                         section_name: None,
                     }]),
-                    rules: vec![gateway::TCPRouteRules {
+                    rules: vec![gateway::TcpRouteRules {
                         name: None,
-                        backend_refs: Some(vec![gateway::TCPRouteRulesBackendRefs {
+                        backend_refs: vec![gateway::TcpRouteRulesBackendRefs {
                             weight: None,
                             namespace: None,
                             name: "egress".to_string(),
                             port: Some(443),
                             group: Some("policy.linkerd.io".to_string()),
                             kind: Some("EgressNetwork".to_string()),
-                        }]),
+                        }],
                     }],
+                    use_default_gateways: None,
                 },
                 status: None,
             },
@@ -519,8 +524,8 @@ async fn routing_back_to_cluster_http_route() {
                     name: Some("http-route".to_string()),
                     ..Default::default()
                 },
-                spec: gateway::HTTPRouteSpec {
-                    parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+                spec: gateway::HttpRouteSpec {
+                    parent_refs: Some(vec![gateway::HttpRouteParentRefs {
                         namespace: None,
                         name: "egress".to_string(),
                         port: Some(80),
@@ -529,16 +534,16 @@ async fn routing_back_to_cluster_http_route() {
                         section_name: None,
                     }]),
                     hostnames: Some(vec!["postman-echo.com".to_string()]),
-                    rules: Some(vec![gateway::HTTPRouteRules {
+                    rules: Some(vec![gateway::HttpRouteRules {
                         name: None,
-                        matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                            path: Some(gateway::HTTPRouteRulesMatchesPath {
+                        matches: Some(vec![gateway::HttpRouteRulesMatches {
+                            path: Some(gateway::HttpRouteRulesMatchesPath {
                                 value: Some("/get".to_string()),
-                                r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                                r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                             }),
                             ..Default::default()
                         }]),
-                        backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                        backend_refs: Some(vec![gateway::HttpRouteRulesBackendRefs {
                             weight: None,
                             namespace: Some(ns.clone()),
                             name: "web".to_string(),
@@ -550,6 +555,7 @@ async fn routing_back_to_cluster_http_route() {
                         filters: None,
                         ..Default::default()
                     }]),
+                    use_default_gateways: None,
                 },
                 status: None,
             },
@@ -585,7 +591,7 @@ async fn routing_back_to_cluster_http_route() {
     .await;
 }
 
-#[cfg(feature = "gateway-api-experimental")]
+#[cfg(feature = "gateway-api-tls-route")]
 #[tokio::test(flavor = "current_thread")]
 async fn routing_back_to_cluster_tls_route() {
     with_temp_ns(|client, ns| async move {
@@ -620,14 +626,14 @@ async fn routing_back_to_cluster_tls_route() {
         // to an in-cluster service based on SNI
         create(
             &client,
-            gateway::TLSRoute {
+            TLSRoute {
                 metadata: k8s::ObjectMeta {
                     namespace: Some(ns.clone()),
                     name: Some("tls-route".to_string()),
                     ..Default::default()
                 },
-                spec: gateway::TLSRouteSpec {
-                    parent_refs: Some(vec![gateway::TLSRouteParentRefs {
+                spec: gateway::TlsRouteSpec {
+                    parent_refs: Some(vec![gateway::TlsRouteParentRefs {
                         namespace: None,
                         name: "egress".to_string(),
                         port: Some(443),
@@ -635,18 +641,19 @@ async fn routing_back_to_cluster_tls_route() {
                         kind: Some("EgressNetwork".to_string()),
                         section_name: None,
                     }]),
-                    hostnames: Some(vec!["postman-echo.com".to_string()]),
-                    rules: vec![gateway::TLSRouteRules {
+                    hostnames: vec!["postman-echo.com".to_string()],
+                    rules: vec![gateway::TlsRouteRules {
                         name: None,
-                        backend_refs: Some(vec![gateway::TLSRouteRulesBackendRefs {
+                        backend_refs: vec![gateway::TlsRouteRulesBackendRefs {
                             weight: None,
                             namespace: Some(ns.clone()),
                             name: "web".to_string(),
                             port: Some(80),
                             group: None,
                             kind: None,
-                        }]),
+                        }],
                     }],
+                    use_default_gateways: None,
                 },
                 status: None,
             },
@@ -718,8 +725,8 @@ async fn routing_back_to_cluster_tcp_route() {
                     name: Some("tcp-route".to_string()),
                     ..Default::default()
                 },
-                spec: gateway::TCPRouteSpec {
-                    parent_refs: Some(vec![gateway::TCPRouteParentRefs {
+                spec: gateway::TcpRouteSpec {
+                    parent_refs: Some(vec![gateway::TcpRouteParentRefs {
                         namespace: None,
                         name: "egress".to_string(),
                         port: Some(80),
@@ -727,17 +734,18 @@ async fn routing_back_to_cluster_tcp_route() {
                         kind: Some("EgressNetwork".to_string()),
                         section_name: None,
                     }]),
-                    rules: vec![gateway::TCPRouteRules {
+                    rules: vec![gateway::TcpRouteRules {
                         name: None,
-                        backend_refs: Some(vec![gateway::TCPRouteRulesBackendRefs {
+                        backend_refs: vec![gateway::TcpRouteRulesBackendRefs {
                             weight: None,
                             namespace: Some(ns.clone()),
                             name: "web".to_string(),
                             port: Some(80),
                             group: None,
                             kind: None,
-                        }]),
+                        }],
                     }],
+                    use_default_gateways: None,
                 },
                 status: None,
             },

@@ -8,8 +8,8 @@ use crate::{
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
-use chrono::{offset::Utc, DateTime};
 use futures::prelude::*;
+use jiff::Timestamp;
 use std::{pin::Pin, time::Duration};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -124,7 +124,7 @@ pub struct InboundRoute<M> {
 
     /// This is required for ordering returned `HttpRoute`s by their creation
     /// timestamp.
-    pub creation_timestamp: Option<DateTime<Utc>>,
+    pub creation_timestamp: Option<Timestamp>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

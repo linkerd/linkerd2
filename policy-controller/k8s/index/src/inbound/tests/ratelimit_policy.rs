@@ -107,7 +107,7 @@ fn mk_ratelimit(
         },
         status: Some(k8s::policy::HttpLocalRateLimitPolicyStatus {
             conditions: vec![k8s::Condition {
-                last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
+                last_transition_time: k8s::Time(jiff::Timestamp::MIN),
                 message: "".to_string(),
                 observed_generation: None,
                 reason: "".to_string(),

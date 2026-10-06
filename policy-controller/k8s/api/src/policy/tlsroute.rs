@@ -1,6 +1,6 @@
 use crate::gateway;
 
-pub fn parent_ref_targets_kind<T>(parent_ref: &gateway::TLSRouteParentRefs) -> bool
+pub fn parent_ref_targets_kind<T>(parent_ref: &gateway::TlsRouteParentRefs) -> bool
 where
     T: kube::Resource,
     T::DynamicType: Default,
@@ -13,7 +13,7 @@ where
     super::targets_kind::<T>(parent_ref.group.as_deref(), kind)
 }
 
-pub fn backend_ref_targets_kind<T>(backend_ref: &gateway::TLSRouteRulesBackendRefs) -> bool
+pub fn backend_ref_targets_kind<T>(backend_ref: &gateway::TlsRouteRulesBackendRefs) -> bool
 where
     T: kube::Resource,
     T::DynamicType: Default,
