@@ -4,7 +4,7 @@ use crate::{
     tests::{default_cluster_networks, make_server},
     Index, IndexMetrics,
 };
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::routes::GroupKindName;
 use linkerd_policy_controller_k8s_api::{
@@ -46,7 +46,12 @@ fn ratelimit_accepted() {
         },
     };
 
-    let expected_patch = crate::index::make_patch(&ratelimit_id, expected_status).unwrap();
+    let expected_patch = crate::index::make_patch(
+        &ratelimit_id,
+        expected_status,
+        crate::tests::TLS_ROUTE_API_VERSION,
+    )
+    .unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(ratelimit_id, update.id);
@@ -82,7 +87,12 @@ fn ratelimit_not_accepted_no_matching_target() {
         },
     };
 
-    let expected_patch = crate::index::make_patch(&ratelimit_id, expected_status).unwrap();
+    let expected_patch = crate::index::make_patch(
+        &ratelimit_id,
+        expected_status,
+        crate::tests::TLS_ROUTE_API_VERSION,
+    )
+    .unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(ratelimit_id, update.id);
@@ -118,7 +128,12 @@ fn ratelimit_not_accepted_already_exists() {
         },
     };
 
-    let rl_1_expected_patch = crate::index::make_patch(&rl_1_id, expected_status).unwrap();
+    let rl_1_expected_patch = crate::index::make_patch(
+        &rl_1_id,
+        expected_status,
+        crate::tests::TLS_ROUTE_API_VERSION,
+    )
+    .unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(rl_1_id, update.id);
@@ -138,7 +153,12 @@ fn ratelimit_not_accepted_already_exists() {
         },
     };
 
-    let rl_2_expected_patch = crate::index::make_patch(&rl_2_id, expected_status).unwrap();
+    let rl_2_expected_patch = crate::index::make_patch(
+        &rl_2_id,
+        expected_status,
+        crate::tests::TLS_ROUTE_API_VERSION,
+    )
+    .unwrap();
 
     let update_1 = updates_rx.try_recv().unwrap();
     let update_2 = updates_rx.try_recv().unwrap();
@@ -162,7 +182,7 @@ fn make_index_updates_rx() -> (SharedIndex, Receiver<Update>) {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, updates_rx) = mpsc::channel(10000);
@@ -172,6 +192,7 @@ fn make_index_updates_rx() -> (SharedIndex, Receiver<Update>) {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     (index, updates_rx)

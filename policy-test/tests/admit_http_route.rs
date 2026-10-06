@@ -63,10 +63,10 @@ async fn rejects_relative_path_match() {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
             rules: Some(vec![policy::httproute::HttpRouteRule {
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("foo/bar".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
                     ..Default::default()
                 }]),
@@ -88,20 +88,20 @@ async fn rejects_relative_redirect_path() {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
             rules: Some(vec![policy::httproute::HttpRouteRule {
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
                     ..Default::default()
                 }]),
                 filters: Some(vec![policy::httproute::HttpRouteFilter::RequestRedirect {
-                    request_redirect: gateway::HTTPRouteRulesFiltersRequestRedirect {
+                    request_redirect: gateway::HttpRouteRulesFiltersRequestRedirect {
                         scheme: None,
                         hostname: None,
-                        path: Some(gateway::HTTPRouteRulesFiltersRequestRedirectPath {
+                        path: Some(gateway::HttpRouteRulesFiltersRequestRedirectPath {
                             replace_full_path: Some("foo/bar".to_string()),
-                            r#type: gateway::HTTPRouteRulesFiltersRequestRedirectPathType::ReplaceFullPath,
+                            r#type: gateway::HttpRouteRulesFiltersRequestRedirectPathType::ReplaceFullPath,
                             ..Default::default()
                         }),
                         port: None,
@@ -117,8 +117,8 @@ async fn rejects_relative_redirect_path() {
     .await;
 }
 
-fn server_parent_ref(ns: impl ToString) -> gateway::HTTPRouteParentRefs {
-    gateway::HTTPRouteParentRefs {
+fn server_parent_ref(ns: impl ToString) -> gateway::HttpRouteParentRefs {
+    gateway::HttpRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("Server".to_string()),
         namespace: Some(ns.to_string()),
@@ -138,10 +138,10 @@ fn meta(ns: impl ToString) -> k8s::ObjectMeta {
 
 fn rules() -> Vec<policy::httproute::HttpRouteRule> {
     vec![policy::httproute::HttpRouteRule {
-        matches: Some(vec![gateway::HTTPRouteRulesMatches {
-            path: Some(gateway::HTTPRouteRulesMatchesPath {
+        matches: Some(vec![gateway::HttpRouteRulesMatches {
+            path: Some(gateway::HttpRouteRulesMatchesPath {
                 value: Some("/foo".to_string()),
-                r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
             }),
             ..Default::default()
         }]),

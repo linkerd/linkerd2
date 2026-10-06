@@ -1,6 +1,6 @@
 // use k8s::Condition;
 // use k8s_gateway_api::{ParentReference, RouteParentStatus, RouteStatus};
-// use k8s_openapi::chrono::Utc;
+// use k8s_openapi::jiff::Timestamp;
 // use kube::ResourceExt;
 // use linkerd_policy_controller_core::POLICY_CONTROLLER_NAME;
 // use linkerd_policy_controller_k8s_api as k8s;
@@ -194,7 +194,7 @@
 //                     inner: RouteStatus {
 //                         parents: vec![RouteParentStatus {
 //                             conditions: vec![Condition {
-//                                 last_transition_time: k8s::Time(Utc::now()),
+//                                 last_transition_time: k8s::Time(Timestamp::now()),
 //                                 message: "".to_string(),
 //                                 observed_generation: None,
 //                                 reason: "Accepted".to_string(),

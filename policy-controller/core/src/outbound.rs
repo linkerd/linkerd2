@@ -4,8 +4,8 @@ use crate::routes::{
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
-use chrono::{offset::Utc, DateTime};
 use futures::prelude::*;
+use jiff::Timestamp;
 use std::{net::IpAddr, num::NonZeroU16, pin::Pin, str::FromStr, sync::Arc, time};
 
 mod policy;
@@ -19,7 +19,7 @@ pub use self::{
 };
 
 pub trait Route {
-    fn creation_timestamp(&self) -> Option<DateTime<Utc>>;
+    fn creation_timestamp(&self) -> Option<Timestamp>;
 }
 
 /// Models outbound policy discovery.
@@ -77,7 +77,7 @@ pub struct OutboundRoute<M, R> {
 
     /// This is required for ordering returned routes
     /// by their creation timestamp.
-    pub creation_timestamp: Option<DateTime<Utc>>,
+    pub creation_timestamp: Option<Timestamp>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -86,7 +86,7 @@ pub struct TlsRoute {
     pub rule: TcpRouteRule,
     /// This is required for ordering returned routes
     /// by their creation timestamp.
-    pub creation_timestamp: Option<DateTime<Utc>>,
+    pub creation_timestamp: Option<Timestamp>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -95,7 +95,7 @@ pub struct TcpRoute {
 
     /// This is required for ordering returned routes
     /// by their creation timestamp.
-    pub creation_timestamp: Option<DateTime<Utc>>,
+    pub creation_timestamp: Option<Timestamp>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -245,19 +245,19 @@ pub enum GrpcRetryCondition {
 }
 
 impl<M, R> Route for OutboundRoute<M, R> {
-    fn creation_timestamp(&self) -> Option<DateTime<Utc>> {
+    fn creation_timestamp(&self) -> Option<Timestamp> {
         self.creation_timestamp
     }
 }
 
 impl Route for TcpRoute {
-    fn creation_timestamp(&self) -> Option<DateTime<Utc>> {
+    fn creation_timestamp(&self) -> Option<Timestamp> {
         self.creation_timestamp
     }
 }
 
 impl Route for TlsRoute {
-    fn creation_timestamp(&self) -> Option<DateTime<Utc>> {
+    fn creation_timestamp(&self) -> Option<Timestamp> {
         self.creation_timestamp
     }
 }

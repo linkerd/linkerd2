@@ -29,7 +29,7 @@ impl TryFrom<gateway::GRPCRoute> for RouteBinding<GrpcRoute> {
             .into_iter()
             .flatten()
             .map(
-                |gateway::GRPCRouteRules {
+                |gateway::GrpcRouteRules {
                      matches, filters, ..
                  }| { try_grpc_rule(matches, filters, try_grpc_filter) },
             )
@@ -53,7 +53,7 @@ impl TryFrom<gateway::GRPCRoute> for RouteBinding<GrpcRoute> {
 }
 
 fn try_grpc_rule<F>(
-    matches: Option<Vec<gateway::GRPCRouteRulesMatches>>,
+    matches: Option<Vec<gateway::GrpcRouteRulesMatches>>,
     filters: Option<Vec<F>>,
     try_filter: impl Fn(F) -> Result<Filter>,
 ) -> Result<InboundRouteRule<GrpcRouteMatch>> {
@@ -72,7 +72,7 @@ fn try_grpc_rule<F>(
     Ok(InboundRouteRule { matches, filters })
 }
 
-fn try_grpc_filter(filter: gateway::GRPCRouteRulesFilters) -> Result<Filter> {
+fn try_grpc_filter(filter: gateway::GrpcRouteRulesFilters) -> Result<Filter> {
     if let Some(request_header_modifier) = filter.request_header_modifier {
         let filter = crate::routes::grpc::request_header_modifier(request_header_modifier)?;
         return Ok(Filter::RequestHeaderModifier(filter));

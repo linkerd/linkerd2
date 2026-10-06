@@ -742,7 +742,7 @@ fn mk_admin_route(ns: &str, name: &str) -> k8s::policy::HttpRoute {
             ..Default::default()
         },
         spec: api::HttpRouteSpec {
-            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+            parent_refs: Some(vec![gateway::HttpRouteParentRefs {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("Server".to_string()),
                 namespace: None,
@@ -752,14 +752,14 @@ fn mk_admin_route(ns: &str, name: &str) -> k8s::policy::HttpRoute {
             }]),
             hostnames: None,
             rules: Some(vec![api::HttpRouteRule {
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/metrics".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
                     headers: None,
                     query_params: None,
-                    method: Some(gateway::HTTPRouteRulesMatchesMethod::Get),
+                    method: Some(gateway::HttpRouteRulesMatchesMethod::Get),
                 }]),
                 filters: None,
                 backend_refs: None,
@@ -782,7 +782,7 @@ fn mk_admin_route_with_path(ns: &str, name: &str, path: &str) -> k8s::policy::Ht
             ..Default::default()
         },
         spec: api::HttpRouteSpec {
-            parent_refs: Some(vec![gateway::HTTPRouteParentRefs {
+            parent_refs: Some(vec![gateway::HttpRouteParentRefs {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("Server".to_string()),
                 namespace: None,
@@ -792,14 +792,14 @@ fn mk_admin_route_with_path(ns: &str, name: &str, path: &str) -> k8s::policy::Ht
             }]),
             hostnames: None,
             rules: Some(vec![api::HttpRouteRule {
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some(path.to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
                     headers: None,
                     query_params: None,
-                    method: Some(gateway::HTTPRouteRulesMatchesMethod::Get),
+                    method: Some(gateway::HttpRouteRulesMatchesMethod::Get),
                 }]),
                 filters: None,
                 backend_refs: None,

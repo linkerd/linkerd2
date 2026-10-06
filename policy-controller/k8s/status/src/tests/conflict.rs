@@ -1,12 +1,12 @@
 #[cfg(test)]
 use crate::{
-    index::{GRPCRouteRef, HTTPRouteRef, SharedIndex, TCPRouteRef, TLSRouteRef},
+    index::{GrpcRouteRef, HttpRouteRef, SharedIndex, TcpRouteRef, TlsRouteRef},
     resource_id::{NamespaceGroupKindName, ResourceId},
     routes,
     tests::default_cluster_networks,
     Index, IndexMetrics,
 };
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use linkerd_policy_controller_core::routes::GroupKindName;
 use linkerd_policy_controller_k8s_api::{gateway, Resource};
 use std::{sync::Arc, vec};
@@ -21,7 +21,7 @@ fn make_index() -> SharedIndex {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
-        expiry: DateTime::<Utc>::MAX_UTC,
+        expiry: Timestamp::MAX,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, _) = mpsc::channel(10000);
@@ -31,6 +31,7 @@ fn make_index() -> SharedIndex {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     )
 }
 
@@ -58,7 +59,7 @@ fn grpc_route_no_conflict(p: ParentRefType) {
                 name: "grpc-1".into(),
             },
         },
-        &GRPCRouteRef {
+        &GrpcRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -73,7 +74,7 @@ fn grpc_route_no_conflict(p: ParentRefType) {
                 name: "http-1".into(),
             },
         },
-        &HTTPRouteRef {
+        &HttpRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -88,7 +89,7 @@ fn grpc_route_no_conflict(p: ParentRefType) {
                 name: "tls-1".into(),
             },
         },
-        &TLSRouteRef {
+        &TlsRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -103,7 +104,7 @@ fn grpc_route_no_conflict(p: ParentRefType) {
                 name: "tcp-1".into(),
             },
         },
-        &TCPRouteRef {
+        &TcpRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -139,7 +140,7 @@ fn http_route_conflict_grpc(p: ParentRefType) {
                 name: "grpc-1".into(),
             },
         },
-        &GRPCRouteRef {
+        &GrpcRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -175,7 +176,7 @@ fn http_route_no_conflict(p: ParentRefType) {
                 name: "http-1".into(),
             },
         },
-        &HTTPRouteRef {
+        &HttpRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -190,7 +191,7 @@ fn http_route_no_conflict(p: ParentRefType) {
                 name: "tls-1".into(),
             },
         },
-        &TLSRouteRef {
+        &TlsRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -205,7 +206,7 @@ fn http_route_no_conflict(p: ParentRefType) {
                 name: "tcp-1".into(),
             },
         },
-        &TCPRouteRef {
+        &TcpRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -241,7 +242,7 @@ fn tls_route_conflict_http(p: ParentRefType) {
                 name: "http-1".into(),
             },
         },
-        &HTTPRouteRef {
+        &HttpRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -277,7 +278,7 @@ fn tls_route_conflict_grpc(p: ParentRefType) {
                 name: "grpc-1".into(),
             },
         },
-        &GRPCRouteRef {
+        &GrpcRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -313,7 +314,7 @@ fn tls_route_no_conflict(p: ParentRefType) {
                 name: "tls-1".into(),
             },
         },
-        &TLSRouteRef {
+        &TlsRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -328,7 +329,7 @@ fn tls_route_no_conflict(p: ParentRefType) {
                 name: "tcp-1".into(),
             },
         },
-        &TCPRouteRef {
+        &TcpRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -364,7 +365,7 @@ fn tcp_route_conflict_grpc(p: ParentRefType) {
                 name: "grpc-1".into(),
             },
         },
-        &GRPCRouteRef {
+        &GrpcRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -400,7 +401,7 @@ fn tcp_route_conflict_http(p: ParentRefType) {
                 name: "http-1".into(),
             },
         },
-        &HTTPRouteRef {
+        &HttpRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -436,7 +437,7 @@ fn tcp_route_conflict_tls(p: ParentRefType) {
                 name: "tls-1".into(),
             },
         },
-        &TLSRouteRef {
+        &TlsRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],
@@ -472,7 +473,7 @@ fn tcp_route_no_conflict(p: ParentRefType) {
                 name: "tcp-1".into(),
             },
         },
-        &TCPRouteRef {
+        &TcpRouteRef {
             parents: vec![parent.clone()],
             statuses: vec![],
             backends: vec![],

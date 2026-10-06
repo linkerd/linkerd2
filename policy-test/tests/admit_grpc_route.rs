@@ -9,8 +9,8 @@ async fn accepts_valid_egress_network() {
             name: Some("test".to_string()),
             ..Default::default()
         },
-        spec: gateway::GRPCRouteSpec {
-            parent_refs: Some(vec![gateway::GRPCRouteParentRefs {
+        spec: gateway::GrpcRouteSpec {
+            parent_refs: Some(vec![gateway::GrpcRouteParentRefs {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("EgressNetwork".to_string()),
                 namespace: Some(ns.to_string()),
@@ -20,6 +20,7 @@ async fn accepts_valid_egress_network() {
             }]),
             hostnames: None,
             rules: Some(rules()),
+            use_default_gateways: None,
         },
         status: None,
     })
@@ -34,8 +35,8 @@ async fn rejects_egress_network_parent_with_no_port() {
             name: Some("test".to_string()),
             ..Default::default()
         },
-        spec: gateway::GRPCRouteSpec {
-            parent_refs: Some(vec![gateway::GRPCRouteParentRefs {
+        spec: gateway::GrpcRouteSpec {
+            parent_refs: Some(vec![gateway::GrpcRouteParentRefs {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: Some("EgressNetwork".to_string()),
                 namespace: Some(ns.to_string()),
@@ -45,20 +46,21 @@ async fn rejects_egress_network_parent_with_no_port() {
             }]),
             hostnames: None,
             rules: Some(rules()),
+            use_default_gateways: None,
         },
         status: None,
     })
     .await;
 }
 
-fn rules() -> Vec<gateway::GRPCRouteRules> {
-    vec![gateway::GRPCRouteRules {
+fn rules() -> Vec<gateway::GrpcRouteRules> {
+    vec![gateway::GrpcRouteRules {
         name: None,
-        matches: Some(vec![gateway::GRPCRouteRulesMatches {
-            method: Some(gateway::GRPCRouteRulesMatchesMethod {
+        matches: Some(vec![gateway::GrpcRouteRulesMatches {
+            method: Some(gateway::GrpcRouteRulesMatchesMethod {
                 method: Some("foo".to_string()),
                 service: Some("boo".to_string()),
-                r#type: Some(gateway::GRPCRouteRulesMatchesMethodType::Exact),
+                r#type: Some(gateway::GrpcRouteRulesMatchesMethodType::Exact),
             }),
             ..Default::default()
         }]),

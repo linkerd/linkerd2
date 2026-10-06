@@ -45,25 +45,25 @@ async fn gateway_http_route_with_filters_service() {
             let mut route =
                 gateway::HTTPRoute::make_route(ns, vec![parent.obj_ref()], vec![vec![]]);
             for rule in route.spec.rules.iter_mut().flatten() {
-                rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                rule.matches = Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]);
                 rule.filters = Some(vec![
-                    gateway::HTTPRouteRulesFilters {
+                    gateway::HttpRouteRulesFilters {
                         request_header_modifier: Some(
-                            gateway::HTTPRouteRulesFiltersRequestHeaderModifier {
+                            gateway::HttpRouteRulesFiltersRequestHeaderModifier {
                                 set: Some(vec![
-                                    gateway::HTTPRouteRulesFiltersRequestHeaderModifierSet {
+                                    gateway::HttpRouteRulesFiltersRequestHeaderModifierSet {
                                         name: "set".to_string(),
                                         value: "set-value".to_string(),
                                     },
                                 ]),
                                 add: Some(vec![
-                                    gateway::HTTPRouteRulesFiltersRequestHeaderModifierAdd {
+                                    gateway::HttpRouteRulesFiltersRequestHeaderModifierAdd {
                                         name: "add".to_string(),
                                         value: "add-value".to_string(),
                                     },
@@ -71,22 +71,22 @@ async fn gateway_http_route_with_filters_service() {
                                 remove: Some(vec!["remove".to_string()]),
                             },
                         ),
-                        r#type: gateway::HTTPRouteRulesFiltersType::RequestHeaderModifier,
+                        r#type: gateway::HttpRouteRulesFiltersType::RequestHeaderModifier,
                         ..Default::default()
                     },
-                    gateway::HTTPRouteRulesFilters {
-                        request_redirect: Some(gateway::HTTPRouteRulesFiltersRequestRedirect {
-                            scheme: Some(gateway::HTTPRouteRulesFiltersRequestRedirectScheme::Http),
+                    gateway::HttpRouteRulesFilters {
+                        request_redirect: Some(gateway::HttpRouteRulesFiltersRequestRedirect {
+                            scheme: Some(gateway::HttpRouteRulesFiltersRequestRedirectScheme::Http),
                             hostname: Some("host".to_string()),
-                            path: Some(gateway::HTTPRouteRulesFiltersRequestRedirectPath {
+                            path: Some(gateway::HttpRouteRulesFiltersRequestRedirectPath {
                                 replace_prefix_match: Some("/path".to_string()),
-                                r#type: gateway::HTTPRouteRulesFiltersRequestRedirectPathType::ReplacePrefixMatch,
+                                r#type: gateway::HttpRouteRulesFiltersRequestRedirectPathType::ReplacePrefixMatch,
                                 ..Default::default()
                             }),
                             port: Some(5555),
                             status_code: Some(302),
                         }),
-                        r#type: gateway::HTTPRouteRulesFiltersType::RequestRedirect,
+                        r#type: gateway::HttpRouteRulesFiltersType::RequestRedirect,
                         ..Default::default()
                     },
                 ]);
@@ -204,25 +204,25 @@ async fn policy_http_route_with_filters_service() {
                 vec![vec![backend.backend_ref(backend_port)]],
             );
             for rule in route.spec.rules.iter_mut().flatten() {
-                rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                rule.matches = Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]);
                 rule.filters = Some(vec![
                     policy::httproute::HttpRouteFilter::RequestHeaderModifier {
                         request_header_modifier:
-                            gateway::HTTPRouteRulesFiltersRequestHeaderModifier {
+                            gateway::HttpRouteRulesFiltersRequestHeaderModifier {
                                 set: Some(vec![
-                                    gateway::HTTPRouteRulesFiltersRequestHeaderModifierSet {
+                                    gateway::HttpRouteRulesFiltersRequestHeaderModifierSet {
                                         name: "set".to_string(),
                                         value: "set-value".to_string(),
                                     },
                                 ]),
                                 add: Some(vec![
-                                    gateway::HTTPRouteRulesFiltersRequestHeaderModifierAdd {
+                                    gateway::HttpRouteRulesFiltersRequestHeaderModifierAdd {
                                         name: "add".to_string(),
                                         value: "add-value".to_string(),
                                     },
@@ -231,12 +231,12 @@ async fn policy_http_route_with_filters_service() {
                             },
                     },
                     policy::httproute::HttpRouteFilter::RequestRedirect {
-                        request_redirect: gateway::HTTPRouteRulesFiltersRequestRedirect {
-                            scheme: Some(gateway::HTTPRouteRulesFiltersRequestRedirectScheme::Http),
+                        request_redirect: gateway::HttpRouteRulesFiltersRequestRedirect {
+                            scheme: Some(gateway::HttpRouteRulesFiltersRequestRedirectScheme::Http),
                             hostname: Some("host".to_string()),
-                            path: Some(gateway::HTTPRouteRulesFiltersRequestRedirectPath {
+                            path: Some(gateway::HttpRouteRulesFiltersRequestRedirectPath {
                                 replace_prefix_match: Some("/path".to_string()),
-                                r#type: gateway::HTTPRouteRulesFiltersRequestRedirectPathType::ReplacePrefixMatch,
+                                r#type: gateway::HttpRouteRulesFiltersRequestRedirectPathType::ReplacePrefixMatch,
                                 ..Default::default()
                             }),
                             port: Some(5555),
@@ -358,26 +358,26 @@ async fn gateway_http_route_with_backend_filters() {
                 vec![vec![backend.backend_ref(backend_port)]],
             );
             for rule in route.spec.rules.iter_mut().flatten() {
-                rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                rule.matches = Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]);
                 for backend in rule.backend_refs.iter_mut().flatten() {
                     backend.filters = Some(vec![
-                        gateway::HTTPRouteRulesBackendRefsFilters {
+                        gateway::HttpRouteRulesBackendRefsFilters {
                             request_header_modifier: Some(
-                                gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifier {
+                                gateway::HttpRouteRulesBackendRefsFiltersRequestHeaderModifier {
                                     set: Some(vec![
-                                        gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifierSet {
+                                        gateway::HttpRouteRulesBackendRefsFiltersRequestHeaderModifierSet {
                                             name: "set".to_string(),
                                             value: "set-value".to_string(),
                                         },
                                     ]),
                                     add: Some(vec![
-                                        gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifierAdd {
+                                        gateway::HttpRouteRulesBackendRefsFiltersRequestHeaderModifierAdd {
                                             name: "add".to_string(),
                                             value: "add-value".to_string(),
                                         },
@@ -385,22 +385,22 @@ async fn gateway_http_route_with_backend_filters() {
                                     remove: Some(vec!["remove".to_string()]),
                                 },
                             ),
-                            r#type: gateway::HTTPRouteRulesBackendRefsFiltersType::RequestHeaderModifier,
+                            r#type: gateway::HttpRouteRulesBackendRefsFiltersType::RequestHeaderModifier,
                             ..Default::default()
                         },
-                        gateway::HTTPRouteRulesBackendRefsFilters {
-                            request_redirect: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirect {
-                                scheme: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectScheme::Http),
+                        gateway::HttpRouteRulesBackendRefsFilters {
+                            request_redirect: Some(gateway::HttpRouteRulesBackendRefsFiltersRequestRedirect {
+                                scheme: Some(gateway::HttpRouteRulesBackendRefsFiltersRequestRedirectScheme::Http),
                                 hostname: Some("host".to_string()),
-                                path: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectPath {
+                                path: Some(gateway::HttpRouteRulesBackendRefsFiltersRequestRedirectPath {
                                     replace_prefix_match: Some("/path".to_string()),
-                                    r#type: gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectPathType::ReplacePrefixMatch,
+                                    r#type: gateway::HttpRouteRulesBackendRefsFiltersRequestRedirectPathType::ReplacePrefixMatch,
                                     ..Default::default()
                                 }),
                                 port: Some(5555),
                                 status_code: Some(302),
                             }),
-                            r#type: gateway::HTTPRouteRulesBackendRefsFiltersType::RequestRedirect,
+                            r#type: gateway::HttpRouteRulesBackendRefsFiltersType::RequestRedirect,
                             ..Default::default()
                         },
                     ]);
@@ -520,22 +520,22 @@ async fn policy_http_route_with_backend_filters() {
                 vec![vec![backend.backend_ref(backend_port)]],
             );
             for rule in route.spec.rules.iter_mut().flatten() {
-                rule.matches = Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                rule.matches = Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::PathPrefix),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::PathPrefix),
                     }),
                     ..Default::default()
                 }]);
                 for backend in rule.backend_refs.iter_mut().flatten() {
                     backend.filters = Some(vec![
-                        gateway::HTTPRouteRulesBackendRefsFilters {
-                            request_header_modifier: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifier {
-                                set: Some(vec![gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifierSet {
+                        gateway::HttpRouteRulesBackendRefsFilters {
+                            request_header_modifier: Some(gateway::HttpRouteRulesBackendRefsFiltersRequestHeaderModifier {
+                                set: Some(vec![gateway::HttpRouteRulesBackendRefsFiltersRequestHeaderModifierSet {
                                     name: "set".to_string(),
                                     value: "set-value".to_string(),
                                 }]),
-                                add: Some(vec![gateway::HTTPRouteRulesBackendRefsFiltersRequestHeaderModifierAdd {
+                                add: Some(vec![gateway::HttpRouteRulesBackendRefsFiltersRequestHeaderModifierAdd {
                                     name: "add".to_string(),
                                     value: "add-value".to_string(),
                                 }]),
@@ -543,13 +543,13 @@ async fn policy_http_route_with_backend_filters() {
                             }),
                             ..Default::default()
                         },
-                        gateway::HTTPRouteRulesBackendRefsFilters {
-                            request_redirect: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirect {
-                                scheme: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectScheme::Http),
+                        gateway::HttpRouteRulesBackendRefsFilters {
+                            request_redirect: Some(gateway::HttpRouteRulesBackendRefsFiltersRequestRedirect {
+                                scheme: Some(gateway::HttpRouteRulesBackendRefsFiltersRequestRedirectScheme::Http),
                                 hostname: Some("host".to_string()),
-                                path: Some(gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectPath {
+                                path: Some(gateway::HttpRouteRulesBackendRefsFiltersRequestRedirectPath {
                                     replace_prefix_match: Some("/path".to_string()),
-                                    r#type: gateway::HTTPRouteRulesBackendRefsFiltersRequestRedirectPathType::ReplacePrefixMatch,
+                                    r#type: gateway::HttpRouteRulesBackendRefsFiltersRequestRedirectPathType::ReplacePrefixMatch,
                                     ..Default::default()
                                 }),
                                 port: Some(5555),
@@ -965,14 +965,14 @@ async fn http_route_gateway_timeouts() {
                     name: Some("foo-route".to_string()),
                     ..Default::default()
                 },
-                spec: gateway::HTTPRouteSpec {
+                spec: gateway::HttpRouteSpec {
                     parent_refs: Some(vec![parent.obj_ref()]),
                     hostnames: None,
-                    rules: Some(vec![gateway::HTTPRouteRules {
+                    rules: Some(vec![gateway::HttpRouteRules {
                         name: None,
                         matches: Some(vec![]),
                         filters: None,
-                        timeouts: Some(gateway::HTTPRouteRulesTimeouts {
+                        timeouts: Some(gateway::HttpRouteRulesTimeouts {
                             request: Some("5s".to_string()),
                             backend_request: None,
                         }),
@@ -980,6 +980,7 @@ async fn http_route_gateway_timeouts() {
                         backend_refs: Some(vec![backend.backend_ref(backend_port)]),
                         session_persistence: None,
                     }]),
+                    use_default_gateways: None,
                 },
                 status: None,
             };

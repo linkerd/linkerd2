@@ -1,9 +1,15 @@
 use linkerd_policy_controller_core::IpNet;
-use linkerd_policy_controller_k8s_api::{self as k8s_core_api, policy as linkerd_k8s_api};
+use linkerd_policy_controller_k8s_api::{self as k8s_core_api, gateway, policy as linkerd_k8s_api};
 mod conflict;
 mod egress_network;
 mod ratelimit;
 mod routes;
+
+/// The TLSRoute API version the tests index and patch through. The negotiated
+/// version only affects the `apiVersion` written in status patches and the URL
+/// the controller patches; the index behaves the same either way.
+pub(crate) const TLS_ROUTE_API_VERSION: gateway::TlsRouteApiVersion =
+    gateway::TlsRouteApiVersion::V1;
 
 pub fn default_cluster_networks() -> Vec<IpNet> {
     vec![

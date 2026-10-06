@@ -2,9 +2,8 @@
 
 The Linkerd maintainers are:
 
-* Alex Leong <alex@buoyant.io> @adleong
 * Alejandro Pedraza <alejandro@buoyant.io> @alpeb
-* katelyn martin <kate@buoyant.io> @cratelyn
+* Raymond Kroeker <raymond@buoyant.io> @raykroeker
 * Zahari Dichev <zahari@buoyant.io> @zaharidichev
 
 ## Directors
@@ -26,6 +25,7 @@ The Linkerd Steering Committee members are:
 
 Former maintainers include:
 
+* Alex Leong <alex@buoyant.io> @adleong
 * Eliza Weisman <eliza@buoyant.io> @hawkw
 * Hema Lee <Hemalekha.Lee@nordstrom.com> @hemakl
 * Kevin Leimkuhler @kleimkuhler
@@ -37,6 +37,7 @@ Former maintainers include:
 * Andrew Seigner <siggy@buoyant.io> @siggy
 * Steve Jenson @stevej
 * Scott Fleener <scott@buoyant.io> @sfleen
+* katelyn martin <kate@buoyant.io> @cratelyn
 
 <!--
 # Adding a new maintainer

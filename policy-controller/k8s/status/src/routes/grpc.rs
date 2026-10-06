@@ -10,7 +10,7 @@ use linkerd_policy_controller_k8s_api::{
 
 pub(crate) fn make_backends(
     namespace: &str,
-    backends: impl Iterator<Item = gateway::GRPCRouteRulesBackendRefs>,
+    backends: impl Iterator<Item = gateway::GrpcRouteRulesBackendRefs>,
 ) -> Vec<BackendReference> {
     backends
         .map(|backend_ref| to_backend_ref(&backend_ref, namespace))
@@ -19,7 +19,7 @@ pub(crate) fn make_backends(
 
 pub(crate) fn make_parents(
     namespace: &str,
-    parents: &[gateway::GRPCRouteParentRefs],
+    parents: &[gateway::GrpcRouteParentRefs],
 ) -> Vec<ParentReference> {
     parents
         .iter()
@@ -32,7 +32,7 @@ pub(crate) fn make_parents(
 }
 
 fn to_parent_ref(
-    parent_ref: &gateway::GRPCRouteParentRefs,
+    parent_ref: &gateway::GrpcRouteParentRefs,
     default_namespace: &str,
 ) -> Result<ParentReference> {
     if parent_ref_targets_kind::<policy::Server>(parent_ref) {
@@ -65,7 +65,7 @@ fn to_parent_ref(
 }
 
 fn to_backend_ref(
-    backend_ref: &gateway::GRPCRouteRulesBackendRefs,
+    backend_ref: &gateway::GrpcRouteRulesBackendRefs,
     default_namespace: &str,
 ) -> BackendReference {
     if backend_ref_targets_kind::<k8s::Service>(backend_ref) {
@@ -105,16 +105,16 @@ mod test {
                 name: Some("foo".to_string()),
                 ..Default::default()
             },
-            spec: gateway::GRPCRouteSpec {
+            spec: gateway::GrpcRouteSpec {
                 parent_refs: None,
                 hostnames: None,
                 rules: Some(vec![
-                    gateway::GRPCRouteRules {
+                    gateway::GrpcRouteRules {
                         name: None,
                         matches: None,
                         filters: None,
                         backend_refs: Some(vec![
-                            gateway::GRPCRouteRulesBackendRefs {
+                            gateway::GrpcRouteRulesBackendRefs {
                                 group: None,
                                 kind: None,
                                 name: "ref-1".to_string(),
@@ -123,7 +123,7 @@ mod test {
                                 filters: None,
                                 weight: None,
                             },
-                            gateway::GRPCRouteRulesBackendRefs {
+                            gateway::GrpcRouteRulesBackendRefs {
                                 group: None,
                                 kind: None,
                                 name: "ref-2".to_string(),
@@ -135,11 +135,11 @@ mod test {
                         ]),
                         session_persistence: None,
                     },
-                    gateway::GRPCRouteRules {
+                    gateway::GrpcRouteRules {
                         name: None,
                         matches: None,
                         filters: None,
-                        backend_refs: Some(vec![gateway::GRPCRouteRulesBackendRefs {
+                        backend_refs: Some(vec![gateway::GrpcRouteRulesBackendRefs {
                             group: Some("Core".to_string()),
                             kind: Some("Service".to_string()),
                             name: "ref-3".to_string(),
@@ -150,7 +150,7 @@ mod test {
                         }]),
                         session_persistence: None,
                     },
-                    gateway::GRPCRouteRules {
+                    gateway::GrpcRouteRules {
                         name: None,
                         matches: None,
                         filters: None,
@@ -158,6 +158,7 @@ mod test {
                         session_persistence: None,
                     },
                 ]),
+                use_default_gateways: None,
             },
             status: None,
         };
@@ -194,15 +195,15 @@ mod test {
                 name: Some("foo".to_string()),
                 ..Default::default()
             },
-            spec: gateway::GRPCRouteSpec {
+            spec: gateway::GrpcRouteSpec {
                 parent_refs: None,
                 hostnames: None,
-                rules: Some(vec![gateway::GRPCRouteRules {
+                rules: Some(vec![gateway::GrpcRouteRules {
                     name: None,
                     matches: None,
                     filters: None,
                     backend_refs: Some(vec![
-                        gateway::GRPCRouteRulesBackendRefs {
+                        gateway::GrpcRouteRulesBackendRefs {
                             group: None,
                             kind: None,
                             name: "ref-1".to_string(),
@@ -211,7 +212,7 @@ mod test {
                             filters: None,
                             weight: None,
                         },
-                        gateway::GRPCRouteRulesBackendRefs {
+                        gateway::GrpcRouteRulesBackendRefs {
                             group: Some(POLICY_API_GROUP.to_string()),
                             kind: Some("EgressNetwork".to_string()),
                             name: "ref-3".to_string(),
@@ -220,7 +221,7 @@ mod test {
                             filters: None,
                             weight: None,
                         },
-                        gateway::GRPCRouteRulesBackendRefs {
+                        gateway::GrpcRouteRulesBackendRefs {
                             group: Some(POLICY_API_GROUP.to_string()),
                             kind: Some("Server".to_string()),
                             name: "ref-2".to_string(),
@@ -232,6 +233,7 @@ mod test {
                     ]),
                     session_persistence: None,
                 }]),
+                use_default_gateways: None,
             },
             status: None,
         };

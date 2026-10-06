@@ -53,17 +53,17 @@ async fn grpc_route_with_filters_service() {
                 vec![vec![backend.backend_ref(backend_port)]],
             );
             for rule in route.spec.rules.iter_mut().flatten() {
-                rule.filters = Some(vec![gateway::GRPCRouteRulesFilters {
+                rule.filters = Some(vec![gateway::GrpcRouteRulesFilters {
                     request_header_modifier: Some(
-                        gateway::GRPCRouteRulesFiltersRequestHeaderModifier {
+                        gateway::GrpcRouteRulesFiltersRequestHeaderModifier {
                             set: Some(vec![
-                                gateway::GRPCRouteRulesFiltersRequestHeaderModifierSet {
+                                gateway::GrpcRouteRulesFiltersRequestHeaderModifierSet {
                                     name: "set".to_string(),
                                     value: "set-value".to_string(),
                                 },
                             ]),
                             add: Some(vec![
-                                gateway::GRPCRouteRulesFiltersRequestHeaderModifierAdd {
+                                gateway::GrpcRouteRulesFiltersRequestHeaderModifierAdd {
                                     name: "add".to_string(),
                                     value: "add-value".to_string(),
                                 },
@@ -163,14 +163,14 @@ async fn policy_grpc_route_with_backend_filters() {
             );
             for rule in route.spec.rules.iter_mut().flatten() {
                 for backend in rule.backend_refs.iter_mut().flatten() {
-                    backend.filters = Some(vec![gateway::GRPCRouteRulesBackendRefsFilters {
+                    backend.filters = Some(vec![gateway::GrpcRouteRulesBackendRefsFilters {
                         request_header_modifier: Some(
-                            gateway::GRPCRouteRulesBackendRefsFiltersRequestHeaderModifier {
-                                set: Some(vec![gateway::GRPCRouteRulesBackendRefsFiltersRequestHeaderModifierSet {
+                            gateway::GrpcRouteRulesBackendRefsFiltersRequestHeaderModifier {
+                                set: Some(vec![gateway::GrpcRouteRulesBackendRefsFiltersRequestHeaderModifierSet {
                                     name: "set".to_string(),
                                     value: "set-value".to_string(),
                                 }]),
-                                add: Some(vec![gateway::GRPCRouteRulesBackendRefsFiltersRequestHeaderModifierAdd {
+                                add: Some(vec![gateway::GrpcRouteRulesBackendRefsFiltersRequestHeaderModifierAdd {
                                     name: "add".to_string(),
                                     value: "add-value".to_string(),
                                 }]),

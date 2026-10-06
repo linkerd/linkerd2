@@ -5,10 +5,11 @@ use linkerd_policy_test::admission;
 async fn accepts_valid() {
     admission::accepts(|ns| gateway::HTTPRoute {
         metadata: meta(&ns),
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
             rules: Some(rules()),
+            use_default_gateways: None,
         },
         status: None,
     })
@@ -19,21 +20,21 @@ async fn accepts_valid() {
 async fn accepts_not_implemented_requestmirror() {
     admission::accepts(|ns| gateway::HTTPRoute {
         metadata: meta(&ns),
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
-            rules: Some(vec![gateway::HTTPRouteRules {
+            rules: Some(vec![gateway::HttpRouteRules {
                 name: None,
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
-                    ..gateway::HTTPRouteRulesMatches::default()
+                    ..gateway::HttpRouteRulesMatches::default()
                 }]),
-                filters: Some(vec![gateway::HTTPRouteRulesFilters {
-                    request_mirror: Some(gateway::HTTPRouteRulesFiltersRequestMirror {
-                        backend_ref: gateway::HTTPRouteRulesFiltersRequestMirrorBackendRef {
+                filters: Some(vec![gateway::HttpRouteRulesFilters {
+                    request_mirror: Some(gateway::HttpRouteRulesFiltersRequestMirror {
+                        backend_ref: gateway::HttpRouteRulesFiltersRequestMirrorBackendRef {
                             group: None,
                             kind: None,
                             namespace: Some("foo".to_string()),
@@ -43,12 +44,13 @@ async fn accepts_not_implemented_requestmirror() {
                         percent: Some(100),
                         ..Default::default()
                     }),
-                    r#type: gateway::HTTPRouteRulesFiltersType::RequestMirror,
+                    r#type: gateway::HttpRouteRulesFiltersType::RequestMirror,
                     ..Default::default()
                 }]),
                 backend_refs: None,
                 ..Default::default()
             }]),
+            use_default_gateways: None,
         },
         status: None,
     })
@@ -63,34 +65,35 @@ async fn accepts_not_implemented_urlrewrite() {
             name: Some("test".to_string()),
             ..Default::default()
         },
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
-            rules: Some(vec![gateway::HTTPRouteRules {
+            rules: Some(vec![gateway::HttpRouteRules {
                 name: None,
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
-                    ..gateway::HTTPRouteRulesMatches::default()
+                    ..gateway::HttpRouteRulesMatches::default()
                 }]),
-                filters: Some(vec![gateway::HTTPRouteRulesFilters {
-                    url_rewrite: Some(gateway::HTTPRouteRulesFiltersUrlRewrite {
+                filters: Some(vec![gateway::HttpRouteRulesFilters {
+                    url_rewrite: Some(gateway::HttpRouteRulesFiltersUrlRewrite {
                         hostname: Some("foo".to_string()),
-                        path: Some(gateway::HTTPRouteRulesFiltersUrlRewritePath {
+                        path: Some(gateway::HttpRouteRulesFiltersUrlRewritePath {
                             replace_full_path: Some("baz".to_string()),
                             r#type:
-                                gateway::HTTPRouteRulesFiltersUrlRewritePathType::ReplaceFullPath,
+                                gateway::HttpRouteRulesFiltersUrlRewritePathType::ReplaceFullPath,
                             ..Default::default()
                         }),
                     }),
-                    r#type: gateway::HTTPRouteRulesFiltersType::UrlRewrite,
+                    r#type: gateway::HttpRouteRulesFiltersType::UrlRewrite,
                     ..Default::default()
                 }]),
                 backend_refs: None,
                 ..Default::default()
             }]),
+            use_default_gateways: None,
         },
         status: None,
     })
@@ -105,30 +108,31 @@ async fn accepts_not_implemented_extensionref() {
             name: Some("test".to_string()),
             ..Default::default()
         },
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
-            rules: Some(vec![gateway::HTTPRouteRules {
+            rules: Some(vec![gateway::HttpRouteRules {
                 name: None,
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
-                    ..gateway::HTTPRouteRulesMatches::default()
+                    ..gateway::HttpRouteRulesMatches::default()
                 }]),
-                filters: Some(vec![gateway::HTTPRouteRulesFilters {
-                    extension_ref: Some(gateway::HTTPRouteRulesFiltersExtensionRef {
+                filters: Some(vec![gateway::HttpRouteRulesFilters {
+                    extension_ref: Some(gateway::HttpRouteRulesFiltersExtensionRef {
                         group: "".to_string(),
                         kind: "Service".to_string(),
                         name: "foo".to_string(),
                     }),
-                    r#type: gateway::HTTPRouteRulesFiltersType::ExtensionRef,
+                    r#type: gateway::HttpRouteRulesFiltersType::ExtensionRef,
                     ..Default::default()
                 }]),
                 backend_refs: None,
                 ..Default::default()
             }]),
+            use_default_gateways: None,
         },
         status: None,
     })
@@ -139,20 +143,20 @@ async fn accepts_not_implemented_extensionref() {
 async fn accepts_backend_unknown_kind() {
     admission::accepts(|ns| gateway::HTTPRoute {
         metadata: meta(&ns),
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
-            rules: Some(vec![gateway::HTTPRouteRules {
+            rules: Some(vec![gateway::HttpRouteRules {
                 name: None,
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
-                    ..gateway::HTTPRouteRulesMatches::default()
+                    ..gateway::HttpRouteRulesMatches::default()
                 }]),
                 filters: None,
-                backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                backend_refs: Some(vec![gateway::HttpRouteRulesBackendRefs {
                     weight: None,
                     group: Some("alien.example.com".to_string()),
                     kind: Some("ExoService".to_string()),
@@ -163,6 +167,7 @@ async fn accepts_backend_unknown_kind() {
                 }]),
                 ..Default::default()
             }]),
+            use_default_gateways: None,
         },
         status: None,
     })
@@ -173,20 +178,20 @@ async fn accepts_backend_unknown_kind() {
 async fn accepts_backend_service_with_port() {
     admission::accepts(|ns| gateway::HTTPRoute {
         metadata: meta(&ns),
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
-            rules: Some(vec![gateway::HTTPRouteRules {
+            rules: Some(vec![gateway::HttpRouteRules {
                 name: None,
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
-                    ..gateway::HTTPRouteRulesMatches::default()
+                    ..gateway::HttpRouteRulesMatches::default()
                 }]),
                 filters: None,
-                backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                backend_refs: Some(vec![gateway::HttpRouteRulesBackendRefs {
                     weight: None,
                     group: Some("core".to_string()),
                     kind: Some("Service".to_string()),
@@ -197,6 +202,7 @@ async fn accepts_backend_service_with_port() {
                 }]),
                 ..Default::default()
             }]),
+            use_default_gateways: None,
         },
         status: None,
     })
@@ -207,20 +213,20 @@ async fn accepts_backend_service_with_port() {
 async fn accepts_backend_service_implicit_with_port() {
     admission::accepts(|ns| gateway::HTTPRoute {
         metadata: meta(&ns),
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
-            rules: Some(vec![gateway::HTTPRouteRules {
+            rules: Some(vec![gateway::HttpRouteRules {
                 name: None,
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
-                    ..gateway::HTTPRouteRulesMatches::default()
+                    ..gateway::HttpRouteRulesMatches::default()
                 }]),
                 filters: None,
-                backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                backend_refs: Some(vec![gateway::HttpRouteRulesBackendRefs {
                     weight: None,
                     group: None,
                     kind: None,
@@ -231,6 +237,7 @@ async fn accepts_backend_service_implicit_with_port() {
                 }]),
                 ..Default::default()
             }]),
+            use_default_gateways: None,
         },
         status: None,
     })
@@ -241,22 +248,23 @@ async fn accepts_backend_service_implicit_with_port() {
 async fn rejects_relative_path_match() {
     admission::rejects(|ns| gateway::HTTPRoute {
         metadata: meta(&ns),
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
-            rules: Some(vec![gateway::HTTPRouteRules {
+            rules: Some(vec![gateway::HttpRouteRules {
                 name: None,
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
-                    ..gateway::HTTPRouteRulesMatches::default()
+                    ..gateway::HttpRouteRulesMatches::default()
                 }]),
                 filters: None,
                 backend_refs: None,
                 ..Default::default()
             }]),
+            use_default_gateways: None,
         },
         status: None,
     })
@@ -267,38 +275,39 @@ async fn rejects_relative_path_match() {
 async fn rejects_relative_redirect_path() {
     admission::rejects(|ns| gateway::HTTPRoute {
         metadata: meta(&ns),
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![server_parent_ref(ns)]),
 
             hostnames: None,
-            rules: Some(vec![gateway::HTTPRouteRules {
+            rules: Some(vec![gateway::HttpRouteRules {
                 name: None,
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
-                    ..gateway::HTTPRouteRulesMatches::default()
+                    ..gateway::HttpRouteRulesMatches::default()
                 }]),
-                filters: Some(vec![gateway::HTTPRouteRulesFilters {
-                    request_redirect: Some(gateway::HTTPRouteRulesFiltersRequestRedirect {
+                filters: Some(vec![gateway::HttpRouteRulesFilters {
+                    request_redirect: Some(gateway::HttpRouteRulesFiltersRequestRedirect {
                         scheme: None,
                         hostname: None,
-                        path: Some(gateway::HTTPRouteRulesFiltersRequestRedirectPath {
+                        path: Some(gateway::HttpRouteRulesFiltersRequestRedirectPath {
                             replace_full_path: Some("foo/bar".to_string()),
                             r#type:
-                                gateway::HTTPRouteRulesFiltersRequestRedirectPathType::ReplaceFullPath,
+                                gateway::HttpRouteRulesFiltersRequestRedirectPathType::ReplaceFullPath,
                             ..Default::default()
                         }),
                         port: None,
                         status_code: None,
                     }),
-                    r#type: gateway::HTTPRouteRulesFiltersType::RequestRedirect,
+                    r#type: gateway::HttpRouteRulesFiltersType::RequestRedirect,
                     ..Default::default()
                 }]),
                 backend_refs: None,
                 ..Default::default()
             }]),
+            use_default_gateways: None,
         },
         status: None,
     })
@@ -309,20 +318,20 @@ async fn rejects_relative_redirect_path() {
 async fn rejects_backend_service_without_port() {
     admission::rejects(|ns| gateway::HTTPRoute {
         metadata: meta(&ns),
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![server_parent_ref(ns)]),
             hostnames: None,
-            rules: Some(vec![gateway::HTTPRouteRules {
+            rules: Some(vec![gateway::HttpRouteRules {
                 name: None,
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
-                    ..gateway::HTTPRouteRulesMatches::default()
+                    ..gateway::HttpRouteRulesMatches::default()
                 }]),
                 filters: None,
-                backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                backend_refs: Some(vec![gateway::HttpRouteRulesBackendRefs {
                     weight: None,
                     group: Some("core".to_string()),
                     kind: Some("Service".to_string()),
@@ -333,6 +342,7 @@ async fn rejects_backend_service_without_port() {
                 }]),
                 ..Default::default()
             }]),
+            use_default_gateways: None,
         },
         status: None,
     })
@@ -343,21 +353,21 @@ async fn rejects_backend_service_without_port() {
 async fn rejects_backend_service_implicit_without_port() {
     admission::rejects(|ns| gateway::HTTPRoute {
         metadata: meta(&ns),
-        spec: gateway::HTTPRouteSpec {
+        spec: gateway::HttpRouteSpec {
             parent_refs: Some(vec![server_parent_ref(ns)]),
 
             hostnames: None,
-            rules: Some(vec![gateway::HTTPRouteRules {
+            rules: Some(vec![gateway::HttpRouteRules {
                 name: None,
-                matches: Some(vec![gateway::HTTPRouteRulesMatches {
-                    path: Some(gateway::HTTPRouteRulesMatchesPath {
+                matches: Some(vec![gateway::HttpRouteRulesMatches {
+                    path: Some(gateway::HttpRouteRulesMatchesPath {
                         value: Some("/foo".to_string()),
-                        r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                        r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
                     }),
-                    ..gateway::HTTPRouteRulesMatches::default()
+                    ..gateway::HttpRouteRulesMatches::default()
                 }]),
                 filters: None,
-                backend_refs: Some(vec![gateway::HTTPRouteRulesBackendRefs {
+                backend_refs: Some(vec![gateway::HttpRouteRulesBackendRefs {
                     weight: None,
                     group: None,
                     kind: None,
@@ -368,14 +378,15 @@ async fn rejects_backend_service_implicit_without_port() {
                 }]),
                 ..Default::default()
             }]),
+            use_default_gateways: None,
         },
         status: None,
     })
     .await;
 }
 
-fn server_parent_ref(ns: impl ToString) -> gateway::HTTPRouteParentRefs {
-    gateway::HTTPRouteParentRefs {
+fn server_parent_ref(ns: impl ToString) -> gateway::HttpRouteParentRefs {
+    gateway::HttpRouteParentRefs {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("Server".to_string()),
         namespace: Some(ns.to_string()),
@@ -393,15 +404,15 @@ fn meta(ns: impl ToString) -> api::ObjectMeta {
     }
 }
 
-fn rules() -> Vec<gateway::HTTPRouteRules> {
-    vec![gateway::HTTPRouteRules {
+fn rules() -> Vec<gateway::HttpRouteRules> {
+    vec![gateway::HttpRouteRules {
         name: None,
-        matches: Some(vec![gateway::HTTPRouteRulesMatches {
-            path: Some(gateway::HTTPRouteRulesMatchesPath {
+        matches: Some(vec![gateway::HttpRouteRulesMatches {
+            path: Some(gateway::HttpRouteRulesMatchesPath {
                 value: Some("/foo".to_string()),
-                r#type: Some(gateway::HTTPRouteRulesMatchesPathType::Exact),
+                r#type: Some(gateway::HttpRouteRulesMatchesPathType::Exact),
             }),
-            ..gateway::HTTPRouteRulesMatches::default()
+            ..gateway::HttpRouteRulesMatches::default()
         }]),
         filters: None,
         backend_refs: None,

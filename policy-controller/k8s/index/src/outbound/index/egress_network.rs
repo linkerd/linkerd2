@@ -1,4 +1,4 @@
-use chrono::{offset::Utc, DateTime};
+use jiff::Timestamp;
 use linkerd_policy_controller_k8s_api::policy::{Cidr, Network, TrafficPolicy};
 use linkerd_policy_controller_k8s_api::{policy as linkerd_k8s_api, ResourceExt};
 use std::net::IpAddr;
@@ -8,7 +8,7 @@ pub(crate) struct EgressNetwork {
     pub networks: Vec<Network>,
     pub name: String,
     pub namespace: String,
-    pub creation_timestamp: Option<DateTime<Utc>>,
+    pub creation_timestamp: Option<Timestamp>,
     pub traffic_policy: TrafficPolicy,
 }
 
@@ -17,7 +17,7 @@ struct MatchedEgressNetwork {
     matched_network_size: usize,
     name: String,
     namespace: String,
-    creation_timestamp: Option<DateTime<Utc>>,
+    creation_timestamp: Option<Timestamp>,
     pub traffic_policy: TrafficPolicy,
 }
 
@@ -223,7 +223,7 @@ mod test {
                 }],
                 name: "net-1".to_string(),
                 namespace: EGRESS_NETS_NS.to_string(),
-                creation_timestamp: Some(DateTime::<Utc>::MAX_UTC),
+                creation_timestamp: Some(Timestamp::MAX),
                 traffic_policy: TrafficPolicy::Allow,
             },
             EgressNetwork {
@@ -233,7 +233,7 @@ mod test {
                 }],
                 name: "net-2".to_string(),
                 namespace: EGRESS_NETS_NS.to_string(),
-                creation_timestamp: Some(DateTime::<Utc>::MIN_UTC),
+                creation_timestamp: Some(Timestamp::MIN),
                 traffic_policy: TrafficPolicy::Allow,
             },
         ];
