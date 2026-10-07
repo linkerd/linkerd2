@@ -653,7 +653,7 @@ mod tests {
 
     /// Concurrent Watch() requests that one connection must be able to open
     /// before the server has read any of them.
-    const WATCHES: usize = 5_000;
+    const WATCHES: usize = (GRPC_INITIAL_CONNECTION_WINDOW_SIZE as usize / 256) / 2;
 
     /// Opens `WATCHES` requests on one HTTP/2 connection, each framed like a
     /// Watch() request (a non-final DATA frame, then an empty END_STREAM DATA
@@ -683,14 +683,14 @@ mod tests {
         let mut ping_pong = conn.ping_pong().expect("ping pong must be available");
         let conn = tokio::spawn(conn);
 
+        let req = http::Request::post(
+            "http://policy.test/io.linkerd.proxy.outbound_policy.OutboundPolicies/Watch",
+        )
+        .body(())
+        .expect("request must be valid");
         let mut streams = Vec::with_capacity(WATCHES);
         let mut survived = true;
         for _ in 0..WATCHES {
-            let req = http::Request::post(
-                "http://policy.test/io.linkerd.proxy.outbound_policy.OutboundPolicies/Watch",
-            )
-            .body(())
-            .expect("request must be valid");
             client = match client.ready().await {
                 Ok(client) => client,
                 Err(_) => {
@@ -698,10 +698,12 @@ mod tests {
                     break;
                 }
             };
-            let Ok((rsp, mut stream)) = client.send_request(req, false) else {
+            let Ok((rsp, mut stream)) = client.send_request(req.clone(), false) else {
                 survived = false;
                 break;
             };
+            // Frame the body like a Watch() request: the message in a
+            // non-final DATA frame, then an empty END_STREAM frame.
             if stream.send_data(Bytes::from_static(b"x"), false).is_err()
                 || stream.send_data(Bytes::new(), true).is_err()
             {
@@ -714,12 +716,10 @@ mod tests {
 
         // The server processes frames in order, so a PONG means it has
         // handled every DATA frame sent before the PING.
-        if survived {
-            survived = matches!(
-                timeout(Duration::from_secs(10), ping_pong.ping(h2::Ping::opaque())).await,
-                Ok(Ok(_))
-            );
-        }
+        survived &= timeout(Duration::from_secs(10), ping_pong.ping(h2::Ping::opaque()))
+            .await
+            .expect("ping must complete or fail before the timeout")
+            .is_ok();
 
         server.abort();
         conn.abort();
@@ -735,6 +735,8 @@ mod tests {
     async fn default_connection_window_does_not_allow_concurrent_watches() {
         // hyper's default HTTP/2 connection window, which tonic uses when the
         // window isn't set.
+        //
+        // https://github.com/hyperium/hyper/blob/f1b0876495cb042d228e8db00740056152ac131c/src/proto/h2/server.rs#L36
         assert!(!connection_survives_watches(1024 * 1024).await);
     }
 }
