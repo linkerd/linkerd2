@@ -233,6 +233,18 @@ const (
 	// to always require identity on inbound ports
 	ProxyRequireIdentityOnInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-require-identity-inbound-ports"
 
+	// ProxyProtocolV2InboundPortsAnnotation can be used to configure the proxy to
+	// prepend a HAProxy PROXY protocol v2 header, carrying the client's original
+	// source address and verified identity, on connections to these inbound ports
+	ProxyProtocolV2InboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-protocol-v2-inbound-ports"
+
+	// ProxyProtocolV1InboundPortsAnnotation can be used to configure the proxy to
+	// prepend a HAProxy PROXY protocol v1 (text) header, carrying only the
+	// client's original source address, on connections to these inbound ports.
+	// Version 1 cannot carry the client identity; it exists for applications
+	// that do not support v2. Must not overlap ProxyProtocolV2InboundPortsAnnotation.
+	ProxyProtocolV1InboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-protocol-v1-inbound-ports"
+
 	// ProxyOutboundConnectTimeout can be used to configure the outbound TCP connection
 	// timeout in the proxy
 	ProxyEnableHostnameLabels = ProxyConfigAnnotationsPrefix + "/proxy-metrics-hostname-labels"
