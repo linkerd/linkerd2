@@ -72,6 +72,7 @@ var (
 		k8s.ProxyInboundConnectTimeout,
 		k8s.ProxyAwait,
 		k8s.ProxyDefaultInboundPolicyAnnotation,
+		k8s.ProxyDefaultOutboundPolicyAnnotation,
 		k8s.ProxySkipSubnetsAnnotation,
 		k8s.ProxyAccessLogAnnotation,
 		k8s.ProxyShutdownGracePeriodAnnotation,
@@ -594,6 +595,14 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 			log.Warnf("unrecognized value used for the %s annotation, valid values are: [%s, %s, %s, %s, %s, %s]", k8s.ProxyDefaultInboundPolicyAnnotation, k8s.AllUnauthenticated, k8s.AllAuthenticated, k8s.ClusterUnauthenticated, k8s.ClusterAuthenticated, k8s.Deny, k8s.Audit)
 		} else {
 			values.Proxy.DefaultInboundPolicy = override
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyDefaultOutboundPolicyAnnotation]; ok {
+		if override != k8s.AllUnauthenticated && override != k8s.AllAuthenticated && override != k8s.ClusterAuthenticated {
+			log.Warnf("unrecognized value used for the %s annotation, valid values are: [%s, %s, %s]", k8s.ProxyDefaultOutboundPolicyAnnotation, k8s.AllUnauthenticated, k8s.AllAuthenticated, k8s.ClusterAuthenticated)
+		} else {
+			values.Proxy.DefaultOutboundPolicy = override
 		}
 	}
 

@@ -75,6 +75,10 @@ env:
     {"ns":"$(_pod_ns)", "pod":"$(_pod_name)"}
 - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
   value: {{.Values.proxy.defaultInboundPolicy}}
+{{ if .Values.proxy.defaultOutboundPolicy -}}
+- name: LINKERD2_PROXY_OUTBOUND_DEFAULT_POLICY
+  value: {{.Values.proxy.defaultOutboundPolicy}}
+{{ end -}}
 - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
   value: {{.Values.clusterNetworks | quote}}
 - name: LINKERD2_PROXY_CONTROL_STREAM_INITIAL_TIMEOUT
