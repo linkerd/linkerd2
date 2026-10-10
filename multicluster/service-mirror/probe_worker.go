@@ -9,13 +9,16 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha3"
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
+	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 // ProbeWorker is responsible for monitoring gateways using a probe specification
 type ProbeWorker struct {
 	localGatewayName string
+	localServices    corelisters.ServiceNamespaceLister
 	alive            bool
 	Liveness         chan bool
 	*sync.RWMutex
@@ -25,11 +28,15 @@ type ProbeWorker struct {
 	log       *logging.Entry
 }
 
-// NewProbeWorker creates a new probe worker associated with a particular gateway
-func NewProbeWorker(localGatewayName string, spec *v1alpha3.ProbeSpec, metrics *ProbeMetrics, probekey string) *ProbeWorker {
+// NewProbeWorker creates a new probe worker associated with a particular
+// gateway. localGatewayName is the name of the local probe service mirroring
+// the gateway, and localServices is used to look it up in order to find the
+// port it exposes.
+func NewProbeWorker(localGatewayName string, localServices corelisters.ServiceNamespaceLister, spec *v1alpha3.ProbeSpec, metrics *ProbeMetrics, probekey string) *ProbeWorker {
 	metrics.gatewayEnabled.Set(1)
 	return &ProbeWorker{
 		localGatewayName: localGatewayName,
+		localServices:    localServices,
 		Liveness:         make(chan bool, 10),
 		RWMutex:          &sync.RWMutex{},
 		probeSpec:        spec,
@@ -148,7 +155,7 @@ func (pw *ProbeWorker) doProbe() error {
 		Timeout: timeout,
 	}
 
-	urlAddress := net.JoinHostPort(pw.localGatewayName, pw.probeSpec.Port)
+	urlAddress := net.JoinHostPort(pw.localGatewayName, pw.probePort())
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s%s", urlAddress, pw.probeSpec.Path), nil)
 	if err != nil {
 		return fmt.Errorf("could not create a GET request to gateway: %w", err)
@@ -167,4 +174,33 @@ func (pw *ProbeWorker) doProbe() error {
 	}
 
 	return nil
+}
+
+// probePort returns the port to send probe requests to. Probes are sent to
+// the local probe service, whose mc-probe port is mapped by its Endpoints to
+// the gateway's probe port in the target cluster (i.e. the probe spec's
+// port). These ports can differ, e.g. when the gateway is exposed through a
+// NodePort service, in which case the probe spec's port is the node port.
+// Since the proxy rejects connections to ports that are not defined by the
+// service, the local service's port must be used. The probe spec's port is
+// only used as a fallback when the local service's port cannot be determined.
+func (pw *ProbeWorker) probePort() string {
+	if pw.localServices == nil {
+		return pw.probeSpec.Port
+	}
+
+	svc, err := pw.localServices.Get(pw.localGatewayName)
+	if err != nil {
+		pw.log.Debugf("Failed to get probe service %s, using probe spec port %s: %s", pw.localGatewayName, pw.probeSpec.Port, err)
+		return pw.probeSpec.Port
+	}
+
+	for _, port := range svc.Spec.Ports {
+		if port.Name == consts.ProbePortName {
+			return strconv.Itoa(int(port.Port))
+		}
+	}
+
+	pw.log.Debugf("Probe service %s has no port named %s, using probe spec port %s", pw.localGatewayName, consts.ProbePortName, pw.probeSpec.Port)
+	return pw.probeSpec.Port
 }
