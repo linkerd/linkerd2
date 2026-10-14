@@ -27,6 +27,16 @@ const RECONCILIATION_PERIOD: Duration = Duration::from_secs(10);
 // size to be the same as the reconciliation period in milliseconds.
 const STATUS_UPDATE_QUEUE_SIZE: usize = RECONCILIATION_PERIOD.as_millis() as usize;
 
+// h2 closes a connection with GOAWAY(ENHANCE_YOUR_CALM) once its budget for
+// small, non-final DATA frames is exhausted. Each such frame shorter than 256
+// bytes costs `256 - len` bytes of the budget until the server reads it. A
+// Watch() request body is one such frame, so a proxy that opens many watches
+// at once can exhaust the budget before the controller has read them. h2
+// sizes the budget at half the connection window, so a 2.5 MiB window gives a
+// 1.25 MiB budget: room for more than 5,000 unread Watch() requests on one
+// connection, where hyper's default 1 MiB window allows about 2,000.
+const GRPC_INITIAL_CONNECTION_WINDOW_SIZE: u32 = 5 * 512 * 1024;
+
 #[derive(Debug, Parser)]
 #[clap(name = "policy", about = "A policy resource controller")]
 pub struct Args {
@@ -527,7 +537,11 @@ async fn grpc(
 
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
-        let srv = Server::builder().add_service(inbound_svc).add_service(outbound_svc).serve_with_shutdown(addr, close_rx.map(|_| {}));
+        let srv = Server::builder()
+            .initial_connection_window_size(GRPC_INITIAL_CONNECTION_WINDOW_SIZE)
+            .add_service(inbound_svc)
+            .add_service(outbound_svc)
+            .serve_with_shutdown(addr, close_rx.map(|_| {}));
     }
 
     info!(%addr, "policy gRPC server listening");
@@ -629,4 +643,100 @@ where
                 watcher::Event::InitDone => Some(watcher::Event::<R>::InitDone),
             }
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GRPC_INITIAL_CONNECTION_WINDOW_SIZE;
+    use bytes::Bytes;
+    use tokio::time::{timeout, Duration};
+
+    /// Concurrent Watch() requests that one connection must be able to open
+    /// before the server has read any of them.
+    const WATCHES: usize = (GRPC_INITIAL_CONNECTION_WINDOW_SIZE as usize / 256) / 2;
+
+    /// Opens `WATCHES` requests on one HTTP/2 connection, each framed like a
+    /// Watch() request (a non-final DATA frame, then an empty END_STREAM DATA
+    /// frame), against a server with the given connection window that accepts
+    /// the requests but never reads their bodies. The 1-byte bodies are the
+    /// worst case for h2's small DATA frame budget. Returns whether the
+    /// connection is still open afterwards.
+    async fn connection_survives_watches(connection_window: u32) -> bool {
+        let (client_io, server_io) = tokio::io::duplex(1024 * 1024);
+
+        let server = tokio::spawn(async move {
+            let mut builder = h2::server::Builder::new();
+            builder.initial_connection_window_size(connection_window);
+            let mut conn = builder
+                .handshake::<_, Bytes>(server_io)
+                .await
+                .expect("server handshake must succeed");
+            let mut held = Vec::new();
+            while let Some(Ok(req)) = conn.accept().await {
+                held.push(req);
+            }
+        });
+
+        let (mut client, mut conn) = h2::client::handshake(client_io)
+            .await
+            .expect("client handshake must succeed");
+        let mut ping_pong = conn.ping_pong().expect("ping pong must be available");
+        let conn = tokio::spawn(conn);
+
+        let req = http::Request::post(
+            "http://policy.test/io.linkerd.proxy.outbound_policy.OutboundPolicies/Watch",
+        )
+        .body(())
+        .expect("request must be valid");
+        let mut streams = Vec::with_capacity(WATCHES);
+        let mut survived = true;
+        for _ in 0..WATCHES {
+            client = match client.ready().await {
+                Ok(client) => client,
+                Err(_) => {
+                    survived = false;
+                    break;
+                }
+            };
+            let Ok((rsp, mut stream)) = client.send_request(req.clone(), false) else {
+                survived = false;
+                break;
+            };
+            // Frame the body like a Watch() request: the message in a
+            // non-final DATA frame, then an empty END_STREAM frame.
+            if stream.send_data(Bytes::from_static(b"x"), false).is_err()
+                || stream.send_data(Bytes::new(), true).is_err()
+            {
+                survived = false;
+                break;
+            }
+            // Hold both halves of the stream so that it isn't reset.
+            streams.push((rsp, stream));
+        }
+
+        // The server processes frames in order, so a PONG means it has
+        // handled every DATA frame sent before the PING.
+        survived &= timeout(Duration::from_secs(10), ping_pong.ping(h2::Ping::opaque()))
+            .await
+            .expect("ping must complete or fail before the timeout")
+            .is_ok();
+
+        server.abort();
+        conn.abort();
+        survived
+    }
+
+    #[tokio::test]
+    async fn grpc_connection_window_allows_concurrent_watches() {
+        assert!(connection_survives_watches(GRPC_INITIAL_CONNECTION_WINDOW_SIZE).await);
+    }
+
+    #[tokio::test]
+    async fn default_connection_window_does_not_allow_concurrent_watches() {
+        // hyper's default HTTP/2 connection window, which tonic uses when the
+        // window isn't set.
+        //
+        // https://github.com/hyperium/hyper/blob/f1b0876495cb042d228e8db00740056152ac131c/src/proto/h2/server.rs#L36
+        assert!(!connection_survives_watches(1024 * 1024).await);
+    }
 }
