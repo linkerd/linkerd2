@@ -202,7 +202,7 @@ impl Args {
         // Determine which version of the TLSRoute API the cluster serves, if
         // any. This must happen before the status index and controller are
         // built, since they address routes by version.
-        let tls_route_api_version = tls_route_api_version(&runtime.client()).await;
+        let tls_route_api_version = tls_route_api_version(&runtime.client()).await?;
 
         // Build the status index which will maintain information necessary for
         // updating the status field of policy resources.
@@ -298,7 +298,7 @@ impl Args {
             .push(status_index.clone())
             .shared();
 
-        if api_resource_exists::<k8s::policy::HttpRoute>(&runtime.client()).await {
+        if api_resource_exists::<k8s::policy::HttpRoute>(&runtime.client()).await? {
             let http_routes = guarded_watch::<k8s::policy::HttpRoute, _>(
                 &mut runtime,
                 watcher::Config::default(),
@@ -314,7 +314,7 @@ impl Args {
             );
         }
 
-        if api_resource_exists::<gateway::HTTPRoute>(&runtime.client()).await {
+        if api_resource_exists::<gateway::HTTPRoute>(&runtime.client()).await? {
             let gateway_http_routes =
                 guarded_watch::<gateway::HTTPRoute, _>(&mut runtime, watcher::Config::default());
             tokio::spawn(
@@ -327,7 +327,7 @@ impl Args {
             );
         }
 
-        if api_resource_exists::<gateway::GRPCRoute>(&runtime.client()).await {
+        if api_resource_exists::<gateway::GRPCRoute>(&runtime.client()).await? {
             let gateway_grpc_routes =
                 guarded_watch::<gateway::GRPCRoute, _>(&mut runtime, watcher::Config::default());
             let gateway_grpc_routes_indexes = IndexList::new(outbound_index.clone())
@@ -383,7 +383,7 @@ impl Args {
             }
         }
 
-        if api_resource_exists::<gateway::TCPRoute>(&runtime.client()).await {
+        if api_resource_exists::<gateway::TCPRoute>(&runtime.client()).await? {
             let tcp_routes =
                 guarded_watch::<gateway::TCPRoute, _>(&mut runtime, watcher::Config::default());
             let tcp_routes_indexes = IndexList::new(status_index.clone())
@@ -555,7 +555,7 @@ async fn grpc(
     Ok(())
 }
 
-async fn api_resource_exists<T>(client: &Client) -> bool
+async fn api_resource_exists<T>(client: &Client) -> Result<bool>
 where
     T: Resource,
     T::DynamicType: Default,
@@ -564,14 +564,30 @@ where
     api_version_has_kind(client, &T::api_version(&dt), &T::kind(&dt)).await
 }
 
-async fn api_version_has_kind(client: &Client, api_version: &str, kind: &str) -> bool {
-    client
-        .list_api_group_resources(api_version)
-        .await
-        .ok()
-        .iter()
-        .flat_map(|r| r.resources.iter())
-        .any(|r| r.kind == kind)
+// Only a 404 means the group version is not served. Transient errors are
+// retried and anything else fails startup rather than silently skipping a watch.
+async fn api_version_has_kind(client: &Client, api_version: &str, kind: &str) -> Result<bool> {
+    let mut tries = 3;
+    loop {
+        tries -= 1;
+        let error = match client.list_api_group_resources(api_version).await {
+            Ok(list) => return Ok(list.resources.iter().any(|r| r.kind == kind)),
+            Err(k8s::Error::Api(error)) if error.code == 404 => return Ok(false),
+            Err(k8s::Error::Api(error)) if error.code >= 500 => (*error).into(),
+            Err(k8s::Error::Service(error)) => error,
+            Err(k8s::Error::HyperError(error)) => error.into(),
+            Err(error) => return Err(error.into()),
+        };
+        if tries == 0 {
+            bail!(error);
+        }
+        tracing::warn!(
+            ?error,
+            %api_version,
+            "Failed to list API resources, retrying in 1s..."
+        );
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
 }
 
 /// Returns the most preferred version of the TLSRoute API that the cluster
@@ -580,15 +596,15 @@ async fn api_version_has_kind(client: &Client, api_version: &str, kind: &str) ->
 /// TLSRoute has no version that is served by every supported Gateway API
 /// bundle: v1.2--v1.4 (and the CRDs vendored by the `linkerd-crds` chart) serve
 /// `v1alpha2`, while the standard channel of v1.5 serves `v1` only.
-async fn tls_route_api_version(client: &Client) -> Option<gateway::TlsRouteApiVersion> {
+async fn tls_route_api_version(client: &Client) -> Result<Option<gateway::TlsRouteApiVersion>> {
     let kind = gateway::TLSRoute::kind(&());
     for &version in gateway::TlsRouteApiVersion::ALL {
-        if api_version_has_kind(client, version.api_version(), &kind).await {
+        if api_version_has_kind(client, version.api_version(), &kind).await? {
             tracing::debug!(version = version.version(), "Found TLSRoute API version");
-            return Some(version);
+            return Ok(Some(version));
         }
     }
-    None
+    Ok(None)
 }
 
 /// Converts a watch event into one over an equivalent resource type.
@@ -738,5 +754,115 @@ mod tests {
         //
         // https://github.com/hyperium/hyper/blob/f1b0876495cb042d228e8db00740056152ac131c/src/proto/h2/server.rs#L36
         assert!(!connection_survives_watches(1024 * 1024).await);
+    }
+}
+
+#[cfg(test)]
+mod discovery_tests {
+    use super::api_version_has_kind;
+    use bytes::Bytes;
+    use http::{Request, Response, StatusCode};
+    use http_body_util::Full;
+    use kube::client::Body;
+    use std::{
+        collections::VecDeque,
+        convert::Infallible,
+        future::{ready, Ready},
+        sync::{Arc, Mutex},
+        task::{Context, Poll},
+    };
+    use tower::Service;
+
+    const API_VERSION: &str = "gateway.networking.k8s.io/v1";
+    const RESOURCES: &str = r#"{
+        "kind": "APIResourceList",
+        "apiVersion": "v1",
+        "groupVersion": "gateway.networking.k8s.io/v1",
+        "resources": [{
+            "name": "httproutes",
+            "singularName": "httproute",
+            "namespaced": true,
+            "kind": "HTTPRoute",
+            "verbs": ["get", "list", "watch"]
+        }]
+    }"#;
+
+    /// Stands in for the API server, answering each request with the next
+    /// queued response.
+    #[derive(Clone)]
+    struct Responses(Arc<Mutex<VecDeque<(StatusCode, &'static str)>>>);
+
+    impl Responses {
+        fn client(
+            responses: impl IntoIterator<Item = (StatusCode, &'static str)>,
+        ) -> (Self, kube::Client) {
+            let responses = Self(Arc::new(Mutex::new(responses.into_iter().collect())));
+            let client = kube::Client::new(responses.clone(), "default");
+            (responses, client)
+        }
+
+        fn remaining(&self) -> usize {
+            self.0.lock().unwrap().len()
+        }
+    }
+
+    impl Service<Request<Body>> for Responses {
+        type Response = Response<Full<Bytes>>;
+        type Error = Infallible;
+        type Future = Ready<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _: Request<Body>) -> Self::Future {
+            let (status, body) = self
+                .0
+                .lock()
+                .unwrap()
+                .pop_front()
+                .expect("unexpected request");
+            let rsp = Response::builder()
+                .status(status)
+                .body(Full::new(Bytes::from_static(body.as_bytes())))
+                .unwrap();
+            ready(Ok(rsp))
+        }
+    }
+
+    #[tokio::test]
+    async fn kind_is_found() {
+        let (responses, client) = Responses::client([(StatusCode::OK, RESOURCES)]);
+        let found = api_version_has_kind(&client, API_VERSION, "HTTPRoute").await;
+        assert!(found.unwrap());
+        assert_eq!(responses.remaining(), 0);
+    }
+
+    #[tokio::test]
+    async fn not_found_means_kind_is_absent() {
+        let (responses, client) =
+            Responses::client([(StatusCode::NOT_FOUND, "404 page not found")]);
+        let found = api_version_has_kind(&client, API_VERSION, "HTTPRoute").await;
+        assert!(!found.unwrap());
+        assert_eq!(responses.remaining(), 0);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn transient_error_is_retried() {
+        let (responses, client) = Responses::client([
+            (StatusCode::SERVICE_UNAVAILABLE, ""),
+            (StatusCode::OK, RESOURCES),
+        ]);
+        let found = api_version_has_kind(&client, API_VERSION, "HTTPRoute").await;
+        assert!(found.unwrap());
+        assert_eq!(responses.remaining(), 0);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn persistent_error_fails() {
+        let (responses, client) = Responses::client([(StatusCode::SERVICE_UNAVAILABLE, ""); 3]);
+        let found = api_version_has_kind(&client, API_VERSION, "HTTPRoute").await;
+        assert!(found.is_err());
+        assert_eq!(responses.remaining(), 0);
     }
 }
