@@ -24,6 +24,11 @@ import (
 
 const defaultExtraHeaderPrefix = "X-Remote-Extra-"
 
+var (
+	errNoTLS            = errors.New("TLS client connection required")
+	errDidNotAppendCert = errors.New("unable to append cert from client-ca-pem")
+)
+
 // Server holds the underlying http server and its config
 type Server struct {
 	*http.Server
@@ -67,14 +72,16 @@ func NewServer(
 		"addr":      addr,
 	})
 
-	clientCertPool := x509.NewCertPool()
-	clientCertPool.AppendCertsFromPEM([]byte(clientCAPem))
+	clientCertPool, err := newClientCertPool(clientCAPem)
+	if err != nil {
+		return nil, err
+	}
 
 	httpServer := &http.Server{
 		Addr:              addr,
 		ReadHeaderTimeout: 15 * time.Second,
 		TLSConfig: &tls.Config{
-			ClientAuth: tls.VerifyClientCertIfGiven,
+			ClientAuth: tls.RequireAndVerifyClientCert,
 			ClientCAs:  clientCertPool,
 			MinVersion: tls.VersionTLS13,
 		},
@@ -143,6 +150,9 @@ func (a *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 // validate ensures that the request should be honored returning an error otherwise.
 func (a *Server) validate(req *http.Request) error {
+	if req.TLS == nil {
+		return errNoTLS
+	}
 	// if `requestheader-allowed-names` was empty, allow any CN
 	if len(a.allowedNames) > 0 {
 		for _, cn := range a.allowedNames {
@@ -161,6 +171,16 @@ func (a *Server) validate(req *http.Request) error {
 		return fmt.Errorf("no valid CN found. allowed names: %s, client names: %s", a.allowedNames, clientNames)
 	}
 	return nil
+}
+
+// newClientCertPool builds the pool used to verify client certificates,
+// returning an error if no certificates could be parsed from clientCAPem.
+func newClientCertPool(clientCAPem string) (*x509.CertPool, error) {
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM([]byte(clientCAPem)) {
+		return nil, errDidNotAppendCert
+	}
+	return pool, nil
 }
 
 // serverAuth parses the relevant data out of a ConfigMap to enable client TLS

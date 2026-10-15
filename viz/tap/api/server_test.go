@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	k8sutils "github.com/linkerd/linkerd2/pkg/k8s"
+	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
 )
 
 func TestAPIServerAuth(t *testing.T) {
@@ -165,6 +167,67 @@ func TestValidate_ClientNotAllowed(t *testing.T) {
 	server := Server{allowedNames: []string{"name-trusted"}}
 	if err := server.validate(&req); err == nil {
 		t.Fatalf("Expected request to be rejected for %q", cert.Subject.CommonName)
+	}
+}
+
+func TestValidate_NoTLS(t *testing.T) {
+	testCases := []struct {
+		name         string
+		allowedNames []string
+	}{
+		{name: "any name allowed", allowedNames: nil},
+		{name: "names restricted", allowedNames: []string{"name-trusted"}},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // pin
+		t.Run(tc.name, func(t *testing.T) {
+			req := http.Request{}
+
+			server := Server{allowedNames: tc.allowedNames}
+			if err := server.validate(&req); !errors.Is(err, errNoTLS) {
+				t.Fatalf("Expected %q but encountered %v", errNoTLS, err)
+			}
+		})
+	}
+}
+
+func TestValidate_NoClientCertificate(t *testing.T) {
+	req := http.Request{TLS: &tls.ConnectionState{}}
+
+	server := Server{allowedNames: []string{"name-trusted"}}
+	if err := server.validate(&req); err == nil {
+		t.Fatal("Expected request without a client certificate to be rejected")
+	}
+}
+
+func TestNewClientCertPool(t *testing.T) {
+	ca, err := pkgTls.GenerateRootCAWithDefaults("client-ca")
+	if err != nil {
+		t.Fatalf("Failed to generate CA: %s", err)
+	}
+
+	testCases := []struct {
+		name        string
+		clientCAPem string
+		err         error
+	}{
+		{name: "valid PEM", clientCAPem: pkgTls.EncodeCertificatesPEM(ca.Cred.Crt.Certificate)},
+		{name: "empty", clientCAPem: "", err: errDidNotAppendCert},
+		{name: "not PEM", clientCAPem: "requestheader-client-ca-file", err: errDidNotAppendCert},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // pin
+		t.Run(tc.name, func(t *testing.T) {
+			pool, err := newClientCertPool(tc.clientCAPem)
+			if !errors.Is(err, tc.err) {
+				t.Fatalf("Expected error %v but encountered %v", tc.err, err)
+			}
+			if tc.err == nil && pool == nil {
+				t.Fatal("Expected a cert pool")
+			}
+		})
 	}
 }
 
