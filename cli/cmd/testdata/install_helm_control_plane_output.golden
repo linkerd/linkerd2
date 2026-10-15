@@ -522,7 +522,7 @@ data:
         labels: null
         protocol: ""
         traceServiceName: ""
-    controllerGID: -1
+    controllerGID: 2103
     controllerImage: cr.l5d.io/linkerd/controller
     controllerLogFormat: plain
     controllerLogLevel: info
@@ -678,7 +678,7 @@ data:
       enableExternalProfiles: false
       enableShutdownEndpoint: false
       experimentalEnv: null
-      gid: -1
+      gid: 2102
       image:
         name: cr.l5d.io/linkerd/proxy
         pullPolicy: ""
@@ -982,6 +982,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1152,6 +1153,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2102
+          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1172,6 +1174,8 @@ spec:
         - --outgoing-proxy-port
         - "4140"
         - --proxy-uid
+        - "2102"
+        - --proxy-gid
         - "2102"
         - --inbound-ports-to-ignore
         - "4190,4191,222"
@@ -1426,6 +1430,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1465,6 +1470,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1520,6 +1526,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1542,6 +1549,8 @@ spec:
         - --outgoing-proxy-port
         - "4140"
         - --proxy-uid
+        - "2102"
+        - --proxy-gid
         - "2102"
         - --inbound-ports-to-ignore
         - "4190,4191,222"
@@ -1734,6 +1743,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2102
+          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1846,6 +1856,7 @@ spec:
               readOnlyRootFilesystem: true
               runAsNonRoot: true
               runAsUser: 2103
+              runAsGroup: 2103
               allowPrivilegeEscalation: false
               seccompProfile:
                 type: RuntimeDefault
@@ -1953,6 +1964,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1979,6 +1991,8 @@ spec:
         - --outgoing-proxy-port
         - "4140"
         - --proxy-uid
+        - "2102"
+        - --proxy-gid
         - "2102"
         - --inbound-ports-to-ignore
         - "4190,4191,222"
@@ -2171,6 +2185,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2102
+          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
