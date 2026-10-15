@@ -244,6 +244,9 @@ async fn create_fortio_pod(
                 ..Default::default()
             }],
             service_account_name: Some(name.to_string()),
+            // fortio is one-shot; without this the kubelet restarts it
+            // immediately and the logs fetched are from the new run.
+            restart_policy: Some("Never".to_string()),
             ..Default::default()
         }),
         ..k8s::Pod::default()
@@ -263,22 +266,21 @@ async fn fetch_fortio_rl(client: &kube::Client, ns: &str, name: &str) -> u32 {
 
     let log_params = LogParams {
         container: Some("fortio".to_string()),
-        tail_lines: Some(2),
         ..Default::default()
     };
     let api = kube::Api::<k8s::Pod>::namespaced(client.clone(), ns);
-    let result = api
+    let logs = api
         .logs(name, &log_params)
         .await
-        .expect("failed to fetch logs")
-        .split('\n')
-        .take(1)
-        .collect::<String>();
+        .expect("failed to fetch logs");
 
-    re.captures(&result)
-        .unwrap_or_else(|| panic!("failed to parse log: {result}"))
+    // Scan the whole log rather than assuming the line's position, so that
+    // fortio output changes or an aborted run surface the full log.
+    logs.lines()
+        .find_map(|line| re.captures(line))
+        .unwrap_or_else(|| panic!("failed to parse log:\n{logs}"))
         .get(1)
-        .unwrap_or_else(|| panic!("failed to parse log: {result}"))
+        .expect("pattern has one capture group")
         .as_str()
         .parse()
         .expect("failed to parse rate limit percentage")
