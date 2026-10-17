@@ -13,7 +13,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 type (
@@ -260,13 +259,10 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 // buffer, it attempts to parse it as a kubeconfig file. If successful, returns
 // a pair of API Server clients.
 func decodeK8sConfigFromSecret(data []byte, cluster string, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
-	cfg, err := clientcmd.RESTConfigFromKubeConfig(data)
+	cfg, err := pkgK8s.RESTConfigFromRemoteKubeConfig(data)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// Disallow the Exec auth provider.
-	cfg.ExecProvider = nil
 
 	ctx := context.Background()
 	var remoteAPI *k8s.API
