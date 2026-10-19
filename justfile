@@ -137,7 +137,7 @@ _cargo-test := _cargo + ```
 export POLICY_TEST_CONTEXT := env_var_or_default("POLICY_TEST_CONTEXT", "k3d-" + k3d-name)
 
 # Install linkerd in the test cluster and run the policy tests.
-policy-test: linkerd-install policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
+policy-test: linkerd-install policy-validator-ready policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
 
 _policy-test-tls-route-flags := if GATEWAY_API_TLS_ROUTE == "none" { "" } else if GATEWAY_API_TLS_ROUTE =~ '^v1(alpha2)?$' { " --features=gateway-api-tls-route-" + GATEWAY_API_TLS_ROUTE } else { error("GATEWAY_API_TLS_ROUTE must be 'v1', 'v1alpha2', or 'none'") }
 
@@ -388,11 +388,44 @@ _controller-build:
         --load
 
 _linkerd-ready:
+    # Wait for control plane deployment to be available.
+    if ! {{ _kubectl }} wait deployment --for=condition=available \
+            --namespace=linkerd --selector='linkerd.io/control-plane-component' \
+            --timeout=2m ; then \
+        echo 'ERROR: control plane deployments (identity, destination, proxy-injector) did not become Available within 2m (see descriptions below)' >&2 ; \
+        {{ _kubectl }} describe deployments,pods --namespace=linkerd ; \
+        exit 1 ; \
+    fi
+    # Wait for control plane pods to be ready. Checking pods before deployment is available results in
+    # an immediate failure.
     if ! {{ _kubectl }} wait pod --for=condition=ready \
             --namespace=linkerd --selector='linkerd.io/control-plane-component' \
             --timeout=1m ; then \
+        echo 'ERROR: control plane pods were not Ready within 1m (see pod descriptions below)' >&2 ; \
         {{ _kubectl }} describe pods --namespace=linkerd ; \
+        exit 1 ; \
     fi
+
+# Wait until the policy validator webhook serves admission requests.
+policy-validator-ready:
+    # Wait for the policy validator webhook to have an endpoint so admission is served.
+    for _ in $(seq 60) ; do \
+        if [ -n "$({{ _kubectl }} get endpoints --namespace=linkerd linkerd-policy-validator -o jsonpath='{.subsets[*].addresses[*].ip}')" ] ; then exit 0 ; fi ; \
+        sleep 1 ; \
+    done ; \
+    echo 'ERROR: Service linkerd/linkerd-policy-validator has no endpoints after 60s: the policy webhook is not being served, so admission would be skipped under failurePolicy=Ignore' >&2 ; \
+    {{ _kubectl }} describe endpoints --namespace=linkerd linkerd-policy-validator ; \
+    exit 1
+    # Probe the webhook: a server-side dry-run of an invalid AuthorizationPolicy (two MeshTLSAuthentication refs) must be denied by the policy validator. Only that denial proves the webhook is reachable through the proxy with a valid CA.
+    # Match the apiserver's denial line.
+    # https://github.com/kubernetes/apiserver/blob/a1b8e6fa9269c795a50d34e22fef9b0bc55f9fdb/pkg/admission/plugin/webhook/errors/statuserror.go#L29
+    for _ in $(seq 60) ; do \
+        out=$(printf '%s' '{"apiVersion":"policy.linkerd.io/v1alpha1","kind":"AuthorizationPolicy","metadata":{"name":"webhook-probe","namespace":"default"},"spec":{"targetRef":{"group":"policy.linkerd.io","kind":"Server","name":"probe"},"requiredAuthenticationRefs":[{"group":"policy.linkerd.io","kind":"MeshTLSAuthentication","name":"a"},{"group":"policy.linkerd.io","kind":"MeshTLSAuthentication","name":"b"}]}}' | {{ _kubectl }} create --dry-run=server -f - 2>&1) ; \
+        if echo "$out" | grep -qF 'admission webhook "linkerd-policy-validator.linkerd.io" denied the request' ; then exit 0 ; fi ; \
+        sleep 1 ; \
+    done ; \
+    echo "ERROR: policy validator webhook did not deny an invalid AuthorizationPolicy within 60s: it is unreachable or misconfigured, so admission would be skipped under failurePolicy=Ignore. Last response: $out" >&2 ; \
+    exit 1
 
 # Ensure that a linkerd control plane is installed
 _linkerd-init: && _linkerd-ready
