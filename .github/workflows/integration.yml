@@ -222,7 +222,14 @@ jobs:
       - run: docker load <image-archives/controller.tar
       - run: docker load <image-archives/proxy.tar
       - run: docker image ls
-      - run: just linkerd-tag='${{ needs.meta.outputs.tag }}' linkerd-exec="${{ runner.temp }}/linkerd" linkerd-install
+      - name: Install Linkerd
+        # Install Linkerd and check readiness.
+        run: just linkerd-tag='${{ needs.meta.outputs.tag }}' linkerd-exec="${{ runner.temp }}/linkerd" linkerd-install
+      - name: Wait for policy validator ready
+        # Check readiness by blocking until the policy validator webhook denies an invalid
+        # AuthorizationPolicy. Pod readiness alone does not prove the apiserver can reach the
+        # webhook, and with failurePolicy=Ignore an unreachable webhook admits invalid resources.
+        run: just policy-validator-ready
       - name: Load images
         run: |
           # Image loading is flakey in CI, so retry!
