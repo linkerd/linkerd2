@@ -351,7 +351,7 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		if err != nil {
 			log.Warnf("unrecognized proxy-outbound-connect-timeout duration value found on pod annotation: %s", err.Error())
 		} else {
-			values.Proxy.OutboundConnectTimeout = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+			values.Proxy.OutboundConnectTimeout = fmt.Sprintf("%dms", duration.Milliseconds())
 		}
 	}
 
@@ -360,7 +360,7 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		if err != nil {
 			log.Warnf("unrecognized proxy-inbound-connect-timeout duration value found on pod annotation: %s", err.Error())
 		} else {
-			values.Proxy.InboundConnectTimeout = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+			values.Proxy.InboundConnectTimeout = fmt.Sprintf("%dms", duration.Milliseconds())
 		}
 	}
 
@@ -405,7 +405,7 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		if err != nil {
 			log.Warnf("unrecognized proxy-shutdown-grace-period duration value found on pod annotation: %s", err.Error())
 		} else {
-			values.Proxy.ShutdownGracePeriod = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+			values.Proxy.ShutdownGracePeriod = fmt.Sprintf("%dms", duration.Milliseconds())
 		}
 	}
 

@@ -289,6 +289,28 @@ func TestGetOverriddenValues(t *testing.T) {
 				return values
 			},
 		},
+		{id: "use exact milliseconds for proxy timeouts",
+			nsAnnotations: map[string]string{
+				// Durations such as 1001ms are not exactly representable as
+				// float64 seconds, so they must not be converted through floats.
+				k8s.ProxyOutboundConnectTimeout:        "1001ms",
+				k8s.ProxyInboundConnectTimeout:         "2.47s",
+				k8s.ProxyShutdownGracePeriodAnnotation: "4060ms",
+			},
+			spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       corev1.PodSpec{},
+				},
+			},
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues()
+				values.Proxy.OutboundConnectTimeout = "1001ms"
+				values.Proxy.InboundConnectTimeout = "2470ms"
+				values.Proxy.ShutdownGracePeriod = "4060ms"
+				return values
+			},
+		},
 		{id: "use named port for opaque ports",
 			nsAnnotations: make(map[string]string),
 			spec: appsv1.DeploymentSpec{
