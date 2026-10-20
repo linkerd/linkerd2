@@ -242,6 +242,36 @@ func TestGetOverriddenValues(t *testing.T) {
 				return values
 			},
 		},
+		{id: "use deprecated beta native sidecar annotation from namespace",
+			nsAnnotations: map[string]string{
+				k8s.ProxyEnableNativeSidecarAnnotationBeta: "false",
+			},
+			spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{},
+				},
+			},
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues()
+				values.Proxy.NativeSidecar = false
+				return values
+			},
+		},
+		{id: "use deprecated alpha native sidecar annotation from namespace",
+			nsAnnotations: map[string]string{
+				k8s.ProxyEnableNativeSidecarAnnotationAlpha: "false",
+			},
+			spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{},
+				},
+			},
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues()
+				values.Proxy.NativeSidecar = false
+				return values
+			},
+		},
 		{id: "use invalid duration for proxy timeouts",
 			nsAnnotations: map[string]string{
 				k8s.ProxyOutboundConnectTimeout:               "6000",
