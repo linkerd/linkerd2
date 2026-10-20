@@ -61,10 +61,20 @@ ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH GO111MODULE=on \
     go build -o /out/linkerd2-proxy-init -mod=readonly -ldflags "-s -w" -v ./proxy-init
 
+## build a minimal sysctl binary for proxy-init
+FROM --platform=$BUILDPLATFORM golang:1.26.7-alpine AS proxy-init-sysctl
+WORKDIR /linkerd-build
+COPY go.mod ./
+COPY bin/proxy-init-sysctl ./bin/proxy-init-sysctl
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH \
+    go build -o /out/sysctl -mod=readonly -ldflags "-s -w" ./bin/proxy-init-sysctl
+
 FROM $RUNTIME_IMAGE-$TARGETARCH AS runtime
 LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 
 COPY --from=proxy-init /out/linkerd2-proxy-init /usr/lib/linkerd/linkerd2-proxy-init
+COPY --from=proxy-init-sysctl /out/sysctl /usr/bin/sysctl
 # Set sys caps for iptables utilities and proxy-init
 USER root
 RUN ["/usr/sbin/setcap", "cap_net_raw,cap_net_admin+eip", "/usr/sbin/xtables-legacy-multi"]
