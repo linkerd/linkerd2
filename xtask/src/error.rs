@@ -8,12 +8,24 @@ pub enum XtaskError {
     Client(String),
     /// The policy validator webhook did not become ready; carries the full explanation.
     PolicyValidator(String),
+    /// Control plane Deployments did not become available; names those that are not.
+    ///
+    /// Empty when no Deployment matched, so none could become available.
+    ControlPlaneReady(Vec<String>),
 }
 
 impl fmt::Display for XtaskError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Client(message) | Self::PolicyValidator(message) => f.write_str(message),
+            Self::ControlPlaneReady(names) if names.is_empty() => {
+                f.write_str("no control plane Deployments found")
+            }
+            Self::ControlPlaneReady(names) => write!(
+                f,
+                "control plane Deployments not Available: {}",
+                names.join(", ")
+            ),
         }
     }
 }

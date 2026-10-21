@@ -7,10 +7,12 @@
 mod error;
 mod jobs;
 mod kube;
+mod utils;
 
 use crate::kube::Cluster;
 use clap::{Parser, Subcommand};
 use error::XtaskError;
+use jobs::control_plane::ControlPlaneReady;
 use jobs::validator::{PolicyValidatorDenial, PolicyValidatorWaitEndpoint};
 
 /// Developer tasks for the linkerd2 workspace.
@@ -25,6 +27,8 @@ struct Cli {
 /// A task named on the command line.
 #[derive(Debug, PartialEq, Eq, Subcommand)]
 enum Command {
+    /// Wait until every control plane Deployment is available.
+    ControlPlaneReady,
     /// Wait until the policy validator webhook serves admission requests.
     PolicyValidatorReady,
 }
@@ -33,6 +37,10 @@ impl Command {
     /// Runs the task to completion.
     async fn run(self) -> Result<(), XtaskError> {
         match self {
+            Self::ControlPlaneReady => {
+                let client = Cluster::connect().await?;
+                ControlPlaneReady::new(client).run().await
+            }
             Self::PolicyValidatorReady => {
                 let client = Cluster::connect().await?;
                 PolicyValidatorWaitEndpoint::new(client.clone())
