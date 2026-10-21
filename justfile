@@ -390,13 +390,7 @@ _controller-build:
 
 _linkerd-ready:
     # Wait for control plane deployment to be available.
-    if ! {{ _kubectl }} wait deployment --for=condition=available \
-            --namespace=linkerd --selector='linkerd.io/control-plane-component' \
-            --timeout=2m ; then \
-        echo 'ERROR: control plane deployments (identity, destination, proxy-injector) did not become Available within 2m (see descriptions below)' >&2 ; \
-        {{ _kubectl }} describe deployments,pods --namespace=linkerd ; \
-        exit 1 ; \
-    fi
+    {{ _cargo }} xtask control-plane-ready
     # Wait for control plane pods to be ready. Checking pods before deployment is available results in
     # an immediate failure.
     if ! {{ _kubectl }} wait pod --for=condition=ready \
