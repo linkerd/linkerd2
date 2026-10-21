@@ -9,6 +9,7 @@ members = [
     "policy-controller/k8s/status",
     "policy-controller/runtime",
     "policy-test",
+    "xtask",
 ]
 
 [profile.release]
