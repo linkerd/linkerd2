@@ -310,16 +310,16 @@ start_test() {
 
   case $name in
     cluster-domain)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=servicelb,traefik@server:0' --image "$k8s_version_max")
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=gateway-api-crd,servicelb,traefik@server:0' --image "$k8s_version_max")
       ;;
     cni-calico-deep)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=servicelb,traefik@server:0')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=gateway-api-crd,servicelb,traefik@server:0')
       ;;
     multicluster)
       config=("${config[@]}" --network multicluster-test --image "$k8s_version_max")
       ;;
     *)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=servicelb,traefik@server:0' --image "$k8s_version_max")
+      config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=gateway-api-crd,servicelb,traefik@server:0' --image "$k8s_version_max")
       ;;
   esac
 

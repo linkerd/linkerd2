@@ -185,7 +185,7 @@ k3d-k8s := "latest"
 k3d-agents := "0"
 k3d-servers := "1"
 
-_k3d-flags := "--no-lb --k3s-arg --disable='local-storage,traefik,servicelb,metrics-server@server:*'"
+_k3d-flags := "--no-lb --k3s-arg --disable='gateway-api-crd,local-storage,traefik,servicelb,metrics-server@server:*'"
 
 _context := "--context=k3d-" + k3d-name
 _kubectl := "kubectl " + _context
@@ -481,7 +481,7 @@ _linkerd-viz-uninit:
 ## linkerd multicluster
 ##
 
-_mc-target-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*' --k3s-arg '--cluster-cidr=10.23.0.0/24@server:*'"
+_mc-target-k3d-flags := "--k3s-arg --disable='gateway-api-crd,local-storage,metrics-server@server:*' --k3s-arg '--cluster-cidr=10.23.0.0/24@server:*'"
 
 linkerd-mc-install: _linkerd-init
     {{ _linkerd }} mc install --set='linkerdVersion={{ linkerd-tag }}' \
