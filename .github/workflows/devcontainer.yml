@@ -15,7 +15,7 @@ permissions:
 jobs:
   rust-version:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v51-rust
+    container: ghcr.io/linkerd/dev:v50-rust
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - shell: bash

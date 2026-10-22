@@ -29,7 +29,7 @@ jobs:
     if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 10
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v51-go
+    container: ghcr.io/linkerd/dev:v50-go
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
@@ -43,7 +43,7 @@ jobs:
     if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 10
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v51-go
+    container: ghcr.io/linkerd/dev:v50-go
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
@@ -57,7 +57,7 @@ jobs:
     if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 30
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v51-go
+    container: ghcr.io/linkerd/dev:v50-go
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e

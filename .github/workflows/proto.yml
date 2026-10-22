@@ -15,7 +15,7 @@ jobs:
   proto-diff:
     timeout-minutes: 10
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
-    container: ghcr.io/linkerd/dev:v51-go
+    container: ghcr.io/linkerd/dev:v50-go
     steps:
       - run: apt update && apt install -y unzip
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
