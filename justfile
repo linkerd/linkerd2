@@ -2,7 +2,7 @@
 
 lint: action-lint action-dev-check md-lint sh-lint rs-fetch rs-clippy rs-check-fmt go-lint
 
-export GWAPI_VERSION := "v1.2.0"
+export GWAPI_VERSION := "v1.6.1"
 
 ##
 ## Go
@@ -295,7 +295,7 @@ proxy-image := DOCKER_REGISTRY + "/proxy"
 # When GATEWAY_API_VERSION is 'linkerd' we use the CLI's vendored gateway API
 # CRDs. Otherwise, we install the CRDs from the upstream release.
 # This should be kept up-to-date with the latest stable release of the gateway API.
-export GATEWAY_API_VERSION := env_var_or_default("GATEWAY_API_VERSION", "v1.5.1")
+export GATEWAY_API_VERSION := env_var_or_default("GATEWAY_API_VERSION", "v1.6.1")
 
 # When GATEWAY_API_CHANNEL is 'experimental', we enable testing of experimental
 # resource types (TCPRoute). Alternatively, the 'standard' channel may be used.
