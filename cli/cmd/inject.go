@@ -489,6 +489,10 @@ func getOverrideAnnotations(values *linkerd2.Values, base *linkerd2.Values) map[
 		overrideAnnotations[k8s.ProxyDefaultInboundPolicyAnnotation] = proxy.DefaultInboundPolicy
 	}
 
+	if proxy.DefaultOutboundPolicy != baseProxy.DefaultOutboundPolicy {
+		overrideAnnotations[k8s.ProxyDefaultOutboundPolicyAnnotation] = proxy.DefaultOutboundPolicy
+	}
+
 	if proxy.AccessLog != baseProxy.AccessLog {
 		overrideAnnotations[k8s.ProxyAccessLogAnnotation] = proxy.AccessLog
 	}

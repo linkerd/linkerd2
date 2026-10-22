@@ -119,11 +119,12 @@ func TestRender(t *testing.T) {
 				Inbound:  4143,
 				Outbound: 4140,
 			},
-			UID:                  2102,
-			GID:                  proxyGID,
-			OpaquePorts:          "25,443,587,3306,5432,11211",
-			Await:                true,
-			DefaultInboundPolicy: "default-allow-policy",
+			UID:                   2102,
+			GID:                   proxyGID,
+			OpaquePorts:           "25,443,587,3306,5432,11211",
+			Await:                 true,
+			DefaultInboundPolicy:  "default-allow-policy",
+			DefaultOutboundPolicy: "all-authenticated",
 			Metrics: &charts.ProxyMetrics{
 				HostnameLabels: false,
 			},
@@ -1018,6 +1019,45 @@ func TestValidate(t *testing.T) {
 		}
 		if err.Error() != expected {
 			t.Fatalf("Expected error string \"%s\", got \"%s\"", expected, err)
+		}
+	})
+
+	t.Run("Rejects invalid default-outbound-policy", func(t *testing.T) {
+		// "everybody" is not a valid policy at all. deny,
+		// cluster-unauthenticated and audit are valid inbound values but are
+		// not implemented by the proxy for the outbound default policy.
+		for _, tc := range []struct {
+			policy       string
+			validInbound bool
+		}{
+			{"everybody", false},
+			{"deny", true},
+			{"cluster-unauthenticated", true},
+			{"audit", true},
+		} {
+			values, err := testInstallOptions()
+			if err != nil {
+				t.Fatalf("Unexpected error: %v\n", err)
+			}
+
+			// Values that are valid for inbound must remain so.
+			if tc.validInbound {
+				values.Proxy.DefaultInboundPolicy = tc.policy
+				if err := validateValues(context.Background(), nil, values); err != nil {
+					t.Fatalf("Expected %q to be a valid inbound policy, got error: %v", tc.policy, err)
+				}
+			}
+
+			// ...but be rejected for outbound.
+			values.Proxy.DefaultOutboundPolicy = tc.policy
+			expected := fmt.Sprintf("--default-outbound-policy must be one of: all-unauthenticated, all-authenticated, cluster-authenticated (got %s)", tc.policy)
+			err = validateValues(context.Background(), nil, values)
+			if err == nil {
+				t.Fatalf("Expected error for outbound policy %q, got nothing", tc.policy)
+			}
+			if err.Error() != expected {
+				t.Fatalf("Expected error string \"%s\", got \"%s\"", expected, err)
+			}
 		}
 	})
 }
