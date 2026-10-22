@@ -13,6 +13,11 @@ import (
 ///   TEST SETUP   ///
 //////////////////////
 
+const (
+	// calicoVer installed by the test cases below.
+	calicoVer = "v3.33.0"
+)
+
 var (
 	TestHelper *testutil.TestHelper
 )
@@ -34,7 +39,9 @@ func TestInstallCalico(t *testing.T) {
 	var out string
 	err := testutil.RetryFor(time.Minute, func() error {
 		var err error
-		out, err = TestHelper.Kubectl("", []string{"apply", "-f", "https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/tigera-operator.yaml"}...)
+		out, err = TestHelper.Kubectl("", []string{"apply", "-f", fmt.Sprintf(
+			"https://raw.githubusercontent.com/projectcalico/calico/%s/manifests/tigera-operator.yaml",
+			calicoVer)}...)
 		if err != nil {
 			return err
 		}
@@ -47,7 +54,9 @@ func TestInstallCalico(t *testing.T) {
 		}
 		TestHelper.WaitRollout(t, deploys)
 
-		out, err = TestHelper.Kubectl("", []string{"apply", "-f", "https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/custom-resources.yaml"}...)
+		out, err = TestHelper.Kubectl("", []string{"apply", "-f", fmt.Sprintf(
+			"https://raw.githubusercontent.com/projectcalico/calico/%s/manifests/custom-resources.yaml",
+			calicoVer)}...)
 		if err != nil {
 			return err
 		}
