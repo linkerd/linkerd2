@@ -155,20 +155,20 @@ func (a *Server) validate(req *http.Request) error {
 	}
 	// if `requestheader-allowed-names` was empty, allow any CN
 	if len(a.allowedNames) > 0 {
+		// Only the leaf is verified against the client CA. Any other
+		// certificates sent by the client are untrusted and must not be
+		// matched against the allowed names.
+		if len(req.TLS.PeerCertificates) == 0 {
+			return fmt.Errorf("no valid CN found. allowed names: %s, no client certificate", a.allowedNames)
+		}
+		clientCert := req.TLS.PeerCertificates[0]
 		for _, cn := range a.allowedNames {
-			for _, clientCert := range req.TLS.PeerCertificates {
-				// Check Common Name and Subject Alternate Name(s)
-				if cn == clientCert.Subject.CommonName || isSubjectAlternateName(clientCert, cn) {
-					return nil
-				}
+			// Check Common Name and Subject Alternate Name(s)
+			if cn == clientCert.Subject.CommonName || isSubjectAlternateName(clientCert, cn) {
+				return nil
 			}
 		}
-		// Build the set of certificate names for the error message
-		clientNames := []string{}
-		for _, clientCert := range req.TLS.PeerCertificates {
-			clientNames = append(clientNames, clientCert.Subject.CommonName)
-		}
-		return fmt.Errorf("no valid CN found. allowed names: %s, client names: %s", a.allowedNames, clientNames)
+		return fmt.Errorf("no valid CN found. allowed names: %s, client name: %s", a.allowedNames, clientCert.Subject.CommonName)
 	}
 	return nil
 }
