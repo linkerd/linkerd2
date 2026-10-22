@@ -2,7 +2,7 @@
 
 lint: action-lint action-dev-check md-lint sh-lint rs-fetch rs-clippy rs-check-fmt go-lint
 
-export GWAPI_VERSION := "v1.6.1"
+export GWAPI_VERSION := env_var_or_default("GWAPI_VERSION", "v1.6.1")
 
 ##
 ## Go
@@ -519,7 +519,7 @@ mc-target-load:
         mc-load
 
 mc-install-gwapi:
-	{{ _kubectl }} apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/${GWAPI_VERSION}/experimental-install.yaml
+	{{ _kubectl }} apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/${GWAPI_VERSION}/experimental-install.yaml
 
 mc-test-build:
     go build --mod=readonly \
