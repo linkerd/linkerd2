@@ -168,12 +168,6 @@ jobs:
           - version: linkerd
             channel: experimental
             tls-route: v1alpha2
-          - version: v1.5.1
-            channel: experimental
-            tls-route: v1
-          - version: v1.5.1
-            channel: standard
-            tls-route: v1
           - version: v1.6.1
             channel: experimental
             tls-route: v1
