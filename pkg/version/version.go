@@ -12,7 +12,7 @@ import (
 // DO NOT EDIT
 var Version = undefinedVersion
 
-var LinkerdCNIVersion = "v1.7.0"
+var LinkerdCNIVersion = "v1.7.1"
 
 const (
 	// undefinedVersion should take the form `channel-version` to conform to
