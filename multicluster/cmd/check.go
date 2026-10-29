@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -402,13 +401,11 @@ func (hc *healthChecker) checkRemoteClusterConnectivity(ctx context.Context) err
 			errors = append(errors, fmt.Errorf("* secret: [%s/%s]: could not parse config secret: %w", secret.Namespace, secret.Name, err))
 			continue
 		}
-		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
+		clientConfig, err := k8s.RESTConfigFromRemoteKubeConfig(config)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %w", secret.Namespace, secret.Name, link.Spec.TargetClusterName, err))
 			continue
 		}
-		// Disallow the Exec auth provider.
-		clientConfig.ExecProvider = nil
 		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, healthcheck.RequestTimeout, 0, 0)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %w", secret.Namespace, secret.Name, link.Spec.TargetClusterName, err))
@@ -452,13 +449,11 @@ func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnc
 			errors = append(errors, fmt.Sprintf("* secret: [%s/%s]: could not parse config secret: %s", secret.Namespace, secret.Name, err))
 			continue
 		}
-		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
+		clientConfig, err := k8s.RESTConfigFromRemoteKubeConfig(config)
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, link.Spec.TargetClusterName, err))
 			continue
 		}
-		// Disallow the Exec auth provider.
-		clientConfig.ExecProvider = nil
 		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, healthcheck.RequestTimeout, 0, 0)
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, link.Spec.TargetClusterName, err))
