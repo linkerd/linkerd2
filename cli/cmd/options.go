@@ -8,6 +8,7 @@ import (
 
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 	"time"
 
@@ -369,6 +370,12 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				return nil
 			}),
 
+		flag.NewStringFlag(proxyFlags, "default-outbound-policy", defaults.Proxy.DefaultOutboundPolicy, "Outbound policy to use to control outbound access from the proxy",
+			func(values *l5dcharts.Values, value string) error {
+				values.Proxy.DefaultOutboundPolicy = value
+				return nil
+			}),
+
 		// Deprecated flags
 
 		flag.NewStringFlag(proxyFlags, "proxy-memory", defaults.Proxy.Resources.Memory.Request, "Amount of Memory that the proxy sidecar requests",
@@ -612,21 +619,46 @@ func validateProxyValues(values *l5dcharts.Values) error {
 		}
 	}
 
-	if err := validatePolicy(values.Proxy.DefaultInboundPolicy); err != nil {
+	if err := validatePolicy(inboundPolicy, values.Proxy.DefaultInboundPolicy); err != nil {
+		return err
+	}
+
+	if err := validatePolicy(outboundPolicy, values.Proxy.DefaultOutboundPolicy); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func validatePolicy(policy string) error {
-	validPolicies := []string{"all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny", "audit"}
-	for _, p := range validPolicies {
-		if p == policy {
-			return nil
-		}
+// policyFlag pairs a policy flag's name with its accepted values. Its fields
+// are unexported and its zero value is useless, so validatePolicy can only be
+// called with one of the package-level instances declared below — the compiler
+// rejects any attempt to validate against an unknown policy.
+type policyFlag struct {
+	name        string
+	validValues []string
+}
+
+var (
+	inboundPolicy = policyFlag{
+		name:        "default-inbound-policy",
+		validValues: []string{"all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny", "audit"},
 	}
-	return fmt.Errorf("--default-inbound-policy must be one of: %s (got %s)", strings.Join(validPolicies, ", "), policy)
+
+	// The outbound proxy implements the default policy as an mTLS requirement
+	// on resolved endpoints, so only these three values are meaningful; deny,
+	// cluster-unauthenticated and audit are inbound-only.
+	outboundPolicy = policyFlag{
+		name:        "default-outbound-policy",
+		validValues: []string{"all-unauthenticated", "all-authenticated", "cluster-authenticated"},
+	}
+)
+
+func validatePolicy(policy policyFlag, value string) error {
+	if slices.Contains(policy.validValues, value) {
+		return nil
+	}
+	return fmt.Errorf("--%s must be one of: %s (got %q)", policy.name, strings.Join(policy.validValues, ", "), value)
 }
 
 // initializeIssuerCredentials populates the identity issuer TLS credentials.
