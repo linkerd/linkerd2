@@ -2,7 +2,7 @@
 
 lint: action-lint action-dev-check md-lint sh-lint rs-fetch rs-clippy rs-check-fmt go-lint
 
-export GWAPI_VERSION := "v1.2.0"
+export GWAPI_VERSION := env_var_or_default("GWAPI_VERSION", "v1.6.1")
 
 ##
 ## Go
@@ -185,7 +185,7 @@ k3d-k8s := "latest"
 k3d-agents := "0"
 k3d-servers := "1"
 
-_k3d-flags := "--no-lb --k3s-arg --disable='local-storage,traefik,servicelb,metrics-server@server:*'"
+_k3d-flags := "--no-lb --k3s-arg --disable='gateway-api-crd,local-storage,traefik,servicelb,metrics-server@server:*'"
 
 _context := "--context=k3d-" + k3d-name
 _kubectl := "kubectl " + _context
@@ -295,7 +295,7 @@ proxy-image := DOCKER_REGISTRY + "/proxy"
 # When GATEWAY_API_VERSION is 'linkerd' we use the CLI's vendored gateway API
 # CRDs. Otherwise, we install the CRDs from the upstream release.
 # This should be kept up-to-date with the latest stable release of the gateway API.
-export GATEWAY_API_VERSION := env_var_or_default("GATEWAY_API_VERSION", "v1.5.1")
+export GATEWAY_API_VERSION := env_var_or_default("GATEWAY_API_VERSION", "v1.6.1")
 
 # When GATEWAY_API_CHANNEL is 'experimental', we enable testing of experimental
 # resource types (TCPRoute). Alternatively, the 'standard' channel may be used.
@@ -481,7 +481,7 @@ _linkerd-viz-uninit:
 ## linkerd multicluster
 ##
 
-_mc-target-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*' --k3s-arg '--cluster-cidr=10.23.0.0/24@server:*'"
+_mc-target-k3d-flags := "--k3s-arg --disable='gateway-api-crd,local-storage,metrics-server@server:*' --k3s-arg '--cluster-cidr=10.23.0.0/24@server:*'"
 
 linkerd-mc-install: _linkerd-init
     {{ _linkerd }} mc install --set='linkerdVersion={{ linkerd-tag }}' \
@@ -519,7 +519,7 @@ mc-target-load:
         mc-load
 
 mc-install-gwapi:
-	{{ _kubectl }} apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/${GWAPI_VERSION}/experimental-install.yaml
+	{{ _kubectl }} apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/${GWAPI_VERSION}/experimental-install.yaml
 
 mc-test-build:
     go build --mod=readonly \

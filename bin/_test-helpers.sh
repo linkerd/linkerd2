@@ -5,7 +5,7 @@
 set +e
 
 k8s_version_min='+v1.31'
-k8s_version_max='docker.io/rancher/k3s:v1.36.3-k3s1'
+k8s_version_max='docker.io/rancher/k3s:v1.37.1-k3s1'
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 testdir=$bindir/../test/integration
@@ -310,16 +310,16 @@ start_test() {
 
   case $name in
     cluster-domain)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=servicelb,traefik@server:0' --image "$k8s_version_max")
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=gateway-api-crd,servicelb,traefik@server:0' --image "$k8s_version_max")
       ;;
     cni-calico-deep)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=servicelb,traefik@server:0')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=gateway-api-crd,servicelb,traefik@server:0' --image "$k8s_version_max")
       ;;
     multicluster)
       config=("${config[@]}" --network multicluster-test --image "$k8s_version_max")
       ;;
     *)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=servicelb,traefik@server:0' --image "$k8s_version_max")
+      config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=gateway-api-crd,servicelb,traefik@server:0' --image "$k8s_version_max")
       ;;
   esac
 
