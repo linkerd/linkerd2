@@ -62,6 +62,7 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyVersionOverrideAnnotation:               proxyVersionOverride,
 							k8s.ProxyWaitBeforeExitSecondsAnnotation:         "123",
 							k8s.ProxyRequireIdentityOnInboundPortsAnnotation: "8888,9999",
+							k8s.ProxyProtocolV2InboundPortsAnnotation:        "5432",
 							k8s.ProxyOutboundConnectTimeout:                  "6000ms",
 							k8s.ProxyInboundConnectTimeout:                   "600ms",
 							k8s.ProxyOpaquePortsAnnotation:                   "4320-4325,3306",
@@ -114,6 +115,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.ProxyInit.IgnoreOutboundPorts = "8079,8080"
 				values.ProxyInit.SkipSubnets = "172.17.0.0/16"
 				values.Proxy.RequireIdentityOnInboundPorts = "8888,9999"
+				values.Proxy.ProxyProtocolV2InboundPorts = "5432"
 				values.Proxy.OutboundConnectTimeout = "6000ms"
 				values.Proxy.InboundConnectTimeout = "600ms"
 				values.Proxy.OpaquePorts = "4320-4325,3306"
