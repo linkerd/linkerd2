@@ -137,7 +137,7 @@ _cargo-test := _cargo + ```
 export POLICY_TEST_CONTEXT := env_var_or_default("POLICY_TEST_CONTEXT", "k3d-" + k3d-name)
 
 # Install linkerd in the test cluster and run the policy tests.
-policy-test: linkerd-install policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
+policy-test: linkerd-install policy-validator-ready policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
 
 _policy-test-tls-route-flags := if GATEWAY_API_TLS_ROUTE == "none" { "" } else if GATEWAY_API_TLS_ROUTE =~ '^v1(alpha2)?$' { " --features=gateway-api-tls-route-" + GATEWAY_API_TLS_ROUTE } else { error("GATEWAY_API_TLS_ROUTE must be 'v1', 'v1alpha2', or 'none'") }
 
@@ -150,6 +150,7 @@ policy-test-run *flags:
 # Build the policy tests without running them.
 policy-test-build:
     cd policy-test && {{ _cargo-test }} --no-run {{ _policy-test-flags }}
+    {{ _cargo }} build --package xtask
 
 # Delete all test namespaces and remove linkerd from the cluster.
 policy-test-cleanup:
@@ -388,11 +389,21 @@ _controller-build:
         --load
 
 _linkerd-ready:
+    # Wait for control plane deployment to be available.
+    {{ _cargo }} xtask control-plane-ready
+    # Wait for control plane pods to be ready. Checking pods before deployment is available results in
+    # an immediate failure.
     if ! {{ _kubectl }} wait pod --for=condition=ready \
             --namespace=linkerd --selector='linkerd.io/control-plane-component' \
             --timeout=1m ; then \
+        echo 'ERROR: control plane pods were not Ready within 1m (see pod descriptions below)' >&2 ; \
         {{ _kubectl }} describe pods --namespace=linkerd ; \
+        exit 1 ; \
     fi
+
+# Wait until the policy validator webhook serves admission requests.
+policy-validator-ready:
+    {{ _cargo }} xtask policy-validator-ready
 
 # Ensure that a linkerd control plane is installed
 _linkerd-init: && _linkerd-ready
