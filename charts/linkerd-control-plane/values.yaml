@@ -341,6 +341,10 @@ proxyInit:
   kubeAPIServerPorts: "443,6443"
   # -- Comma-separated list of subnets in valid CIDR format that should be skipped by the proxy
   skipSubnets: ""
+  # -- Comma-separated list of inbound source subnets in valid CIDR format that should be skipped by the proxy
+  skipInboundSubnets: ""
+  # -- Comma-separated list of outbound destination subnets in valid CIDR format that should be skipped by the proxy
+  skipOutboundSubnets: ""
   # -- Log level for the proxy-init
   # @default -- info
   logLevel: ""
