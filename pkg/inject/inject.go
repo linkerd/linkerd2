@@ -83,10 +83,14 @@ var (
 		k8s.ProxyAdditionalEnvAnnotation,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
-	// (config.alpha prefix) that can be applied to a pod or namespace.
+	// (config.alpha prefix) that can be applied to a pod or namespace. It also
+	// holds the deprecated native sidecar annotations, which are kept out of
+	// ProxyAnnotations because they map to the same metric label as the
+	// current one.
 	ProxyAlphaConfigAnnotations = []string{
 		k8s.ProxyWaitBeforeExitSecondsAnnotation,
 		k8s.ProxyEnableNativeSidecarAnnotationAlpha,
+		k8s.ProxyEnableNativeSidecarAnnotationBeta,
 	}
 )
 
