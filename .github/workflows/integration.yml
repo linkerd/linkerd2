@@ -157,8 +157,10 @@ jobs:
       matrix:
         # Test the latest Kubernetes version with the latest Gateway API
         # version, as well as the vendored Gateway API CRDs.
+        # Full k3s image tags are used, rather than release channels, so that
+        # cluster creation doesn't depend on update.k3s.io being reachable.
         k8s:
-          - v1.37
+          - v1.37.1-k3s1
         # 'tls-route' is the TLSRoute API version the bundle serves, and that
         # the policy controller therefore negotiates, or 'none' when the bundle
         # ships no TLSRoute CRD at all. TLSRoute only graduated to 'v1', and to
@@ -177,7 +179,7 @@ jobs:
         # Also test the Minimum Supported Kubernetes Version with the Minimum
         # Supported Gateway API version.
         include:
-          - k8s: v1.31
+          - k8s: v1.31.14-k3s1
             gateway-api:
               version: v1.2.1
               channel: standard
@@ -348,9 +350,12 @@ jobs:
       fail-fast: false
       matrix:
         cases:
-        - {k8s: "v1.31", manage-controllers: false, install-gwapi: true, gwapi: v1.5.1}
-        - {k8s: "v1.37", manage-controllers: false, install-gwapi: true, gwapi: v1.6.1}
-        - {k8s: "v1.37", manage-controllers: true,  install-gwapi: true, gwapi: v1.6.1}
+          # Full k3s image tags are used, rather than release channels, so that
+          # cluster creation doesn't depend on update.k3s.io being reachable.
+        - {k8s: "v1.31.14-k3s1", manage-controllers: false, install-gwapi: true, gwapi: v1.5.1}
+        # for v1.34 onwards, gwapi gets installed by Traefik on the target cluster
+        - {k8s: "v1.37.1-k3s1", manage-controllers: false, install-gwapi: true, gwapi: v1.6.1}
+        - {k8s: "v1.37.1-k3s1", manage-controllers: true,  install-gwapi: true, gwapi: v1.6.1}
     name: "test-multicluster(${{ matrix.cases.k8s }}, ${{ matrix.cases.manage-controllers && 'managed-controllers' || 'unmanaged-controllers' }})"
     env:
       GWAPI_VERSION: ${{ matrix.cases.gwapi }}

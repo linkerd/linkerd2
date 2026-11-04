@@ -179,8 +179,13 @@ k3d-name := "l5d-test"
 # The name of the docker network to use (i.e., for multicluster testing).
 k3d-network := "k3d-name"
 
-# The kubernetes version to use for the test cluster. e.g. 'v1.24', 'latest', etc
+# The kubernetes version to use for the test cluster. Either a k3s release
+# channel (e.g. 'v1.36', 'latest'), which k3d resolves at cluster creation time
+# by querying update.k3s.io, or a full k3s image tag (e.g. 'v1.36.5-k3s1'),
+# which is used as-is and avoids that network lookup.
 k3d-k8s := "latest"
+
+_k3d-image := if k3d-k8s =~ '^v[0-9]+\.[0-9]+\.[0-9]+' { "rancher/k3s:" + k3d-k8s } else { "+" + k3d-k8s }
 
 k3d-agents := "0"
 k3d-servers := "1"
@@ -199,7 +204,7 @@ k *flags:
 # Creates a k3d cluster that can be used for testing.
 k3d-create: && _k3d-ready
     k3d cluster create {{ k3d-name }} \
-        --image='+{{ k3d-k8s }}' \
+        --image='{{ _k3d-image }}' \
         --agents='{{ k3d-agents }}' \
         --servers='{{ k3d-servers }}' \
         --network='{{ k3d-network }}' \
