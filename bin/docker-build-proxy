@@ -33,9 +33,11 @@ get_extra_options() {
 # Build proxy base image with apko
 go install chainguard.dev/apko@$apko_version
 export PATH=$PATH:$(go env GOPATH)/bin
-# Add --local flag unless PUSH_RUNTIME_IMAGE is set
-apko build "$rootdir/proxy-runtime.yml" "$runtime_image" "$rootdir/proxy-runtime.tar"
-docker load < "$rootdir/proxy-runtime.tar"
+apko_out=$(mktemp -d)
+trap 'rm -rf "$apko_out"' EXIT
+apko build --sbom-path "$apko_out" \
+    "$rootdir/proxy-runtime.yml" "$runtime_image" "$apko_out/proxy-runtime.tar"
+docker load < "$apko_out/proxy-runtime.tar"
 if [[ -n "${PUSH_RUNTIME_IMAGE:-}" ]]; then
     for arch in "arm64" "amd64"; do
         docker push "$runtime_image-$arch"
