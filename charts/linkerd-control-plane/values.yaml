@@ -234,6 +234,8 @@ proxy:
   # ready
   await: true
   requireIdentityOnInboundPorts: ""
+  # -- Configure the proxy to prepend a HAProxy PROXY protocol v2 header, carrying the client's original source address and verified identity, on connections to these inbound ports (comma-separated list of ports)
+  proxyProtocolV2InboundPorts: ""
   # -- Default set of opaque ports
   # - SMTP (25,587) server-first
   # - MYSQL (3306) server-first
