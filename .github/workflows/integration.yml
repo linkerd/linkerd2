@@ -170,10 +170,10 @@ jobs:
           - version: linkerd
             channel: experimental
             tls-route: v1alpha2
-          - version: v1.6.1
+          - version: v1.6.3
             channel: experimental
             tls-route: v1
-          - version: v1.6.1
+          - version: v1.6.3
             channel: standard
             tls-route: v1
         # Also test the Minimum Supported Kubernetes Version with the Minimum
@@ -354,8 +354,8 @@ jobs:
           # cluster creation doesn't depend on update.k3s.io being reachable.
         - {k8s: "v1.31.14-k3s1", manage-controllers: false, install-gwapi: true, gwapi: v1.5.1}
         # for v1.34 onwards, gwapi gets installed by Traefik on the target cluster
-        - {k8s: "v1.37.1-k3s1", manage-controllers: false, install-gwapi: true, gwapi: v1.6.1}
-        - {k8s: "v1.37.1-k3s1", manage-controllers: true,  install-gwapi: true, gwapi: v1.6.1}
+        - {k8s: "v1.37.1-k3s1", manage-controllers: false, install-gwapi: true, gwapi: v1.6.3}
+        - {k8s: "v1.37.1-k3s1", manage-controllers: true,  install-gwapi: true, gwapi: v1.6.3}
     name: "test-multicluster(${{ matrix.cases.k8s }}, ${{ matrix.cases.manage-controllers && 'managed-controllers' || 'unmanaged-controllers' }})"
     env:
       GWAPI_VERSION: ${{ matrix.cases.gwapi }}
