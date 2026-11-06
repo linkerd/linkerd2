@@ -1155,7 +1155,7 @@ dependencies = [
  "tokio-tungstenite",
  "tokio-util",
  "tower",
- "tower-http",
+ "tower-http 0.6.11",
  "tracing",
 ]
 
@@ -1221,8 +1221,8 @@ dependencies = [
 
 [[package]]
 name = "kubert"
-version = "0.27.0"
-source = "git+https://github.com/linkerd/linkerd-kubert.git?tag=kubert%2Fv0.27.0#04f6ac3543e84e814e50724dec11a5309fd9b8df"
+version = "0.27.1"
+source = "git+https://github.com/linkerd/linkerd-kubert.git?tag=kubert%2Fv0.27.1#5e6a733d04781673832ed0ce0874b8a4adeeea2f"
 dependencies = [
  "ahash",
  "backon",
@@ -1251,7 +1251,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tower",
- "tower-http",
+ "tower-http 0.7.1",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1259,7 +1259,7 @@ dependencies = [
 [[package]]
 name = "kubert-prometheus-process"
 version = "0.2.4"
-source = "git+https://github.com/linkerd/linkerd-kubert.git?tag=kubert%2Fv0.27.0#04f6ac3543e84e814e50724dec11a5309fd9b8df"
+source = "git+https://github.com/linkerd/linkerd-kubert.git?tag=kubert%2Fv0.27.1#5e6a733d04781673832ed0ce0874b8a4adeeea2f"
 dependencies = [
  "libc",
  "procfs",
@@ -1270,7 +1270,7 @@ dependencies = [
 [[package]]
 name = "kubert-prometheus-tokio"
 version = "0.2.1"
-source = "git+https://github.com/linkerd/linkerd-kubert.git?tag=kubert%2Fv0.27.0#04f6ac3543e84e814e50724dec11a5309fd9b8df"
+source = "git+https://github.com/linkerd/linkerd-kubert.git?tag=kubert%2Fv0.27.1#5e6a733d04781673832ed0ce0874b8a4adeeea2f"
 dependencies = [
  "prometheus-client",
  "tokio",
@@ -2531,6 +2531,21 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "tower-http"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08a05a66a4fdd61cbbe0a1d755ffe0ca6aba159dd4820936a0ff8a8278245b9c"
+dependencies = [
+ "bitflags 2.13.1",
+ "bytes",
+ "http",
+ "percent-encoding",
+ "pin-project-lite",
+ "tower-layer",
+ "tower-service",
 ]
 
 [[package]]
