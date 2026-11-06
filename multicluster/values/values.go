@@ -40,6 +40,7 @@ type Values struct {
 	TargetClusterName              string   `json:"targetClusterName"`
 	EnablePodAntiAffinity          bool     `json:"enablePodAntiAffinity"`
 	RevisionHistoryLimit           uint32   `json:"revisionHistoryLimit"`
+	EnableEndpointSlices           bool     `json:"enableEndpointSlices"`
 
 	ServiceMirrorAdditionalEnv   []corev1.EnvVar `json:"serviceMirrorAdditionalEnv"`
 	ServiceMirrorExperimentalEnv []corev1.EnvVar `json:"serviceMirrorExperimentalEnv"`
@@ -83,6 +84,7 @@ type LocalServiceMirror struct {
 	LogLevel                 string          `json:"logLevel"`
 	LogFormat                string          `json:"logFormat"`
 	EnablePprof              bool            `json:"enablePprof"`
+	EnableEndpointSlices     bool            `json:"enableEndpointSlices"`
 	UID                      int64           `json:"UID"`
 	GID                      int64           `json:"GID"`
 }
@@ -96,6 +98,7 @@ type ControllerDefaults struct {
 	LogLevel               string                     `json:"logLevel"`
 	LogFormat              string                     `json:"logFormat"`
 	EnableHeadlessServices bool                       `json:"enableHeadlessServices"`
+	EnableEndpointSlices   bool                       `json:"enableEndpointSlices"`
 	EnablePprof            bool                       `json:"enablePprof"`
 	UID                    int64                      `json:"UID"`
 	GID                    int64                      `json:"GID"`
