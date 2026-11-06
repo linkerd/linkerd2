@@ -8,6 +8,131 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func TestIpWatcherGetTerminatingPod(t *testing.T) {
+	newWatcher := func(t *testing.T, k8sConfigs ...string) *WorkloadWatcher {
+		t.Helper()
+		k8sAPI, err := k8s.NewFakeAPI(k8sConfigs...)
+		if err != nil {
+			t.Fatalf("failed to create new fake API: %s", err)
+		}
+		if err := InitializeIndexers(k8sAPI); err != nil {
+			t.Fatalf("initializeIndexers returned an error: %s", err)
+		}
+		k8sAPI.Sync(nil)
+		return &WorkloadWatcher{
+			k8sAPI: k8sAPI,
+			log: log.WithFields(log.Fields{
+				"component": "pod-watcher",
+			}),
+		}
+	}
+
+	t.Run("terminating pod is returned when it is the only pod on its IP", func(t *testing.T) {
+		ww := newWatcher(t, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: terminatingPod
+  namespace: ns
+  deletionTimestamp: "2026-11-05T00:00:00Z"
+status:
+  phase: Running
+  podIP: 10.255.0.2`)
+		pod, err := ww.getPodByPodIP("10.255.0.2", 8080)
+		if err != nil {
+			t.Fatalf("failed to get pod: %s", err)
+		}
+		if pod == nil {
+			t.Fatal("expected the terminating pod to be returned, but got none")
+		}
+		if pod.Name != "terminatingPod" {
+			t.Fatalf("expected pod name to be terminatingPod, but got %s", pod.Name)
+		}
+	})
+
+	t.Run("live pod wins when a terminating pod shares its IP", func(t *testing.T) {
+		ww := newWatcher(t, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: terminatingPod
+  namespace: ns
+  deletionTimestamp: "2026-11-05T00:00:00Z"
+status:
+  phase: Running
+  podIP: 10.255.0.3`,
+			`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: livePod
+  namespace: ns
+status:
+  phase: Running
+  podIP: 10.255.0.3`)
+		pod, err := ww.getPodByPodIP("10.255.0.3", 8080)
+		if err != nil {
+			t.Fatalf("failed to get pod: %s", err)
+		}
+		if pod == nil {
+			t.Fatal("expected the live pod to be returned, but got none")
+		}
+		if pod.Name != "livePod" {
+			t.Fatalf("expected pod name to be livePod, but got %s", pod.Name)
+		}
+	})
+
+	t.Run("two terminating pods on one IP return no pod", func(t *testing.T) {
+		ww := newWatcher(t, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: terminatingPodA
+  namespace: ns
+  deletionTimestamp: "2026-11-05T00:00:00Z"
+status:
+  phase: Running
+  podIP: 10.255.0.4`,
+			`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: terminatingPodB
+  namespace: ns
+  deletionTimestamp: "2026-11-05T00:00:00Z"
+status:
+  phase: Running
+  podIP: 10.255.0.4`)
+		pod, err := ww.getPodByPodIP("10.255.0.4", 8080)
+		if err != nil {
+			t.Fatalf("expected no error, but got: %s", err)
+		}
+		if pod != nil {
+			t.Fatalf("expected no pod to be returned, but got %s", pod.Name)
+		}
+	})
+
+	t.Run("succeeded pod with a deletion timestamp returns no pod", func(t *testing.T) {
+		ww := newWatcher(t, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: succeededPod
+  namespace: ns
+  deletionTimestamp: "2026-11-05T00:00:00Z"
+status:
+  phase: Succeeded
+  podIP: 10.255.0.5`)
+		pod, err := ww.getPodByPodIP("10.255.0.5", 8080)
+		if err != nil {
+			t.Fatalf("expected no error, but got: %s", err)
+		}
+		if pod != nil {
+			t.Fatalf("expected no pod to be returned, but got %s", pod.Name)
+		}
+	})
+}
+
 func TestIpWatcherGetPod(t *testing.T) {
 	podIP := "10.255.0.1"
 	hostIP := "172.0.0.1"
