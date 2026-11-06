@@ -342,7 +342,7 @@ func restartClusterWatcher(
 	// initialise the liveness channel
 	var ch chan bool
 	if link.Spec.ProbeSpec.Path != "" {
-		probeWorker = servicemirror.NewProbeWorker(probeSvc, &link.Spec.ProbeSpec, workerMetrics, link.Spec.TargetClusterName)
+		probeWorker = servicemirror.NewProbeWorker(probeSvc, controllerK8sAPI.Svc().Lister().Services(namespace), &link.Spec.ProbeSpec, workerMetrics, link.Spec.TargetClusterName)
 		probeWorker.Start()
 		ch = probeWorker.Liveness
 	}
