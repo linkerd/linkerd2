@@ -4,9 +4,6 @@ on:
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch: {}
-  push:
-    branches:
-      - raykroeker/stale-app-to-action
 
 permissions:
   contents: read
@@ -16,14 +13,15 @@ jobs:
     runs-on: ${{ vars.LINKERD2_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 10
     permissions:
-      issues: read
-      pull-requests: read
+      actions: write
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
         with:
-          debug-only: true
+          debug-only: false
           enable-statistics: true
-          operations-per-run: 1000
+          operations-per-run: 128
           days-before-stale: 90
           days-before-close: 14
           stale-issue-label: wontfix
