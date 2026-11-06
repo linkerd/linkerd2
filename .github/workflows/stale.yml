@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch: {}
+  push:
+    branches:
+      - raykroeker/stale-app-to-action
 
 permissions:
   contents: read
