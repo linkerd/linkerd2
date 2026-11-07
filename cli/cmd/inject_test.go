@@ -350,6 +350,28 @@ func TestUninjectAndInject(t *testing.T) {
 		},
 		{
 			inputFileName:  "inject_emojivoto_deployment.input.yml",
+			goldenFileName: "inject_emojivoto_deployment_default_outbound_policy.golden.yml",
+			reportFileName: "inject_emojivoto_deployment_default_outbound_policy.golden.report",
+			injectProxy:    false,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.Proxy.DefaultOutboundPolicy = k8s.AllAuthenticated
+				return values
+			}(),
+		},
+		{
+			inputFileName:  "inject_emojivoto_pod.input.yml",
+			goldenFileName: "inject_emojivoto_pod_default_outbound_policy.golden.yml",
+			reportFileName: "inject_emojivoto_pod_default_outbound_policy.golden.report",
+			injectProxy:    false,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.Proxy.DefaultOutboundPolicy = k8s.AllAuthenticated
+				return values
+			}(),
+		},
+		{
+			inputFileName:  "inject_emojivoto_deployment.input.yml",
 			goldenFileName: "inject_emojivoto_deployment_native_sidecar.golden.yml",
 			reportFileName: "inject_emojivoto_deployment.report",
 			injectProxy:    true,
