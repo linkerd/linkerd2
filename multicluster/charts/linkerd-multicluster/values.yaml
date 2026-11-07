@@ -208,6 +208,9 @@ controllerDefaults:
   logFormat: plain
   # -- Toggle support for mirroring headless services
   enableHeadlessServices: false
+  # -- Toggle mirroring of the target cluster's trust roots into the Link
+  # status (`status.trustRoots`)
+  enableTrustRootsMirroring: false
   # -- Enables the use of pprof endpoints for the controller
   enablePprof: false
   UID: 2103
