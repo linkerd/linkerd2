@@ -490,6 +490,18 @@ func GetPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 
 	return pods, nil
 }
+// GetPodsBySelector queries the Kubernetes API and returns all pods in the
+// given namespace matching the provided label selector string. If selector is
+// empty, all pods in the namespace are returned.
+func GetPodsBySelector(ctx context.Context, clientset kubernetes.Interface, namespace string, selector string) ([]corev1.Pod, error) {
+	podList, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: selector,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return podList.Items, nil
+}
 
 func isOwner(u types.UID, ownerRefs []metav1.OwnerReference) bool {
 	for _, or := range ownerRefs {
