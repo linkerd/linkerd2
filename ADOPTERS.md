@@ -97,6 +97,7 @@
 - [Web Summit](https://websummit.com)
 - [Winuall](https://www.winuall.com)
 - [Wiz Security](https://www.wiz.io/)
+- [Wordfully](https://wordfully.ai)
 - [xCloud](https://www.xbox.com/en-US/xbox-game-streaming/project-xcloud)
 - [YouMail](https://www.youmail.com)
 - [ZeroFlucs](https://zeroflucs.io/)
