@@ -3,6 +3,7 @@ package srv
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -96,5 +97,41 @@ func TestHandleConfigDownload(t *testing.T) {
 	err = helpers.ServiceProfileYamlEquals(serviceProfile, expectedServiceProfile)
 	if err != nil {
 		t.Fatalf("ServiceProfiles are not equal: %v", err)
+	}
+}
+
+func TestHandleConfigDownloadInvalidParams(t *testing.T) {
+	server := FakeServer()
+
+	handler := &handler{
+		render:              server.RenderTemplate,
+		controllerNamespace: "linkerd",
+		clusterDomain:       "mycluster.local",
+	}
+
+	testCases := []struct {
+		service   string
+		namespace string
+	}{
+		{"authors\n---\nkind: ClusterRoleBinding", "booksns"},
+		{"authors; filename*=UTF-8''evil.sh", "booksns"},
+		{"authors", "booksns\n---\nkind: ClusterRoleBinding"},
+		{"Authors", "booksns"},
+	}
+
+	for _, tc := range testCases {
+		recorder := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/profiles/new", nil)
+		req.Form = url.Values{"service": {tc.service}, "namespace": {tc.namespace}}
+
+		handler.handleProfileDownload(recorder, req, httprouter.Params{})
+
+		if recorder.Code != http.StatusBadRequest {
+			t.Errorf("Incorrect StatusCode for service %q namespace %q: %+v", tc.service, tc.namespace, recorder.Code)
+			t.Errorf("Expected              %+v", http.StatusBadRequest)
+		}
+		if cd := recorder.Header().Get("Content-Disposition"); cd != "" {
+			t.Errorf("Unexpected Content-Disposition header: %q", cd)
+		}
 	}
 }

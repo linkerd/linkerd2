@@ -12,6 +12,7 @@ import (
 	vizPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 var proxyPathRegexp = regexp.MustCompile("/api/v1/namespaces/.*/proxy/")
@@ -68,6 +69,21 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 
 	if service == "" || namespace == "" {
 		err := fmt.Errorf("Service and namespace must be provided to create a new profile")
+		log.Error(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// service and namespace are interpolated into the YAML template and the
+	// Content-Disposition header, so apply the same checks as `linkerd profile`
+	if errs := validation.IsDNS1035Label(service); len(errs) != 0 {
+		err := fmt.Errorf("invalid service %q: %v", service, errs)
+		log.Error(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if errs := validation.IsDNS1123Label(namespace); len(errs) != 0 {
+		err := fmt.Errorf("invalid namespace %q: %v", namespace, errs)
 		log.Error(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
