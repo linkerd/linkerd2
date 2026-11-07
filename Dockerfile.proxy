@@ -11,7 +11,7 @@ RUN go mod download
 ARG TARGETARCH
 RUN ./bin/install-deps $TARGETARCH
 
-FROM --platform=$BUILDPLATFORM debian:bookworm-slim AS fetch
+FROM --platform=$BUILDPLATFORM debian:trixie-slim AS fetch
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y curl jq && \
     rm -rf /var/lib/apt/lists/*
@@ -78,7 +78,7 @@ COPY --from=fetch /build/linkerd2-proxy /usr/lib/linkerd/linkerd2-proxy
 COPY --from=fetch /build/linkerd-await /usr/lib/linkerd/linkerd-await
 COPY --from=fetch /build/linkerd-network-validator /usr/lib/linkerd/linkerd2-network-validator
 COPY --from=golang /out/proxy-identity /usr/lib/linkerd/linkerd2-proxy-identity
-COPY --from=debian:bookworm-slim /bin/sleep /bin/sleep
+COPY --from=debian:trixie-slim /bin/sleep /bin/sleep
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
 ENV LINKERD2_PROXY_LOG=warn,linkerd=info
