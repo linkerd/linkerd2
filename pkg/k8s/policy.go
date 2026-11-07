@@ -99,7 +99,7 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 
 	for _, p := range policies.Items {
 		target := p.Spec.TargetRef
-		if target.Kind == NamespaceKind && target.Group == K8sCoreAPIGroup {
+		if target.Kind == NamespaceKind && (target.Group == K8sCoreAPIGroup || target.Group == "") {
 			serverList, ok := allServersInNamespace[p.Namespace]
 			if !ok {
 				serverList, err = k8sAPI.L5dCrdClient.ServerV1beta3().Servers(p.Namespace).List(ctx, metav1.ListOptions{})
@@ -159,6 +159,12 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 					}
 				}
 			}
+		} else {
+			targetRef := fmt.Sprintf("%s/%s", target.Kind, target.Name)
+			if target.Group != "" {
+				targetRef = fmt.Sprintf("%s.%s/%s", target.Kind, target.Group, target.Name)
+			}
+			fmt.Fprintf(os.Stderr, "AuthorizationPolicy/%s targets %s which is not supported by this command; skipping\n", p.Name, targetRef)
 		}
 	}
 
