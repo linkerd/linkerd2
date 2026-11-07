@@ -72,4 +72,4 @@ http = { workspace = true }
 
 [dev-dependencies.tokio]
 version = "1"
-features = ["io-util", "macros", "rt", "time"]
+features = ["io-util", "macros", "rt", "test-util", "time"]
