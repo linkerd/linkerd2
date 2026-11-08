@@ -87,6 +87,30 @@ describe("Tests for <BaseTable>", () => {
     expect(emptyCard).toHaveLength(1);
   });
 
+  it("sorts missing numeric values below zero in both directions", () => {
+    const component = mount(<BaseTable
+      tableColumns={[
+        { dataIndex: 'name', title: 'Name' },
+        { dataIndex: 'metric', title: 'Metric', isNumeric: true, sorter: row => row.metric },
+      ]}
+      tableRows={[
+        { key: 'high', name: 'high', metric: 20 },
+        { key: 'null', name: 'null', metric: null },
+        { key: 'zero', name: 'zero', metric: 0 },
+        { key: 'undefined', name: 'undefined' },
+        { key: 'low', name: 'low', metric: 5 },
+      ]}
+      defaultOrderBy="metric" />);
+    const rowNames = () => component.find('tbody tr').map(row => row.find('td').first().text());
+
+    expect(rowNames()).toEqual(['null', 'undefined', 'zero', 'low', 'high']);
+
+    component.find('thead span[role="button"]').simulate('click');
+
+    expect(rowNames()).toEqual(['high', 'low', 'zero', 'null', 'undefined']);
+    component.unmount();
+  });
+
   it("if enableFilter is true, user can filter rows by search term", () => {
     let extraProps = _merge({}, defaultProps, {
       tableRows: [{
