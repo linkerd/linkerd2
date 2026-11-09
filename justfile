@@ -137,7 +137,7 @@ _cargo-test := _cargo + ```
 export POLICY_TEST_CONTEXT := env_var_or_default("POLICY_TEST_CONTEXT", "k3d-" + k3d-name)
 
 # Install linkerd in the test cluster and run the policy tests.
-policy-test: linkerd-install policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
+policy-test: linkerd-install policy-validator-ready policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
 
 _policy-test-tls-route-flags := if GATEWAY_API_TLS_ROUTE == "none" { "" } else if GATEWAY_API_TLS_ROUTE =~ '^v1(alpha2)?$' { " --features=gateway-api-tls-route-" + GATEWAY_API_TLS_ROUTE } else { error("GATEWAY_API_TLS_ROUTE must be 'v1', 'v1alpha2', or 'none'") }
 
@@ -393,11 +393,27 @@ _controller-build:
         --load
 
 _linkerd-ready:
-    if ! {{ _kubectl }} wait pod --for=condition=ready \
-            --namespace=linkerd --selector='linkerd.io/control-plane-component' \
-            --timeout=1m ; then \
-        {{ _kubectl }} describe pods --namespace=linkerd ; \
+    # Wait for the control plane deployments to be Available. They exist as soon as the install is
+    # applied, so unlike a pod selector this wait cannot fail early with "no matching resources".
+    if ! {{ _kubectl }} -n linkerd wait deploy -l linkerd.io/control-plane-component \
+            --for=condition=Available --timeout=2m ; then \
+        {{ _kubectl }} describe deployments,pods --namespace=linkerd ; \
+        exit 1 ; \
     fi
+
+# Wait until the policy validator webhook denies an invalid resource.
+policy-validator-ready:
+    # Pod readiness does not prove the apiserver can reach the webhook, and with
+    # failurePolicy=Ignore an unreachable webhook admits invalid resources. Only a denial of a
+    # server-side dry run of an invalid AuthorizationPolicy (two MeshTLSAuthentication refs) does.
+    # https://github.com/kubernetes/apiserver/blob/a1b8e6fa9269c795a50d34e22fef9b0bc55f9fdb/pkg/admission/plugin/webhook/errors/statuserror.go#L29
+    for _ in $(seq 60) ; do \
+        out=$(printf '%s' '{"apiVersion":"policy.linkerd.io/v1alpha1","kind":"AuthorizationPolicy","metadata":{"name":"webhook-probe","namespace":"default"},"spec":{"targetRef":{"group":"policy.linkerd.io","kind":"Server","name":"probe"},"requiredAuthenticationRefs":[{"group":"policy.linkerd.io","kind":"MeshTLSAuthentication","name":"a"},{"group":"policy.linkerd.io","kind":"MeshTLSAuthentication","name":"b"}]}}' | {{ _kubectl }} apply --dry-run=server -f - 2>&1) ; \
+        if echo "$out" | grep -qF 'admission webhook "linkerd-policy-validator.linkerd.io" denied the request' ; then exit 0 ; fi ; \
+        sleep 1 ; \
+    done ; \
+    echo "ERROR: policy validator webhook did not deny an invalid AuthorizationPolicy within 60s. Last response: $out" >&2 ; \
+    exit 1
 
 # Ensure that a linkerd control plane is installed
 _linkerd-init: && _linkerd-ready
