@@ -235,7 +235,10 @@ const (
 
 	// ProxyProtocolV2InboundPortsAnnotation can be used to configure the proxy to
 	// prepend a HAProxy PROXY protocol v2 header, carrying the client's original
-	// source address and verified identity, on connections to these inbound ports
+	// source address and verified identity, on connections to these inbound ports.
+	// Each port must also be opaque, either listed in ProxyOpaquePortsAnnotation
+	// or selected by a Server with `proxyProtocol: opaque` (or `TLS`). The proxy
+	// refuses every other connection to these ports, including HTTP.
 	ProxyProtocolV2InboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-protocol-v2-inbound-ports"
 
 	// ProxyOutboundConnectTimeout can be used to configure the outbound TCP connection
