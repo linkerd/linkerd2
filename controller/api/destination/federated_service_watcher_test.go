@@ -126,6 +126,103 @@ func TestLocalLeaveFederatedService(t *testing.T) {
 	assertUpdatesContains(t, updates, "bb-west-1", "172.17.0.1:8080")
 }
 
+func TestLocalSwitchFederatedService(t *testing.T) {
+	fsw, err := mockFederatedServiceWatcher(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, nil)
+
+	updates := []*pb.Update{}
+	updates = append(updates, <-mockGetServer.updatesReceived)
+	updates = append(updates, <-mockGetServer.updatesReceived)
+	assertUpdatesContains(t, updates, "bb-west-1", "172.17.0.1:8080")
+	assertUpdatesContains(t, updates, "bb-east-1", "172.17.1.1:8080")
+
+	federatedSvc, err := fsw.k8sAPI.Svc().Lister().Services("test").Get("bb-federated")
+	if err != nil {
+		t.Fatalf("error getting federated service: %s", err)
+	}
+	newFederatedSvc := federatedSvc.DeepCopy()
+	newFederatedSvc.Annotations["multicluster.linkerd.io/local-discovery"] = "bb2"
+	fsw.updateService(federatedSvc, newFederatedSvc)
+
+	select {
+	case u := <-mockGetServer.updatesReceived:
+		updates = append(updates, u)
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for the previous local member's endpoints to be removed")
+	}
+	assertUpdatesRemoves(t, updates, "172.17.0.1:8080")
+}
+
+// TestUnsubscribeFederatedServiceSendsNoRemove asserts that tearing down a
+// federated Get stream (e.g. when the destination controller shuts down) does
+// not tell the client to remove the endpoints it already has. A Remove there
+// would make the proxy drop every endpoint of the federated service while it
+// reconnects to another destination replica, instead of keeping its cache as
+// it does for non-federated services.
+func TestUnsubscribeFederatedServiceSendsNoRemove(t *testing.T) {
+	fsw, err := mockFederatedServiceWatcher(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+
+	fsw.Subscribe("bb-federated", "test", 8080, "node", "", mockGetServer, nil)
+
+	updates := []*pb.Update{}
+	updates = append(updates, <-mockGetServer.updatesReceived)
+	updates = append(updates, <-mockGetServer.updatesReceived)
+	assertUpdatesContains(t, updates, "bb-west-1", "172.17.0.1:8080")
+	assertUpdatesContains(t, updates, "bb-east-1", "172.17.1.1:8080")
+
+	// Unsubscribing stops the subscriber's synchronized stream right after the
+	// translators are drained, so whether a queued Remove still reaches the
+	// client stream is a race, which is also why the bug showed up only on some
+	// streams in clusters. Point each translator at a recording stream so that
+	// the test observes everything the translators are asked to send.
+	recorded := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
+	fsw.RLock()
+	federatedSvc := fsw.services[watcher.ServiceID{Namespace: "test", Name: "bb-federated"}]
+	fsw.RUnlock()
+	federatedSvc.Lock()
+	if len(federatedSvc.subscribers) != 1 {
+		t.Fatalf("expected 1 subscriber, got %d", len(federatedSvc.subscribers))
+	}
+	translators := 0
+	for _, translator := range federatedSvc.subscribers[0].remoteTranslators {
+		translator.stream = recorded
+		translators++
+	}
+	for _, translator := range federatedSvc.subscribers[0].localTranslators {
+		translator.stream = recorded
+		translators++
+	}
+	federatedSvc.Unlock()
+	if translators != 2 {
+		t.Fatalf("expected 1 remote and 1 local translator, got %d", translators)
+	}
+
+	fsw.Unsubscribe("bb-federated", "test", mockGetServer)
+
+	select {
+	case u := <-recorded.updatesReceived:
+		t.Fatalf("expected no update after unsubscribing, got %v", u)
+	case <-time.After(200 * time.Millisecond):
+	}
+
+	federatedSvc.Lock()
+	defer federatedSvc.Unlock()
+	if len(federatedSvc.subscribers) != 0 {
+		t.Errorf("expected no subscribers after unsubscribing, got %d", len(federatedSvc.subscribers))
+	}
+}
+
 func mockFederatedServiceWatcher(t *testing.T) (*federatedServiceWatcher, error) {
 	k8sAPI, err := k8s.NewFakeAPI(westConfigs...)
 	if err != nil {
