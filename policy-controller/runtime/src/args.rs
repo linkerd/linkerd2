@@ -27,6 +27,16 @@ const RECONCILIATION_PERIOD: Duration = Duration::from_secs(10);
 // size to be the same as the reconciliation period in milliseconds.
 const STATUS_UPDATE_QUEUE_SIZE: usize = RECONCILIATION_PERIOD.as_millis() as usize;
 
+// h2 closes a connection with GOAWAY(ENHANCE_YOUR_CALM) once its budget for
+// small, non-final DATA frames is exhausted. Each such frame shorter than 256
+// bytes costs `256 - len` bytes of the budget until the server reads it. A
+// Watch() request body is one such frame, so a proxy that opens many watches
+// at once can exhaust the budget before the controller has read them. h2
+// sizes the budget at half the connection window, so a 2.5 MiB window gives a
+// 1.25 MiB budget: room for more than 5,000 unread Watch() requests on one
+// connection, where hyper's default 1 MiB window allows about 2,000.
+const GRPC_INITIAL_CONNECTION_WINDOW_SIZE: u32 = 5 * 512 * 1024;
+
 #[derive(Debug, Parser)]
 #[clap(name = "policy", about = "A policy resource controller")]
 pub struct Args {
@@ -189,6 +199,11 @@ impl Args {
         )
         .await?;
 
+        // Determine which version of the TLSRoute API the cluster serves, if
+        // any. This must happen before the status index and controller are
+        // built, since they address routes by version.
+        let tls_route_api_version = tls_route_api_version(&runtime.client()).await;
+
         // Build the status index which will maintain information necessary for
         // updating the status field of policy resources.
         let (updates_tx, updates_rx) = mpsc::channel(STATUS_UPDATE_QUEUE_SIZE);
@@ -198,6 +213,7 @@ impl Args {
             updates_tx,
             status_index_metrcs,
             cluster_networks.clone(),
+            tls_route_api_version.unwrap_or_default(),
         );
 
         // Spawn resource watches.
@@ -328,20 +344,43 @@ impl Args {
             );
         }
 
-        if api_resource_exists::<gateway::TLSRoute>(&runtime.client()).await {
-            let tls_routes =
-                guarded_watch::<gateway::TLSRoute, _>(&mut runtime, watcher::Config::default());
-            let tls_routes_indexes = IndexList::new(status_index.clone())
-                .push(outbound_index.clone())
-                .shared();
-            tokio::spawn(
-                kubert::index::namespaced(tls_routes_indexes.clone(), tls_routes)
-                    .instrument(info_span!("tlsroutes.gateway.networking.k8s.io")),
-            );
-        } else {
-            tracing::warn!(
-                "tlsroutes.gateway.networking.k8s.io resource kind not found, skipping watches"
-            );
+        match tls_route_api_version {
+            Some(version) => {
+                let tls_routes_indexes = IndexList::new(status_index.clone())
+                    .push(outbound_index.clone())
+                    .shared();
+                // Routes read from a `v1alpha2` watch are converted to their
+                // `v1` representation so that a single index implementation
+                // serves both versions.
+                let tls_routes = match version {
+                    gateway::TlsRouteApiVersion::V1 => guarded_watch::<gateway::TLSRoute, _>(
+                        &mut runtime,
+                        watcher::Config::default(),
+                    )
+                    .boxed(),
+                    gateway::TlsRouteApiVersion::V1Alpha2 => {
+                        guarded_watch::<gateway::TLSRouteV1Alpha2, _>(
+                            &mut runtime,
+                            watcher::Config::default(),
+                        )
+                        .map(convert_event)
+                        .boxed()
+                    }
+                };
+                tokio::spawn(
+                    kubert::index::namespaced(tls_routes_indexes.clone(), tls_routes).instrument(
+                        info_span!(
+                            "tlsroutes.gateway.networking.k8s.io",
+                            version = version.version()
+                        ),
+                    ),
+                );
+            }
+            None => {
+                tracing::warn!(
+                    "tlsroutes.gateway.networking.k8s.io resource kind not found, skipping watches"
+                );
+            }
         }
 
         if api_resource_exists::<gateway::TCPRoute>(&runtime.client()).await {
@@ -407,6 +446,7 @@ impl Args {
             updates_rx,
             Duration::from_millis(patch_timeout_ms),
             status_metrics,
+            tls_route_api_version.unwrap_or_default(),
         );
         tokio::spawn(
             status_controller
@@ -497,7 +537,11 @@ async fn grpc(
 
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
-        let srv = Server::builder().add_service(inbound_svc).add_service(outbound_svc).serve_with_shutdown(addr, close_rx.map(|_| {}));
+        let srv = Server::builder()
+            .initial_connection_window_size(GRPC_INITIAL_CONNECTION_WINDOW_SIZE)
+            .add_service(inbound_svc)
+            .add_service(outbound_svc)
+            .serve_with_shutdown(addr, close_rx.map(|_| {}));
     }
 
     info!(%addr, "policy gRPC server listening");
@@ -517,13 +561,45 @@ where
     T::DynamicType: Default,
 {
     let dt = Default::default();
+    api_version_has_kind(client, &T::api_version(&dt), &T::kind(&dt)).await
+}
+
+async fn api_version_has_kind(client: &Client, api_version: &str, kind: &str) -> bool {
     client
-        .list_api_group_resources(&T::api_version(&dt))
+        .list_api_group_resources(api_version)
         .await
         .ok()
         .iter()
         .flat_map(|r| r.resources.iter())
-        .any(|r| r.kind == T::kind(&dt))
+        .any(|r| r.kind == kind)
+}
+
+/// Returns the most preferred version of the TLSRoute API that the cluster
+/// serves, if any.
+///
+/// TLSRoute has no version that is served by every supported Gateway API
+/// bundle: v1.2--v1.4 (and the CRDs vendored by the `linkerd-crds` chart) serve
+/// `v1alpha2`, while the standard channel of v1.5 serves `v1` only.
+async fn tls_route_api_version(client: &Client) -> Option<gateway::TlsRouteApiVersion> {
+    let kind = gateway::TLSRoute::kind(&());
+    for &version in gateway::TlsRouteApiVersion::ALL {
+        if api_version_has_kind(client, version.api_version(), &kind).await {
+            tracing::debug!(version = version.version(), "Found TLSRoute API version");
+            return Some(version);
+        }
+    }
+    None
+}
+
+/// Converts a watch event into one over an equivalent resource type.
+fn convert_event<A, B: From<A>>(event: watcher::Event<A>) -> watcher::Event<B> {
+    match event {
+        watcher::Event::Apply(obj) => watcher::Event::Apply(obj.into()),
+        watcher::Event::Delete(obj) => watcher::Event::Delete(obj.into()),
+        watcher::Event::InitApply(obj) => watcher::Event::InitApply(obj.into()),
+        watcher::Event::Init => watcher::Event::Init,
+        watcher::Event::InitDone => watcher::Event::InitDone,
+    }
 }
 
 // A watch that uses DeserializeGuard to skip resources which fail to deserialize.
@@ -567,4 +643,100 @@ where
                 watcher::Event::InitDone => Some(watcher::Event::<R>::InitDone),
             }
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GRPC_INITIAL_CONNECTION_WINDOW_SIZE;
+    use bytes::Bytes;
+    use tokio::time::{timeout, Duration};
+
+    /// Concurrent Watch() requests that one connection must be able to open
+    /// before the server has read any of them.
+    const WATCHES: usize = (GRPC_INITIAL_CONNECTION_WINDOW_SIZE as usize / 256) / 2;
+
+    /// Opens `WATCHES` requests on one HTTP/2 connection, each framed like a
+    /// Watch() request (a non-final DATA frame, then an empty END_STREAM DATA
+    /// frame), against a server with the given connection window that accepts
+    /// the requests but never reads their bodies. The 1-byte bodies are the
+    /// worst case for h2's small DATA frame budget. Returns whether the
+    /// connection is still open afterwards.
+    async fn connection_survives_watches(connection_window: u32) -> bool {
+        let (client_io, server_io) = tokio::io::duplex(1024 * 1024);
+
+        let server = tokio::spawn(async move {
+            let mut builder = h2::server::Builder::new();
+            builder.initial_connection_window_size(connection_window);
+            let mut conn = builder
+                .handshake::<_, Bytes>(server_io)
+                .await
+                .expect("server handshake must succeed");
+            let mut held = Vec::new();
+            while let Some(Ok(req)) = conn.accept().await {
+                held.push(req);
+            }
+        });
+
+        let (mut client, mut conn) = h2::client::handshake(client_io)
+            .await
+            .expect("client handshake must succeed");
+        let mut ping_pong = conn.ping_pong().expect("ping pong must be available");
+        let conn = tokio::spawn(conn);
+
+        let req = http::Request::post(
+            "http://policy.test/io.linkerd.proxy.outbound_policy.OutboundPolicies/Watch",
+        )
+        .body(())
+        .expect("request must be valid");
+        let mut streams = Vec::with_capacity(WATCHES);
+        let mut survived = true;
+        for _ in 0..WATCHES {
+            client = match client.ready().await {
+                Ok(client) => client,
+                Err(_) => {
+                    survived = false;
+                    break;
+                }
+            };
+            let Ok((rsp, mut stream)) = client.send_request(req.clone(), false) else {
+                survived = false;
+                break;
+            };
+            // Frame the body like a Watch() request: the message in a
+            // non-final DATA frame, then an empty END_STREAM frame.
+            if stream.send_data(Bytes::from_static(b"x"), false).is_err()
+                || stream.send_data(Bytes::new(), true).is_err()
+            {
+                survived = false;
+                break;
+            }
+            // Hold both halves of the stream so that it isn't reset.
+            streams.push((rsp, stream));
+        }
+
+        // The server processes frames in order, so a PONG means it has
+        // handled every DATA frame sent before the PING.
+        survived &= timeout(Duration::from_secs(10), ping_pong.ping(h2::Ping::opaque()))
+            .await
+            .expect("ping must complete or fail before the timeout")
+            .is_ok();
+
+        server.abort();
+        conn.abort();
+        survived
+    }
+
+    #[tokio::test]
+    async fn grpc_connection_window_allows_concurrent_watches() {
+        assert!(connection_survives_watches(GRPC_INITIAL_CONNECTION_WINDOW_SIZE).await);
+    }
+
+    #[tokio::test]
+    async fn default_connection_window_does_not_allow_concurrent_watches() {
+        // hyper's default HTTP/2 connection window, which tonic uses when the
+        // window isn't set.
+        //
+        // https://github.com/hyperium/hyper/blob/f1b0876495cb042d228e8db00740056152ac131c/src/proto/h2/server.rs#L36
+        assert!(!connection_survives_watches(1024 * 1024).await);
+    }
 }

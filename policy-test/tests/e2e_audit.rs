@@ -86,6 +86,7 @@ async fn ns_audit() {
         change_access_policy(client.clone(), &ns, "audit").await;
 
         // Recreate pod for it to pick the new default policy
+        tracing::info!(%ns, "Deleting web pod so it picks up the audit policy");
         let api = kube::Api::<k8s::api::core::v1::Pod>::namespaced(client.clone(), &ns);
         kube::runtime::wait::delete::delete_and_finalize(
             api,
@@ -94,8 +95,17 @@ async fn ns_audit() {
         )
         .await
         .expect("web pod must be deleted");
+        tracing::info!(%ns, "Deleted web pod");
 
         create_ready_pod(&client, web::pod(&ns)).await;
+        tracing::info!(%ns, "Recreated web pod");
+
+        // Wait for the service's endpoints to be repopulated with the
+        // recreated pod's address before sending traffic to it; otherwise
+        // unmeshed traffic (which is routed via the Service, unlike meshed
+        // traffic) can race the Endpoints controller and fail to connect.
+        await_condition(&client, &ns, "web", endpoints_ready).await;
+        tracing::info!(%ns, "Service endpoints repopulated with recreated web pod");
 
         // All requests should work
         let (injected, uninjected) = tokio::join!(
@@ -115,6 +125,7 @@ async fn ns_audit() {
 }
 
 async fn change_access_policy(client: Client, ns: &str, policy: &str) {
+    tracing::info!(%ns, %policy, "Changing namespace default-inbound-policy");
     let api = k8s::Api::<k8s::Namespace>::all(client.clone());
     let patch = serde_json::json!({
         "metadata": {

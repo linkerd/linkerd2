@@ -352,6 +352,8 @@ func restartClusterWatcher(
 	if err != nil {
 		return fmt.Errorf("unable to parse kube config: %w", err)
 	}
+	// Disallow the Exec auth provider.
+	cfg.ExecProvider = nil
 	remoteAPI, err := controllerK8s.InitializeAPIForConfig(ctx, cfg, false, link.Spec.TargetClusterName, controllerK8s.Svc, controllerK8s.Endpoint)
 	if err != nil {
 		return fmt.Errorf("cannot initialize api for target cluster %s: %w", link.Spec.TargetClusterName, err)

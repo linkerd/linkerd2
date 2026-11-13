@@ -153,6 +153,11 @@ impl Admission {
         }
 
         if is_kind::<gateway::TLSRoute>(&req) {
+            // TLSRoute is served under several versions, which differ in that
+            // `v1` requires `spec.hostnames` and `v1alpha2` does not.
+            if req.kind.version == gateway::TlsRouteApiVersion::V1Alpha2.version() {
+                return self.admit_spec::<gateway::TlsRouteSpecV1Alpha2>(req).await;
+            }
             return self.admit_spec::<gateway::TlsRouteSpec>(req).await;
         }
 
@@ -770,6 +775,23 @@ impl Validate<gateway::TlsRouteSpec> for Admission {
         }
 
         Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<gateway::TlsRouteSpecV1Alpha2> for Admission {
+    fn lenient() -> bool {
+        <Self as Validate<gateway::TlsRouteSpec>>::lenient()
+    }
+
+    async fn validate(
+        self,
+        ns: &str,
+        name: &str,
+        annotations: &BTreeMap<String, String>,
+        gateway::TlsRouteSpecV1Alpha2(spec): gateway::TlsRouteSpecV1Alpha2,
+    ) -> Result<()> {
+        <Self as Validate<gateway::TlsRouteSpec>>::validate(self, ns, name, annotations, spec).await
     }
 }
 

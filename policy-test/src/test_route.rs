@@ -4,9 +4,11 @@ use linkerd_policy_controller_k8s_api::{
     self as k8s, gateway, policy, Condition, Resource as _, ResourceExt,
 };
 
-use crate::outbound_api::{detect_http_routes, grpc_routes};
 #[cfg(feature = "gateway-api-experimental")]
-use crate::outbound_api::{tcp_routes, tls_routes};
+use crate::outbound_api::tcp_routes;
+use crate::outbound_api::{detect_http_routes, grpc_routes};
+#[cfg(feature = "gateway-api-tls-route")]
+use crate::{outbound_api::tls_routes, TLSRoute};
 
 pub trait TestRoute:
     kube::Resource<Scope = kube::core::NamespaceResourceScope, DynamicType: Default>
@@ -483,8 +485,8 @@ impl TestRoute for gateway::GRPCRoute {
     }
 }
 
-#[cfg(feature = "gateway-api-experimental")]
-impl TestRoute for gateway::TLSRoute {
+#[cfg(feature = "gateway-api-tls-route")]
+impl TestRoute for TLSRoute {
     type Route = outbound::TlsRoute;
     type Backend = outbound::tls_route::RouteBackend;
     type Filter = outbound::tls_route::Filter;
@@ -511,7 +513,7 @@ impl TestRoute for gateway::TLSRoute {
                     .collect(),
             })
             .collect();
-        gateway::TLSRoute {
+        TLSRoute {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
                 name: Some("foo-route".to_string()),
@@ -531,7 +533,9 @@ impl TestRoute for gateway::TLSRoute {
                         })
                         .collect(),
                 ),
-                hostnames: Vec::default(),
+                // `v1` requires at least one hostname; `v1alpha2` accepts an
+                // empty list, but a hostname is valid in both.
+                hostnames: vec!["example.com".to_string()],
                 rules,
                 use_default_gateways: None,
             },

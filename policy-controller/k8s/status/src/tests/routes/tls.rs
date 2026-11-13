@@ -58,6 +58,7 @@ fn route_with_valid_service_backends() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent service
@@ -132,7 +133,7 @@ fn route_with_valid_service_backends() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -155,6 +156,7 @@ fn route_with_valid_egress_network_backend() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent egress network
@@ -211,7 +213,7 @@ fn route_with_valid_egress_network_backend() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -234,6 +236,7 @@ fn route_with_invalid_service_backend() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent service
@@ -304,7 +307,7 @@ fn route_with_invalid_service_backend() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -327,6 +330,7 @@ fn route_with_egress_network_backend_different_from_parent() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent egress network
@@ -388,7 +392,7 @@ fn route_with_egress_network_backend_different_from_parent() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -411,6 +415,7 @@ fn route_with_egress_network_backend_and_service_parent() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent service
@@ -472,7 +477,7 @@ fn route_with_egress_network_backend_and_service_parent() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -495,6 +500,7 @@ fn route_with_egress_network_parent_and_service_backend() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent egress network
@@ -554,7 +560,7 @@ fn route_with_egress_network_parent_and_service_backend() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
@@ -577,6 +583,7 @@ fn route_accepted_after_server_create() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Create the route id and route
@@ -612,7 +619,7 @@ fn route_accepted_after_server_create() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The first update will be that the TLSRoute is not accepted because the
     // Server has been created yet.
@@ -637,7 +644,7 @@ fn route_accepted_after_server_create() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The second update will be that the TCPRoute is accepted because the
     // Server has been created.
@@ -662,6 +669,7 @@ fn route_accepted_after_egress_network_create() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Create the route id and route
@@ -705,7 +713,7 @@ fn route_accepted_after_egress_network_create() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The first update will be that the TLSRoute is not accepted because the
     // EgressNetwork has not been created yet.
@@ -735,7 +743,7 @@ fn route_accepted_after_egress_network_create() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The second update will be that the TLSRoute is accepted because the
     // EgressNetwork has been created.
@@ -760,6 +768,7 @@ fn route_rejected_after_server_delete() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     let server = make_server(
@@ -803,7 +812,7 @@ fn route_rejected_after_server_delete() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The second update will be that the TLSRoutes is accepted because the
     // Server has been created.
@@ -826,7 +835,7 @@ fn route_rejected_after_server_delete() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The third update will be that the TLSRoutes is not accepted because the
     // Server has been deleted.
@@ -851,6 +860,7 @@ fn route_rejected_after_egress_network_delete() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     let egress = super::make_egress_network("ns-0", "egress", accepted());
@@ -900,7 +910,7 @@ fn route_rejected_after_egress_network_delete() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The second update will be that the TLSRoute is accepted because the
     // EgressNetwork has been created.
@@ -935,7 +945,7 @@ fn route_rejected_after_egress_network_delete() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&id, status).unwrap();
+    let patch = crate::index::make_patch(&id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
 
     // The third update will be that the TLSRoute is not accepted because the
     // Server has been deleted.
@@ -960,6 +970,7 @@ fn service_route_type_conflict() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent service
@@ -1026,7 +1037,8 @@ fn service_route_type_conflict() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&tcp_id, status).unwrap();
+    let patch =
+        crate::index::make_patch(&tcp_id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(tcp_id, update.id);
     assert_eq!(patch, update.patch);
@@ -1063,7 +1075,9 @@ fn service_route_type_conflict() {
             let status = gateway::TlsRouteStatus {
                 parents: vec![parent_status],
             };
-            let patch = crate::index::make_patch(&tcp_id, status).unwrap();
+            let patch =
+                crate::index::make_patch(&tcp_id, status, crate::tests::TLS_ROUTE_API_VERSION)
+                    .unwrap();
             assert_eq!(patch, update.patch);
         } else {
             let parent_status = gateway::TlsRouteStatusParents {
@@ -1081,7 +1095,9 @@ fn service_route_type_conflict() {
             let status = gateway::TlsRouteStatus {
                 parents: vec![parent_status],
             };
-            let patch = crate::index::make_patch(&tls_id, status).unwrap();
+            let patch =
+                crate::index::make_patch(&tls_id, status, crate::tests::TLS_ROUTE_API_VERSION)
+                    .unwrap();
             assert_eq!(patch, update.patch);
         }
     }
@@ -1105,6 +1121,7 @@ fn egress_network_route_type_conflict() {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     );
 
     // Apply the parent egress network
@@ -1171,7 +1188,8 @@ fn egress_network_route_type_conflict() {
     let status = gateway::TlsRouteStatus {
         parents: vec![parent_status],
     };
-    let patch = crate::index::make_patch(&tcp_id, status).unwrap();
+    let patch =
+        crate::index::make_patch(&tcp_id, status, crate::tests::TLS_ROUTE_API_VERSION).unwrap();
     let update = updates_rx.try_recv().unwrap();
     assert_eq!(tcp_id, update.id);
     assert_eq!(patch, update.patch);
@@ -1208,7 +1226,9 @@ fn egress_network_route_type_conflict() {
             let status = gateway::TlsRouteStatus {
                 parents: vec![parent_status],
             };
-            let patch = crate::index::make_patch(&tcp_id, status).unwrap();
+            let patch =
+                crate::index::make_patch(&tcp_id, status, crate::tests::TLS_ROUTE_API_VERSION)
+                    .unwrap();
             assert_eq!(patch, update.patch);
         } else {
             let parent_status = gateway::TlsRouteStatusParents {
@@ -1226,7 +1246,9 @@ fn egress_network_route_type_conflict() {
             let status = gateway::TlsRouteStatus {
                 parents: vec![parent_status],
             };
-            let patch = crate::index::make_patch(&tls_id, status).unwrap();
+            let patch =
+                crate::index::make_patch(&tls_id, status, crate::tests::TLS_ROUTE_API_VERSION)
+                    .unwrap();
             assert_eq!(patch, update.patch);
         }
     }

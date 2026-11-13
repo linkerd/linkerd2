@@ -31,6 +31,7 @@ fn make_index() -> SharedIndex {
         updates_tx,
         IndexMetrics::register(&mut Default::default()),
         default_cluster_networks(),
+        crate::tests::TLS_ROUTE_API_VERSION,
     )
 }
 

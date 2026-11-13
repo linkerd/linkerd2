@@ -2,7 +2,7 @@
 
 lint: action-lint action-dev-check md-lint sh-lint rs-fetch rs-clippy rs-check-fmt go-lint
 
-export GWAPI_VERSION := "v1.2.0"
+export GWAPI_VERSION := env_var_or_default("GWAPI_VERSION", "v1.6.1")
 
 ##
 ## Go
@@ -137,9 +137,11 @@ _cargo-test := _cargo + ```
 export POLICY_TEST_CONTEXT := env_var_or_default("POLICY_TEST_CONTEXT", "k3d-" + k3d-name)
 
 # Install linkerd in the test cluster and run the policy tests.
-policy-test: linkerd-install policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
+policy-test: linkerd-install policy-validator-ready policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
 
-_policy-test-flags := "--no-default-features" + if GATEWAY_API_CHANNEL == "experimental" { " --features=gateway-api-experimental" } else { "" }
+_policy-test-tls-route-flags := if GATEWAY_API_TLS_ROUTE == "none" { "" } else if GATEWAY_API_TLS_ROUTE =~ '^v1(alpha2)?$' { " --features=gateway-api-tls-route-" + GATEWAY_API_TLS_ROUTE } else { error("GATEWAY_API_TLS_ROUTE must be 'v1', 'v1alpha2', or 'none'") }
+
+_policy-test-flags := "--no-default-features" + (if GATEWAY_API_CHANNEL == "experimental" { " --features=gateway-api-experimental" } else { "" }) + _policy-test-tls-route-flags
 
 # Run the policy tests without installing linkerd.
 policy-test-run *flags:
@@ -177,13 +179,18 @@ k3d-name := "l5d-test"
 # The name of the docker network to use (i.e., for multicluster testing).
 k3d-network := "k3d-name"
 
-# The kubernetes version to use for the test cluster. e.g. 'v1.24', 'latest', etc
+# The kubernetes version to use for the test cluster. Either a k3s release
+# channel (e.g. 'v1.36', 'latest'), which k3d resolves at cluster creation time
+# by querying update.k3s.io, or a full k3s image tag (e.g. 'v1.36.5-k3s1'),
+# which is used as-is and avoids that network lookup.
 k3d-k8s := "latest"
+
+_k3d-image := if k3d-k8s =~ '^v[0-9]+\.[0-9]+\.[0-9]+' { "rancher/k3s:" + k3d-k8s } else { "+" + k3d-k8s }
 
 k3d-agents := "0"
 k3d-servers := "1"
 
-_k3d-flags := "--no-lb --k3s-arg --disable='local-storage,traefik,servicelb,metrics-server@server:*'"
+_k3d-flags := "--no-lb --k3s-arg --disable='gateway-api-crd,local-storage,traefik,servicelb,metrics-server@server:*'"
 
 _context := "--context=k3d-" + k3d-name
 _kubectl := "kubectl " + _context
@@ -197,7 +204,7 @@ k *flags:
 # Creates a k3d cluster that can be used for testing.
 k3d-create: && _k3d-ready
     k3d cluster create {{ k3d-name }} \
-        --image='+{{ k3d-k8s }}' \
+        --image='{{ _k3d-image }}' \
         --agents='{{ k3d-agents }}' \
         --servers='{{ k3d-servers }}' \
         --network='{{ k3d-network }}' \
@@ -293,12 +300,19 @@ proxy-image := DOCKER_REGISTRY + "/proxy"
 # When GATEWAY_API_VERSION is 'linkerd' we use the CLI's vendored gateway API
 # CRDs. Otherwise, we install the CRDs from the upstream release.
 # This should be kept up-to-date with the latest stable release of the gateway API.
-export GATEWAY_API_VERSION := env_var_or_default("GATEWAY_API_VERSION", "v1.5.1")
+export GATEWAY_API_VERSION := env_var_or_default("GATEWAY_API_VERSION", "v1.6.1")
 
 # When GATEWAY_API_CHANNEL is 'experimental', we enable testing of experimental
-# resource types (TCPRoute, TLSRoute). Alternatively, the 'standard' channel may
-# be used.
+# resource types (TCPRoute). Alternatively, the 'standard' channel may be used.
 export GATEWAY_API_CHANNEL := env_var_or_default("GATEWAY_API_CHANNEL", "experimental")
+
+# The TLSRoute API version to test against, or 'none' to skip the TLSRoute
+# tests. TLSRoute has no version that is served by every supported Gateway API
+# bundle: v1.2--v1.4 and the CRDs vendored by the linkerd-crds chart serve
+# 'v1alpha2' only (and only in the experimental channel), while the standard
+# channel of v1.5 serves 'v1' only. The policy controller negotiates a version
+# with the API server; this tells the tests which one it will pick.
+export GATEWAY_API_TLS_ROUTE := env_var_or_default("GATEWAY_API_TLS_ROUTE", if GATEWAY_API_VERSION == "linkerd" { "v1alpha2" } else { "v1" })
 
 _gateway-url := if GATEWAY_API_VERSION != "linkerd" { "https://github.com/kubernetes-sigs/gateway-api/releases/download/" + GATEWAY_API_VERSION + "/" + GATEWAY_API_CHANNEL + "-install.yaml" } else { "" }
 
@@ -379,11 +393,27 @@ _controller-build:
         --load
 
 _linkerd-ready:
-    if ! {{ _kubectl }} wait pod --for=condition=ready \
-            --namespace=linkerd --selector='linkerd.io/control-plane-component' \
-            --timeout=1m ; then \
-        {{ _kubectl }} describe pods --namespace=linkerd ; \
+    # Wait for the control plane deployments to be Available. They exist as soon as the install is
+    # applied, so unlike a pod selector this wait cannot fail early with "no matching resources".
+    if ! {{ _kubectl }} -n linkerd wait deploy -l linkerd.io/control-plane-component \
+            --for=condition=Available --timeout=2m ; then \
+        {{ _kubectl }} describe deployments,pods --namespace=linkerd ; \
+        exit 1 ; \
     fi
+
+# Wait until the policy validator webhook denies an invalid resource.
+policy-validator-ready:
+    # Pod readiness does not prove the apiserver can reach the webhook, and with
+    # failurePolicy=Ignore an unreachable webhook admits invalid resources. Only a denial of a
+    # server-side dry run of an invalid AuthorizationPolicy (two MeshTLSAuthentication refs) does.
+    # https://github.com/kubernetes/apiserver/blob/a1b8e6fa9269c795a50d34e22fef9b0bc55f9fdb/pkg/admission/plugin/webhook/errors/statuserror.go#L29
+    for _ in $(seq 60) ; do \
+        out=$(printf '%s' '{"apiVersion":"policy.linkerd.io/v1alpha1","kind":"AuthorizationPolicy","metadata":{"name":"webhook-probe","namespace":"default"},"spec":{"targetRef":{"group":"policy.linkerd.io","kind":"Server","name":"probe"},"requiredAuthenticationRefs":[{"group":"policy.linkerd.io","kind":"MeshTLSAuthentication","name":"a"},{"group":"policy.linkerd.io","kind":"MeshTLSAuthentication","name":"b"}]}}' | {{ _kubectl }} apply --dry-run=server -f - 2>&1) ; \
+        if echo "$out" | grep -qF 'admission webhook "linkerd-policy-validator.linkerd.io" denied the request' ; then exit 0 ; fi ; \
+        sleep 1 ; \
+    done ; \
+    echo "ERROR: policy validator webhook did not deny an invalid AuthorizationPolicy within 60s. Last response: $out" >&2 ; \
+    exit 1
 
 # Ensure that a linkerd control plane is installed
 _linkerd-init: && _linkerd-ready
@@ -472,7 +502,7 @@ _linkerd-viz-uninit:
 ## linkerd multicluster
 ##
 
-_mc-target-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*' --k3s-arg '--cluster-cidr=10.23.0.0/24@server:*'"
+_mc-target-k3d-flags := "--k3s-arg --disable='gateway-api-crd,local-storage,metrics-server@server:*' --k3s-arg '--cluster-cidr=10.23.0.0/24@server:*'"
 
 linkerd-mc-install: _linkerd-init
     {{ _linkerd }} mc install --set='linkerdVersion={{ linkerd-tag }}' \
@@ -510,7 +540,7 @@ mc-target-load:
         mc-load
 
 mc-install-gwapi:
-	{{ _kubectl }} apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/${GWAPI_VERSION}/experimental-install.yaml
+	{{ _kubectl }} apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/${GWAPI_VERSION}/experimental-install.yaml
 
 mc-test-build:
     go build --mod=readonly \

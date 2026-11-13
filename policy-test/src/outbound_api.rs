@@ -118,7 +118,7 @@ pub fn grpc_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound:
     }
 }
 
-#[cfg(feature = "gateway-api-experimental")]
+#[cfg(feature = "gateway-api-tls-route")]
 #[track_caller]
 pub fn tls_routes(config: &grpc::outbound::OutboundPolicy) -> &[grpc::outbound::TlsRoute] {
     let kind = config

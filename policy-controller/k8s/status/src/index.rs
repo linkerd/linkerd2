@@ -58,6 +58,10 @@ pub struct Controller {
     updates: mpsc::Receiver<Update>,
     patch_timeout: Duration,
 
+    /// The version of the TLSRoute API served by the cluster, as negotiated at
+    /// startup. TLSRoute statuses must be patched through a served version.
+    tls_route_api_version: gateway::TlsRouteApiVersion,
+
     metrics: ControllerMetrics,
 }
 
@@ -96,6 +100,10 @@ pub struct Index {
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
     cluster_networks: Vec<Cidr>,
+
+    /// The version of the TLSRoute API served by the cluster, as negotiated at
+    /// startup. It is the `apiVersion` written in TLSRoute status patches.
+    tls_route_api_version: gateway::TlsRouteApiVersion,
 
     metrics: IndexMetrics,
 }
@@ -231,6 +239,7 @@ impl Controller {
         updates: mpsc::Receiver<Update>,
         patch_timeout: Duration,
         metrics: ControllerMetrics,
+        tls_route_api_version: gateway::TlsRouteApiVersion,
     ) -> Self {
         Self {
             claims,
@@ -238,6 +247,7 @@ impl Controller {
             name,
             updates,
             patch_timeout,
+            tls_route_api_version,
             metrics,
         }
     }
@@ -282,7 +292,14 @@ impl Controller {
                         } else if id.is_a::<gateway::TCPRoute>() {
                             self.patch::<gateway::TCPRoute>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.is_a::<gateway::TLSRoute>() {
-                            self.patch::<gateway::TLSRoute>(&id.gkn.name, &id.namespace, patch).await;
+                            match self.tls_route_api_version {
+                                gateway::TlsRouteApiVersion::V1 => {
+                                    self.patch::<gateway::TLSRoute>(&id.gkn.name, &id.namespace, patch).await;
+                                }
+                                gateway::TlsRouteApiVersion::V1Alpha2 => {
+                                    self.patch::<gateway::TLSRouteV1Alpha2>(&id.gkn.name, &id.namespace, patch).await;
+                                }
+                            }
                         } else if id.is_a::<policy::HttpLocalRateLimitPolicy>() {
                             self.patch::<policy::HttpLocalRateLimitPolicy>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.is_a::<policy::EgressNetwork>() {
@@ -348,6 +365,7 @@ impl Index {
         updates: mpsc::Sender<Update>,
         metrics: IndexMetrics,
         cluster_networks: Vec<IpNet>,
+        tls_route_api_version: gateway::TlsRouteApiVersion,
     ) -> SharedIndex {
         let cluster_networks = cluster_networks.into_iter().map(Into::into).collect();
         Arc::new(RwLock::new(Self {
@@ -364,6 +382,7 @@ impl Index {
             services: HashMap::new(),
             metrics,
             cluster_networks,
+            tls_route_api_version,
         }))
     }
 
@@ -950,7 +969,7 @@ impl Index {
             parents: all_statuses,
         };
 
-        make_patch(id, status)
+        make_patch(id, status, self.tls_route_api_version)
     }
 
     fn make_grpc_route_patch(
@@ -987,7 +1006,7 @@ impl Index {
             parents: all_statuses,
         };
 
-        make_patch(id, status)
+        make_patch(id, status, self.tls_route_api_version)
     }
 
     fn make_tls_route_patch(
@@ -1024,7 +1043,7 @@ impl Index {
             parents: all_statuses,
         };
 
-        make_patch(id, status)
+        make_patch(id, status, self.tls_route_api_version)
     }
 
     fn make_tcp_route_patch(
@@ -1061,7 +1080,7 @@ impl Index {
             parents: all_statuses,
         };
 
-        make_patch(id, status)
+        make_patch(id, status, self.tls_route_api_version)
     }
 
     fn target_ref_status(
@@ -1127,7 +1146,7 @@ impl Index {
             return None;
         }
 
-        make_patch(id, status)
+        make_patch(id, status, self.tls_route_api_version)
     }
 
     fn network_condition(&self, egress_net: &EgressNetworkRef) -> k8s::Condition {
@@ -1165,7 +1184,7 @@ impl Index {
             conditions: all_conditions,
         };
 
-        make_patch(id, status)
+        make_patch(id, status, self.tls_route_api_version)
     }
 
     /// If this instance is the leader, reconcile the statuses for all resources
@@ -1790,11 +1809,12 @@ impl kubert::index::IndexNamespacedResource<policy::EgressNetwork> for Index {
 pub(crate) fn make_patch<Status>(
     resource_id: &NamespaceGroupKindName,
     status: Status,
+    tls_route_api_version: gateway::TlsRouteApiVersion,
 ) -> Option<k8s::Patch<serde_json::Value>>
 where
     Status: serde::Serialize,
 {
-    match resource_id.api_version() {
+    match resource_id.api_version(tls_route_api_version) {
         Err(error) => {
             tracing::error!(error = %error, "Failed to create patch for resource");
             None

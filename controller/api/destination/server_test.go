@@ -1277,6 +1277,55 @@ spec:
 			t.Fatalf("Expected not to find service mapped to [%s]", badClusterIP)
 		}
 	})
+
+	t.Run("Return Unavailable when services conflict on the same cluster IP", func(t *testing.T) {
+		conflictingClusterIP := "10.245.0.99"
+		k8sConfigs := []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-a
+  namespace: test
+spec:
+  type: ClusterIP
+  clusterIP: 10.245.0.99
+  clusterIPs:
+  - 10.245.0.99
+  ports:
+  - port: 1234`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-b
+  namespace: test
+spec:
+  type: ClusterIP
+  clusterIP: 10.245.0.99
+  clusterIPs:
+  - 10.245.0.99
+  ports:
+  - port: 1234`}
+		k8sAPI, err := k8s.NewFakeAPI(k8sConfigs...)
+		if err != nil {
+			t.Fatalf("NewFakeAPI returned an error: %s", err)
+		}
+		err = watcher.InitializeIndexers(k8sAPI)
+		if err != nil {
+			t.Fatalf("InitializeIndexers returned an error: %s", err)
+		}
+		k8sAPI.Sync(nil)
+
+		svc, err := getSvcID(k8sAPI, conflictingClusterIP, logging.WithFields(nil))
+		if svc != nil {
+			t.Fatalf("Expected no service to be returned for conflicting cluster IP [%s]", conflictingClusterIP)
+		}
+		if err == nil {
+			t.Fatalf("Expected an error for conflicting cluster IP [%s]", conflictingClusterIP)
+		}
+		if code := status.Code(err); code != codes.Unavailable {
+			t.Fatalf("Expected error code %s, but got %s: %s", codes.Unavailable, code, err)
+		}
+	})
 }
 
 func testReturnEndpoints(t *testing.T, fqdn, ip string, port uint32) {

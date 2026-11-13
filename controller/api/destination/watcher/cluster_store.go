@@ -265,6 +265,9 @@ func decodeK8sConfigFromSecret(data []byte, cluster string, enableEndpointSlices
 		return nil, nil, err
 	}
 
+	// Disallow the Exec auth provider.
+	cfg.ExecProvider = nil
+
 	ctx := context.Background()
 	var remoteAPI *k8s.API
 	if enableEndpointSlices {

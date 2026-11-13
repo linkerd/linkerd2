@@ -22,7 +22,14 @@ pub struct NamespaceGroupKindName {
 }
 
 impl NamespaceGroupKindName {
-    pub fn api_version(&self) -> anyhow::Result<Cow<'static, str>> {
+    /// The `apiVersion` to write in this resource's status patch.
+    ///
+    /// Every kind but TLSRoute is served under a single version; TLSRoute's is
+    /// negotiated with the API server at startup and must be passed in.
+    pub fn api_version(
+        &self,
+        tls_route_api_version: gateway::TlsRouteApiVersion,
+    ) -> anyhow::Result<Cow<'static, str>> {
         match (self.gkn.group.as_ref(), self.gkn.kind.as_ref()) {
             (POLICY_API_GROUP, "HTTPRoute") => Ok(linkerd_k8s_api::HttpRoute::api_version(&())),
             (POLICY_API_GROUP, "HTTPLocalRateLimitPolicy") => {
@@ -34,7 +41,7 @@ impl NamespaceGroupKindName {
             (GATEWAY_API_GROUP, "HTTPRoute") => Ok(gateway::HTTPRoute::api_version(&())),
             (GATEWAY_API_GROUP, "GRPCRoute") => Ok(gateway::GRPCRoute::api_version(&())),
             (GATEWAY_API_GROUP, "TCPRoute") => Ok(gateway::TCPRoute::api_version(&())),
-            (GATEWAY_API_GROUP, "TLSRoute") => Ok(gateway::TLSRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "TLSRoute") => Ok(tls_route_api_version.api_version().into()),
             (group, kind) => {
                 anyhow::bail!("unknown group + kind combination: ({group}, {kind})")
             }

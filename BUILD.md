@@ -459,20 +459,27 @@ bin/update-codegen.sh
 ## Linkerd Helm chart
 
 The Linkerd control plane chart is located in the
-[`charts/linkerd2`](charts/linkerd2) folder. The [`charts/patch`](charts/patch)
-chart consists of the Linkerd proxy specification, which is used by the proxy
-injector to inject the proxy container. Both charts depend on the partials
-subchart which can be found in the [`charts/partials`](charts/partials) folder.
+[`charts/linkerd-control-plane`](charts/linkerd-control-plane) folder, and the
+CRDs it needs are in the [`charts/linkerd-crds`](charts/linkerd-crds) chart.
+The [`charts/patch`](charts/patch) chart consists of the Linkerd proxy
+specification, which is used by the proxy injector to inject the proxy
+container. All three charts depend on the partials subchart which can be found
+in the [`charts/partials`](charts/partials) folder.
 
-Note that the `charts/linkerd2/values.yaml` file contains a placeholder
-`linkerdVersionValue` that you need to replace with an appropriate string (like
-`edge-20.2.2`) before proceeding.
+Note that the `charts/linkerd-control-plane/values.yaml` file contains a
+placeholder `linkerdVersionValue` that you need to replace with an appropriate
+string (like `edge-20.2.2`) before proceeding.
 
 During development, please use the [`bin/helm`](bin/helm) wrapper script to
 invoke the Helm commands. For example,
 
 ```bash
-bin/helm install linkerd2 charts/linkerd2
+bin/helm install linkerd-crds -n linkerd --create-namespace charts/linkerd-crds
+bin/helm install linkerd-control-plane -n linkerd \
+  --set-file identityTrustAnchorsPEM=ca.crt \
+  --set-file identity.issuer.tls.crtPEM=issuer.crt \
+  --set-file identity.issuer.tls.keyPEM=issuer.key \
+  charts/linkerd-control-plane
 ```
 
 This ensures that you use the same Helm version as that of the Linkerd CI
@@ -494,8 +501,8 @@ Extensions provide each their own chart:
 ### Making changes to the chart templates
 
 Whenever you make changes to the files under
-[`charts/linkerd2/templates`](charts/linkerd2/templates) or its dependency
-[`charts/partials`](charts/partials), make sure to run
+[`charts/linkerd-control-plane/templates`](charts/linkerd-control-plane/templates)
+or its dependency [`charts/partials`](charts/partials), make sure to run
 [`bin/helm-build`](bin/helm-build) which will refresh the dependencies and lint
 the templates.
 

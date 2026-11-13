@@ -28,6 +28,12 @@ import (
 // updates buffered per stream before the stream is closed.
 const DefaultStreamQueueCapacity = 100
 
+var (
+	// errIPConflict is a sentinel error returned when multiple services are
+	// indexed by the same underlying IP address (clusterIP).
+	errIPConflict = status.Error(codes.Unavailable, "found multiple services with conflicting cluster IP")
+)
+
 type (
 	Config struct {
 		ControllerNS,
@@ -642,7 +648,7 @@ func getSvcID(k8sAPI *k8s.API, clusterIP string, log *logging.Entry) (*watcher.S
 			conflictingServices = append(conflictingServices, fmt.Sprintf("%s:%s", service.Namespace, service.Name))
 		}
 		log.Warnf("found conflicting %s cluster IP: %s", clusterIP, strings.Join(conflictingServices, ","))
-		return nil, status.Errorf(codes.FailedPrecondition, "found %d services with conflicting cluster IP %s", len(services), clusterIP)
+		return nil, errIPConflict
 	}
 	if len(services) == 0 {
 		return nil, nil

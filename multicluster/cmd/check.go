@@ -344,7 +344,11 @@ func (hc *healthChecker) linkAccess(ctx context.Context) error {
 }
 
 func (hc *healthChecker) checkLinks(ctx context.Context) error {
-	links, err := hc.KubeAPIClient().L5dCrdClient.LinkV1alpha3().Links("").List(ctx, metav1.ListOptions{})
+	namespace, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, MulticlusterExtensionName)
+	if err != nil {
+		return err
+	}
+	links, err := hc.KubeAPIClient().L5dCrdClient.LinkV1alpha3().Links(namespace.Name).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -403,6 +407,8 @@ func (hc *healthChecker) checkRemoteClusterConnectivity(ctx context.Context) err
 			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %w", secret.Namespace, secret.Name, link.Spec.TargetClusterName, err))
 			continue
 		}
+		// Disallow the Exec auth provider.
+		clientConfig.ExecProvider = nil
 		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, healthcheck.RequestTimeout, 0, 0)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %w", secret.Namespace, secret.Name, link.Spec.TargetClusterName, err))
@@ -451,6 +457,8 @@ func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnc
 			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, link.Spec.TargetClusterName, err))
 			continue
 		}
+		// Disallow the Exec auth provider.
+		clientConfig.ExecProvider = nil
 		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, healthcheck.RequestTimeout, 0, 0)
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, link.Spec.TargetClusterName, err))
@@ -817,7 +825,11 @@ func (hc *healthChecker) checkForOrphanedServices(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	links, err := hc.KubeAPIClient().L5dCrdClient.LinkV1alpha3().Links("").List(ctx, metav1.ListOptions{})
+	namespace, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, MulticlusterExtensionName)
+	if err != nil {
+		return err
+	}
+	links, err := hc.KubeAPIClient().L5dCrdClient.LinkV1alpha3().Links(namespace.Name).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
