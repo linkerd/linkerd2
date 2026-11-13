@@ -237,7 +237,7 @@ func (fs *federatedService) update(service *corev1.Service) {
 	for _, id := range fs.remoteDiscovery {
 		if !slices.Contains(newRemoteDiscovery, id) {
 			for i := range fs.subscribers {
-				fs.remoteDiscoveryUnsubscribe(&fs.subscribers[i], id)
+				fs.remoteDiscoveryUnsubscribe(&fs.subscribers[i], id, true)
 			}
 		}
 	}
@@ -248,13 +248,13 @@ func (fs *federatedService) update(service *corev1.Service) {
 		if newLocalDiscovery != "" {
 			for i := range fs.subscribers {
 				if fs.localDiscovery != "" {
-					fs.localDiscoveryUnsubscribe(&fs.subscribers[i], fs.localDiscovery)
+					fs.localDiscoveryUnsubscribe(&fs.subscribers[i], fs.localDiscovery, true)
 				}
 				fs.localDiscoverySubscribe(&fs.subscribers[i], newLocalDiscovery)
 			}
 		} else {
 			for i := range fs.subscribers {
-				fs.localDiscoveryUnsubscribe(&fs.subscribers[i], fs.localDiscovery)
+				fs.localDiscoveryUnsubscribe(&fs.subscribers[i], fs.localDiscovery, true)
 			}
 		}
 	}
@@ -334,11 +334,14 @@ func (fs *federatedService) unsubscribe(
 	subscribers := make([]federatedServiceSubscriber, 0)
 	for i, subscriber := range fs.subscribers {
 		if subscriber.stream.inner == stream {
+			// The stream is going away, so the client keeps the endpoints it
+			// has until it resubscribes. Sending a Remove here would make it
+			// drop them all while it reconnects.
 			for id := range subscriber.remoteTranslators {
-				fs.remoteDiscoveryUnsubscribe(&fs.subscribers[i], id)
+				fs.remoteDiscoveryUnsubscribe(&fs.subscribers[i], id, false)
 			}
 			for localDiscovery := range subscriber.localTranslators {
-				fs.localDiscoveryUnsubscribe(&fs.subscribers[i], localDiscovery)
+				fs.localDiscoveryUnsubscribe(&fs.subscribers[i], localDiscovery, false)
 			}
 			subscriber.stream.Stop()
 		} else {
@@ -394,9 +397,14 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 	}
 }
 
+// remoteDiscoveryUnsubscribe stops sending the subscriber updates for a remote
+// member of the federated service. withRemove tells the subscriber to remove
+// that member's endpoints, which is only correct when the member is leaving
+// the federated service, not when the subscriber's stream is torn down.
 func (fs *federatedService) remoteDiscoveryUnsubscribe(
 	subscriber *federatedServiceSubscriber,
 	id remoteDiscoveryID,
+	withRemove bool,
 ) {
 	remoteWatcher, _, found := fs.clusterStore.Get(id.cluster)
 	if !found {
@@ -411,7 +419,7 @@ func (fs *federatedService) remoteDiscoveryUnsubscribe(
 		NodeName:                subscriber.nodeName,
 		EnableEndpointFiltering: false, // Endpoint filtering is disabled for remote discovery.
 	}
-	remoteWatcher.Unsubscribe(id.service, subscriber.port, filterKey, translator, true)
+	remoteWatcher.Unsubscribe(id.service, subscriber.port, filterKey, translator, withRemove)
 	translator.DrainAndStop()
 	delete(subscriber.remoteTranslators, id)
 }
@@ -455,9 +463,12 @@ func (fs *federatedService) localDiscoverySubscribe(
 	}
 }
 
+// localDiscoveryUnsubscribe is the local-member counterpart of
+// remoteDiscoveryUnsubscribe, with the same meaning for withRemove.
 func (fs *federatedService) localDiscoveryUnsubscribe(
 	subscriber *federatedServiceSubscriber,
 	localDiscovery string,
+	withRemove bool,
 ) {
 	translator, found := subscriber.localTranslators[localDiscovery]
 	if found {
@@ -467,7 +478,7 @@ func (fs *federatedService) localDiscoveryUnsubscribe(
 			NodeName:                subscriber.nodeName,
 			EnableEndpointFiltering: true, // Endpoint filtering is enabled for local discovery.
 		}
-		fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, filterKey, translator, true)
+		fs.localEndpoints.Unsubscribe(watcher.ServiceID{Namespace: fs.namespace, Name: localDiscovery}, subscriber.port, filterKey, translator, withRemove)
 		translator.DrainAndStop()
 		delete(subscriber.localTranslators, localDiscovery)
 	}
