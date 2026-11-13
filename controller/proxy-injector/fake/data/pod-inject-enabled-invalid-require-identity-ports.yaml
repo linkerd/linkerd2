@@ -1,0 +1,17 @@
+kind: Pod
+apiVersion: apps/v1
+metadata:
+  name: nginx
+  namespace: kube-public
+  annotations:
+    config.linkerd.io/proxy-require-identity-inbound-ports: "8888,70000,9999"
+    linkerd.io/inject: enabled
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - name: http
+      containerPort: 80

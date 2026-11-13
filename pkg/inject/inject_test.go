@@ -434,6 +434,67 @@ func TestApplyAnnotationOverridesInitializesTracingLabels(t *testing.T) {
 	}
 }
 
+func TestApplyAnnotationOverridesRequireIdentityOnInboundPorts(t *testing.T) {
+	newValues := func() *l5dcharts.Values {
+		return &l5dcharts.Values{
+			Proxy: &l5dcharts.Proxy{
+				Image:   &l5dcharts.Image{},
+				Ports:   &l5dcharts.Ports{},
+				Metrics: &l5dcharts.ProxyMetrics{},
+			},
+			ProxyInit: &l5dcharts.ProxyInit{},
+		}
+	}
+
+	t.Run("valid value is passed through without warning", func(t *testing.T) {
+		values := newValues()
+		annotations := map[string]string{
+			k8s.ProxyRequireIdentityOnInboundPortsAnnotation: "8888,9999",
+		}
+
+		warnings := ApplyAnnotationOverrides(values, annotations, nil, nil)
+
+		if values.Proxy.RequireIdentityOnInboundPorts != "8888,9999" {
+			t.Fatalf("expected ports to be set, got %q", values.Proxy.RequireIdentityOnInboundPorts)
+		}
+		if len(warnings) != 0 {
+			t.Fatalf("expected no warnings, got %v", warnings)
+		}
+	})
+
+	t.Run("malformed token is passed through unchanged and warned about", func(t *testing.T) {
+		values := newValues()
+		annotations := map[string]string{
+			k8s.ProxyRequireIdentityOnInboundPortsAnnotation: "8888,70000,9999",
+		}
+
+		warnings := ApplyAnnotationOverrides(values, annotations, nil, nil)
+
+		if values.Proxy.RequireIdentityOnInboundPorts != "8888,70000,9999" {
+			t.Fatalf("expected annotation value to be passed through unchanged, got %q", values.Proxy.RequireIdentityOnInboundPorts)
+		}
+		if len(warnings) != 1 {
+			t.Fatalf("expected exactly one warning, got %v", warnings)
+		}
+	})
+
+	t.Run("malformed range is passed through unchanged and warned about, valid range is not", func(t *testing.T) {
+		values := newValues()
+		annotations := map[string]string{
+			k8s.ProxyRequireIdentityOnInboundPortsAnnotation: "3000-4000,5000-",
+		}
+
+		warnings := ApplyAnnotationOverrides(values, annotations, nil, nil)
+
+		if values.Proxy.RequireIdentityOnInboundPorts != "3000-4000,5000-" {
+			t.Fatalf("expected annotation value to be passed through unchanged, got %q", values.Proxy.RequireIdentityOnInboundPorts)
+		}
+		if len(warnings) != 1 {
+			t.Fatalf("expected exactly one warning, got %v", warnings)
+		}
+	})
+}
+
 func TestMergeAdditionalEnv(t *testing.T) {
 	testCases := []struct {
 		id                  string

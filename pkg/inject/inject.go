@@ -155,6 +155,15 @@ type ResourceConfig struct {
 		annotations map[string]string
 		spec        *corev1.PodSpec
 	}
+
+	// overrideWarnings is kept on the struct, rather than just logged, so a
+	// caller with access to a Kubernetes recorder (the proxy-injector
+	// webhook) can also surface these as events on the workload.
+	overrideWarnings []string
+}
+
+func (conf *ResourceConfig) OverrideWarnings() []string {
+	return conf.overrideWarnings
 }
 
 type podPatch struct {
@@ -206,7 +215,8 @@ func GetOverriddenValues(rc *ResourceConfig) (*l5dcharts.Values, error) {
 		namedPorts = util.GetNamedPorts(append(rc.pod.spec.InitContainers, rc.pod.spec.Containers...))
 	}
 
-	ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), rc.GetLabelOverrides(), namedPorts)
+	warnings := ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), rc.GetLabelOverrides(), namedPorts)
+	rc.overrideWarnings = append(rc.overrideWarnings, warnings...)
 	MergeAdditionalEnv(copyValues, rc.GetNsAnnotations(), rc.GetWorkloadAnnotations())
 	return copyValues, nil
 }
@@ -268,7 +278,9 @@ func MergeAdditionalEnv(values *l5dcharts.Values, nsAnnotations map[string]strin
 	}
 }
 
-func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, labels map[string]string, namedPorts map[string]int32) {
+func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]string, labels map[string]string, namedPorts map[string]int32) []string {
+	var warnings []string
+
 	if override, ok := annotations[k8s.ProxyInjectAnnotation]; ok {
 		if override == k8s.ProxyInjectIngress {
 			values.Proxy.IsIngress = true
@@ -341,6 +353,10 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 
 	if override, ok := annotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation]; ok {
 		values.Proxy.RequireIdentityOnInboundPorts = override
+		if warning := invalidPortsWarning(override, k8s.ProxyRequireIdentityOnInboundPortsAnnotation); warning != "" {
+			log.Warn(warning)
+			warnings = append(warnings, warning)
+		}
 	}
 
 	if override, ok := annotations[k8s.ProxyEnableHostnameLabels]; ok {
@@ -627,6 +643,26 @@ func ApplyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 			}
 		}
 	}
+
+	return warnings
+}
+
+func invalidPortsWarning(override, annotation string) string {
+	var invalid []string
+	for _, tok := range util.GetPortRanges(override) {
+		if _, err := util.ParsePortRange(tok); err != nil {
+			invalid = append(invalid, tok)
+		}
+	}
+
+	if len(invalid) == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf(
+		"invalid port(s) %s in annotation %q",
+		strings.Join(invalid, ","), annotation,
+	)
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
