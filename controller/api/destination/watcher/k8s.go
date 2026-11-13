@@ -190,12 +190,23 @@ func getIndexedPods(k8sAPI *k8s.API, indexName string, key string) ([]*corev1.Po
 		return nil, fmt.Errorf("failed getting %s indexed pods: %w", indexName, err)
 	}
 	pods := make([]*corev1.Pod, 0)
+	terminating := make([]*corev1.Pod, 0)
 	for _, obj := range objs {
 		pod := obj.(*corev1.Pod)
 		if !podNotTerminating(pod) {
+			// A terminating pod that is still running can keep serving
+			// traffic until it exits, so keep it as a fallback when it is
+			// the only pod on the IP. A live pod on the same IP always wins,
+			// preserving the #5940 guard against two pods sharing one IP.
+			if pod.DeletionTimestamp != nil && pod.Status.Phase == corev1.PodRunning {
+				terminating = append(terminating, pod)
+			}
 			continue
 		}
 		pods = append(pods, pod)
+	}
+	if len(pods) == 0 && len(terminating) == 1 {
+		return terminating, nil
 	}
 	return pods, nil
 }
