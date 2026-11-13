@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	eventTypeSkipped  = "InjectionSkipped"
-	eventTypeInjected = "Injected"
+	eventTypeSkipped           = "InjectionSkipped"
+	eventTypeInjected          = "Injected"
+	eventTypeInvalidAnnotation = "InvalidAnnotation"
 )
 
 // Inject returns the function that produces an AdmissionResponse containing
@@ -130,6 +131,7 @@ func Inject(linkerdNamespace string, overrider inject.ValueOverrider) webhook.Ha
 			if parent != nil {
 				recorder.Event(parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
 			}
+			recordInvalidAnnotationEvents(recorder, parent, resourceConfig.OverrideWarnings())
 			log.Infof("injection patch generated for: %s", report.ResName())
 			log.Debugf("injection patch: %s", patchJSON)
 
@@ -213,6 +215,15 @@ func Inject(linkerdNamespace string, overrider inject.ValueOverrider) webhook.Ha
 			UID:     request.UID,
 			Allowed: true,
 		}, nil
+	}
+}
+
+func recordInvalidAnnotationEvents(recorder record.EventRecorder, parent *metav1.PartialObjectMetadata, warnings []string) {
+	if parent == nil {
+		return
+	}
+	for _, warning := range warnings {
+		recorder.Event(parent, v1.EventTypeWarning, eventTypeInvalidAnnotation, warning)
 	}
 }
 
