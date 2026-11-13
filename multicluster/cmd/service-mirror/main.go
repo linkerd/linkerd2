@@ -53,6 +53,7 @@ func Main(args []string) {
 	repairPeriod := cmd.Duration("endpoint-refresh-period", 1*time.Minute, "frequency to refresh endpoint resolution")
 	enableHeadlessSvc := cmd.Bool("enable-headless-services", false, "toggle support for headless service mirroring")
 	enableNamespaceCreation := cmd.Bool("enable-namespace-creation", false, "toggle support for namespace creation")
+	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", true, "Use EndpointSlice resources instead of Endpoints")
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 	localMirror := cmd.Bool("local-mirror", false, "watch the local cluster for federated service members")
 	federatedServiceSelector := cmd.String("federated-service-selector", k8s.DefaultFederatedServiceSelector, "Selector (label query) for federated service members in the local cluster")
@@ -97,9 +98,7 @@ func Main(args []string) {
 		*kubeConfigPath,
 		false,
 		"local",
-		controllerK8s.NS,
-		controllerK8s.Svc,
-		controllerK8s.Endpoint,
+		servicemirror.LocalAPIResources(*enableEndpointSlices, *localMirror)...,
 	)
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
@@ -153,7 +152,7 @@ func Main(args []string) {
 					ExcludedLabels:           excludedLabelList,
 				},
 			}
-			err = startLocalClusterWatcher(ctx, *namespace, controllerK8sAPI, linksAPI, *requeueLimit, *repairPeriod, *enableHeadlessSvc, *enableNamespaceCreation, link)
+			err = startLocalClusterWatcher(ctx, *namespace, controllerK8sAPI, linksAPI, *requeueLimit, *repairPeriod, *enableHeadlessSvc, *enableNamespaceCreation, *enableEndpointSlices, link)
 			if err != nil {
 				log.Fatalf("Failed to start local cluster watcher: %s", err)
 			}
@@ -200,7 +199,7 @@ func Main(args []string) {
 						if err != nil {
 							log.Errorf("Failed to load remote cluster credentials: %s", err)
 						}
-						err = restartClusterWatcher(ctx, link, *namespace, *probeSvc, creds, controllerK8sAPI, linksAPI, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *enableNamespaceCreation)
+						err = restartClusterWatcher(ctx, link, *namespace, *probeSvc, creds, controllerK8sAPI, linksAPI, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *enableNamespaceCreation, *enableEndpointSlices)
 						if err != nil {
 							// failed to restart cluster watcher; give a bit of slack
 							// and requeue the link to give it another try
@@ -329,6 +328,7 @@ func restartClusterWatcher(
 	metrics servicemirror.ProbeMetricVecs,
 	enableHeadlessSvc bool,
 	enableNamespaceCreation bool,
+	enableEndpointSlices bool,
 ) error {
 
 	cleanupWorkers()
@@ -354,7 +354,7 @@ func restartClusterWatcher(
 	}
 	// Disallow the Exec auth provider.
 	cfg.ExecProvider = nil
-	remoteAPI, err := controllerK8s.InitializeAPIForConfig(ctx, cfg, false, link.Spec.TargetClusterName, controllerK8s.Svc, controllerK8s.Endpoint)
+	remoteAPI, err := controllerK8s.InitializeAPIForConfig(ctx, cfg, false, link.Spec.TargetClusterName, servicemirror.RemoteAPIResources(enableEndpointSlices)...)
 	if err != nil {
 		return fmt.Errorf("cannot initialize api for target cluster %s: %w", link.Spec.TargetClusterName, err)
 	}
@@ -371,6 +371,7 @@ func restartClusterWatcher(
 		ch,
 		enableHeadlessSvc,
 		enableNamespaceCreation,
+		enableEndpointSlices,
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create cluster watcher: %w", err)
@@ -393,6 +394,7 @@ func startLocalClusterWatcher(
 	repairPeriod time.Duration,
 	enableHeadlessSvc bool,
 	enableNamespaceCreation bool,
+	enableEndpointSlices bool,
 	link v1alpha3.Link,
 ) error {
 	cw, err := servicemirror.NewRemoteClusterServiceWatcher(
@@ -408,6 +410,7 @@ func startLocalClusterWatcher(
 		make(chan bool),
 		enableHeadlessSvc,
 		enableNamespaceCreation,
+		enableEndpointSlices,
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create cluster watcher: %w", err)

@@ -57,6 +57,7 @@ spec:
         {{- if $.Values.enableNamespaceCreation }}
         - -enable-namespace-creation
         {{- end }}
+        - -enable-endpoint-slices={{ dig "enableEndpointSlices" $.Values.controllerDefaults.enableEndpointSlices . }}
         - -enable-pprof={{ dig "enablePprof" $.Values.controllerDefaults.enablePprof . }}
         - -probe-service=probe-{{.link.ref.name}}
         - {{.link.ref.name}}

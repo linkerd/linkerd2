@@ -14,6 +14,8 @@ podLabels: {}
 commonLabels: {}
 # -- Toggle support for mirroring headless services
 enableHeadlessServices: false
+# -- Use EndpointSlice resources instead of Endpoints to read the target cluster
+enableEndpointSlices: true
 # -- Toggle support for creating namespaces for mirror services when necessary
 enableNamespaceCreation: false
 # -- Enables Pod Anti Affinity logic to balance the placement of replicas

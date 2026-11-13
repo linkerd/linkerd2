@@ -6,6 +6,7 @@ import (
 
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 )
 
 func formatMetadata(meta map[string]string) string {
@@ -24,6 +25,13 @@ func formatService(svc *corev1.Service) string {
 		return "Service: nil"
 	}
 	return fmt.Sprintf("Service: {name: %s, namespace: %s, annotations: [%s], labels [%s]}", svc.Name, svc.Namespace, formatMetadata(svc.Annotations), formatMetadata(svc.Labels))
+}
+
+func formatEndpointSlice(es *discoveryv1.EndpointSlice) string {
+	if es == nil {
+		return "EndpointSlice: nil"
+	}
+	return fmt.Sprintf("EndpointSlice: {name: %s, namespace: %s, annotations: [%s], labels [%s]}", es.Name, es.Namespace, formatMetadata(es.Annotations), formatMetadata(es.Labels))
 }
 
 // Events for cluster watcher
@@ -77,4 +85,16 @@ func (re RepairEndpoints) String() string {
 
 func (ol OnLocalNamespaceAdded) String() string {
 	return fmt.Sprintf("OnLocalNamespaceAdded: {namespace: %s}", ol.ns)
+}
+
+func (oa OnAddEndpointSliceCalled) String() string {
+	return fmt.Sprintf("OnAddEndpointSliceCalled: {es: %s}", formatEndpointSlice(oa.es))
+}
+
+func (ou OnUpdateEndpointSliceCalled) String() string {
+	return fmt.Sprintf("OnUpdateEndpointSliceCalled: {es: %s}", formatEndpointSlice(ou.es))
+}
+
+func (od OnDeleteEndpointSliceCalled) String() string {
+	return fmt.Sprintf("OnDeleteEndpointSliceCalled: {es: %s}", formatEndpointSlice(od.es))
 }
