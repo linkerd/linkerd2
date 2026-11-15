@@ -101,7 +101,7 @@ func equal(x interface{}, y interface{}) bool {
 		return false
 	}
 	xs, xIsSlice := x.([]interface{})
-	ys, yIsSlice := x.([]interface{})
+	ys, yIsSlice := y.([]interface{})
 	if xIsSlice && yIsSlice {
 		if len(xs) != len(ys) {
 			return false
