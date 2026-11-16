@@ -1431,7 +1431,8 @@ func ToWholeCPUCores(q k8sResource.Quantity) (int64, error) {
 // getPodInboundPorts will return a string-formatted list of ports (in ascending
 // order) based on a PodSpec object. The function will check each container in
 // the pod and extract any defined ports. Additionally, it will also extract any
-// healthcheck target probes, provided the probe is an HTTP healthcheck
+// readiness, liveness and startup target probes, provided the probe is an HTTP
+// healthcheck
 func getPodInboundPorts(podSpec *corev1.PodSpec) string {
 	ports := make(map[int32]struct{})
 	if podSpec != nil {
@@ -1448,6 +1449,12 @@ func getPodInboundPorts(podSpec *corev1.PodSpec) string {
 
 			if liveness := container.LivenessProbe; liveness != nil {
 				if port, ok := getProbePort(liveness); ok {
+					ports[port] = struct{}{}
+				}
+			}
+
+			if startup := container.StartupProbe; startup != nil {
+				if port, ok := getProbePort(startup); ok {
 					ports[port] = struct{}{}
 				}
 			}

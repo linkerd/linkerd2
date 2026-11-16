@@ -1,6 +1,7 @@
 package inject
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -10,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
 )
 
@@ -567,5 +569,73 @@ func TestWholeCPUCores(t *testing.T) {
 		if n != int64(c.n) {
 			t.Fatalf("Unexpected value: %v != %v", n, c.n)
 		}
+	}
+}
+
+func TestGetPodPatchInboundPorts(t *testing.T) {
+	testConfig, err := l5dcharts.NewValues()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	testConfig.IdentityTrustAnchorsPEM = "test-trust-anchors"
+
+	spec := appsv1.DeploymentSpec{
+		Template: corev1.PodTemplateSpec{
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name:  "app",
+						Ports: []corev1.ContainerPort{{ContainerPort: 80}, {ContainerPort: 9090}},
+						ReadinessProbe: &corev1.Probe{
+							ProbeHandler: corev1.ProbeHandler{
+								HTTPGet: &corev1.HTTPGetAction{Port: intstr.FromInt32(8081)},
+							},
+						},
+						LivenessProbe: &corev1.Probe{
+							ProbeHandler: corev1.ProbeHandler{
+								HTTPGet: &corev1.HTTPGetAction{Port: intstr.FromInt32(8082)},
+							},
+						},
+						StartupProbe: &corev1.Probe{
+							ProbeHandler: corev1.ProbeHandler{
+								HTTPGet: &corev1.HTTPGetAction{Port: intstr.FromInt32(8083)},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	data, err := yaml.Marshal(&appsv1.Deployment{Spec: spec})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	conf := NewResourceConfig(testConfig, OriginWebhook, "linkerd").WithKind("Deployment")
+	if _, err := conf.ParseMetaAndYAML(data); err != nil {
+		t.Fatal(err)
+	}
+
+	patch, err := conf.GetPodPatch(true, GetOverriddenValues)
+	if err != nil {
+		t.Fatalf("GetPodPatch failed: %s", err)
+	}
+
+	const want = `"name":"LINKERD2_PROXY_INBOUND_PORTS","value":"80,8081,8082,8083,9090"`
+	got := strings.ReplaceAll(string(patch), " ", "")
+	got = strings.ReplaceAll(got, "\n", "")
+	if !strings.Contains(got, want) {
+		idx := strings.Index(got, `"name":"LINKERD2_PROXY_INBOUND_PORTS"`)
+		actual := ""
+		if idx >= 0 {
+			end := idx + 90
+			if end > len(got) {
+				end = len(got)
+			}
+			actual = got[idx:end]
+		}
+		t.Fatalf("LINKERD2_PROXY_INBOUND_PORTS mismatch\nwant: %s\ngot:  %s", want, actual)
 	}
 }
