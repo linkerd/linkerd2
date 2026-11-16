@@ -150,13 +150,18 @@ func TestLocalSwitchFederatedService(t *testing.T) {
 	newFederatedSvc.Annotations["multicluster.linkerd.io/local-discovery"] = "bb2"
 	fsw.updateService(federatedSvc, newFederatedSvc)
 
-	select {
-	case u := <-mockGetServer.updatesReceived:
-		updates = append(updates, u)
-	case <-time.After(5 * time.Second):
-		t.Fatal("timed out waiting for the previous local member's endpoints to be removed")
+	// The old member's Remove and the new member's Add come from different
+	// translators, so their order on the stream is not guaranteed.
+	for range 2 {
+		select {
+		case u := <-mockGetServer.updatesReceived:
+			updates = append(updates, u)
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for the local member switch to be sent")
+		}
 	}
 	assertUpdatesRemoves(t, updates, "172.17.0.1:8080")
+	assertUpdatesContains(t, updates, "bb2-west-1", "172.17.0.2:8080")
 }
 
 // TestUnsubscribeFederatedServiceSendsNoRemove asserts that tearing down a
@@ -393,6 +398,44 @@ metadata:
 status:
   phase: Running
   podIP: 172.17.0.1`,
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: bb2
+  namespace: test
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8080`,
+		`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: bb2
+  namespace: test
+subsets:
+- addresses:
+  - ip: 172.17.0.2
+    targetRef:
+      kind: Pod
+      name: bb2-west-1
+      namespace: test
+  ports:
+  - port: 8080
+`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bb2-west-1
+  namespace: test
+  ownerReferences:
+  - kind: ReplicaSet
+    name: bb2-west
+status:
+  phase: Running
+  podIP: 172.17.0.2`,
 	}
 
 	eastConfigs = []string{
