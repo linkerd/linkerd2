@@ -333,6 +333,11 @@ func (rcsw *RemoteClusterServiceWatcher) isAnnotationExlucded(annotation string)
 	if annotation == "service.kubernetes.io/topology-aware-hints" || annotation == "service.kubernetes.io/topology-mode" {
 		return true
 	}
+	// Discovery annotations drive endpoint resolution in the destination
+	// controller and are only ever set by the service mirror itself.
+	if annotation == consts.LocalDiscoveryAnnotation || annotation == consts.RemoteDiscoveryAnnotation {
+		return true
+	}
 	for _, excludedAnnotation := range rcsw.link.Spec.ExcludedAnnotations {
 		if strings.HasSuffix(excludedAnnotation, "/*") {
 			trimmed := strings.TrimSuffix(excludedAnnotation, "/*")
