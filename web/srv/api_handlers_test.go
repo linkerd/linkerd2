@@ -8,13 +8,19 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-test/deep"
+	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
 	vizApi "github.com/linkerd/linkerd2/viz/metrics-api"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	tappkg "github.com/linkerd/linkerd2/viz/tap/pkg"
+	"k8s.io/client-go/rest"
 )
 
 type mockHealthChecker struct {
@@ -181,4 +187,55 @@ func TestHandleApiGateway(t *testing.T) {
 			t.Errorf("Expected              %+v", http.StatusInternalServerError)
 		}
 	})
+}
+
+// A tap request that the Kubernetes API refuses with 403 should close the
+// websocket with a policy-violation frame pointing at the tap RBAC docs,
+// rather than with a generic internal server error.
+func TestHandleApiTapForbidden(t *testing.T) {
+	k8sSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"kind":"Status","apiVersion":"v1","status":"Failure","message":"tap is not allowed","reason":"Forbidden","code":403}`))
+	}))
+	defer k8sSrv.Close()
+
+	h := &handler{
+		k8sAPI: &k8sPkg.KubernetesAPI{Config: &rest.Config{Host: k8sSrv.URL}},
+	}
+
+	webSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.handleAPITap(w, r, httprouter.Params{})
+	}))
+	defer webSrv.Close()
+
+	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(webSrv.URL, "http"), nil)
+	if err != nil {
+		t.Fatalf("failed to open the tap websocket: %s", err)
+	}
+	defer conn.Close()
+
+	params, err := json.Marshal(tappkg.TapRequestParams{Resource: "deploy/foo", Namespace: "default"})
+	if err != nil {
+		t.Fatalf("failed to encode the tap request: %s", err)
+	}
+	if err := conn.WriteMessage(websocket.TextMessage, params); err != nil {
+		t.Fatalf("failed to send the tap request: %s", err)
+	}
+
+	if err := conn.SetReadDeadline(time.Now().Add(30 * time.Second)); err != nil {
+		t.Fatalf("failed to set a read deadline: %s", err)
+	}
+	_, _, err = conn.ReadMessage()
+
+	var closeErr *websocket.CloseError
+	if !errors.As(err, &closeErr) {
+		t.Fatalf("expected a websocket close frame, got %v", err)
+	}
+	if closeErr.Code != websocket.ClosePolicyViolation {
+		t.Errorf("expected close code %d for a forbidden tap, got %d (%q)", websocket.ClosePolicyViolation, closeErr.Code, closeErr.Text)
+	}
+	if !strings.Contains(closeErr.Text, tappkg.TapRbacURL) {
+		t.Errorf("expected the close message to mention %s, got %q", tappkg.TapRbacURL, closeErr.Text)
+	}
 }
