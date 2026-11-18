@@ -734,6 +734,14 @@ func (wp *workloadPublisher) updatePod(pod *corev1.Pod) {
 
 	// backing pod stopped running or getting deleted
 	if pod == nil || !isRunning(pod) {
+		// A non-running pod that merely shares this IP:port (e.g. a Failed
+		// pod object keeping its status.podIP while a new pod reuses the IP)
+		// must not clear the live pod's metadata. Only the backing pod
+		// itself, or a delete event (pod == nil), clears it.
+		if pod != nil && (pod.Namespace != wp.addr.Pod.Namespace || pod.Name != wp.addr.Pod.Name) {
+			wp.log.Tracef("Ignored event on pod %s.%s: not the backing pod %s.%s", pod.Name, pod.Namespace, wp.addr.Pod.Name, wp.addr.Pod.Namespace)
+			return
+		}
 		wp.log.Debugf("Pod %s.%s deleted or it stopped running - remove", wp.addr.Pod.Name, wp.addr.Pod.Namespace)
 		wp.addr.Pod = nil
 		wp.addr.OwnerKind = ""
