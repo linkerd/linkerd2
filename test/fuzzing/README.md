@@ -19,7 +19,7 @@ the commands outlined in the instructions.
 
 - [Dockerfile] provides the necessary environment for running the
   fuzzer; the main thing being the `oss-fuzz-base` image which provides the
-  `compile_go_fuzzer` funtions seen in this directory's `build.sh`.
+  `compile_go_fuzzer` functions seen in this directory's `build.sh`.
 - [build.sh] is responsible for calling the fuzzing functions for each
   fuzzer in the linkerd2 project.
 
