@@ -40,7 +40,7 @@ features = ["tracing"]
 version = "0.27"
 default-features = false
 git = "https://github.com/linkerd/linkerd-kubert.git"
-tag = "kubert/v0.27.0"
+tag = "kubert/v0.27.1"
 
 [workspace.dependencies.linkerd-policy-controller-k8s-index]
 path = "./policy-controller/k8s/index"
