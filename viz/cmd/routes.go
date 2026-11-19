@@ -54,7 +54,7 @@ func NewCmdRoutes() *cobra.Command {
 	options := newRoutesOptions()
 
 	cmd := &cobra.Command{
-		Use:   "routes [flags] (RESOURCES)",
+		Use:   "routes [flags] (RESOURCE) [RESOURCE...]",
 		Short: "Display route stats",
 		Long: `Display route stats.
 
@@ -62,42 +62,47 @@ This command will only display traffic which is sent to a service that has a Ser
 		Example: `  # Routes for the webapp service in the test namespace.
   linkerd viz routes service/webapp -n test
 
+  # Routes for multiple services in the test namespace.
+  linkerd viz routes service/webapp service/api -n test
+
   # Routes for calls from the traffic deployment to the webapp service in the test namespace.
   linkerd viz routes deploy/traffic -n test --to svc/webapp`,
-		Args:      cobra.ExactArgs(1),
+		Args:      cobra.MinimumNArgs(1),
 		ValidArgs: pkgUtil.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
-			req, err := buildTopRoutesRequest(args[0], options)
-			if err != nil {
-				return fmt.Errorf("error creating metrics request while making routes request: %w", err)
+			client := api.CheckClientOrExit(hc.VizOptions{
+				Options: &healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					KubeConfig:            kubeconfigPath,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					KubeContext:           kubeContext,
+					APIAddr:               apiAddr,
+				},
+				VizNamespaceOverride: vizNamespace,
+			})
+
+			var buf bytes.Buffer
+			for _, arg := range args {
+				req, err := buildTopRoutesRequest(arg, options)
+				if err != nil {
+					return fmt.Errorf("error creating metrics request while making routes request: %w", err)
+				}
+
+				output, err := requestRouteStatsFromAPI(client, req, options)
+				if err != nil {
+					fmt.Fprint(os.Stderr, err.Error())
+					os.Exit(1)
+				}
+				buf.WriteString(output)
 			}
 
-			output, err := requestRouteStatsFromAPI(
-				api.CheckClientOrExit(hc.VizOptions{
-					Options: &healthcheck.Options{
-						ControlPlaneNamespace: controlPlaneNamespace,
-						KubeConfig:            kubeconfigPath,
-						Impersonate:           impersonate,
-						ImpersonateGroup:      impersonateGroup,
-						KubeContext:           kubeContext,
-						APIAddr:               apiAddr,
-					},
-					VizNamespaceOverride: vizNamespace,
-				}),
-				req,
-				options,
-			)
-			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
-				os.Exit(1)
-			}
+			_, printErr := fmt.Print(buf.String())
 
-			_, err = fmt.Print(output)
-
-			return err
+			return printErr
 		},
 	}
 
