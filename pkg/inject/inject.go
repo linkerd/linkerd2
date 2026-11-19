@@ -215,8 +215,7 @@ func GetOverriddenValues(rc *ResourceConfig) (*l5dcharts.Values, error) {
 		namedPorts = util.GetNamedPorts(append(rc.pod.spec.InitContainers, rc.pod.spec.Containers...))
 	}
 
-	warnings := ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), rc.GetLabelOverrides(), namedPorts)
-	rc.overrideWarnings = append(rc.overrideWarnings, warnings...)
+	rc.overrideWarnings = ApplyAnnotationOverrides(copyValues, rc.GetAnnotationOverrides(), rc.GetLabelOverrides(), namedPorts)
 	MergeAdditionalEnv(copyValues, rc.GetNsAnnotations(), rc.GetWorkloadAnnotations())
 	return copyValues, nil
 }
@@ -660,7 +659,7 @@ func invalidPortsWarning(override, annotation string) string {
 	}
 
 	return fmt.Sprintf(
-		"invalid port(s) %s in annotation %q",
+		"invalid port(s) %q in annotation %q",
 		strings.Join(invalid, ","), annotation,
 	)
 }
