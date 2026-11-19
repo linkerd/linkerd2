@@ -56,23 +56,21 @@ type streamID struct {
 	Stream uint64 `json:"stream"`
 }
 
-type metadata interface {
-	isMetadata()
-}
+// metadata is a header or trailer, either a *metadataStr or a *metadataBin. It
+// is an empty interface on purpose: jsonpath does not look inside interface
+// values that have methods, so a marker method would make the fields of the
+// headers unreachable from `-o jsonpath`.
+type metadata interface{}
 
 type metadataStr struct {
 	Name     string `json:"name"`
 	ValueStr string `json:"valueStr"`
 }
 
-func (*metadataStr) isMetadata() {}
-
 type metadataBin struct {
 	Name     string `json:"name"`
 	ValueBin []byte `json:"valueBin"`
 }
-
-func (*metadataBin) isMetadata() {}
 
 type requestInitEvent struct {
 	ID        *streamID  `json:"id"`
