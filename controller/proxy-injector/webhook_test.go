@@ -3,6 +3,7 @@ package injector
 import (
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -14,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 )
 
 type unmarshalledPatch []map[string]interface{}
@@ -283,6 +285,85 @@ func TestGetPodPatch(t *testing.T) {
 		_, expectedPatch := loadPatch(factory, t, "pod.nativesidecar.patch.json")
 		if diff := deep.Equal(expectedPatch, actualPatch); diff != nil {
 			t.Fatalf("The actual patch didn't match what was expected.\n%+v", diff)
+		}
+	})
+
+	t.Run("by injecting a pod with a malformed require-identity-inbound-ports annotation", func(t *testing.T) {
+		_, expectedPatch := loadPatch(factory, t, "pod-with-invalid-require-identity-ports.patch.json")
+
+		pod := fileContents(factory, t, "pod-inject-enabled-invalid-require-identity-ports.yaml")
+		fakeReq := getFakePodReq(pod)
+		fullConf := confNsEnabled().
+			WithKind(fakeReq.Kind.Kind).
+			WithOwnerRetriever(ownerRetrieverFake)
+		_, err = fullConf.ParseMetaAndYAML(fakeReq.Object.Raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		patchJSON, err := fullConf.GetPodPatch(true, inject.GetOverriddenValues)
+		if err != nil {
+			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+		}
+		actualPatch := unmarshalPatch(t, patchJSON)
+		if diff := deep.Equal(expectedPatch, actualPatch); diff != nil {
+			t.Fatalf("The actual patch didn't match what was expected.\n%+v", diff)
+		}
+
+		warnings := fullConf.OverrideWarnings()
+		if len(warnings) != 1 {
+			t.Fatalf("expected exactly one warning to be recorded, got %v", warnings)
+		}
+		if !strings.Contains(warnings[0], "70000") {
+			t.Fatalf("expected warning to mention the invalid port, got %q", warnings[0])
+		}
+	})
+}
+
+func TestRecordInvalidAnnotationEvents(t *testing.T) {
+	parent := &metav1.PartialObjectMetadata{
+		TypeMeta:   metav1.TypeMeta{Kind: "Deployment"},
+		ObjectMeta: metav1.ObjectMeta{Name: "owner-deployment", Namespace: "linkerd"},
+	}
+
+	t.Run("emits one Warning event per warning", func(t *testing.T) {
+		recorder := record.NewFakeRecorder(10)
+		warnings := []string{
+			`invalid port(s) 70000 in annotation "config.linkerd.io/proxy-require-identity-inbound-ports"`,
+		}
+
+		recordInvalidAnnotationEvents(recorder, parent, warnings)
+		close(recorder.Events)
+
+		var got []string
+		for e := range recorder.Events {
+			got = append(got, e)
+		}
+		if len(got) != 1 {
+			t.Fatalf("expected exactly one event, got %v", got)
+		}
+		if !strings.Contains(got[0], "Warning") || !strings.Contains(got[0], eventTypeInvalidAnnotation) || !strings.Contains(got[0], "70000") {
+			t.Fatalf("unexpected event content: %q", got[0])
+		}
+	})
+
+	t.Run("no owner means no event", func(t *testing.T) {
+		recorder := record.NewFakeRecorder(10)
+		recordInvalidAnnotationEvents(recorder, nil, []string{"some warning"})
+		close(recorder.Events)
+
+		for e := range recorder.Events {
+			t.Fatalf("expected no events for a workload with no owner, got %q", e)
+		}
+	})
+
+	t.Run("no warnings means no event", func(t *testing.T) {
+		recorder := record.NewFakeRecorder(10)
+		recordInvalidAnnotationEvents(recorder, parent, nil)
+		close(recorder.Events)
+
+		for e := range recorder.Events {
+			t.Fatalf("expected no events when there are no warnings, got %q", e)
 		}
 	})
 }
