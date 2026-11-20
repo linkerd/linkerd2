@@ -13,6 +13,7 @@ import (
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -249,8 +250,18 @@ func serverIncludesPod(server serverv1beta3.Server, pods []corev1.Pod) bool {
 		if selector.Matches(labels.Set(pod.Labels)) {
 			for _, container := range append(pod.Spec.InitContainers, pod.Spec.Containers...) {
 				for _, p := range container.Ports {
-					if server.Spec.Port.IntVal == p.ContainerPort || server.Spec.Port.StrVal == p.Name {
-						return true
+					// The Server's port is either a number or a name. Compare
+					// only the form that is set, so that a numeric port isn't
+					// matched against the empty name of an unnamed port.
+					switch server.Spec.Port.Type {
+					case intstr.Int:
+						if server.Spec.Port.IntVal == p.ContainerPort {
+							return true
+						}
+					case intstr.String:
+						if server.Spec.Port.StrVal == p.Name {
+							return true
+						}
 					}
 				}
 			}
