@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -128,4 +129,118 @@ status:
 			t.Fatalf("expected error to be pod IP address conflict, but got: %s", err)
 		}
 	})
+}
+
+type bufferingWorkloadListener struct {
+	updates []*Address
+}
+
+func (l *bufferingWorkloadListener) Update(addr *Address) error {
+	a := *addr
+	l.updates = append(l.updates, &a)
+	return nil
+}
+
+func TestWorkloadWatcherIgnoresOtherPodWithSameIP(t *testing.T) {
+	k8sConfigs := []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: live
+  namespace: ns
+  uid: live-uid
+spec:
+  containers:
+  - name: web
+    ports:
+    - containerPort: 8080
+status:
+  phase: Running
+  podIP: 10.255.0.1`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: stale
+  namespace: ns
+  uid: stale-uid
+spec:
+  containers:
+  - name: web
+    ports:
+    - containerPort: 8080
+status:
+  phase: Failed
+  podIP: 10.255.0.1`,
+	}
+
+	k8sAPI, err := k8s.NewFakeAPI(k8sConfigs...)
+	if err != nil {
+		t.Fatalf("failed to create new fake API: %s", err)
+	}
+	metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+	if err != nil {
+		t.Fatalf("failed to create new fake metadata API: %s", err)
+	}
+	if err = InitializeIndexers(k8sAPI); err != nil {
+		t.Fatalf("initializeIndexers returned an error: %s", err)
+	}
+	k8sAPI.Sync(nil)
+
+	metrics, err := workloadVecs.newMetrics(prometheus.Labels{})
+	if err != nil {
+		t.Fatalf("failed to create metrics: %s", err)
+	}
+	// Event handlers are not registered so that pod events are only
+	// submitted explicitly below.
+	ww := &WorkloadWatcher{
+		k8sAPI:      k8sAPI,
+		metadataAPI: metadataAPI,
+		publishers:  make(map[IPPort]*workloadPublisher),
+		metrics:     metrics,
+		log:         log.WithField("test", t.Name()),
+	}
+
+	listener := &bufferingWorkloadListener{}
+	if _, err = ww.Subscribe(nil, "", "10.255.0.1", 8080, listener); err != nil {
+		t.Fatalf("failed to subscribe: %s", err)
+	}
+	if len(listener.updates) != 1 || listener.updates[0].Pod == nil || listener.updates[0].Pod.Name != "live" {
+		t.Fatalf("expected initial update with pod live, got %v", listener.updates)
+	}
+	listener.updates = nil
+	wp, ok := ww.getWorkloadPublisher("10.255.0.1", 8080)
+	if !ok {
+		t.Fatal("expected a publisher for 10.255.0.1:8080")
+	}
+	if wp.addr.Pod == nil || wp.addr.Pod.Name != "live" {
+		t.Fatalf("expected publisher to be backed by pod live, got %v", wp.addr.Pod)
+	}
+
+	stale, err := k8sAPI.Pod().Lister().Pods("ns").Get("stale")
+	if err != nil {
+		t.Fatalf("failed to get stale pod: %s", err)
+	}
+	ww.submitPodUpdate(stale, false)
+	ww.submitPodUpdate(stale, true)
+
+	if len(listener.updates) != 0 {
+		t.Fatalf("expected no updates from stale pod events, got %d", len(listener.updates))
+	}
+	if wp.addr.Pod == nil || wp.addr.Pod.Name != "live" {
+		t.Fatalf("expected publisher to still be backed by pod live, got %v", wp.addr.Pod)
+	}
+
+	live, err := k8sAPI.Pod().Lister().Pods("ns").Get("live")
+	if err != nil {
+		t.Fatalf("failed to get live pod: %s", err)
+	}
+	ww.submitPodUpdate(live, true)
+
+	if len(listener.updates) != 1 {
+		t.Fatalf("expected 1 update after deleting the backing pod, got %d", len(listener.updates))
+	}
+	if listener.updates[0].Pod != nil {
+		t.Fatalf("expected backing pod to be cleared, got %s", listener.updates[0].Pod.Name)
+	}
 }
