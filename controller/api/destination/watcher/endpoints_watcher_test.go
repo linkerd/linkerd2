@@ -19,6 +19,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/tools/cache"
 )
 
 type bufferingEndpointListener struct {
@@ -754,6 +755,116 @@ status:
 
 	listener.ExpectAddedWithOpaqueProtocol([]string{"172.17.0.12:8989:false"}, t)
 	listener.ExpectRemoved([]string{}, t)
+}
+
+func TestEndpointsWatcherDeleteServer(t *testing.T) {
+	k8sConfigs := []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`, `
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+    targetRef:
+      kind: Pod
+      name: name1-1
+      namespace: ns
+  ports:
+  - port: 8989`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  labels:
+    app: name1
+status:
+  phase: Running
+  podIP: 172.17.0.12`}
+
+	server := &v1beta3.Server{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "srv",
+			Namespace: "ns",
+		},
+		Spec: v1beta3.ServerSpec{
+			PodSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "name1",
+				},
+			},
+			Port:          intstr.FromInt(8989),
+			ProxyProtocol: opaqueProtocol,
+		},
+	}
+
+	for _, tt := range []struct {
+		name           string
+		objectToDelete interface{}
+		expected       []string
+	}{
+		{
+			name:           "deletes a Server",
+			objectToDelete: server,
+			expected:       []string{"172.17.0.12:8989:false", "172.17.0.12:8989:false", "172.17.0.12:8989:true"},
+		},
+		{
+			name:           "deletes a Server wrapped in a DeletedFinalStateUnknown",
+			objectToDelete: cache.DeletedFinalStateUnknown{Key: "ns/srv", Obj: server},
+			expected:       []string{"172.17.0.12:8989:false", "172.17.0.12:8989:false", "172.17.0.12:8989:true"},
+		},
+		{
+			name: "ignores a DeletedFinalStateUnknown that does not contain a Server",
+			objectToDelete: cache.DeletedFinalStateUnknown{
+				Key: "ns/name1",
+				Obj: &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
+			},
+			expected: []string{"172.17.0.12:8989:false", "172.17.0.12:8989:true"},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(k8sConfigs...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false, false, "local")
+			if err != nil {
+				t.Fatalf("can't create Endpoints watcher: %s", err)
+			}
+
+			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
+
+			listener := newBufferingEndpointListener()
+			err = watcher.Subscribe(ServiceID{Name: "name1", Namespace: "ns"}, 8989, testFilterKey(""), listener)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			watcher.addServer(server)
+			listener.ExpectAddedWithOpaqueProtocol([]string{"172.17.0.12:8989:false", "172.17.0.12:8989:true"}, t)
+
+			watcher.deleteServer(tt.objectToDelete)
+			listener.ExpectAddedWithOpaqueProtocol(tt.expected, t)
+		})
+	}
 }
 
 func TestEndpointsWatcherWithEndpointSlices(t *testing.T) {

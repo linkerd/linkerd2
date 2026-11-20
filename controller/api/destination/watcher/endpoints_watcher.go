@@ -471,9 +471,22 @@ func (ew *EndpointsWatcher) updateServer(oldObj interface{}, newObj interface{})
 }
 
 func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
+	server, ok := obj.(*v1beta3.Server)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			ew.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+			return
+		}
+		server, ok = tombstone.Obj.(*v1beta3.Server)
+		if !ok {
+			ew.log.Errorf("DeletedFinalStateUnknown contained object that is not a Server %#v", obj)
+			return
+		}
+	}
+
 	ew.Lock()
 	defer ew.Unlock()
-	server := obj.(*v1beta3.Server)
 	for _, sp := range ew.publishers {
 		sp.updateServer(server, nil)
 	}
