@@ -3112,6 +3112,293 @@ subsets:
 			},
 			expected: fmt.Errorf("\t* service svc expects target port 9200 to be opaque; add it to pod pod config.linkerd.io/opaque-ports annotation"),
 		},
+		{
+			// The service and the pod mark the same port range as opaque.
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200-9202"
+spec:
+  selector:
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200-9202"
+  labels:
+    app: test
+spec:
+  containers:
+  - name: test
+    image: test
+    ports:
+    - name: test
+      containerPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nod
+    targetRef:
+      kind: Pod
+      name: pod
+      namespace: test-ns
+  ports:
+  - name: test
+    port: 9200
+    protocol: TCP
+`,
+			},
+			expected: nil,
+		},
+		{
+			// The service marks a port range as opaque but the pod does not
+			// mark the port it exposes in that range.
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200-9202"
+spec:
+  selector:
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  labels:
+    app: test
+spec:
+  containers:
+  - name: test
+    image: test
+    ports:
+    - name: test
+      containerPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nod
+    targetRef:
+      kind: Pod
+      name: pod
+      namespace: test-ns
+  ports:
+  - name: test
+    port: 9200
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* service svc expects target port 9200 to be opaque; add it to pod pod config.linkerd.io/opaque-ports annotation"),
+		},
+		{
+			// The pod marks a port range as opaque but the service that
+			// targets a port in that range does not.
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+spec:
+  selector:
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200-9202"
+  labels:
+    app: test
+spec:
+  containers:
+  - name: test
+    image: test
+    ports:
+    - name: test
+      containerPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nod
+    targetRef:
+      kind: Pod
+      name: pod
+      namespace: test-ns
+  ports:
+  - name: test
+    port: 9200
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* service svc targets the opaque port 9200 through 9200; add 9200 to its config.linkerd.io/opaque-ports annotation"),
+		},
+		{
+			// An empty annotation marks no ports as opaque.
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+spec:
+  selector:
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: ""
+  labels:
+    app: test
+spec:
+  containers:
+  - name: test
+    image: test
+    ports:
+    - name: test
+      containerPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nod
+    targetRef:
+      kind: Pod
+      name: pod
+      namespace: test-ns
+  ports:
+  - name: test
+    port: 9200
+    protocol: TCP
+`,
+			},
+			expected: nil,
+		},
+		{
+			// Entries that are neither a port nor a port range are still
+			// reported.
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200,http"
+spec:
+  selector:
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+  labels:
+    app: test
+spec:
+  containers:
+  - name: test
+    image: test
+    ports:
+    - name: test
+      containerPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nod
+    targetRef:
+      kind: Pod
+      name: pod
+      namespace: test-ns
+  ports:
+  - name: test
+    port: 9200
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* failed to convert http to port number for pod pod"),
+		},
 	}
 
 	for i, tc := range testCases {
