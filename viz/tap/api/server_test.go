@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
@@ -198,6 +199,62 @@ func TestValidate_NoClientCertificate(t *testing.T) {
 	server := Server{allowedNames: []string{"name-trusted"}}
 	if err := server.validate(&req); err == nil {
 		t.Fatal("Expected request without a client certificate to be rejected")
+	}
+}
+
+func TestValidate_IgnoresUnverifiedPeerCertificates(t *testing.T) {
+	ca, err := pkgTls.GenerateRootCAWithDefaults("client-ca")
+	if err != nil {
+		t.Fatalf("Failed to generate CA: %s", err)
+	}
+	key, err := pkgTls.GenerateKey()
+	if err != nil {
+		t.Fatalf("Failed to generate key: %s", err)
+	}
+	leaf, err := ca.IssueEndEntityCrt(&x509.CertificateRequest{
+		Subject:   pkix.Name{CommonName: "name-untrusted"},
+		DNSNames:  []string{"name-untrusted"},
+		PublicKey: &key.PublicKey,
+	})
+	if err != nil {
+		t.Fatalf("Failed to issue client certificate: %s", err)
+	}
+
+	// A self-signed certificate with an allowed name, not signed by the client
+	// CA. The client appends it after its leaf, so it ends up in
+	// PeerCertificates without being part of the verified chain.
+	unverified, err := pkgTls.GenerateRootCAWithDefaults("name-trusted")
+	if err != nil {
+		t.Fatalf("Failed to generate certificate: %s", err)
+	}
+
+	server := Server{allowedNames: []string{"name-trusted"}}
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if err := server.validate(req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	ts.TLS = &tls.Config{
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  pkgTls.CertificatesToPool([]*x509.Certificate{ca.Cred.Crt.Certificate}),
+		MinVersion: tls.VersionTLS13,
+	}
+	ts.StartTLS()
+	defer ts.Close()
+
+	client := ts.Client()
+	client.Transport.(*http.Transport).TLSClientConfig.Certificates = []tls.Certificate{{
+		Certificate: [][]byte{leaf.Certificate.Raw, unverified.Cred.Crt.Certificate.Raw},
+		PrivateKey:  key,
+	}}
+
+	rsp, err := client.Get(ts.URL)
+	if err != nil {
+		t.Fatalf("Request failed: %s", err)
+	}
+	rsp.Body.Close()
+	if rsp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("Expected request to be rejected, got status %d", rsp.StatusCode)
 	}
 }
 
