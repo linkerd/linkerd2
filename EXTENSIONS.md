@@ -118,7 +118,7 @@ instead of the output format described above.  E.g.
 
 In particular, the `linkerd check` command will invoke the check command for
 each extension installed in the cluster and will request json output.
-`linkerd check` may optinally invoke your extension if not installed in the
+`linkerd check` may optionally invoke your extension if not installed in the
 cluster (see `linkerd-name _extension-metadata` below to opt-in).  To preserve
 forwards compatibility, it is recommended that the check command should ignore
 any unknown flags.
