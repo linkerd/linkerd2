@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"net/http"
@@ -419,4 +420,83 @@ func TestEventToString(t *testing.T) {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
 		}
 	})
+}
+
+func TestTapJSONPathHeaders(t *testing.T) {
+	event := pkg.CreateTapEvent(
+		&tapPb.TapEvent_Http{
+			Event: &tapPb.TapEvent_Http_RequestInit_{
+				RequestInit: &tapPb.TapEvent_Http_RequestInit{
+					Id: &tapPb.TapEvent_Http_StreamId{
+						Base: 1,
+					},
+					Method: &metricsPb.HttpMethod{
+						Type: &metricsPb.HttpMethod_Registered_{
+							Registered: metricsPb.HttpMethod_GET,
+						},
+					},
+					Authority: "localhost",
+					Path:      "/some/path",
+					Headers: &metricsPb.Headers{
+						Headers: []*metricsPb.Headers_Header{
+							{
+								Name: "user-agent",
+								Value: &metricsPb.Headers_Header_ValueStr{
+									ValueStr: "curl/8.0",
+								},
+							},
+							{
+								Name: "accept",
+								Value: &metricsPb.Headers_Header_ValueStr{
+									ValueStr: "*/*",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		map[string]string{},
+		tapPb.TapEvent_OUTBOUND,
+	)
+
+	rec := httptest.NewRecorder()
+	if err := protohttp.WriteProtoToHTTPResponse(rec, event); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	payload := rec.Body.Bytes()
+
+	testCases := []struct {
+		name     string
+		output   string
+		expected string
+	}{
+		{
+			name:     "header selected by index",
+			output:   `jsonpath={.requestInitEvent.headers[1].name}`,
+			expected: "\"accept\"\n",
+		},
+		{
+			// The filter contains "==", which is how a header is selected by name.
+			name:     "header selected by name",
+			output:   `jsonpath={.requestInitEvent.headers[?(@.name=="user-agent")].valueStr}`,
+			expected: "\"curl/8.0\"\n",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			options := newTapOptions()
+			options.output = tc.output
+
+			writer := bytes.NewBufferString("")
+			reader := bufio.NewReader(bytes.NewReader(payload))
+			if err := writeTapEventsToBuffer(writer, reader, options); err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			if actual := writer.String(); actual != tc.expected {
+				t.Fatalf("Expected function to render:\n%s\nbut got:\n%s", tc.expected, actual)
+			}
+		})
+	}
 }
