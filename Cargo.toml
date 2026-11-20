@@ -15,7 +15,7 @@ members = [
 lto = "thin"
 
 [workspace.dependencies]
-gateway-api = "0.21"
+gateway-api = "0.23"
 http = "1"
 hyper = "1"
 jiff = { version = "0.2", default-features = false, features = ["std"] }
