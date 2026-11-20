@@ -373,6 +373,11 @@ func GetPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 	var ownerUID types.UID
 	switch typ {
 	case CronJob:
+		cronJob, err := clientset.BatchV1().CronJobs(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+
 		jobs, err := clientset.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return nil, err
@@ -380,7 +385,7 @@ func GetPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 
 		var pods []corev1.Pod
 		for _, job := range jobs.Items {
-			if isOwner(job.GetUID(), job.GetOwnerReferences()) {
+			if isOwner(cronJob.GetUID(), job.GetOwnerReferences()) {
 				jobPods, err := GetPodsFor(ctx, clientset, namespace, fmt.Sprintf("%s/%s", Job, job.GetName()))
 				if err != nil {
 					return nil, err
