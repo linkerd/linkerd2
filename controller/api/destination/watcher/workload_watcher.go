@@ -440,9 +440,6 @@ func (ww *WorkloadWatcher) isExternalWorkloadSelectedByAny(ew *ext.ExternalWorkl
 // getOrNewWorkloadPublisher returns the workloadPublisher for the given target if it
 // exists. Otherwise, it creates a new one and returns it.
 func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostname, ip string, port Port) (*workloadPublisher, error) {
-	ww.mu.Lock()
-	defer ww.mu.Unlock()
-
 	var pod *corev1.Pod
 	var externalWorkload *ext.ExternalWorkload
 	var err error
@@ -471,6 +468,7 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 		}
 	}
 
+	ww.mu.Lock()
 	ipPort := IPPort{ip, port}
 	wp, ok := ww.publishers[ipPort]
 	if !ok {
@@ -490,13 +488,17 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 				"port":      port,
 			}),
 		}
+		ww.publishers[ipPort] = wp
+	}
+	ww.mu.Unlock()
+
+	if !ok {
 		if pod != nil {
 			wp.updatePod(pod)
 		}
 		if externalWorkload != nil {
 			wp.updateExternalWorkload(externalWorkload)
 		}
-		ww.publishers[ipPort] = wp
 	}
 	return wp, nil
 }
