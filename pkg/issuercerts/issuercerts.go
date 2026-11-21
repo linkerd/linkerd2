@@ -135,8 +135,9 @@ func CheckExpiringSoon(cert *x509.Certificate) error {
 }
 
 // CheckIssuerCertAlgoRequirements ensures the certificate respects with the constraints
-// we have posed on the public key and signature algorithms. Issuer certificates can only
-// be signed by an ECDSA certificate.
+// we have posed on the public key and signature algorithms. Issuer certificates must
+// use an ECDSA P-256 public key, signed with one of the signature algorithms the
+// proxy verifies.
 func CheckIssuerCertAlgoRequirements(cert *x509.Certificate) error {
 	if cert.PublicKeyAlgorithm == x509.ECDSA {
 		err := checkECDSACertRequirements(cert)
@@ -171,6 +172,19 @@ func CheckTrustAnchorAlgoRequirements(cert *x509.Certificate) error {
 	return nil
 }
 
+// isSupportedSignatureAlgorithm reports whether a signature algorithm is one
+// the proxy verifies: RSA PKCS#1 or ECDSA with SHA-256, SHA-384 or SHA-512.
+// The signing key itself can be ECDSA or RSA; only the hash matters here.
+func isSupportedSignatureAlgorithm(alg x509.SignatureAlgorithm) bool {
+	switch alg {
+	case x509.ECDSAWithSHA256, x509.ECDSAWithSHA384, x509.ECDSAWithSHA512,
+		x509.SHA256WithRSA, x509.SHA384WithRSA, x509.SHA512WithRSA:
+		return true
+	default:
+		return false
+	}
+}
+
 func checkECDSACertRequirements(cert *x509.Certificate) error {
 	k, ok := cert.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
@@ -179,9 +193,8 @@ func checkECDSACertRequirements(cert *x509.Certificate) error {
 	if k.Params().BitSize != 256 {
 		return fmt.Errorf("must use P-256 curve for public key, instead P-%d was used", k.Params().BitSize)
 	}
-	if cert.SignatureAlgorithm != x509.ECDSAWithSHA256 &&
-		cert.SignatureAlgorithm != x509.SHA256WithRSA {
-		return fmt.Errorf("must be signed by an ECDSA P-256 key, instead %s was used", cert.SignatureAlgorithm)
+	if !isSupportedSignatureAlgorithm(cert.SignatureAlgorithm) {
+		return fmt.Errorf("must be signed with ECDSA or RSA using SHA-256, SHA-384 or SHA-512, instead %s was used", cert.SignatureAlgorithm)
 	}
 
 	return nil
@@ -195,8 +208,8 @@ func checkRSACertRequirements(cert *x509.Certificate) error {
 	if k.N.BitLen() != 2048 && k.N.BitLen() != 4096 {
 		return fmt.Errorf("RSA must use a 2048 or 4096 bit public key, instead %d bit public key was used", k.N.BitLen())
 	}
-	if cert.SignatureAlgorithm != x509.SHA256WithRSA {
-		return fmt.Errorf("must be signed by an RSA 2048/4096 bit key, instead %s was used", cert.SignatureAlgorithm)
+	if !isSupportedSignatureAlgorithm(cert.SignatureAlgorithm) {
+		return fmt.Errorf("must be signed with ECDSA or RSA using SHA-256, SHA-384 or SHA-512, instead %s was used", cert.SignatureAlgorithm)
 	}
 
 	return nil
