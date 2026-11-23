@@ -70,6 +70,9 @@ skip-tree = [
     # newer version of `cpufeatures` as well.
     { name = "rand", version = "0.9" },
     { name = "cpufeatures", version = "0.2" },
+    # tower-http v0.7 is still making its way through the ecosystem. kubert
+    # uses v0.7, while kube-client v3 still depends on v0.6.
+    { name = "tower-http", version = "0.6" },
 ]
 
 [sources]
