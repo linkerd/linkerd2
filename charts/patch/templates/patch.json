@@ -28,7 +28,7 @@ structs.
   {
     "op": "add",
     "path": "{{$prefix}}/metadata/annotations/{{$label | replace "/" "~1"}}",
-    "value": "{{$value}}"
+    "value": {{$value | toJson}}
   },
   {{- end }}
   {{- if .Values.addRootLabels }}
@@ -42,7 +42,7 @@ structs.
   {
     "op": "add",
     "path": "{{$prefix}}/metadata/labels/{{$label | replace "/" "~1"}}",
-    "value": "{{$value}}"
+    "value": {{$value | toJson}}
   },
   {{- end }}
   {{- if or .Values.proxyInit .Values.proxy }}
