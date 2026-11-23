@@ -209,11 +209,12 @@ func TestHandleApiTapForbidden(t *testing.T) {
 	}))
 	defer webSrv.Close()
 
-	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(webSrv.URL, "http"), nil)
+	conn, resp, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(webSrv.URL, "http"), nil)
 	if err != nil {
 		t.Fatalf("failed to open the tap websocket: %s", err)
 	}
 	defer conn.Close()
+	defer resp.Body.Close()
 
 	params, err := json.Marshal(tappkg.TapRequestParams{Resource: "deploy/foo", Namespace: "default"})
 	if err != nil {
