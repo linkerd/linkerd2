@@ -173,6 +173,7 @@ kind: Pod
 metadata:
   name: live-pod
   namespace: ns
+  uid: live-uid
 spec:
   containers:
   - image: test
@@ -225,6 +226,7 @@ status:
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "failed-twin",
 			Namespace: "ns",
+			UID:       "failed-uid",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -245,6 +247,18 @@ status:
 	ww.submitPodUpdate(failedTwin, false)
 	if wp.addr.Pod == nil || wp.addr.Pod.Name != "live-pod" {
 		t.Fatalf("Failed twin cleared the live pod: publisher now backed by %+v", wp.addr.Pod)
+	}
+	if got := listener.lastPodName(); got != "live-pod" {
+		t.Fatalf("expected last listener update to still carry live-pod, got %q", got)
+	}
+
+	// The stale twin's delete event must not clear the live pod either:
+	// delete events used to arrive as a nil pod, which cleared whichever
+	// pod backed the address. This is the case reported against #15774's
+	// test on this branch.
+	ww.submitPodUpdate(failedTwin, true)
+	if wp.addr.Pod == nil || wp.addr.Pod.Name != "live-pod" {
+		t.Fatalf("Stale twin delete cleared the live pod: publisher now backed by %+v", wp.addr.Pod)
 	}
 	if got := listener.lastPodName(); got != "live-pod" {
 		t.Fatalf("expected last listener update to still carry live-pod, got %q", got)
