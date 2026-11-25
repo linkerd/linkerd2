@@ -106,7 +106,10 @@ class BaseTable extends React.Component {
     const col = _find(tableColumns, d => d.dataIndex === orderBy);
 
     if (orderBy && col.sorter) {
-      rows = _orderBy(rows, row => col.sorter(row), order);
+      rows = _orderBy(rows, row => {
+        const value = col.sorter(row);
+        return col.isNumeric && _isNil(value) ? -1 : value;
+      }, order);
     }
     if (filterBy) {
       const columnsToFilter = tableColumns.filter(c => c.filter);
