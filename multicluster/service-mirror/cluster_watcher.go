@@ -48,23 +48,24 @@ type (
 	// it can be requeued up to N times, to ensure that the failure is not due to some temporary network
 	// problems or general glitch in the Matrix.
 	RemoteClusterServiceWatcher struct {
-		serviceMirrorNamespace   string
-		link                     *v1alpha3.Link
-		remoteAPIClient          *k8s.API
-		localAPIClient           *k8s.API
-		linksAPIClient           *k8s.API
-		probeSvc                 string
-		stopper                  chan struct{}
-		eventBroadcaster         record.EventBroadcaster
-		recorder                 record.EventRecorder
-		log                      *logging.Entry
-		eventsQueue              workqueue.TypedRateLimitingInterface[any]
-		requeueLimit             int
-		repairPeriod             time.Duration
-		gatewayAlive             atomic.Bool
-		liveness                 chan bool
-		headlessServicesEnabled  bool
-		namespaceCreationEnabled bool
+		serviceMirrorNamespace     string
+		link                       *v1alpha3.Link
+		remoteAPIClient            *k8s.API
+		localAPIClient             *k8s.API
+		linksAPIClient             *k8s.API
+		probeSvc                   string
+		stopper                    chan struct{}
+		eventBroadcaster           record.EventBroadcaster
+		recorder                   record.EventRecorder
+		log                        *logging.Entry
+		eventsQueue                workqueue.TypedRateLimitingInterface[any]
+		requeueLimit               int
+		repairPeriod               time.Duration
+		gatewayAlive               atomic.Bool
+		liveness                   chan bool
+		headlessServicesEnabled    bool
+		namespaceCreationEnabled   bool
+		trustRootsMirroringEnabled bool
 
 		informerHandlers
 	}
@@ -200,6 +201,7 @@ func NewRemoteClusterServiceWatcher(
 	liveness chan bool,
 	enableHeadlessSvc bool,
 	enableNamespaceCreation bool,
+	enableTrustRootsMirroring bool,
 ) (*RemoteClusterServiceWatcher, error) {
 	_, err := remoteAPI.Client.Discovery().ServerVersion()
 	if err != nil {
@@ -230,12 +232,13 @@ func NewRemoteClusterServiceWatcher(
 		log: logging.WithFields(logging.Fields{
 			"cluster": link.Spec.TargetClusterName,
 		}),
-		eventsQueue:              workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]()),
-		requeueLimit:             requeueLimit,
-		repairPeriod:             repairPeriod,
-		liveness:                 liveness,
-		headlessServicesEnabled:  enableHeadlessSvc,
-		namespaceCreationEnabled: enableNamespaceCreation,
+		eventsQueue:                workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]()),
+		requeueLimit:               requeueLimit,
+		repairPeriod:               repairPeriod,
+		liveness:                   liveness,
+		headlessServicesEnabled:    enableHeadlessSvc,
+		namespaceCreationEnabled:   enableNamespaceCreation,
+		trustRootsMirroringEnabled: enableTrustRootsMirroring,
 	}
 
 	// always instantiate the gatewayAlive=true to prevent unexpected service fail fast
@@ -1469,6 +1472,21 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 	}
 
 	go rcsw.processEvents(ctx)
+
+	// Periodically synchronize the target cluster's trust bundles (and their
+	// metadata) into the local Link status, for cross-cluster certificate
+	// visibility. This is opt-in per Link and disabled by default. The local
+	// mirror has no Link/remote cluster, so it never participates.
+	if rcsw.link.Spec.TargetClusterName != "" {
+		if rcsw.trustRootsMirroringEnabled {
+			go rcsw.syncRemoteTrustLoop(ctx)
+		} else if rcsw.link.Status.TrustRoots != nil {
+			// Mirroring was disabled, but the Link still carries observations
+			// from when it was enabled. Clear them once so consumers don't keep
+			// acting on stale trust data.
+			rcsw.clearRemoteTrust(ctx)
+		}
+	}
 
 	// If no gateway address is present, do not repair endpoints
 	if rcsw.link.Spec.GatewayAddress == "" {

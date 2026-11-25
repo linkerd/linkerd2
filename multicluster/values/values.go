@@ -90,17 +90,18 @@ type LocalServiceMirror struct {
 // ControllerDefaults contains all the entries for the controllerDefaults
 // section that are not empty by default
 type ControllerDefaults struct {
-	Replicas               uint32                     `json:"replicas"`
-	Image                  *linkerd2.Image            `json:"image"`
-	Gateway                *ControllerDefaultsGateway `json:"gateway"`
-	LogLevel               string                     `json:"logLevel"`
-	LogFormat              string                     `json:"logFormat"`
-	EnableHeadlessServices bool                       `json:"enableHeadlessServices"`
-	EnablePprof            bool                       `json:"enablePprof"`
-	UID                    int64                      `json:"UID"`
-	GID                    int64                      `json:"GID"`
-	RetryLimit             uint32                     `json:"retryLimit"`
-	EnablePodAntiAffinity  bool                       `json:"enablePodAntiAffinity"`
+	Replicas                  uint32                     `json:"replicas"`
+	Image                     *linkerd2.Image            `json:"image"`
+	Gateway                   *ControllerDefaultsGateway `json:"gateway"`
+	LogLevel                  string                     `json:"logLevel"`
+	LogFormat                 string                     `json:"logFormat"`
+	EnableHeadlessServices    bool                       `json:"enableHeadlessServices"`
+	EnablePprof               bool                       `json:"enablePprof"`
+	EnableTrustRootsMirroring bool                       `json:"enableTrustRootsMirroring"`
+	UID                       int64                      `json:"UID"`
+	GID                       int64                      `json:"GID"`
+	RetryLimit                uint32                     `json:"retryLimit"`
+	EnablePodAntiAffinity     bool                       `json:"enablePodAntiAffinity"`
 }
 
 type ControllerDefaultsGateway struct {
