@@ -28,6 +28,8 @@ spec:
     - "4140"
     - --proxy-uid
     - "2102"
+    - --proxy-gid
+    - "2102"
     - --inbound-ports-to-ignore
     - 4190,4191,4567,4568
     - --outbound-ports-to-ignore
@@ -201,6 +203,7 @@ spec:
       readOnlyRootFilesystem: true
       runAsNonRoot: true
       runAsUser: 2102
+      runAsGroup: 2102
       seccompProfile:
         type: RuntimeDefault
     startupProbe:
