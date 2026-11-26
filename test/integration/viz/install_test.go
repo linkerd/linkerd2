@@ -108,10 +108,14 @@ func TestInstallVizHA(t *testing.T) {
 // TestInstallViz will install the viz extension to be used by the rest of the
 // tests in the viz suite
 func TestInstallViz(t *testing.T) {
+	// drop the prometheus scrape interval; some of the test cases wait for
+	// multiple scrapes; and this will drop testing time
 	cmd := []string{
 		"viz",
 		"install",
 		"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
+		"--set", "prometheus.globalConfig.scrape_interval=2s",
+		"--set", "prometheus.globalConfig.scrape_timeout=2s",
 	}
 
 	out, err := TestHelper.LinkerdRun(cmd...)

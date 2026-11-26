@@ -2,6 +2,7 @@ package get
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
+	"github.com/linkerd/linkerd2/testutil/prommatch"
 )
 
 //////////////////////
@@ -24,16 +26,34 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// statWindow is the time window passed to every "linkerd viz stat" call. It is
+// short so that transient errors at startup fall out of the window.
+const statWindow = "30s"
+
+// clientTrafficTimeout is a maximum wait for the client application to start
+// sending traffic.
+const clientTrafficTimeout = 2 * time.Minute
+
+type statTestCase struct {
+	args         []string
+	expectedRows map[string]string
+	status       string
+}
+
+// clientSuccessMatcher matches successful responses recorded by slow-cooker's
+// proxy for the requests slow-cooker sends to backend-svc.
+var clientSuccessMatcher = prommatch.NewMatcher("response_total",
+	prommatch.Labels{
+		"direction":      prommatch.Equals("outbound"),
+		"classification": prommatch.Equals("success"),
+	},
+	prommatch.HasPositiveValue(),
+)
+
 //////////////////////
 /// TEST EXECUTION ///
 //////////////////////
 
-// These tests retry for up to 20 seconds, since each call to "linkerd stat"
-// generates traffic to the components in the linkerd namespace, and we're
-// testing that those components are properly reporting stats. It's ok if the
-// first few attempts fail due to missing stats, since the requests from those
-// failed attempts will eventually be recorded in the stats that we're
-// requesting, and the test will pass.
 func TestCliStatForLinkerdNamespace(t *testing.T) {
 	ctx := context.Background()
 	var prometheusPod, prometheusNamespace, prometheusDeployment, metricsPod string
@@ -62,11 +82,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	}
 	prometheusPod = pods[0]
 
-	testCases := []struct {
-		args         []string
-		expectedRows map[string]string
-		status       string
-	}{
+	testCases := []statTestCase{
 		{
 			args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
@@ -103,11 +119,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	}
 
 	if !TestHelper.ExternalPrometheus() {
-		testCases = append(testCases, []struct {
-			args         []string
-			expectedRows map[string]string
-			status       string
-		}{
+		testCases = append(testCases, []statTestCase{
 			{
 				args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace()},
 				expectedRows: map[string]string{
@@ -133,11 +145,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		}...,
 		)
 	} else {
-		testCases = append(testCases, []struct {
-			args         []string
-			expectedRows map[string]string
-			status       string
-		}{
+		testCases = append(testCases, []statTestCase{
 			{
 				args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace()},
 				expectedRows: map[string]string{
@@ -157,36 +165,39 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		)
 	}
 
+	// preceding test cases do not require sample apps they only check for
+	// formatted viz stat output that result from the install test
+	runStatCases(t, testCases, 20*time.Second)
+
 	// Apply a sample application
 	TestHelper.WithDataPlaneNamespace(ctx, "stat-test", map[string]string{}, t, func(t *testing.T, prefixedNs string) {
-		out, err := TestHelper.LinkerdRun("inject", "--manual", "../trafficsplit/testdata/application.yaml")
-		if err != nil {
-			testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
+		// separate the sample apps into server + client applications and only
+		// start the client after the server is deployed
+		if err := deploySampleApp(ctx, t, prefixedNs, "testdata/servers.yaml", "backend", "failing"); err != nil {
+			testutil.AnnotatedError(t, "failed to deploy the sample application's servers", err)
+			return
+		}
+		if err := deploySampleApp(ctx, t, prefixedNs, "testdata/client.yaml", "slow-cooker"); err != nil {
+			testutil.AnnotatedError(t, "failed to deploy the sample application's client", err)
+			return
 		}
 
-		out, err = TestHelper.KubectlApply(out, prefixedNs)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-				"'kubectl apply' command failed\n%s", out)
+		// wait for client traffic (using linkerd diagnostics to inspect proxy metrics)
+		if err := waitForClientTraffic(prefixedNs); err != nil {
+			testutil.AnnotatedError(t, "slow-cooker did not receive successful responses", err)
+			return
+		}
+		// wait for metrics to arrive in prometheus
+		if err := waitForPrometheusSamples(ctx, prefixedNs, prometheusNamespace, prometheusDeployment); err != nil {
+			testutil.AnnotatedError(t, "Prometheus did not ingest slow-cooker's metrics", err)
+			return
 		}
 
-		// wait for deployments to start
-		for _, deploy := range []string{"backend", "failing", "slow-cooker"} {
-			if err := TestHelper.CheckPods(ctx, prefixedNs, deploy, 1); err != nil {
-				//nolint:errorlint
-				if rce, ok := err.(*testutil.RestartCountError); ok {
-					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-				} else {
-					testutil.AnnotatedError(t, "CheckPods timed-out", err)
-				}
-			}
-		}
-
-		testCases = append(testCases, []struct {
-			args         []string
-			expectedRows map[string]string
-			status       string
-		}{
+		// the data is already in Prometheus, so each case runs once
+		//
+		// a failure here means the stat output is wrong, not that the data
+		// arrived late.
+		runStatCases(t, []statTestCase{
 			{
 				args: []string{"viz", "stat", "svc", "-n", prefixedNs},
 				expectedRows: map[string]string{
@@ -199,46 +210,112 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 					"backend-svc": "-",
 				},
 			},
-		}...,
-		)
+		}, 0)
+	})
+}
 
-		for _, tt := range testCases {
-			tt := tt // pin
-			timeout := 20 * time.Second
-			t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
-				err := testutil.RetryFor(timeout, func() error {
-					// Use a short time window so that transient errors at startup
-					// fall out of the window.
-					tt.args = append(tt.args, "-t", "30s")
-					out, err := TestHelper.LinkerdRun(tt.args...)
-					if err != nil {
-						testutil.AnnotatedFatalf(t, "unexpected stat error",
-							"unexpected stat error: %s\n%s", err, out)
-					}
+// runStatCases runs each case as a subtest. With a non-zero retryTimeout, a
+// case is retried every second until it passes or the timeout expires; with
+// zero, it runs once.
+func runStatCases(t *testing.T, testCases []statTestCase, retryTimeout time.Duration) {
+	t.Helper()
+	for _, tt := range testCases {
+		args := append(append([]string{}, tt.args...), "-t", statWindow)
+		t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
+			check := func() error {
+				out, err := TestHelper.LinkerdRun(args...)
+				if err != nil {
+					testutil.AnnotatedFatalf(t, "unexpected stat error",
+						"unexpected stat error: %s\n%s", err, out)
+				}
 
-					expectedColumnCount := 8
-					if tt.status != "" {
-						expectedColumnCount++
-					}
-					rowStats, err := testutil.ParseRows(out, len(tt.expectedRows), expectedColumnCount)
-					if err != nil {
+				expectedColumnCount := 8
+				if tt.status != "" {
+					expectedColumnCount++
+				}
+				rowStats, err := testutil.ParseRows(out, len(tt.expectedRows), expectedColumnCount)
+				if err != nil {
+					return err
+				}
+
+				for name, meshed := range tt.expectedRows {
+					if err := validateRowStats(name, meshed, tt.status, rowStats); err != nil {
 						return err
 					}
-
-					for name, meshed := range tt.expectedRows {
-						if err := validateRowStats(name, meshed, tt.status, rowStats); err != nil {
-							return err
-						}
-					}
-
-					return nil
-				})
-				if err != nil {
-					testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out checking stats (%s)", timeout), err)
 				}
-			})
+
+				return nil
+			}
+
+			if retryTimeout == 0 {
+				if err := check(); err != nil {
+					testutil.AnnotatedFatal(t, "unexpected stats", err)
+				}
+				return
+			}
+			if err := testutil.RetryFor(retryTimeout, check); err != nil {
+				testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out checking stats (%s)", retryTimeout), err)
+			}
+		})
+	}
+}
+
+// deploySampleApp injects the proxy into the manifest at path, applies it to
+// ns, and waits until the pods of the given deployments are running and ready.
+func deploySampleApp(ctx context.Context, t *testing.T, ns, path string, deploys ...string) error {
+	t.Helper()
+	out, err := TestHelper.LinkerdRun("inject", "--manual", path)
+	if err != nil {
+		return fmt.Errorf("'linkerd inject' command failed: %w", err)
+	}
+
+	out, err = TestHelper.KubectlApply(out, ns)
+	if err != nil {
+		return fmt.Errorf("'kubectl apply' command failed: %w\n%s", err, out)
+	}
+
+	for _, deploy := range deploys {
+		if err := TestHelper.CheckPods(ctx, ns, deploy, 1); err != nil {
+			//nolint:errorlint
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+				continue
+			}
+			return err
 		}
+	}
+	return nil
+}
+
+// waitForClientTraffic waits until slow-cooker's proxy has recorded successful
+// responses from the backend. It reads the proxy's own metrics endpoint, so it
+// does not depend on Prometheus.
+func waitForClientTraffic(ns string) error {
+	return testutil.RetryFor(clientTrafficTimeout, func() error {
+		metrics, err := TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "-n", ns, "deploy/slow-cooker")
+		if err != nil {
+			return err
+		}
+		found, err := clientSuccessMatcher.HasMatchInString(metrics)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return errors.New("slow-cooker's proxy has not recorded any successful outbound responses")
+		}
+		return nil
 	})
+}
+
+// waitForPrometheusSamples waits until Prometheus holds at least two samples of
+// slow-cooker's outbound response counts within the stat window. "linkerd viz
+// stat" computes rates with increase(), which needs two samples of a series.
+func waitForPrometheusSamples(ctx context.Context, ns, promNamespace, promDeploy string) error {
+	query := fmt.Sprintf(
+		`count_over_time(response_total{namespace=%q, deployment="slow-cooker", direction="outbound"}[%s]) >= 2`,
+		ns, statWindow,
+	)
+	return TestHelper.WaitForPrometheusQuery(ctx, promNamespace, promDeploy, query, clientTrafficTimeout)
 }
 
 func validateRowStats(name, expectedMeshCount, expectedStatus string, rowStats map[string]*testutil.RowStat) error {
