@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"sort"
 	"strconv"
 	"strings"
@@ -682,8 +683,14 @@ func (t *topTable) insert(req topRequest) {
 	}
 }
 
+// stripPort removes the port from an address of the form "host:port". IPv6
+// hosts are bracketed ("[host]:port") and the brackets are removed too.
 func stripPort(address string) string {
-	return strings.Split(address, ":")[0]
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return address
+	}
+	return host
 }
 
 func (t *topTable) renderHeaders(scrollpos int) {
