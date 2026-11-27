@@ -1,6 +1,7 @@
 package inject
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -628,5 +629,21 @@ func TestWholeCPUCores(t *testing.T) {
 		if n != int64(c.n) {
 			t.Fatalf("Unexpected value: %v != %v", n, c.n)
 		}
+	}
+}
+
+func TestGetPodPatchReturnsOverriderError(t *testing.T) {
+	values, err := l5dcharts.NewValues()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	overriderErr := errors.New("override failed")
+	conf := NewResourceConfig(values, OriginUnknown, "linkerd").WithKind("Deployment")
+	_, err = conf.GetPodPatch(true, func(*ResourceConfig) (*l5dcharts.Values, error) {
+		return nil, overriderErr
+	})
+	if !errors.Is(err, overriderErr) {
+		t.Fatalf("Expected the overrider error, got: %v", err)
 	}
 }
