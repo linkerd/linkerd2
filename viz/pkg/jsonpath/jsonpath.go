@@ -13,7 +13,7 @@ import (
 var jsonRegexp = regexp.MustCompile(`^\{\.?([^{}]+)\}$|^\.?([^{}]+)$`)
 
 func GetJsonPathFlagVal(flagVal string) (string, error) {
-	val := strings.Split(flagVal, "=")
+	val := strings.SplitN(flagVal, "=", 2)
 	if len(val) != 2 || len(val) == 2 && val[1] == "" {
 		return "", errors.New("{\"error jsonpath\": \"jsonpath filter not found\"}")
 	}
