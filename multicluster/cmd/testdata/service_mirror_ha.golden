@@ -141,6 +141,7 @@ spec:
         - -log-format=plain
         - -event-requeue-limit=3
         - -namespace=test
+        - -enable-endpoint-slices=true
         - -enable-pprof=false
         - -probe-service=probe-gateway-test-cluster
         - test-cluster

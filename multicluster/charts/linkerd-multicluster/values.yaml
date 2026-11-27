@@ -126,6 +126,9 @@ localServiceMirror:
   # (retried)
   serviceMirrorRetryLimit: 3
 
+  # -- Use EndpointSlice resources instead of Endpoints to read the local cluster
+  enableEndpointSlices: true
+
   # -- Label selector for federated service members in the local cluster.
   federatedServiceSelector: "mirror.linkerd.io/federated=member"
 
@@ -208,6 +211,8 @@ controllerDefaults:
   logFormat: plain
   # -- Toggle support for mirroring headless services
   enableHeadlessServices: false
+  # -- Use EndpointSlice resources instead of Endpoints to read the target cluster
+  enableEndpointSlices: true
   # -- Enables the use of pprof endpoints for the controller
   enablePprof: false
   UID: 2103

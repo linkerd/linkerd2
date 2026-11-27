@@ -1392,6 +1392,9 @@ rules:
 - apiGroups: [""]
   resources: ["endpoints", "services"]
   verbs: ["list", "get", "watch", "create", "delete", "update"]
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list", "get", "watch"]
@@ -1463,6 +1466,7 @@ spec:
         - -event-requeue-limit=3
         - -namespace=linkerd-multicluster
         - -enable-pprof=false
+        - -enable-endpoint-slices=true
         - -local-mirror
         - -federated-service-selector=mirror.linkerd.io/federated=member
         - -excluded-labels=
