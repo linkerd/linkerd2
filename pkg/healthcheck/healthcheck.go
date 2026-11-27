@@ -2513,13 +2513,41 @@ func getEndpointsPods(endpoints *corev1.Endpoints, kubeAPI *controllerK8s.API, n
 	return pods, nil
 }
 
+// expandOpaquePorts returns the individual ports listed in an opaque ports
+// annotation value. Each comma-separated entry is either a port number or a
+// port range (`a-b`); ranges are expanded into the ports they contain. An empty
+// value means that no ports are opaque.
+func expandOpaquePorts(value, podName string) ([]string, error) {
+	if value == "" {
+		return nil, nil
+	}
+	var ports []string
+	for _, entry := range util.GetPortRanges(value) {
+		portRange, err := util.ParsePortRange(entry)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert %s to port number for pod %s", entry, podName)
+		}
+		for p := portRange.LowerBound; p <= portRange.UpperBound; p++ {
+			ports = append(ports, strconv.Itoa(p))
+		}
+	}
+	return ports, nil
+}
+
 func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) error {
 	var svcPorts, podPorts []string
+	var err error
 	if v, ok := service.Annotations[k8s.ProxyOpaquePortsAnnotation]; ok {
-		svcPorts = strings.Split(v, ",")
+		svcPorts, err = expandOpaquePorts(v, pod.Name)
+		if err != nil {
+			return err
+		}
 	}
 	if v, ok := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]; ok {
-		podPorts = strings.Split(v, ",")
+		podPorts, err = expandOpaquePorts(v, pod.Name)
+		if err != nil {
+			return err
+		}
 	}
 
 	// First loop through the services opaque ports and assert that if the pod
@@ -2539,8 +2567,12 @@ func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) err
 	// Next loop through the pod's opaque ports and assert that if one of
 	// the ports is targeted by a service port, then it is marked as opaque
 	// on the service.
+	svcPortSet := make(map[string]struct{}, len(svcPorts))
+	for _, p := range svcPorts {
+		svcPortSet[p] = struct{}{}
+	}
 	for _, p := range podPorts {
-		if util.ContainsString(p, svcPorts) {
+		if _, ok := svcPortSet[p]; ok {
 			// The service exposes p and is marked as opaque.
 			continue
 		}
