@@ -252,6 +252,67 @@ func TestGetPodPatch(t *testing.T) {
 		}
 	})
 
+	t.Run("by checking pod inherits proxy-additional-env annotation from namespace", func(t *testing.T) {
+		testCases := []struct {
+			name        string
+			envJSON     string
+			injectProxy bool
+		}{
+			{
+				name:        "single-line JSON",
+				envJSON:     `[{"name":"LINKERD2_PROXY_INBOUND_CONNECT_EXP_BACKOFF_MIN","value":"100ms"},{"name":"LINKERD2_PROXY_INBOUND_CONNECT_EXP_BACKOFF_MAX","value":"500ms"}]`,
+				injectProxy: true,
+			},
+			{
+				name:        "multiline JSON with backslash",
+				envJSON:     "[\n  {\"name\":\"FOO\",\"value\":\"a\\\\b\"}\n]\n",
+				injectProxy: false,
+			},
+		}
+
+		for _, tc := range testCases {
+			tc := tc // pin
+			t.Run(tc.name, func(t *testing.T) {
+				pod := fileContents(factory, t, "pod-inject-enabled.yaml")
+				fakeReq := getFakePodReq(pod)
+				conf := inject.
+					NewResourceConfig(values, inject.OriginWebhook, "linkerd").
+					WithNsAnnotations(map[string]string{
+						pkgK8s.ProxyInjectAnnotation:        pkgK8s.ProxyInjectEnabled,
+						pkgK8s.ProxyAdditionalEnvAnnotation: tc.envJSON,
+					}).
+					WithKind(fakeReq.Kind.Kind).
+					WithOwnerRetriever(ownerRetrieverFake)
+				if _, err := conf.ParseMetaAndYAML(fakeReq.Object.Raw); err != nil {
+					t.Fatal(err)
+				}
+
+				inject.AppendNamespaceAnnotations(conf.GetOverrideAnnotations(), conf.GetNsAnnotations(), conf.GetWorkloadAnnotations())
+				patchJSON, err := conf.GetPodPatch(tc.injectProxy, inject.GetOverriddenValues)
+				if err != nil {
+					t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+				}
+				actualPatch := unmarshalPatch(t, patchJSON)
+
+				var gotValue interface{}
+				var found bool
+				for _, op := range actualPatch {
+					if op["op"] == "add" && op["path"] == "/metadata/annotations/config.linkerd.io~1proxy-additional-env" {
+						found = true
+						gotValue = op["value"]
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("Expected proxy-additional-env annotation op in patch")
+				}
+				if gotValue != tc.envJSON {
+					t.Fatalf("Expected annotation value %q, got %v", tc.envJSON, gotValue)
+				}
+			})
+		}
+	})
+
 	t.Run("by checking container spec", func(t *testing.T) {
 		deployment := fileContents(factory, t, "deployment-with-injected-proxy.yaml")
 		fakeReq := getFakePodReq(deployment)
