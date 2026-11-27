@@ -263,22 +263,17 @@ func (ww *WorkloadWatcher) submitPodUpdate(pod *corev1.Pod, remove bool) {
 	ww.mu.RLock()
 	defer ww.mu.RUnlock()
 
-	submitPod := pod
-	if remove {
-		submitPod = nil
-	}
-
 	for _, container := range append(pod.Spec.InitContainers, pod.Spec.Containers...) {
 		for _, containerPort := range container.Ports {
 			if containerPort.ContainerPort != 0 {
 				for _, pip := range pod.Status.PodIPs {
 					if wp, ok := ww.getWorkloadPublisher(pip.IP, Port(containerPort.ContainerPort)); ok {
-						wp.updatePod(submitPod)
+						wp.updatePod(pod, remove)
 					}
 				}
 				if len(pod.Status.PodIPs) == 0 && pod.Status.PodIP != "" {
 					if wp, ok := ww.getWorkloadPublisher(pod.Status.PodIP, Port(containerPort.ContainerPort)); ok {
-						wp.updatePod(submitPod)
+						wp.updatePod(pod, remove)
 					}
 				}
 			}
@@ -286,12 +281,12 @@ func (ww *WorkloadWatcher) submitPodUpdate(pod *corev1.Pod, remove bool) {
 			if containerPort.HostPort != 0 {
 				for _, hip := range pod.Status.HostIPs {
 					if pp, ok := ww.getWorkloadPublisher(hip.IP, Port(containerPort.HostPort)); ok {
-						pp.updatePod(submitPod)
+						pp.updatePod(pod, remove)
 					}
 				}
 				if len(pod.Status.HostIPs) == 0 && pod.Status.HostIP != "" {
 					if pp, ok := ww.getWorkloadPublisher(pod.Status.HostIP, Port(containerPort.HostPort)); ok {
-						pp.updatePod(submitPod)
+						pp.updatePod(pod, remove)
 					}
 				}
 			}
@@ -491,7 +486,7 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 			}),
 		}
 		if pod != nil {
-			wp.updatePod(pod)
+			wp.updatePod(pod, false)
 		}
 		if externalWorkload != nil {
 			wp.updateExternalWorkload(externalWorkload)
@@ -673,8 +668,8 @@ func (wp *workloadPublisher) unsubscribe(listener WorkloadUpdateListener) {
 
 // updatePod creates an Address instance for the given pod, that is passed to
 // the listener's Update() method, only if the pod's running state has
-// changed. If the passed pod is nil, it means the pod (still referred to in
-// wp.pod) has been deleted.
+// changed. If remove is true, it means the passed pod has been deleted. Events
+// for pods other than the one backing this address (wp.addr.Pod) are ignored.
 // Note that we care only about the running state instead of a stronger
 // requirement on readiness state because this is used in the context of
 // _endpoint_ profile subscriptions, as opposed to _service_ profile
@@ -686,13 +681,13 @@ func (wp *workloadPublisher) unsubscribe(listener WorkloadUpdateListener) {
 // GetProfile to return the endpoint profile for the pod, even if it's not
 // ready.
 // See https://github.com/linkerd/linkerd2/issues/13247
-func (wp *workloadPublisher) updatePod(pod *corev1.Pod) {
+func (wp *workloadPublisher) updatePod(pod *corev1.Pod, remove bool) {
 	wp.mu.Lock()
 	defer wp.mu.Unlock()
 
 	// pod wasn't running or there was no backing pod - check if passed pod is running
 	if wp.addr.Pod == nil {
-		if pod == nil {
+		if remove {
 			wp.log.Trace("Pod deletion event already consumed - ignore")
 			return
 		}
@@ -732,8 +727,15 @@ func (wp *workloadPublisher) updatePod(pod *corev1.Pod) {
 		return
 	}
 
+	// another pod sharing the same ip:port (e.g. a stale Failed pod whose IP
+	// got reused) must not affect the backing pod
+	if !isSamePod(pod, wp.addr.Pod) {
+		wp.log.Tracef("Ignored event on pod %s.%s not backing this address", pod.Name, pod.Namespace)
+		return
+	}
+
 	// backing pod stopped running or getting deleted
-	if pod == nil || !isRunning(pod) {
+	if remove || !isRunning(pod) {
 		wp.log.Debugf("Pod %s.%s deleted or it stopped running - remove", wp.addr.Pod.Name, wp.addr.Pod.Namespace)
 		wp.addr.Pod = nil
 		wp.addr.OwnerKind = ""
@@ -859,4 +861,8 @@ func isNamedInExternalWorkload(pr string, ew *ext.ExternalWorkload) (int32, bool
 
 func isRunning(pod *corev1.Pod) bool {
 	return pod != nil && pod.Status.Phase == corev1.PodRunning
+}
+
+func isSamePod(a, b *corev1.Pod) bool {
+	return a.UID == b.UID && a.Namespace == b.Namespace && a.Name == b.Name
 }
