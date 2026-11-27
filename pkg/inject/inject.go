@@ -808,10 +808,10 @@ func (conf *ResourceConfig) GetLabelOverrides() map[string]string {
 // If injectProxy is false, only the config.linkerd.io annotations are set.
 func (conf *ResourceConfig) GetPodPatch(injectProxy bool, overrider ValueOverrider) ([]byte, error) {
 	values, err := overrider(conf)
-	values.Proxy.PodInboundPorts = getPodInboundPorts(conf.pod.spec)
 	if err != nil {
 		return nil, fmt.Errorf("could not generate Overridden Values: %w", err)
 	}
+	values.Proxy.PodInboundPorts = getPodInboundPorts(conf.pod.spec)
 
 	if values.ClusterNetworks != "" {
 		for _, network := range strings.Split(strings.Trim(values.ClusterNetworks, ","), ",") {
