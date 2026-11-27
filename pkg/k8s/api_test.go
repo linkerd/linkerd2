@@ -480,3 +480,150 @@ spec:
 		t.Fatalf("Expected 1 pod, got %d", len(pods))
 	}
 }
+
+func TestGetPodsForCronJob(t *testing.T) {
+	configs := []string{
+		// cronjob-1 created job-1, which created pod-1
+		`apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-1
+  namespace: ns
+  uid: cronjob-1
+`,
+		`apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-1
+  namespace: ns
+  uid: job-1
+  ownerReferences:
+  - apiVersion: batch/v1
+    controller: true
+    kind: CronJob
+    name: cronjob-1
+    uid: cronjob-1
+spec:
+  selector:
+    matchLabels:
+      job-name: job-1
+`,
+		`apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-1
+  namespace: ns
+  uid: pod-1
+  labels:
+    job-name: job-1
+  ownerReferences:
+  - apiVersion: batch/v1
+    controller: true
+    kind: Job
+    name: job-1
+    uid: job-1
+`,
+		// cronjob-2 created job-2, which created pod-2
+		`apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-2
+  namespace: ns
+  uid: cronjob-2
+`,
+		`apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-2
+  namespace: ns
+  uid: job-2
+  ownerReferences:
+  - apiVersion: batch/v1
+    controller: true
+    kind: CronJob
+    name: cronjob-2
+    uid: cronjob-2
+spec:
+  selector:
+    matchLabels:
+      job-name: job-2
+`,
+		`apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-2
+  namespace: ns
+  uid: pod-2
+  labels:
+    job-name: job-2
+  ownerReferences:
+  - apiVersion: batch/v1
+    controller: true
+    kind: Job
+    name: job-2
+    uid: job-2
+`,
+		// job-3 was not created by a cronjob
+		`apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-3
+  namespace: ns
+  uid: job-3
+spec:
+  selector:
+    matchLabels:
+      job-name: job-3
+`,
+		`apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-3
+  namespace: ns
+  uid: pod-3
+  labels:
+    job-name: job-3
+  ownerReferences:
+  - apiVersion: batch/v1
+    controller: true
+    kind: Job
+    name: job-3
+    uid: job-3
+`,
+	}
+
+	k8sClient, err := NewFakeAPI(configs...)
+	if err != nil {
+		t.Fatalf("Unexpected error %s", err)
+	}
+
+	testCases := []struct {
+		resource string
+		expected []string
+	}{
+		{resource: "cronjob/cronjob-1", expected: []string{"pod-1"}},
+		{resource: "cj/cronjob-2", expected: []string{"pod-2"}},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.resource, func(t *testing.T) {
+			pods, err := GetPodsFor(context.Background(), k8sClient, "ns", tc.resource)
+			if err != nil {
+				t.Fatalf("Unexpected error %s", err)
+			}
+
+			var names []string
+			for _, p := range pods {
+				names = append(names, p.Name)
+			}
+			if len(names) != len(tc.expected) || (len(names) == 1 && names[0] != tc.expected[0]) {
+				t.Fatalf("Expected pods %v, got %v", tc.expected, names)
+			}
+		})
+	}
+
+	t.Run("unknown cronjob", func(t *testing.T) {
+		if _, err := GetPodsFor(context.Background(), k8sClient, "ns", "cronjob/missing"); err == nil {
+			t.Fatal("Expected an error for a cronjob that does not exist, got nil")
+		}
+	})
+}
