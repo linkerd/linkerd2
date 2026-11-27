@@ -157,6 +157,34 @@ func GetConfig(fpath, kubeContext string) (*rest.Config, error) {
 		ClientConfig()
 }
 
+// RESTConfigFromRemoteKubeConfig parses a kubeconfig stored in a Kubernetes
+// Secret, such as the credentials of a multicluster Link. Its contents are not
+// trusted to run commands or read files on the local host, so kubeconfigs
+// using exec or auth-provider plugins, or referencing local files for
+// credentials or CA certificates, are rejected.
+func RESTConfigFromRemoteKubeConfig(data []byte) (*rest.Config, error) {
+	config, err := clientcmd.Load(data)
+	if err != nil {
+		return nil, err
+	}
+
+	for name, authInfo := range config.AuthInfos {
+		if authInfo.Exec != nil || authInfo.AuthProvider != nil {
+			return nil, fmt.Errorf("user %q: exec and auth-provider plugins are not allowed", name)
+		}
+		if authInfo.TokenFile != "" || authInfo.ClientCertificate != "" || authInfo.ClientKey != "" {
+			return nil, fmt.Errorf("user %q: credentials must be inlined, not loaded from files", name)
+		}
+	}
+	for name, cluster := range config.Clusters {
+		if cluster.CertificateAuthority != "" {
+			return nil, fmt.Errorf("cluster %q: certificate authority must be inlined, not loaded from a file", name)
+		}
+	}
+
+	return clientcmd.NewDefaultClientConfig(*config, &clientcmd.ConfigOverrides{}).ClientConfig()
+}
+
 // CanonicalResourceNameFromFriendlyName returns a canonical name from common shorthands used in command line tools.
 // This works based on https://github.com/kubernetes/kubernetes/blob/63ffb1995b292be0a1e9ebde6216b83fc79dd988/pkg/kubectl/kubectl.go#L39
 // This also works for non-k8s resources, e.g. authorities
