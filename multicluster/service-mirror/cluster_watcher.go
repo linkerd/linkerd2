@@ -167,7 +167,7 @@ type (
 	// endpoints should be resolved based on the remote gateway and updated.
 	RepairEndpoints struct{}
 
-	// OnLocalNamespaceAdded is issued when when a new namespace is added to
+	// OnLocalNamespaceAdded is issued when a new namespace is added to
 	// the local cluster. This means that we should check the remote cluster
 	// for exported service in that namespace.
 	OnLocalNamespaceAdded struct {
