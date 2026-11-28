@@ -65,8 +65,14 @@ securityContext:
     {{- if .Values.proxyInit.capabilities.add }}
     {{- toYaml .Values.proxyInit.capabilities.add | trim | nindent 4 }}
     {{- end }}
-    {{- if .Values.proxyInit.capabilities.drop -}}
-    {{- include "partials.proxy-init.capabilities.drop" . | nindent 4 -}}
+    {{- end }}
+    {{- if not (or .Values.proxyInit.closeWaitTimeoutSecs .Values.proxyInit.privileged) }}
+    {{- /* Only the capabilities added above are needed to set up iptables. */}}
+    drop:
+    - ALL
+    {{- else if .Values.proxyInit.capabilities }}
+    {{- if .Values.proxyInit.capabilities.drop }}
+    {{- include "partials.proxy-init.capabilities.drop" . | nindent 4 }}
     {{- end }}
     {{- end }}
   {{- if or .Values.proxyInit.closeWaitTimeoutSecs .Values.proxyInit.privileged }}
