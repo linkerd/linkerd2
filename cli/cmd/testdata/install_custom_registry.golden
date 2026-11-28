@@ -1215,6 +1215,8 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
+            drop:
+            - ALL
           privileged: false
           runAsNonRoot: true
           runAsUser: 65534
@@ -1583,6 +1585,8 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
+            drop:
+            - ALL
           privileged: false
           runAsNonRoot: true
           runAsUser: 65534
@@ -2016,6 +2020,8 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
+            drop:
+            - ALL
           privileged: false
           runAsNonRoot: true
           runAsUser: 65534

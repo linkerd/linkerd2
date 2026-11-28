@@ -65,6 +65,8 @@ items:
               add:
               - NET_ADMIN
               - NET_RAW
+              drop:
+              - ALL
             privileged: false
             readOnlyRootFilesystem: true
             runAsGroup: 65534
@@ -326,6 +328,8 @@ items:
               add:
               - NET_ADMIN
               - NET_RAW
+              drop:
+              - ALL
             privileged: false
             readOnlyRootFilesystem: true
             runAsGroup: 65534

@@ -80,6 +80,9 @@
                     "add": [
                         "NET_ADMIN",
                         "NET_RAW"
+                    ],
+                    "drop": [
+                        "ALL"
                     ]
                 },
                 "privileged": false,
